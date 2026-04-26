@@ -1,12 +1,12 @@
 # trmnl_byos_deno
 
-Minimal [BYOS](https://docs.trmnl.com/go/diy/byos) server for a single TRMNL e-ink device, written in Deno.
+Minimal [BYOS](https://docs.trmnl.com/go/diy/byos) server for a single **TRMNL X** e-ink device, written in Deno.
 
 ## What it does
 
-Implements the three BYOS endpoints (`/api/setup`, `/api/display`, `/api/log`) plus `/image` that serves an 800×480 1-bit BMP rendered from `templates/default.html` via headless Chromium.
+Implements the three BYOS endpoints (`/api/setup`, `/api/display`, `/api/log`) plus `/image.png` that serves a 4-bit grayscale PNG (1404×1872 portrait by default) rendered from `templates/default.html` via headless Chromium and quantized via ImageMagick.
 
-No database, no multi-device, no firmware updates, no plugin proxying. Edit `templates/default.html` to change what the device shows.
+No database, no multi-device, no firmware updates, no plugin proxying, no OG TRMNL support — that path is well-served by [byos_node_lite](https://github.com/usetrmnl/byos_node_lite). Edit `templates/default.html` to change what the device shows.
 
 ## Quick start (Docker)
 
@@ -53,6 +53,8 @@ deno task dev
 | `PORT` | no | Server port, default `3000` |
 | `REFRESH_RATE_SECONDS` | no | Poll interval the device respects, default `300` |
 | `FRIENDLY_ID` | no | Returned in `/api/setup`, default `TRMNL` |
+| `ORIENTATION` | no | `portrait` (1404×1872, default) or `landscape` (1872×1404) |
+| `IMAGE_BIT_DEPTH` | no | `1`, `2`, or `4` (default). 4 = native 16-gray; 1 = pure B/W |
 
 ## Customizing the screen
 

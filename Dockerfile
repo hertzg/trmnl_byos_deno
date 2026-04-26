@@ -7,6 +7,7 @@ FROM denoland/deno:debian-2.1.4
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         chromium \
+        imagemagick \
         fonts-freefont-ttf \
         fonts-noto-color-emoji \
         ca-certificates \

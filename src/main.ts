@@ -9,10 +9,10 @@ import {
   REFRESH_RATE_SECONDS,
 } from "./config.ts";
 import { renderScreenHtml, renderScreenPng, shutdownBrowser } from "./render.ts";
-import { pngTo1BitBmp } from "./bmp.ts";
+import { pngToGrayscalePng } from "./image.ts";
 
 interface CachedImage {
-  bmp: Uint8Array;
+  bytes: Uint8Array;
   hash: string;
   generatedAt: number;
 }
@@ -20,11 +20,11 @@ interface CachedImage {
 let cache: CachedImage | null = null;
 
 async function buildImage(): Promise<CachedImage> {
-  const png = await renderScreenPng();
-  const bmp = await pngTo1BitBmp(png);
-  const digest = await crypto.subtle.digest("SHA-256", bmp);
+  const sourcePng = await renderScreenPng();
+  const bytes = await pngToGrayscalePng(sourcePng);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
   const hash = encodeHex(new Uint8Array(digest)).slice(0, 16);
-  return { bmp, hash, generatedAt: Date.now() };
+  return { bytes, hash, generatedAt: Date.now() };
 }
 
 async function getImage(force = false): Promise<CachedImage> {
@@ -80,7 +80,7 @@ async function routeSetup(req: Request): Promise<Response> {
     status: 200,
     api_key: DEVICE_ACCESS_TOKEN,
     friendly_id: FRIENDLY_ID,
-    image_url: `${PUBLIC_URL_ORIGIN}/image?hash=${img.hash}`,
+    image_url: `${PUBLIC_URL_ORIGIN}/image.png?hash=${img.hash}`,
     message: "Welcome",
   });
 }
@@ -95,7 +95,7 @@ async function routeDisplay(req: Request): Promise<Response> {
   const img = await getImage();
   return json({
     status: 200,
-    image_url: `${PUBLIC_URL_ORIGIN}/image?hash=${img.hash}`,
+    image_url: `${PUBLIC_URL_ORIGIN}/image.png?hash=${img.hash}`,
     filename: img.hash,
     refresh_rate: REFRESH_RATE_SECONDS,
     reset_firmware: false,
@@ -119,11 +119,11 @@ async function routeLog(req: Request): Promise<Response> {
 
 async function routeImage(req: Request): Promise<Response> {
   const img = await getImage(isFresh(req));
-  return new Response(img.bmp, {
+  return new Response(img.bytes, {
     status: 200,
     headers: {
-      "content-type": "image/bmp",
-      "content-length": String(img.bmp.length),
+      "content-type": "image/png",
+      "content-length": String(img.bytes.length),
       "cache-control": "no-cache",
       "x-image-hash": img.hash,
     },
@@ -158,7 +158,7 @@ async function handler(req: Request): Promise<Response> {
   try {
     if (method === "GET" && path === "/") {
       res = new Response("trmnl-byos-deno");
-    } else if (method === "GET" && path === "/image") {
+    } else if (method === "GET" && (path === "/image" || path === "/image.png")) {
       res = await routeImage(req);
     } else if (method === "GET" && path === "/preview") {
       res = await routePreviewPng(req);
