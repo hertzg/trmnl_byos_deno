@@ -1,15 +1,19 @@
 # syntax=docker/dockerfile:1.7
-FROM denoland/deno:alpine-2.1.4
+#
+# Note: using debian instead of alpine because Deno's alpine image bundles a
+# libgcc_s.so.1 in /usr/local/lib that conflicts with Alpine's chromium.
+FROM denoland/deno:debian-2.1.4
 
-# Astral needs a real chromium binary
-RUN apk add --no-cache \
-      chromium \
-      ttf-freefont \
-      font-noto-emoji \
-      ca-certificates \
-    && rm -rf /var/cache/apk/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        chromium \
+        fonts-freefont-ttf \
+        fonts-noto-color-emoji \
+        ca-certificates \
+        wget \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV ASTRAL_BIN=/usr/bin/chromium-browser
+ENV ASTRAL_BIN=/usr/bin/chromium
 ENV DENO_DIR=/deno-dir
 
 WORKDIR /app

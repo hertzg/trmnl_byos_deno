@@ -19,10 +19,6 @@ services:
     command:
       - deno
       - run
-      - --allow-net
-      - --allow-env
-      - --allow-read
-      - --allow-run
-      - --allow-sys
+      - --allow-all
       - --watch
       - src/main.ts
