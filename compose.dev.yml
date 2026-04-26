@@ -16,7 +16,6 @@ services:
       REFRESH_RATE_SECONDS: "10"
       FRIENDLY_ID: "DEV"
       TZ: "Europe/Berlin"
-    init: true
     command:
       - deno
       - run

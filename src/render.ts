@@ -56,7 +56,11 @@ export async function renderScreenPng(opts: { fresh?: boolean } = {}): Promise<U
   const page = await browser.newPage();
   try {
     await page.setViewportSize({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
-    await page.setContent(html, { waitUntil: "networkidle2" });
+    await page.setContent(html);
+    // Wait for framework CSS, fonts, and any sub-resources to finish loading.
+    // Astral's setContent does not honor puppeteer's waitUntil reliably.
+    await page.evaluate(() => document.fonts?.ready ?? Promise.resolve());
+    await new Promise((r) => setTimeout(r, 800));
     return await page.screenshot({ format: "png" });
   } finally {
     await page.close();
