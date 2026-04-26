@@ -131,8 +131,9 @@ async function routeImage(req: Request): Promise<Response> {
 }
 
 // Dev-friendly: PNG version (browsers render it natively, BMP doesn't always)
-async function routePreviewPng(req: Request): Promise<Response> {
-  const png = await renderScreenPng({ fresh: isFresh(req) });
+async function routePreviewPng(_req: Request): Promise<Response> {
+  // /preview always re-renders — it's a dev endpoint, no caching.
+  const png = await renderScreenPng();
   return new Response(png, {
     status: 200,
     headers: { "content-type": "image/png", "cache-control": "no-cache" },

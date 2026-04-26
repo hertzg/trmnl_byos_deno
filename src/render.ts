@@ -4,12 +4,10 @@ import { PIXEL_RATIO, VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from "./config.ts";
 
 const TEMPLATE_PATH = join(import.meta.dirname ?? ".", "..", "templates", "default.html");
 
-let templateCache: string | null = null;
-
-async function loadTemplate(fresh = false): Promise<string> {
-  if (!fresh && templateCache) return templateCache;
-  templateCache = await Deno.readTextFile(TEMPLATE_PATH);
-  return templateCache;
+// Always re-read on every render — file is tiny and this gives instant
+// edit-refresh feedback in dev without any cache-bust query param.
+async function loadTemplate(): Promise<string> {
+  return await Deno.readTextFile(TEMPLATE_PATH);
 }
 
 function interpolate(template: string, vars: Record<string, string>): string {
@@ -26,8 +24,8 @@ function buildVars(): Record<string, string> {
   };
 }
 
-export async function renderScreenHtml(fresh = false): Promise<string> {
-  const tpl = await loadTemplate(fresh);
+export async function renderScreenHtml(): Promise<string> {
+  const tpl = await loadTemplate();
   return interpolate(tpl, buildVars());
 }
 
@@ -51,8 +49,8 @@ function getBrowser() {
   return browserPromise;
 }
 
-export async function renderScreenPng(opts: { fresh?: boolean } = {}): Promise<Uint8Array> {
-  const html = await renderScreenHtml(opts.fresh);
+export async function renderScreenPng(): Promise<Uint8Array> {
+  const html = await renderScreenHtml();
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
