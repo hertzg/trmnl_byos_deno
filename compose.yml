@@ -1,0 +1,20 @@
+services:
+  trmnl-byos:
+    image: ghcr.io/hertzg/trmnl_byos_deno:latest
+    # build: .   # uncomment to build locally instead
+    container_name: trmnl-byos
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDR:-0.0.0.0}:${BIND_PORT:-3000}:3000"
+    environment:
+      BYOS_DEVICE_MAC: "${BYOS_DEVICE_MAC:?set in .env}"
+      BYOS_DEVICE_ACCESS_TOKEN: "${BYOS_DEVICE_ACCESS_TOKEN:?set in .env}"
+      PUBLIC_URL_ORIGIN: "${PUBLIC_URL_ORIGIN:?set in .env}"
+      REFRESH_RATE_SECONDS: "${REFRESH_RATE_SECONDS:-300}"
+      FRIENDLY_ID: "${FRIENDLY_ID:-TRMNL}"
+      TZ: "${TZ:-UTC}"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--tries=1", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
