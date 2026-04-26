@@ -72,7 +72,10 @@ function routeDisplay(req: Request, ctx: Ctx): Response {
   if (denied) return denied;
   deviceTelemetry(req, ctx);
   return Response.json({
-    status: 200,
+    // status MUST be 0 here — firmware switches on it, anything else (incl. 200)
+    // falls through and the image is never fetched. /api/setup is different,
+    // it uses status: 200.
+    status: 0,
     image_url: `${PUBLIC_URL_ORIGIN}/image.png?t=${Date.now()}`,
     filename: String(Date.now()),
     refresh_rate: REFRESH_RATE_SECONDS,
@@ -93,6 +96,11 @@ async function routeLog(req: Request, ctx: Ctx): Promise<Response> {
 }
 
 async function dispatch(req: Request, path: string, ctx: Ctx): Promise<Response> {
+  // DEBUG: log all request headers so we can see device identity & quirks
+  const hdrs: string[] = [];
+  for (const [k, v] of req.headers) hdrs.push(`${k}: ${v}`);
+  console.log(`  [headers] ${path}\n    ${hdrs.join("\n    ")}`);
+
   if (req.method === "GET" && path === "/") return new Response("trmnl-byos-deno");
   if (req.method === "GET" && path === "/image.png") return await routeImage(ctx);
   if (req.method === "GET" && path === "/api/setup") return routeSetup(req, ctx);
