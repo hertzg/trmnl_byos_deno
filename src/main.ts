@@ -9,30 +9,56 @@ import {
 import { renderTemplateToPng } from "./render.ts";
 import { pngToGrayscalePng } from "./image.ts";
 
+type Ctx = Record<string, string>;
+
 function macFromHeader(req: Request): string | null {
   return (req.headers.get("id") ?? req.headers.get("ID"))?.toUpperCase() ?? null;
 }
 
-function checkAuth(req: Request, requireToken = false): Response | null {
-  if (macFromHeader(req) !== DEVICE_MAC) {
+function checkAuth(req: Request, ctx: Ctx, requireToken = false): Response | null {
+  const mac = macFromHeader(req);
+  ctx.id = mac ?? "(none)";
+
+  if (mac !== DEVICE_MAC) {
+    ctx.deny = `mac!=${DEVICE_MAC}`;
     return Response.json({ error: "MAC not allowed" }, { status: 401 });
   }
+
   if (requireToken) {
     const t = req.headers.get("access-token") ?? req.headers.get("Access-Token");
+    if (!t) {
+      ctx.deny = "no-token";
+      return Response.json({ error: "missing access-token" }, { status: 401 });
+    }
     if (t !== DEVICE_ACCESS_TOKEN) {
+      ctx.deny = "bad-token";
       return Response.json({ error: "invalid access-token" }, { status: 401 });
     }
+    ctx.token = "ok";
   }
   return null;
 }
 
-async function routeImage(): Promise<Response> {
-  const png = await pngToGrayscalePng(await renderTemplateToPng());
+function deviceTelemetry(req: Request, ctx: Ctx): void {
+  const battery = req.headers.get("battery-voltage");
+  const fw = req.headers.get("fw-version");
+  const rssi = req.headers.get("rssi");
+  if (battery) ctx.battery = battery;
+  if (fw) ctx.fw = fw;
+  if (rssi) ctx.rssi = rssi;
+}
+
+async function routeImage(ctx: Ctx): Promise<Response> {
+  const t = Date.now();
+  const raw = await renderTemplateToPng();
+  ctx.render_ms = String(Date.now() - t);
+  const png = await pngToGrayscalePng(raw);
+  ctx.bytes = String(png.length);
   return new Response(png, { headers: { "content-type": "image/png" } });
 }
 
-function routeSetup(req: Request): Response {
-  return checkAuth(req) ?? Response.json({
+function routeSetup(req: Request, ctx: Ctx): Response {
+  return checkAuth(req, ctx) ?? Response.json({
     status: 200,
     api_key: DEVICE_ACCESS_TOKEN,
     friendly_id: FRIENDLY_ID,
@@ -41,12 +67,10 @@ function routeSetup(req: Request): Response {
   });
 }
 
-function routeDisplay(req: Request): Response {
-  const denied = checkAuth(req, true);
+function routeDisplay(req: Request, ctx: Ctx): Response {
+  const denied = checkAuth(req, ctx, true);
   if (denied) return denied;
-  console.log(
-    `[display] ${macFromHeader(req)} battery=${req.headers.get("battery-voltage") ?? "?"} fw=${req.headers.get("fw-version") ?? "?"}`,
-  );
+  deviceTelemetry(req, ctx);
   return Response.json({
     status: 200,
     image_url: `${PUBLIC_URL_ORIGIN}/image.png?t=${Date.now()}`,
@@ -59,32 +83,46 @@ function routeDisplay(req: Request): Response {
   });
 }
 
-async function routeLog(req: Request): Promise<Response> {
-  const denied = checkAuth(req, true);
+async function routeLog(req: Request, ctx: Ctx): Promise<Response> {
+  const denied = checkAuth(req, ctx, true);
   if (denied) return denied;
-  console.log(`[device-log] ${await req.text()}`);
+  const body = await req.text();
+  ctx.body_bytes = String(body.length);
+  console.log(`[device-log] ${ctx.id}: ${body}`);
   return new Response(null, { status: 204 });
 }
 
-async function handler(req: Request): Promise<Response> {
-  const { pathname: path } = new URL(req.url);
-  const t0 = Date.now();
-  const log = (res: Response) => {
-    console.log(`${req.method} ${path} → ${res.status} (${Date.now() - t0}ms)`);
-    return res;
-  };
+async function dispatch(req: Request, path: string, ctx: Ctx): Promise<Response> {
+  if (req.method === "GET" && path === "/") return new Response("trmnl-byos-deno");
+  if (req.method === "GET" && path === "/image.png") return await routeImage(ctx);
+  if (req.method === "GET" && path === "/api/setup") return routeSetup(req, ctx);
+  if (req.method === "GET" && path === "/api/display") return routeDisplay(req, ctx);
+  if (req.method === "POST" && path === "/api/log") return await routeLog(req, ctx);
+  return Response.json({ error: "not found", path }, { status: 404 });
+}
 
+function formatCtx(ctx: Ctx): string {
+  const entries = Object.entries(ctx);
+  if (entries.length === 0) return "";
+  return " | " + entries.map(([k, v]) => `${k}=${v}`).join(" ");
+}
+
+async function handler(req: Request): Promise<Response> {
+  const path = new URL(req.url).pathname;
+  const t0 = Date.now();
+  const ctx: Ctx = {};
+
+  let res: Response;
   try {
-    if (req.method === "GET" && path === "/") return log(new Response("trmnl-byos-deno"));
-    if (req.method === "GET" && path === "/image.png") return log(await routeImage());
-    if (req.method === "GET" && path === "/api/setup") return log(routeSetup(req));
-    if (req.method === "GET" && path === "/api/display") return log(routeDisplay(req));
-    if (req.method === "POST" && path === "/api/log") return log(await routeLog(req));
-    return log(Response.json({ error: "not found", path }, { status: 404 }));
+    res = await dispatch(req, path, ctx);
   } catch (err) {
     console.error("[handler]", err);
-    return log(Response.json({ error: "internal" }, { status: 500 }));
+    ctx.error = err instanceof Error ? err.message : String(err);
+    res = Response.json({ error: "internal" }, { status: 500 });
   }
+
+  console.log(`${req.method} ${path} → ${res.status} ${Date.now() - t0}ms${formatCtx(ctx)}`);
+  return res;
 }
 
 console.log(`trmnl-byos-deno on :${PORT} (device=${DEVICE_MAC})`);
