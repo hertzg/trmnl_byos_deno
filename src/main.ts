@@ -20,21 +20,21 @@ function checkAuth(req: Request, ctx: Ctx, requireToken = false): Response | nul
   ctx.id = mac ?? "(none)";
 
   if (mac !== DEVICE_MAC) {
-    ctx.deny = `mac!=${DEVICE_MAC}`;
-    return Response.json({ error: "MAC not allowed" }, { status: 401 });
+    //ctx.deny = `mac!=${DEVICE_MAC}`;
+    //return Response.json({ error: "MAC not allowed" }, { status: 401 });
   }
 
   if (requireToken) {
     const t = req.headers.get("access-token") ?? req.headers.get("Access-Token");
-    if (!t) {
-      ctx.deny = "no-token";
-      return Response.json({ error: "missing access-token" }, { status: 401 });
-    }
-    if (t !== DEVICE_ACCESS_TOKEN) {
-      ctx.deny = "bad-token";
-      return Response.json({ error: "invalid access-token" }, { status: 401 });
-    }
-    ctx.token = "ok";
+    ctx.token = !t ? "(none)" : t === DEVICE_ACCESS_TOKEN ? "ok" : "bad";
+    // if (!t) {
+    //   ctx.deny = "no-token";
+    //   return Response.json({ error: "missing access-token" }, { status: 401 });
+    // }
+    // if (t !== DEVICE_ACCESS_TOKEN) {
+    //   ctx.deny = "bad-token";
+    //   return Response.json({ error: "invalid access-token" }, { status: 401 });
+    // }
   }
   return null;
 }
