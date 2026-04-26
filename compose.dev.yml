@@ -5,14 +5,14 @@ services:
     build: .
     container_name: trmnl-byos-dev
     ports:
-      - "127.0.0.1:3000:3000"
+      - "3000:3000"
     volumes:
       - ./src:/app/src:cached
       - ./templates:/app/templates:cached
     environment:
       BYOS_DEVICE_MAC: "AA:BB:CC:DD:EE:FF"
       BYOS_DEVICE_ACCESS_TOKEN: "dev-token"
-      PUBLIC_URL_ORIGIN: "http://127.0.0.1:3000"
+      PUBLIC_URL_ORIGIN: "http://192.168.50.44:3000"
       REFRESH_RATE_SECONDS: "10"
       FRIENDLY_ID: "DEV"
       TZ: "Europe/Berlin"
