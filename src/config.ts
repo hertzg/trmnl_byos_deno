@@ -18,7 +18,7 @@ export const FRIENDLY_ID = optional("FRIENDLY_ID", "TRMNL");
 // TRMNL X panel: 1872x1404 physical, model.scale_factor=1.8 → 1040x780 logical CSS pixels.
 // Render chromium at the LOGICAL size with DPR=PIXEL_RATIO so the screenshot bitmap
 // comes out at the physical resolution (1404x1872 portrait or 1872x1404 landscape).
-const ORIENTATION = optional("ORIENTATION", "portrait");
+const ORIENTATION = optional("ORIENTATION", "landscape");
 export const PIXEL_RATIO = parseFloat(optional("PIXEL_RATIO", "1.8"));
 const LOGICAL_W = 1040;
 const LOGICAL_H = 780;
