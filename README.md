@@ -20,7 +20,23 @@ The image is published to `ghcr.io/hertzg/trmnl_byos_deno:latest` on every push 
 
 ## Local dev
 
-Requires Deno 2.x and Chromium installed locally (Astral picks it up automatically).
+### With Docker (recommended — no local Deno/Chromium needed)
+
+```sh
+docker compose -f compose.dev.yml up --build
+```
+
+Then open:
+- **http://127.0.0.1:3000/preview.html** — raw rendered HTML, no chromium roundtrip → fastest iteration on CSS/layout
+- **http://127.0.0.1:3000/preview** — PNG screenshot exactly as the device would render it (browsers display PNG; BMP doesn't always)
+- **http://127.0.0.1:3000/image** — actual 1-bit BMP the device fetches (download to view)
+- Add `?fresh=1` to force re-render bypassing the cache
+
+The `compose.dev.yml` bind-mounts `src/` and `templates/` into the container and runs Deno with `--watch`, so saving a file restarts the server in ~1s. Chromium stays warm in the image — no rebuild on code edits.
+
+Default dev env: MAC `AA:BB:CC:DD:EE:FF`, token `dev-token`, refresh 10s.
+
+### Without Docker (Deno + Chromium installed locally)
 
 ```sh
 cp .env.example .env

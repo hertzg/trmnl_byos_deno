@@ -6,14 +6,29 @@ const TEMPLATE_PATH = join(import.meta.dirname ?? ".", "..", "templates", "defau
 
 let templateCache: string | null = null;
 
-async function loadTemplate(): Promise<string> {
-  if (templateCache) return templateCache;
+async function loadTemplate(fresh = false): Promise<string> {
+  if (!fresh && templateCache) return templateCache;
   templateCache = await Deno.readTextFile(TEMPLATE_PATH);
   return templateCache;
 }
 
 function interpolate(template: string, vars: Record<string, string>): string {
   return template.replace(/\$\{(\w+)\}/g, (_, k) => vars[k] ?? "");
+}
+
+function buildVars(): Record<string, string> {
+  const now = new Date();
+  return {
+    TITLE: "Hello from Deno BYOS",
+    SUBTITLE: "Plain HTML + TRMNL framework",
+    TIME: now.toISOString(),
+    HOSTNAME: Deno.hostname(),
+  };
+}
+
+export async function renderScreenHtml(fresh = false): Promise<string> {
+  const tpl = await loadTemplate(fresh);
+  return interpolate(tpl, buildVars());
 }
 
 let browserPromise: Promise<Awaited<ReturnType<typeof launch>>> | null = null;
@@ -33,23 +48,14 @@ function getBrowser() {
   return browserPromise;
 }
 
-export async function renderScreenPng(): Promise<Uint8Array> {
-  const template = await loadTemplate();
-  const now = new Date();
-  const html = interpolate(template, {
-    TITLE: "Hello from Deno BYOS",
-    SUBTITLE: "Plain HTML + TRMNL framework",
-    TIME: now.toISOString(),
-    HOSTNAME: Deno.hostname(),
-  });
-
+export async function renderScreenPng(opts: { fresh?: boolean } = {}): Promise<Uint8Array> {
+  const html = await renderScreenHtml(opts.fresh);
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
     await page.setViewportSize({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
     await page.setContent(html, { waitUntil: "networkidle2" });
-    const buf = await page.screenshot({ format: "png" });
-    return buf;
+    return await page.screenshot({ format: "png" });
   } finally {
     await page.close();
   }

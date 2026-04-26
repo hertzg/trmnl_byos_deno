@@ -8,7 +8,7 @@ import {
   PUBLIC_URL_ORIGIN,
   REFRESH_RATE_SECONDS,
 } from "./config.ts";
-import { renderScreenPng, shutdownBrowser } from "./render.ts";
+import { renderScreenHtml, renderScreenPng, shutdownBrowser } from "./render.ts";
 import { pngTo1BitBmp } from "./bmp.ts";
 
 interface CachedImage {
@@ -33,6 +33,10 @@ async function getImage(force = false): Promise<CachedImage> {
   }
   cache = await buildImage();
   return cache;
+}
+
+function isFresh(req: Request): boolean {
+  return new URL(req.url).searchParams.get("fresh") === "1";
 }
 
 function macFromHeader(req: Request): string | null {
@@ -113,8 +117,8 @@ async function routeLog(req: Request): Promise<Response> {
   return new Response(null, { status: 204 });
 }
 
-async function routeImage(_req: Request): Promise<Response> {
-  const img = await getImage();
+async function routeImage(req: Request): Promise<Response> {
+  const img = await getImage(isFresh(req));
   return new Response(img.bmp, {
     status: 200,
     headers: {
@@ -123,6 +127,24 @@ async function routeImage(_req: Request): Promise<Response> {
       "cache-control": "no-cache",
       "x-image-hash": img.hash,
     },
+  });
+}
+
+// Dev-friendly: PNG version (browsers render it natively, BMP doesn't always)
+async function routePreviewPng(req: Request): Promise<Response> {
+  const png = await renderScreenPng({ fresh: isFresh(req) });
+  return new Response(png, {
+    status: 200,
+    headers: { "content-type": "image/png", "cache-control": "no-cache" },
+  });
+}
+
+// Dev-friendly: raw rendered HTML, no chromium round-trip — fastest CSS iteration
+async function routePreviewHtml(): Promise<Response> {
+  const html = await renderScreenHtml();
+  return new Response(html, {
+    status: 200,
+    headers: { "content-type": "text/html; charset=utf-8" },
   });
 }
 
@@ -138,6 +160,10 @@ async function handler(req: Request): Promise<Response> {
       res = new Response("trmnl-byos-deno");
     } else if (method === "GET" && path === "/image") {
       res = await routeImage(req);
+    } else if (method === "GET" && path === "/preview") {
+      res = await routePreviewPng(req);
+    } else if (method === "GET" && path === "/preview.html") {
+      res = await routePreviewHtml();
     } else if (method === "GET" && path === "/api/setup") {
       res = await routeSetup(req);
     } else if (method === "GET" && path === "/api/display") {
