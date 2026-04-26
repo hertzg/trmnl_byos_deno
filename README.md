@@ -26,6 +26,15 @@ The image is published to `ghcr.io/hertzg/trmnl_byos_deno:latest` on every push 
 docker compose -f compose.dev.yml up --build
 ```
 
+**macOS / Colima users**: the default Colima mount (9p) does **not** propagate inotify events into the VM, so `deno --watch` will not pick up your edits to `src/` or `templates/`. Switch Colima to `virtiofs` once:
+
+```sh
+colima stop
+colima start --mount-type virtiofs --vm-type vz
+```
+
+(Apple Silicon required for `--vm-type vz`. Existing images persist.) Docker Desktop and OrbStack handle this correctly out of the box.
+
 Then open:
 - **http://127.0.0.1:3000/preview.html** — raw rendered HTML, no chromium roundtrip → fastest iteration on CSS/layout
 - **http://127.0.0.1:3000/preview** — PNG screenshot exactly as the device would render it (browsers display PNG; BMP doesn't always)
