@@ -1,8 +1,7 @@
 {
-  "name": "@hertzg/trmnl_byos_deno",
   "tasks": {
-    "dev": "deno run --allow-net --allow-env --allow-read --allow-run --watch src/main.ts",
-    "start": "deno run --allow-net --allow-env --allow-read --allow-run src/main.ts",
+    "dev": "deno run --allow-net --allow-env --allow-read --allow-run --allow-sys --watch src/main.ts",
+    "start": "deno run --allow-net --allow-env --allow-read --allow-run --allow-sys src/main.ts",
     "fmt": "deno fmt",
     "lint": "deno lint"
   },

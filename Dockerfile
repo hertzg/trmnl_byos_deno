@@ -28,4 +28,5 @@ CMD ["deno", "run", \
      "--allow-env", \
      "--allow-read", \
      "--allow-run", \
+     "--allow-sys", \
      "src/main.ts"]

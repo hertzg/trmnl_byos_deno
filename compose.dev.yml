@@ -23,5 +23,6 @@ services:
       - --allow-env
       - --allow-read
       - --allow-run
+      - --allow-sys
       - --watch
       - src/main.ts
