@@ -2,9 +2,11 @@
 
 Minimal [BYOS](https://docs.trmnl.com/go/diy/byos) server for a single **TRMNL X** e-ink device, written in Deno.
 
+Single file. No caching. Each request: read template → render in Chromium → grayscale via ImageMagick → respond.
+
 ## What it does
 
-Implements the three BYOS endpoints (`/api/setup`, `/api/display`, `/api/log`) plus `/image.png` that serves a 4-bit grayscale PNG (1404×1872 portrait by default) rendered from `templates/default.html` via headless Chromium and quantized via ImageMagick.
+Implements the three BYOS endpoints (`/api/setup`, `/api/display`, `/api/log`) plus `/image.png` that serves a 4-bit grayscale PNG (1872×1404 landscape by default, 1404×1872 portrait optional) rendered from `templates/default.html` via headless Chromium and quantized via ImageMagick.
 
 No database, no multi-device, no firmware updates, no plugin proxying, no OG TRMNL support — that path is well-served by [byos_node_lite](https://github.com/usetrmnl/byos_node_lite). Edit `templates/default.html` to change what the device shows.
 
@@ -20,32 +22,21 @@ The image is published to `ghcr.io/hertzg/trmnl_byos_deno:latest` on every push 
 
 ## Local dev
 
-### With Docker (recommended — no local Deno/Chromium needed)
-
 ```sh
 docker compose -f compose.dev.yml up --build
+# then open http://127.0.0.1:3000/image.png
 ```
 
-**macOS / Colima users**: the default Colima mount (9p) does **not** propagate inotify events into the VM, so `deno --watch` will not pick up your edits to `src/` or `templates/`. Switch Colima to `virtiofs` once:
+**macOS / Colima users**: the default Colima mount (9p) does not propagate inotify events into the VM, so `deno --watch` will not reload on edits to `src/`. Switch Colima to `virtiofs` once:
 
 ```sh
 colima stop
 colima start --mount-type virtiofs --vm-type vz
 ```
 
-(Apple Silicon required for `--vm-type vz`. Existing images persist.) Docker Desktop and OrbStack handle this correctly out of the box.
+(Apple Silicon required for `--vm-type vz`.) Docker Desktop and OrbStack handle this correctly out of the box. Template edits to `templates/default.html` always take effect on the next request — the file is re-read each render.
 
-Then open:
-- **http://127.0.0.1:3000/preview.html** — raw rendered HTML, no chromium roundtrip → fastest iteration on CSS/layout
-- **http://127.0.0.1:3000/preview** — PNG screenshot exactly as the device would render it (browsers display PNG; BMP doesn't always)
-- **http://127.0.0.1:3000/image** — actual 1-bit BMP the device fetches (download to view)
-- Add `?fresh=1` to force re-render bypassing the cache
-
-The `compose.dev.yml` bind-mounts `src/` and `templates/` into the container and runs Deno with `--watch`, so saving a file restarts the server in ~1s. Chromium stays warm in the image — no rebuild on code edits.
-
-Default dev env: MAC `AA:BB:CC:DD:EE:FF`, token `dev-token`, refresh 10s.
-
-### Without Docker (Deno + Chromium installed locally)
+### Without Docker (Deno + Chromium + ImageMagick installed locally)
 
 ```sh
 cp .env.example .env
@@ -62,14 +53,15 @@ deno task dev
 | `PORT` | no | Server port, default `3000` |
 | `REFRESH_RATE_SECONDS` | no | Poll interval the device respects, default `300` |
 | `FRIENDLY_ID` | no | Returned in `/api/setup`, default `TRMNL` |
-| `ORIENTATION` | no | `portrait` (1404×1872, default) or `landscape` (1872×1404) |
+| `ORIENTATION` | no | `landscape` (default, 1872×1404) or `portrait` (1404×1872, firmware rotates) |
+| `PIXEL_RATIO` | no | DPR for chromium render, default `1.8` (TRMNL X native) |
 | `IMAGE_BIT_DEPTH` | no | `1`, `2`, or `4` (default). 4 = native 16-gray; 1 = pure B/W |
 
 ## Customizing the screen
 
-Edit `templates/default.html`. Available placeholders: `${TITLE}`, `${SUBTITLE}`, `${TIME}`, `${HOSTNAME}` (see `src/render.ts` to add more).
+Edit `templates/default.html`. Available placeholders: `${TIME}`, `${HOSTNAME}` (see `src/main.ts` `vars` to add more).
 
-The TRMNL [framework CSS](https://usetrmnl.com/framework) is loaded from CDN.
+The TRMNL [framework CSS](https://trmnl.com/framework) is loaded from CDN. Use `screen--v2` (TRMNL X device profile), `screen--lg` (size mode), `screen--4bit`, and optionally `screen--portrait` on the `.screen` div, plus `lg:`, `portrait:`, `4bit:` utility prefixes.
 
 ## License
 
