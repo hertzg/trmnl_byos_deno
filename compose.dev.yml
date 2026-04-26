@@ -15,7 +15,7 @@ services:
       PUBLIC_URL_ORIGIN: "http://192.168.50.44:3000"
       REFRESH_RATE_SECONDS: "10"
       FRIENDLY_ID: "DEV"
-      ORIENTATION: "portrait"
+      ORIENTATION: "landscape"
       TZ: "Europe/Berlin"
     command:
       - deno
