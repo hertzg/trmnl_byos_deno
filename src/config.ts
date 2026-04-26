@@ -15,12 +15,17 @@ export const PORT = parseInt(optional("PORT", "3000"), 10);
 export const REFRESH_RATE_SECONDS = parseInt(optional("REFRESH_RATE_SECONDS", "300"), 10);
 export const FRIENDLY_ID = optional("FRIENDLY_ID", "TRMNL");
 
-// TRMNL X panel is 1872x1404 native (landscape). Firmware handles rotation so a
-// portrait 1404x1872 image is displayed rotated.
+// TRMNL X panel: 1872x1404 physical, model.scale_factor=1.8 → 1040x780 logical CSS pixels.
+// Render chromium at the LOGICAL size with DPR=PIXEL_RATIO so the screenshot bitmap
+// comes out at the physical resolution (1404x1872 portrait or 1872x1404 landscape).
 const ORIENTATION = optional("ORIENTATION", "portrait");
-export const SCREEN_WIDTH = ORIENTATION === "landscape" ? 1872 : 1404;
-export const SCREEN_HEIGHT = ORIENTATION === "landscape" ? 1404 : 1872;
+export const PIXEL_RATIO = parseFloat(optional("PIXEL_RATIO", "1.8"));
+const LOGICAL_W = 1040;
+const LOGICAL_H = 780;
+export const VIEWPORT_WIDTH = ORIENTATION === "landscape" ? LOGICAL_W : LOGICAL_H;
+export const VIEWPORT_HEIGHT = ORIENTATION === "landscape" ? LOGICAL_H : LOGICAL_W;
+export const SCREEN_WIDTH = Math.round(VIEWPORT_WIDTH * PIXEL_RATIO);
+export const SCREEN_HEIGHT = Math.round(VIEWPORT_HEIGHT * PIXEL_RATIO);
 
-// 4-bit grayscale PNG = native format for TRMNL X (16 grays). Firmware also
-// accepts 1-bit and 2-bit PNGs.
+// 1, 2, 4 (native), 8. Lower = smaller PNG file.
 export const IMAGE_BIT_DEPTH = parseInt(optional("IMAGE_BIT_DEPTH", "4"), 10);

@@ -1,6 +1,6 @@
 import { launch } from "@astral/astral";
 import { join } from "@std/path";
-import { SCREEN_HEIGHT, SCREEN_WIDTH } from "./config.ts";
+import { PIXEL_RATIO, VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from "./config.ts";
 
 const TEMPLATE_PATH = join(import.meta.dirname ?? ".", "..", "templates", "default.html");
 
@@ -44,6 +44,7 @@ function getBrowser() {
         "--disable-dev-shm-usage",
         "--disable-gpu",
         "--hide-scrollbars",
+        `--force-device-scale-factor=${PIXEL_RATIO}`,
       ],
     });
   }
@@ -55,7 +56,7 @@ export async function renderScreenPng(opts: { fresh?: boolean } = {}): Promise<U
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
-    await page.setViewportSize({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
+    await page.setViewportSize({ width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT });
     await page.setContent(html);
     // Wait for framework CSS, fonts, and any sub-resources to finish loading.
     // Astral's setContent does not honor puppeteer's waitUntil reliably.
