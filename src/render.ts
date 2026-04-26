@@ -35,8 +35,10 @@ let browserPromise: Promise<Awaited<ReturnType<typeof launch>>> | null = null;
 
 function getBrowser() {
   if (!browserPromise) {
+    const path = Deno.env.get("ASTRAL_BIN") ?? Deno.env.get("CHROMIUM_PATH");
     browserPromise = launch({
       headless: true,
+      ...(path ? { path } : {}),
       args: [
         "--no-sandbox",
         "--disable-dev-shm-usage",
