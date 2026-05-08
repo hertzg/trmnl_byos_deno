@@ -2,14 +2,24 @@ import { decodePNG } from "@img/png";
 import { crc32 } from "@hertzg/crc";
 import { concat } from "@std/bytes";
 
-// TRMNL X firmware expects 4-bit grayscale (color type 0). Width/height are taken from the input.
-const BIT_DEPTH = 4;
+// Output is grayscale PNG (color type 0). bitDepth must be 1, 2, 4, or 8 per the PNG spec.
+export type DitherMode = "floyd-steinberg" | "atkinson" | "sierra3" | "bayer" | "none";
 
-export async function ditherNative(input: Uint8Array<ArrayBuffer>): Promise<Uint8Array> {
+export interface DitherOptions {
+  bitDepth?: 1 | 2 | 4 | 8;
+  mode?: DitherMode;
+}
+
+export async function ditherNative(
+  input: Uint8Array<ArrayBuffer>,
+  opts: DitherOptions = {},
+): Promise<Uint8Array> {
+  const bitDepth = opts.bitDepth ?? 4;
+  const mode = opts.mode ?? "floyd-steinberg";
   const { header, body } = await decodePNG(input);
   const grays = rgbaToGrayscale(body);
-  const indices = ditherGrays(grays, header.width, header.height, BIT_DEPTH);
-  return await encodePng(indices, header.width, header.height, BIT_DEPTH);
+  const indices = ditherGrays(grays, header.width, header.height, bitDepth, mode);
+  return await encodePng(indices, header.width, header.height, bitDepth);
 }
 
 // Rec. 709 luminance into a Float32 buffer so error diffusion can spill out of [0, 255].
@@ -21,8 +31,30 @@ function rgbaToGrayscale(rgba: Uint8Array): Float32Array {
   return grays;
 }
 
-// Floyd-Steinberg error diffusion. Mutates `grays` in place; returns indices in [0, 2^bitDepth - 1].
+// Dispatches to the chosen algorithm. All return one byte per pixel, value in [0, 2^bitDepth - 1].
 function ditherGrays(
+  grays: Float32Array,
+  width: number,
+  height: number,
+  bitDepth: number,
+  mode: DitherMode,
+): Uint8Array {
+  switch (mode) {
+    case "floyd-steinberg":
+      return ditherFloydSteinberg(grays, width, height, bitDepth);
+    case "atkinson":
+      return ditherAtkinson(grays, width, height, bitDepth);
+    case "sierra3":
+      return ditherSierra3(grays, width, height, bitDepth);
+    case "bayer":
+      return ditherBayer4(grays, width, height, bitDepth);
+    case "none":
+      return ditherNone(grays, bitDepth);
+  }
+}
+
+// Floyd-Steinberg error diffusion. Kernel: 7/16 right, 3/16 down-left, 5/16 down, 1/16 down-right.
+function ditherFloydSteinberg(
   grays: Float32Array,
   width: number,
   height: number,
@@ -45,6 +77,117 @@ function ditherGrays(
         if (x + 1 < width) grays[i + width + 1] += (err * 1) / 16;
       }
     }
+  }
+  return out;
+}
+
+// Sierra-3 (Frankie Sierra, 1989). 3-row, 12-cell kernel; ÷32. Smoother gradients than
+// Floyd-Steinberg with less serpentine smearing, at ~3× the inner-loop work.
+//   row y:        X  5  3
+//   row y+1: 2 4  5  4  2
+//   row y+2:    2 3  2
+function ditherSierra3(
+  grays: Float32Array,
+  width: number,
+  height: number,
+  bitDepth: number,
+): Uint8Array {
+  const maxLevel = (1 << bitDepth) - 1;
+  const step = 255 / maxLevel;
+  const out = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      const old = grays[i];
+      const q = Math.max(0, Math.min(maxLevel, Math.round(old / step)));
+      out[i] = q;
+      const e = (old - q * step) / 32;
+      if (x + 1 < width) grays[i + 1] += e * 5;
+      if (x + 2 < width) grays[i + 2] += e * 3;
+      if (y + 1 < height) {
+        if (x - 2 >= 0) grays[i + width - 2] += e * 2;
+        if (x - 1 >= 0) grays[i + width - 1] += e * 4;
+        grays[i + width] += e * 5;
+        if (x + 1 < width) grays[i + width + 1] += e * 4;
+        if (x + 2 < width) grays[i + width + 2] += e * 2;
+      }
+      if (y + 2 < height) {
+        if (x - 1 >= 0) grays[i + 2 * width - 1] += e * 2;
+        grays[i + 2 * width] += e * 3;
+        if (x + 1 < width) grays[i + 2 * width + 1] += e * 2;
+      }
+    }
+  }
+  return out;
+}
+
+// Atkinson dithering (original Mac/HyperCard). 6-cell kernel, each gets 1/8 of the error;
+// only 6/8 of the error is diffused — the loss yields punchier contrast and crisper edges.
+function ditherAtkinson(
+  grays: Float32Array,
+  width: number,
+  height: number,
+  bitDepth: number,
+): Uint8Array {
+  const maxLevel = (1 << bitDepth) - 1;
+  const step = 255 / maxLevel;
+  const out = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      const old = grays[i];
+      const q = Math.max(0, Math.min(maxLevel, Math.round(old / step)));
+      out[i] = q;
+      const e = (old - q * step) / 8;
+      if (x + 1 < width) grays[i + 1] += e;
+      if (x + 2 < width) grays[i + 2] += e;
+      if (y + 1 < height) {
+        if (x > 0) grays[i + width - 1] += e;
+        grays[i + width] += e;
+        if (x + 1 < width) grays[i + width + 1] += e;
+      }
+      if (y + 2 < height) grays[i + 2 * width] += e;
+    }
+  }
+  return out;
+}
+
+// Bayer 4x4 ordered dithering. Threshold matrix biases the rounding by ±~½ step per pixel,
+// giving a stable, deterministic pattern (same input → identical output across renders).
+const BAYER_4 = new Uint8Array([
+  0, 8, 2, 10,
+  12, 4, 14, 6,
+  3, 11, 1, 9,
+  15, 7, 13, 5,
+]);
+
+function ditherBayer4(
+  grays: Float32Array,
+  width: number,
+  height: number,
+  bitDepth: number,
+): Uint8Array {
+  const maxLevel = (1 << bitDepth) - 1;
+  const step = 255 / maxLevel;
+  const out = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      // Bias ranges over (-step/2, +step/2): enough to push the round() into the next bucket.
+      const bias = ((BAYER_4[(y & 3) * 4 + (x & 3)] - 7.5) / 16) * step;
+      out[i] = Math.max(0, Math.min(maxLevel, Math.round((grays[i] + bias) / step)));
+    }
+  }
+  return out;
+}
+
+// No dithering: nearest-level quantization. Posterized but pixel-perfect.
+function ditherNone(grays: Float32Array, bitDepth: number): Uint8Array {
+  const maxLevel = (1 << bitDepth) - 1;
+  const step = 255 / maxLevel;
+  const out = new Uint8Array(grays.length);
+  for (let i = 0; i < grays.length; i++) {
+    out[i] = Math.max(0, Math.min(maxLevel, Math.round(grays[i] / step)));
   }
   return out;
 }

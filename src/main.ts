@@ -8,7 +8,7 @@ import {
 } from "./config.ts";
 import { renderHtml, resolveCdpEndpoint } from "./render/cdp.ts";
 import { loadTemplate } from "./render/template.ts";
-import { ditherNative } from "./render/dither.ts";
+import { ditherNative, type DitherMode } from "./render/dither.ts";
 
 const TEMPLATE_PATH = new URL("../templates/default.html", import.meta.url);
 
@@ -16,6 +16,36 @@ const TEMPLATE_PATH = new URL("../templates/default.html", import.meta.url);
 const TRMNL_X_VIEWPORT_W = 1040;
 const TRMNL_X_VIEWPORT_H = 780;
 const TRMNL_X_PIXEL_RATIO = 1.8;
+const TRMNL_X_BIT_DEPTH = 4;
+
+const VALID_BIT_DEPTHS = new Set([1, 2, 4, 8]);
+const VALID_DITHER_MODES: DitherMode[] = [
+  "floyd-steinberg",
+  "atkinson",
+  "sierra3",
+  "bayer",
+  "none",
+];
+
+function intParam(q: URLSearchParams, key: string, fallback: number, min = 1, max = 1 << 31): number {
+  const raw = q.get(key);
+  if (raw == null) return fallback;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < min || n > max) {
+    throw new Error(`bad ${key}=${raw} (must be int in [${min}, ${max}])`);
+  }
+  return n;
+}
+
+function floatParam(q: URLSearchParams, key: string, fallback: number, min = 0, max = 16): number {
+  const raw = q.get(key);
+  if (raw == null) return fallback;
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n) || n <= min || n > max) {
+    throw new Error(`bad ${key}=${raw} (must be float in (${min}, ${max}])`);
+  }
+  return n;
+}
 
 const app = new Application();
 
@@ -44,6 +74,29 @@ router.get("/", async (ctx) => {
 });
 
 router.get("/image.png", async (ctx) => {
+  const q = ctx.request.url.searchParams;
+  let width: number, height: number, dpr: number, bitDepth: number, dither: DitherMode;
+  try {
+    width = intParam(q, "width", TRMNL_X_VIEWPORT_W, 1, 8192);
+    height = intParam(q, "height", TRMNL_X_VIEWPORT_H, 1, 8192);
+    dpr = floatParam(q, "dpr", TRMNL_X_PIXEL_RATIO, 0, 4);
+    bitDepth = intParam(q, "bitDepth", TRMNL_X_BIT_DEPTH, 1, 8);
+    if (!VALID_BIT_DEPTHS.has(bitDepth)) {
+      throw new Error(`bad bitDepth=${bitDepth} (must be 1, 2, 4, or 8)`);
+    }
+    const ditherRaw = q.get("dither") ?? "floyd-steinberg";
+    if (!VALID_DITHER_MODES.includes(ditherRaw as DitherMode)) {
+      throw new Error(
+        `bad dither=${ditherRaw} (must be one of ${VALID_DITHER_MODES.join(", ")})`,
+      );
+    }
+    dither = ditherRaw as DitherMode;
+  } catch (err) {
+    ctx.response.status = 400;
+    ctx.response.body = { error: err instanceof Error ? err.message : String(err) };
+    return;
+  }
+
   const html = await loadTemplate(TEMPLATE_PATH, {
     TIME: new Date().toISOString(),
     HOSTNAME: Deno.hostname(),
@@ -52,11 +105,14 @@ router.get("/image.png", async (ctx) => {
   const raw = await renderHtml({
     endpoint,
     content: html,
-    deviceWidth: TRMNL_X_VIEWPORT_W,
-    deviceHeight: TRMNL_X_VIEWPORT_H,
-    deviceScaleFactor: TRMNL_X_PIXEL_RATIO,
+    deviceWidth: width,
+    deviceHeight: height,
+    deviceScaleFactor: dpr,
   });
-  const png = await ditherNative(raw as Uint8Array<ArrayBuffer>);
+  const png = await ditherNative(raw as Uint8Array<ArrayBuffer>, {
+    bitDepth: bitDepth as 1 | 2 | 4 | 8,
+    mode: dither,
+  });
   ctx.response.headers.set("content-type", "image/png");
   ctx.response.body = png;
 });

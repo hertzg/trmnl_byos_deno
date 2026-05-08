@@ -1,32 +1,155 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <link rel="stylesheet" href="https://trmnl.com/css/latest/plugins.css">
-    <script src="https://trmnl.com/js/latest/plugins.js"></script>
-  </head>
-  <body class="environment trmnl">
-    <div class="screen screen--4bit screen--v2 screen--lg screen--1x">
-      <div class="view view--full">
-        <div class="layout">
-          <div class="columns">
-            <div class="column">
-              <div class="markdown">
-                <span class="title">Motivational Quote</span>
-                <div class="content content--center">
-                  &ldquo;I love inside jokes. I hope to be a part of one someday.&rdquo;
-                </div>
-                <span class="label label--underline">Michael Scott</span>
-              </div>
-            </div>
-          </div>
-        </div>
+<head>
+<meta charset="utf-8">
+<title>Dither Test Card</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #fff; color: #000; }
+  body {
+    width: 1040px; height: 780px;
+    padding: 16px; box-sizing: border-box;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .meta { font-size: 11px; color: #666; margin-top: 2px; }
 
-        <div class="title_bar">
-          <img class="image" src="https://trmnl.com/images/plugins/trmnl--render.svg" />
-          <span class="title">Plugin Title</span>
-          <span class="instance">Instance Title</span>
-        </div>
+  /* ---- Smooth gradient: where FS / Sierra3 differ from Bayer / none ---- */
+  .gradient {
+    height: 56px;
+    background: linear-gradient(to right, #000, #fff);
+    border: 1px solid #000;
+  }
+
+  /* ---- 16 discrete gray bands: shows the 4-bit quantization buckets directly ---- */
+  .bands { display: flex; height: 36px; border: 1px solid #000; }
+  .bands > div { flex: 1; }
+
+  /* ---- Photo-like radial gradients alongside type sample ---- */
+  .row-spheres-type {
+    display: flex; gap: 16px; height: 200px;
+  }
+  .spheres { display: flex; gap: 12px; }
+  .sphere { width: 180px; height: 180px; border-radius: 50%; }
+  /* Highlight + shadow falloff — error-diffusion vs ordered show very differently here */
+  .sphere-1 { background: radial-gradient(circle at 30% 25%, #fff 0%, #888 45%, #000 100%); }
+  .sphere-2 { background: radial-gradient(circle at 50% 50%, #fff 0%, #444 70%); }
+  .sphere-3 { background: radial-gradient(ellipse at 70% 30%, #fff 0%, #aaa 30%, #222 80%); }
+  .type {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 8px; justify-content: center;
+  }
+  .type-xl { font-size: 36px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+  .type-md { font-size: 18px; font-weight: 500; }
+  .type-sm { font-size: 12px; line-height: 1.45; color: #222; }
+  /* Tiny text stress: small + thin = where dithering really hurts/helps */
+  .type-xs { font-size: 9px; line-height: 1.3; color: #444; }
+
+  /* ---- Fine pattern strip: pattern interference with Bayer's matrix is visible here ---- */
+  .patterns { display: flex; gap: 8px; height: 90px; }
+  .pattern { flex: 1; border: 1px solid #000; position: relative; }
+  .pattern::after {
+    content: attr(data-label);
+    position: absolute; bottom: 2px; right: 4px;
+    font-size: 9px; padding: 1px 3px; background: #fff; color: #000;
+  }
+  .lines-h-1 { background: repeating-linear-gradient(0deg, #000 0 1px, #fff 1px 2px); }
+  .lines-v-1 { background: repeating-linear-gradient(90deg, #000 0 1px, #fff 1px 2px); }
+  .checker-1 {
+    background-image:
+      repeating-linear-gradient(0deg, #000 0 1px, transparent 1px 2px),
+      repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 2px);
+  }
+  .stripes-d { background: repeating-linear-gradient(45deg, #000 0 3px, #fff 3px 6px); }
+  .grays-strip {
+    background: linear-gradient(to right,
+      #000 0% 20%,
+      #444 20% 40%,
+      #888 40% 60%,
+      #c0c0c0 60% 80%,
+      #fff 80% 100%);
+  }
+
+  /* ---- Mid-tone tiles: Atkinson should look noticeably brighter than FS here ---- */
+  .midtones { display: flex; gap: 6px; height: 40px; }
+  .midtones > div {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 11px; mix-blend-mode: difference;
+  }
+
+  .footer {
+    margin-top: auto;
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: #666;
+  }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 10px; }
+</style>
+</head>
+<body>
+  <div>
+    <h1>Dither Test Card</h1>
+    <div class="meta">${HOSTNAME} &middot; ${TIME}</div>
+  </div>
+
+  <div class="gradient"></div>
+
+  <div class="bands">
+    <div style="background:#000"></div>
+    <div style="background:#111"></div>
+    <div style="background:#222"></div>
+    <div style="background:#333"></div>
+    <div style="background:#444"></div>
+    <div style="background:#555"></div>
+    <div style="background:#666"></div>
+    <div style="background:#777"></div>
+    <div style="background:#888"></div>
+    <div style="background:#999"></div>
+    <div style="background:#aaa"></div>
+    <div style="background:#bbb"></div>
+    <div style="background:#ccc"></div>
+    <div style="background:#ddd"></div>
+    <div style="background:#eee"></div>
+    <div style="background:#fff"></div>
+  </div>
+
+  <div class="row-spheres-type">
+    <div class="spheres">
+      <div class="sphere sphere-1"></div>
+      <div class="sphere sphere-2"></div>
+      <div class="sphere sphere-3"></div>
+    </div>
+    <div class="type">
+      <div class="type-xl">Sphinx of black quartz</div>
+      <div class="type-md">judge my vow &mdash; 0123456789</div>
+      <div class="type-sm">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+        incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
+        nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      </div>
+      <div class="type-xs">
+        9px stress: The five boxing wizards jump quickly. Pack my box with five dozen liquor jugs.
       </div>
     </div>
-  </body>
+  </div>
+
+  <div class="midtones">
+    <div style="background:#404040">25%</div>
+    <div style="background:#808080">50%</div>
+    <div style="background:#a0a0a0">62%</div>
+    <div style="background:#c0c0c0">75%</div>
+  </div>
+
+  <div class="patterns">
+    <div class="pattern lines-h-1" data-label="1px H"></div>
+    <div class="pattern lines-v-1" data-label="1px V"></div>
+    <div class="pattern checker-1" data-label="1px X"></div>
+    <div class="pattern stripes-d" data-label="3px /"></div>
+    <div class="pattern grays-strip" data-label="bands"></div>
+  </div>
+
+  <div class="footer">
+    <span>1872&times;1404 &middot; 4-bit grayscale</span>
+    <span><code>?dither=floyd-steinberg | atkinson | sierra3 | bayer | none</code></span>
+  </div>
+</body>
 </html>
