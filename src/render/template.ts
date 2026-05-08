@@ -1,7 +1,6 @@
-export async function loadTemplate(
-  path: string | URL,
-  vars: Record<string, string>,
-): Promise<string> {
-  const template = await Deno.readTextFile(path);
-  return template.replace(/\$\{(\w+)\}/g, (_, k) => vars[k] ?? "");
+import { renderToString } from "hono/jsx/dom/server";
+import DefaultTemplate, { type DefaultProps } from "../../templates/default.tsx";
+
+export function renderDefault(props: DefaultProps): string {
+  return "<!DOCTYPE html>" + renderToString(DefaultTemplate(props));
 }

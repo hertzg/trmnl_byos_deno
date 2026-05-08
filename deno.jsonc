@@ -5,13 +5,20 @@
     "fmt": "deno fmt",
     "lint": "deno lint"
   },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "hono/jsx"
+  },
   "imports": {
     "@astral/astral": "jsr:@astral/astral@^0.5.4",
     "@hertzg/crc": "jsr:@hertzg/crc@^0.2.0",
     "@img/png": "jsr:@img/png@^0.1.6",
     "@oak/oak": "jsr:@oak/oak@^17.2.0",
     "@std/bytes": "jsr:@std/bytes@^1.0.6",
-    "@std/math": "jsr:@std/math@^0.0.0"
+    "@std/math": "jsr:@std/math@^0.0.0",
+    "hono/jsx": "jsr:@hono/hono@^4/jsx",
+    "hono/jsx/jsx-runtime": "jsr:@hono/hono@^4/jsx/jsx-runtime",
+    "hono/jsx/dom/server": "jsr:@hono/hono@^4/jsx/dom/server"
   },
   "fmt": {
     "lineWidth": 100,
