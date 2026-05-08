@@ -1,77 +1,78 @@
+import { Application, Router } from "@oak/oak";
 import {
-  DEVICE_ACCESS_TOKEN,
-  DEVICE_MAC,
+  CDP_URL,
   FRIENDLY_ID,
   PORT,
   PUBLIC_URL_ORIGIN,
   REFRESH_RATE_SECONDS,
 } from "./config.ts";
-import { renderTemplateToPng } from "./render.ts";
-import { pngToGrayscalePng } from "./image.ts";
+import { renderHtml, resolveCdpEndpoint } from "./render/cdp.ts";
+import { loadTemplate } from "./render/template.ts";
+import { ditherNative } from "./render/dither.ts";
 
-type Ctx = Record<string, string>;
+const TEMPLATE_PATH = new URL("../templates/default.html", import.meta.url);
 
-function macFromHeader(req: Request): string | null {
-  return (req.headers.get("id") ?? req.headers.get("ID"))?.toUpperCase() ?? null;
-}
+// TRMNL X panel: 1872x1404 at deviceScaleFactor=1.8 → CSS viewport 1040x780 (landscape).
+const TRMNL_X_VIEWPORT_W = 1040;
+const TRMNL_X_VIEWPORT_H = 780;
+const TRMNL_X_PIXEL_RATIO = 1.8;
 
-function checkAuth(req: Request, ctx: Ctx, requireToken = false): Response | null {
-  const mac = macFromHeader(req);
-  ctx.id = mac ?? "(none)";
+const app = new Application();
 
-  if (mac !== DEVICE_MAC) {
-    //ctx.deny = `mac!=${DEVICE_MAC}`;
-    //return Response.json({ error: "MAC not allowed" }, { status: 401 });
+app.use(async (ctx, next) => {
+  const t0 = Date.now();
+  try {
+    await next();
+  } catch (err) {
+    console.error("[handler]", err);
+    ctx.response.status = 500;
+    ctx.response.body = { error: "internal" };
   }
+  console.log(
+    `${ctx.request.method} ${ctx.request.url.pathname} → ${ctx.response.status} ${Date.now() - t0}ms`,
+  );
+});
 
-  if (requireToken) {
-    const t = req.headers.get("access-token") ?? req.headers.get("Access-Token");
-    ctx.token = !t ? "(none)" : t === DEVICE_ACCESS_TOKEN ? "ok" : "bad";
-    // if (!t) {
-    //   ctx.deny = "no-token";
-    //   return Response.json({ error: "missing access-token" }, { status: 401 });
-    // }
-    // if (t !== DEVICE_ACCESS_TOKEN) {
-    //   ctx.deny = "bad-token";
-    //   return Response.json({ error: "invalid access-token" }, { status: 401 });
-    // }
-  }
-  return null;
-}
+const router = new Router();
 
-function deviceTelemetry(req: Request, ctx: Ctx): void {
-  const battery = req.headers.get("battery-voltage");
-  const fw = req.headers.get("fw-version");
-  const rssi = req.headers.get("rssi");
-  if (battery) ctx.battery = battery;
-  if (fw) ctx.fw = fw;
-  if (rssi) ctx.rssi = rssi;
-}
+router.get("/", async (ctx) => {
+  ctx.response.headers.set("content-type", "text/html; charset=utf-8");
+  ctx.response.body = await loadTemplate(TEMPLATE_PATH, {
+    TIME: new Date().toISOString(),
+    HOSTNAME: Deno.hostname(),
+  });
+});
 
-async function routeImage(ctx: Ctx): Promise<Response> {
-  const t = Date.now();
-  const raw = await renderTemplateToPng();
-  ctx.render_ms = String(Date.now() - t);
-  const png = await pngToGrayscalePng(raw);
-  ctx.bytes = String(png.length);
-  return new Response(png, { headers: { "content-type": "image/png" } });
-}
+router.get("/image.png", async (ctx) => {
+  const html = await loadTemplate(TEMPLATE_PATH, {
+    TIME: new Date().toISOString(),
+    HOSTNAME: Deno.hostname(),
+  });
+  const endpoint = await resolveCdpEndpoint(CDP_URL);
+  const raw = await renderHtml({
+    endpoint,
+    content: html,
+    deviceWidth: TRMNL_X_VIEWPORT_W,
+    deviceHeight: TRMNL_X_VIEWPORT_H,
+    deviceScaleFactor: TRMNL_X_PIXEL_RATIO,
+  });
+  const png = await ditherNative(raw as Uint8Array<ArrayBuffer>);
+  ctx.response.headers.set("content-type", "image/png");
+  ctx.response.body = png;
+});
 
-function routeSetup(req: Request, ctx: Ctx): Response {
-  return checkAuth(req, ctx) ?? Response.json({
+router.get("/api/setup", (ctx) => {
+  ctx.response.body = {
     status: 200,
-    api_key: DEVICE_ACCESS_TOKEN,
+    api_key: "byos",
     friendly_id: FRIENDLY_ID,
     image_url: `${PUBLIC_URL_ORIGIN}/image.png`,
     message: "Welcome",
-  });
-}
+  };
+});
 
-function routeDisplay(req: Request, ctx: Ctx): Response {
-  const denied = checkAuth(req, ctx, true);
-  if (denied) return denied;
-  deviceTelemetry(req, ctx);
-  return Response.json({
+router.get("/api/display", (ctx) => {
+  ctx.response.body = {
     // status MUST be 0 here — firmware switches on it, anything else (incl. 200)
     // falls through and the image is never fetched. /api/setup is different,
     // it uses status: 200.
@@ -83,55 +84,18 @@ function routeDisplay(req: Request, ctx: Ctx): Response {
     update_firmware: false,
     firmware_url: "",
     special_function: "sleep",
-  });
-}
+  };
+});
 
-async function routeLog(req: Request, ctx: Ctx): Promise<Response> {
-  const denied = checkAuth(req, ctx, true);
-  if (denied) return denied;
-  const body = await req.text();
-  ctx.body_bytes = String(body.length);
-  console.log(`[device-log] ${ctx.id}: ${body}`);
-  return new Response(null, { status: 204 });
-}
+router.post("/api/log", async (ctx) => {
+  const body = await ctx.request.body.text();
+  const id = ctx.request.headers.get("id") ?? ctx.request.headers.get("ID") ?? "(none)";
+  console.log(`[device-log] ${id.toUpperCase()}: ${body}`);
+  ctx.response.status = 204;
+});
 
-async function dispatch(req: Request, path: string, ctx: Ctx): Promise<Response> {
-  // DEBUG: log all request headers so we can see device identity & quirks
-  const hdrs: string[] = [];
-  for (const [k, v] of req.headers) hdrs.push(`${k}: ${v}`);
-  console.log(`  [headers] ${path}\n    ${hdrs.join("\n    ")}`);
+app.use(router.routes());
+app.use(router.allowedMethods());
 
-  if (req.method === "GET" && path === "/") return new Response("trmnl-byos-deno");
-  if (req.method === "GET" && path === "/image.png") return await routeImage(ctx);
-  if (req.method === "GET" && path === "/api/setup") return routeSetup(req, ctx);
-  if (req.method === "GET" && path === "/api/display") return routeDisplay(req, ctx);
-  if (req.method === "POST" && path === "/api/log") return await routeLog(req, ctx);
-  return Response.json({ error: "not found", path }, { status: 404 });
-}
-
-function formatCtx(ctx: Ctx): string {
-  const entries = Object.entries(ctx);
-  if (entries.length === 0) return "";
-  return " | " + entries.map(([k, v]) => `${k}=${v}`).join(" ");
-}
-
-async function handler(req: Request): Promise<Response> {
-  const path = new URL(req.url).pathname;
-  const t0 = Date.now();
-  const ctx: Ctx = {};
-
-  let res: Response;
-  try {
-    res = await dispatch(req, path, ctx);
-  } catch (err) {
-    console.error("[handler]", err);
-    ctx.error = err instanceof Error ? err.message : String(err);
-    res = Response.json({ error: "internal" }, { status: 500 });
-  }
-
-  console.log(`${req.method} ${path} → ${res.status} ${Date.now() - t0}ms${formatCtx(ctx)}`);
-  return res;
-}
-
-console.log(`trmnl-byos-deno on :${PORT} (device=${DEVICE_MAC})`);
-Deno.serve({ port: PORT, hostname: "0.0.0.0" }, handler);
+console.log(`trmnl-byos-deno on :${PORT}`);
+await app.listen({ port: PORT, hostname: "0.0.0.0" });

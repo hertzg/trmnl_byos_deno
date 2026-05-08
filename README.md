@@ -2,19 +2,19 @@
 
 Minimal [BYOS](https://docs.trmnl.com/go/diy/byos) server for a single **TRMNL X** e-ink device, written in Deno.
 
-Single file. No caching. Each request: read template → render in Chromium → grayscale via ImageMagick → respond.
+Single file. No caching. No auth. Each request: read template → render in a [CloakBrowser](https://github.com/CloakHQ/CloakBrowser) sidecar over CDP → Floyd-Steinberg dither to 4-bit grayscale PNG → respond.
 
 ## What it does
 
-Implements the three BYOS endpoints (`/api/setup`, `/api/display`, `/api/log`) plus `/image.png` that serves a 4-bit grayscale PNG (1872×1404 landscape by default, 1404×1872 portrait optional) rendered from `templates/default.html` via headless Chromium and quantized via ImageMagick.
+Implements the three BYOS endpoints (`/api/setup`, `/api/display`, `/api/log`) plus `/image.png` that serves a 4-bit grayscale PNG (1872×1404, color-type=0, packed 2 px/byte — exactly what the firmware expects) rendered from `templates/default.html`. The browser sidecar is reached over CDP (WebSocket); dithering and PNG packing are pure TypeScript (no ImageMagick).
 
-No database, no multi-device, no firmware updates, no plugin proxying, no OG TRMNL support — that path is well-served by [byos_node_lite](https://github.com/usetrmnl/byos_node_lite). Edit `templates/default.html` to change what the device shows.
+No auth, no database, no multi-device, no firmware updates, no plugin proxying, no OG TRMNL support — that path is well-served by [byos_node_lite](https://github.com/usetrmnl/byos_node_lite). Edit `templates/default.html` to change what the device shows.
 
 ## Quick start (Docker)
 
 ```sh
 cp .env.example .env
-# fill in BYOS_DEVICE_MAC, BYOS_DEVICE_ACCESS_TOKEN, PUBLIC_URL_ORIGIN
+# set PUBLIC_URL_ORIGIN to a URL your device can reach (e.g. your host's LAN IP)
 docker compose up -d
 ```
 
@@ -23,8 +23,8 @@ The image is published to `ghcr.io/hertzg/trmnl_byos_deno:latest` on every push 
 ## Local dev
 
 ```sh
-docker compose -f compose.dev.yml up --build
-# then open http://127.0.0.1:3000/image.png
+docker compose up --build
+# then open http://127.0.0.1:3000/image.png (preview) or http://127.0.0.1:3000/ (HTML)
 ```
 
 **macOS / Colima users**: the default Colima mount (9p) does not propagate inotify events into the VM, so `deno --watch` will not reload on edits to `src/`. Switch Colima to `virtiofs` once:
@@ -36,10 +36,15 @@ colima start --mount-type virtiofs --vm-type vz
 
 (Apple Silicon required for `--vm-type vz`.) Docker Desktop and OrbStack handle this correctly out of the box. Template edits to `templates/default.html` always take effect on the next request — the file is re-read each render.
 
-### Without Docker (Deno + Chromium + ImageMagick installed locally)
+### Without Docker (Deno locally, CloakBrowser in Docker)
+
+The app talks to a CloakBrowser CDP container. Run the browser as a sidecar and point the app at it:
 
 ```sh
+docker run --rm -d --name trmnl-chrome -p 127.0.0.1:9222:9222 \
+  cloakhq/cloakbrowser cloakserve
 cp .env.example .env
+# CDP_URL=http://127.0.0.1:9222 in .env
 deno task dev
 ```
 
@@ -47,15 +52,13 @@ deno task dev
 
 | Env | Required | Description |
 |---|---|---|
-| `BYOS_DEVICE_MAC` | yes | MAC of your TRMNL device, any case |
-| `BYOS_DEVICE_ACCESS_TOKEN` | yes | Token the device sends in `Access-Token` header |
-| `PUBLIC_URL_ORIGIN` | yes | URL the device uses to fetch the image (e.g. `http://10.0.0.5:3000`) |
+| `PUBLIC_URL_ORIGIN` | no | URL the device uses to fetch the image. Default `http://localhost:${PORT}` |
+| `CDP_URL` | no | HTTP base of the CloakBrowser CDP sidecar. Default `http://localhost:9222` |
 | `PORT` | no | Server port, default `3000` |
 | `REFRESH_RATE_SECONDS` | no | Poll interval the device respects, default `300` |
 | `FRIENDLY_ID` | no | Returned in `/api/setup`, default `TRMNL` |
-| `ORIENTATION` | no | `landscape` (default, 1872×1404) or `portrait` (1404×1872, firmware rotates) |
-| `PIXEL_RATIO` | no | DPR for chromium render, default `1.8` (TRMNL X native) |
-| `IMAGE_BIT_DEPTH` | no | `1`, `2`, or `4` (default). 4 = native 16-gray; 1 = pure B/W |
+
+TRMNL X panel geometry (1872×1404, deviceScaleFactor=1.8, 4-bit grayscale) is hardcoded in [src/main.ts](src/main.ts) and [src/render/dither.ts](src/render/dither.ts).
 
 ## Customizing the screen
 

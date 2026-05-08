@@ -1,0 +1,37 @@
+# Local dev compose: bind-mount source, deno --watch reload, dev-friendly env defaults.
+# Run with: docker compose up --build
+# For a device on your LAN to reach the server, set PUBLIC_URL_ORIGIN to the host's LAN IP, e.g.:
+#   PUBLIC_URL_ORIGIN=http://192.168.1.10:3000 docker compose up
+services:
+  chrome:
+    image: cloakhq/cloakbrowser
+    container_name: trmnl-byos-chrome-dev
+    command: cloakserve
+    restart: unless-stopped
+    # Exposed on the host so a non-Docker `deno task dev` can also point at it.
+    ports:
+      - "127.0.0.1:9222:9222"
+
+  trmnl-byos-dev:
+    build: .
+    container_name: trmnl-byos-dev
+    depends_on:
+      chrome:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src:cached
+      - ./templates:/app/templates:cached
+    environment:
+      PUBLIC_URL_ORIGIN: "${PUBLIC_URL_ORIGIN:-http://127.0.0.1:3000}"
+      REFRESH_RATE_SECONDS: "10"
+      FRIENDLY_ID: "DEV"
+      CDP_URL: "http://chrome:9222"
+      TZ: "${TZ:-Etc/UTC}"
+    command:
+      - deno
+      - run
+      - --allow-all
+      - --watch
+      - src/main.ts

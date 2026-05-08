@@ -1,12 +1,16 @@
 {
   "tasks": {
-    "dev": "deno run --allow-net --allow-env --allow-read --allow-run --allow-sys --watch src/main.ts",
-    "start": "deno run --allow-net --allow-env --allow-read --allow-run --allow-sys src/main.ts",
+    "dev": "deno run --allow-all --watch src/main.ts",
+    "start": "deno run --allow-all src/main.ts",
     "fmt": "deno fmt",
     "lint": "deno lint"
   },
   "imports": {
-    "@astral/astral": "jsr:@astral/astral@^0.5.4"
+    "@astral/astral": "jsr:@astral/astral@^0.5.4",
+    "@hertzg/crc": "jsr:@hertzg/crc@^0.2.0",
+    "@img/png": "jsr:@img/png@^0.1.6",
+    "@oak/oak": "jsr:@oak/oak@^17.2.0",
+    "@std/bytes": "jsr:@std/bytes@^1.0.6"
   },
   "fmt": {
     "lineWidth": 100,
