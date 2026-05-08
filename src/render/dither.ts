@@ -1,6 +1,7 @@
 import { decodePNG } from "@img/png";
 import { crc32 } from "@hertzg/crc";
 import { concat } from "@std/bytes";
+import { clamp } from "@std/math";
 
 // Output is grayscale PNG (color type 0). bitDepth must be 1, 2, 4, or 8 per the PNG spec.
 export type DitherMode = "floyd-steinberg" | "atkinson" | "sierra3" | "bayer" | "none";
@@ -17,13 +18,13 @@ export async function ditherNative(
   const bitDepth = opts.bitDepth ?? 4;
   const mode = opts.mode ?? "floyd-steinberg";
   const { header, body } = await decodePNG(input);
-  const grays = rgbaToGrayscale(body);
+  const grays = filterGrayLumiance(body);
   const indices = ditherGrays(grays, header.width, header.height, bitDepth, mode);
   return await encodePng(indices, header.width, header.height, bitDepth);
 }
 
 // Rec. 709 luminance into a Float32 buffer so error diffusion can spill out of [0, 255].
-function rgbaToGrayscale(rgba: Uint8Array): Float32Array {
+function filterGrayLumiance(rgba: Uint8Array): Float32Array {
   const grays = new Float32Array(rgba.length / 4);
   for (let i = 0, j = 0; i < rgba.length; i += 4, j++) {
     grays[j] = 0.2126 * rgba[i] + 0.7152 * rgba[i + 1] + 0.0722 * rgba[i + 2];
@@ -54,6 +55,12 @@ function ditherGrays(
 }
 
 // Floyd-Steinberg error diffusion. Kernel: 7/16 right, 3/16 down-left, 5/16 down, 1/16 down-right.
+/*
+ 
+   + *
+ * * *
+
+*/
 function ditherFloydSteinberg(
   grays: Float32Array,
   width: number,
@@ -62,12 +69,13 @@ function ditherFloydSteinberg(
 ): Uint8Array {
   const maxLevel = (1 << bitDepth) - 1;
   const step = 255 / maxLevel;
+
   const out = new Uint8Array(width * height);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = y * width + x;
       const old = grays[i];
-      const q = Math.max(0, Math.min(maxLevel, Math.round(old / step)));
+      const q = clamp(Math.round(old / step), 0, maxLevel);
       out[i] = q;
       const err = old - q * step;
       if (x + 1 < width) grays[i + 1] += (err * 7) / 16;
@@ -99,7 +107,7 @@ function ditherSierra3(
     for (let x = 0; x < width; x++) {
       const i = y * width + x;
       const old = grays[i];
-      const q = Math.max(0, Math.min(maxLevel, Math.round(old / step)));
+      const q = clamp(Math.round(old / step), 0, maxLevel);
       out[i] = q;
       const e = (old - q * step) / 32;
       if (x + 1 < width) grays[i + 1] += e * 5;
@@ -136,7 +144,7 @@ function ditherAtkinson(
     for (let x = 0; x < width; x++) {
       const i = y * width + x;
       const old = grays[i];
-      const q = Math.max(0, Math.min(maxLevel, Math.round(old / step)));
+      const q = clamp(Math.round(old / step), 0, maxLevel);
       out[i] = q;
       const e = (old - q * step) / 8;
       if (x + 1 < width) grays[i + 1] += e;
@@ -154,11 +162,12 @@ function ditherAtkinson(
 
 // Bayer 4x4 ordered dithering. Threshold matrix biases the rounding by ±~½ step per pixel,
 // giving a stable, deterministic pattern (same input → identical output across renders).
+// deno-fmt-ignore
 const BAYER_4 = new Uint8Array([
-  0, 8, 2, 10,
-  12, 4, 14, 6,
-  3, 11, 1, 9,
-  15, 7, 13, 5,
+  0 ,  8,  2, 10,
+  12,  4, 14,  6,
+  3 , 11,  1,  9,
+  15,  7, 13,  5,
 ]);
 
 function ditherBayer4(
@@ -175,7 +184,7 @@ function ditherBayer4(
       const i = y * width + x;
       // Bias ranges over (-step/2, +step/2): enough to push the round() into the next bucket.
       const bias = ((BAYER_4[(y & 3) * 4 + (x & 3)] - 7.5) / 16) * step;
-      out[i] = Math.max(0, Math.min(maxLevel, Math.round((grays[i] + bias) / step)));
+      out[i] = clamp(Math.round((grays[i] + bias) / step), 0, maxLevel);
     }
   }
   return out;
@@ -187,7 +196,7 @@ function ditherNone(grays: Float32Array, bitDepth: number): Uint8Array {
   const step = 255 / maxLevel;
   const out = new Uint8Array(grays.length);
   for (let i = 0; i < grays.length; i++) {
-    out[i] = Math.max(0, Math.min(maxLevel, Math.round(grays[i] / step)));
+    out[i] = clamp(Math.round(grays[i] / step), 0, maxLevel);
   }
   return out;
 }
@@ -244,4 +253,3 @@ function chunk(type: string, data: Uint8Array): Uint8Array {
   dv.setUint32(8 + data.length, crc32(buf.subarray(4, 8 + data.length)));
   return buf;
 }
-

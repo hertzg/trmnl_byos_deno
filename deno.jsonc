@@ -10,7 +10,8 @@
     "@hertzg/crc": "jsr:@hertzg/crc@^0.2.0",
     "@img/png": "jsr:@img/png@^0.1.6",
     "@oak/oak": "jsr:@oak/oak@^17.2.0",
-    "@std/bytes": "jsr:@std/bytes@^1.0.6"
+    "@std/bytes": "jsr:@std/bytes@^1.0.6",
+    "@std/math": "jsr:@std/math@^0.0.0"
   },
   "fmt": {
     "lineWidth": 100,
