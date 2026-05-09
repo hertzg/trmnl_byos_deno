@@ -26,9 +26,9 @@ The service is responsible for, and only for:
    BYOS endpoints (`/api/setup`, `/api/display`, `/api/log`, `/image.png`).
 4. **Device intel forwarding** — pass headers and identification (MAC/ID,
    panel size, etc.) from firmware to user code on each poll.
-5. **Render primitive** — provide a `render(jsx)` function user code can call
-   to turn a JSX tree into a device-ready PNG. User code never imports CDP,
-   never invokes the dither module directly.
+5. **Render primitive** — provide a `renderJsx(jsx)` function user code can
+   call to turn a JSX tree into a device-ready PNG. User code never imports
+   CDP, never invokes the dither module directly.
 
 Everything else — *when* a frame is computed, *whether* it is pre-rendered or
 computed lazily, *how* the user template stores intermediate state — is the

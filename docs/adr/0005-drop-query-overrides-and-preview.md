@@ -35,7 +35,7 @@ Remove all three from iteration 1:
 - Delete `intParam`, `floatParam`, `parseQueryOverrides`,
   `VALID_BIT_DEPTHS`, `VALID_DITHER_MODES` from `src/main.ts`. Drop the
   `callerOverrides` parameter from `runTemplate`. Drop `RenderOverrides`
-  unless reused by `services.render`'s opts type.
+  unless reused by `services.renderJsx`'s opts type.
 - Delete the `/` route. Visiting the service in a browser will return 404
   on `/`; the way to preview a template's output is to hit `/image.png`.
 - Delete `DisplayKind` and the `kind` field on `RunContext`.
@@ -50,7 +50,7 @@ deliberate, scoped feature — not by inheriting today's preview path.
 - Anyone bookmarking `http://service/` to look at the screen has to switch
   to `/image.png`. README needs an update; that's a minor cost.
 - The `/_render/:token` seam stays internally (it's how
-  `services.render` hands HTML to CDP for rasterization), but it stops
+  `services.renderJsx` hands HTML to CDP for rasterization), but it stops
   being adjacent to a user-facing preview endpoint and becomes an
   implementation detail.
 - The hot-path code (the `/image.png` handler) shrinks dramatically: most
