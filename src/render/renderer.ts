@@ -18,14 +18,9 @@ export type Renderer = {
   previewPng(): Promise<Uint8Array>;
 };
 
-// 16 hex chars = 64 bits — collision-free at any plausible fleet/frame count, and
-// keeps `image-${hash}` (22 chars) well under the firmware's 31-char SPIFFS limit
-// (see ADR-0008, fixFileName in firmware bl.cpp).
-const CONTENT_HASH_HEX_LEN = 16;
-
 async function hashContent(input: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
-  return encodeHex(new Uint8Array(digest)).slice(0, CONTENT_HASH_HEX_LEN);
+  return encodeHex(new Uint8Array(digest));
 }
 
 export type RendererDeps = {
@@ -40,6 +35,7 @@ export type RendererDeps = {
 
 export function createRenderer(deps: RendererDeps): Renderer {
   const jobs = new LruCache<string, Job>(deps.cacheCapacity ?? 16);
+  const jobIdByHash = new LruCache<string, string>(deps.cacheCapacity ?? 16);
   const now = deps.now ?? (() => new Date());
   let current: CurrentFrame | null = null;
   let inFlight: Promise<CurrentFrame> | null = null;
@@ -68,13 +64,26 @@ export function createRenderer(deps: RendererDeps): Renderer {
     return { jobId, contentHash, png };
   }
 
+  // Reuses an existing rasterized PNG when the rendered HTML hashes to the same
+  // contentHash as a previous frame — Chrome only fires when the content actually
+  // changed. validForSeconds gates onDisplay; contentHash gates rasterize.
   async function renderToFrame(frame: Frame): Promise<CurrentFrame> {
-    const { jobId, contentHash } = await rasterizeJsx(frame.jsx);
-    return {
-      jobId,
-      contentHash,
-      validUntil: new Date(now().getTime() + frame.validForSeconds * 1000),
-    };
+    const html = "<!DOCTYPE html>" +
+      renderToString(frame.jsx as Parameters<typeof renderToString>[0]);
+    const contentHash = await hashContent(html);
+    const validUntil = new Date(now().getTime() + frame.validForSeconds * 1000);
+
+    const existingJobId = jobIdByHash.get(contentHash);
+    if (existingJobId !== undefined && jobs.get(existingJobId)?.png) {
+      return { jobId: existingJobId, contentHash, validUntil };
+    }
+
+    const jobId = crypto.randomUUID();
+    jobs.set(jobId, { html, contentHash });
+    const png = await deps.rasterize(`${deps.origin}/preview/${jobId}`);
+    jobs.set(jobId, { html, contentHash, png });
+    jobIdByHash.set(contentHash, jobId);
+    return { jobId, contentHash, validUntil };
   }
 
   async function startRender(): Promise<CurrentFrame> {

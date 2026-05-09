@@ -41,15 +41,47 @@ Deno.test("ensureFrame: concurrent calls coalesce into a single onDisplay invoca
   assertEquals(onDisplayCalls, 1);
 });
 
-Deno.test("ensureFrame: triggers a fresh render after validity expires", async () => {
+Deno.test("ensureFrame: re-invokes onDisplay after validity expires but reuses jobId/PNG when contentHash matches", async () => {
   let now = new Date("2026-01-01T00:00:00Z");
   let onDisplayCalls = 0;
+  let rasterizeCalls = 0;
   const renderer = createRenderer({
     onDisplay: () => {
       onDisplayCalls++;
       return Promise.resolve({ jsx: <div>hi</div>, validForSeconds: 60 });
     },
-    rasterize: () => Promise.resolve(new Uint8Array([1])),
+    rasterize: () => {
+      rasterizeCalls++;
+      return Promise.resolve(new Uint8Array([1]));
+    },
+    origin: "http://localhost",
+    now: () => now,
+  });
+
+  const a = await renderer.ensureFrame();
+  now = new Date(now.getTime() + 61_000);
+  const b = await renderer.ensureFrame();
+
+  assertEquals(onDisplayCalls, 2);
+  assertEquals(rasterizeCalls, 1);
+  assertEquals(a.jobId, b.jobId);
+  assertEquals(a.contentHash, b.contentHash);
+});
+
+Deno.test("ensureFrame: rasterizes again when contentHash changes after expiry", async () => {
+  let now = new Date("2026-01-01T00:00:00Z");
+  let toggle = false;
+  let rasterizeCalls = 0;
+  const renderer = createRenderer({
+    onDisplay: () => {
+      const jsx = toggle ? <div>second</div> : <div>first</div>;
+      toggle = !toggle;
+      return Promise.resolve({ jsx, validForSeconds: 60 });
+    },
+    rasterize: () => {
+      rasterizeCalls++;
+      return Promise.resolve(new Uint8Array([rasterizeCalls]));
+    },
     origin: "http://localhost",
     now: () => now,
   });
@@ -59,10 +91,11 @@ Deno.test("ensureFrame: triggers a fresh render after validity expires", async (
   const b = await renderer.ensureFrame();
 
   assertNotEquals(a.jobId, b.jobId);
-  assertEquals(onDisplayCalls, 2);
+  assertNotEquals(a.contentHash, b.contentHash);
+  assertEquals(rasterizeCalls, 2);
 });
 
-Deno.test("ensureFrame: contentHash is stable across renders that produce identical input HTML", async () => {
+Deno.test("ensureFrame: identical HTML across re-renders shares jobId and contentHash", async () => {
   let now = new Date("2026-01-01T00:00:00Z");
   const renderer = createRenderer({
     onDisplay: () => Promise.resolve({ jsx: <div>same</div>, validForSeconds: 60 }),
@@ -75,7 +108,7 @@ Deno.test("ensureFrame: contentHash is stable across renders that produce identi
   now = new Date(now.getTime() + 61_000);
   const b = await renderer.ensureFrame();
 
-  assertNotEquals(a.jobId, b.jobId);
+  assertEquals(a.jobId, b.jobId);
   assertEquals(a.contentHash, b.contentHash);
 });
 
@@ -100,7 +133,7 @@ Deno.test("ensureFrame: contentHash differs when input JSX differs", async () =>
   assertNotEquals(a.contentHash, b.contentHash);
 });
 
-Deno.test("ensureFrame: contentHash format is 16 lowercase hex chars (fits firmware's 31-char SPIFFS limit with image- prefix)", async () => {
+Deno.test("ensureFrame: contentHash is a SHA-256 hex digest (64 lowercase hex chars)", async () => {
   const renderer = createRenderer({
     onDisplay: () => Promise.resolve({ jsx: <div>hi</div>, validForSeconds: 60 }),
     rasterize: () => Promise.resolve(new Uint8Array([1])),
@@ -109,7 +142,7 @@ Deno.test("ensureFrame: contentHash format is 16 lowercase hex chars (fits firmw
 
   const frame = await renderer.ensureFrame();
 
-  assertEquals(/^[0-9a-f]{16}$/.test(frame.contentHash), true);
+  assertEquals(/^[0-9a-f]{64}$/.test(frame.contentHash), true);
 });
 
 Deno.test("getJobHtml: returns the rendered HTML for an active job", async () => {
