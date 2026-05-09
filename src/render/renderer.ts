@@ -14,6 +14,7 @@ export type Renderer = {
   getJobPng(jobId: string): Uint8Array | undefined;
   renderEphemeral(jsx: unknown): Promise<{ jobId: string; png: Uint8Array }>;
   previewHtml(): Promise<string>;
+  previewPng(): Promise<Uint8Array>;
 };
 
 export type RendererDeps = {
@@ -107,6 +108,17 @@ export function createRenderer(deps: RendererDeps): Renderer {
       const { jsx } = await deps.onDisplay();
       return "<!DOCTYPE html>" +
         renderToString(jsx as Parameters<typeof renderToString>[0]);
+    },
+    async previewPng() {
+      let jsx: unknown;
+      try {
+        jsx = (await deps.onDisplay()).jsx;
+      } catch (err) {
+        if (!deps.errorJsx) throw err;
+        jsx = deps.errorJsx(asError(err));
+      }
+      const { png } = await rasterizeJsx(jsx);
+      return png;
     },
   };
 }

@@ -14,6 +14,7 @@ function fakeRenderer(overrides: Partial<Renderer> = {}): Renderer {
     getJobPng: () => undefined,
     renderEphemeral: () => Promise.reject(new Error("renderEphemeral not configured")),
     previewHtml: () => Promise.reject(new Error("previewHtml not configured")),
+    previewPng: () => Promise.reject(new Error("previewPng not configured")),
     ...overrides,
   };
 }
@@ -156,6 +157,36 @@ Deno.test("GET /preview returns 500 with stack-trace HTML when previewHtml throw
   assertEquals((res.headers.get("content-type") ?? "").startsWith("text/html"), true);
   const body = await res.text();
   assertStringIncludes(body, "template-broken");
+});
+
+Deno.test("GET /preview/png returns image/png with bytes from previewPng and cache-control: no-store", async () => {
+  const app = createApp({
+    renderer: fakeRenderer({
+      previewPng: () => Promise.resolve(new Uint8Array([0x89, 0x50, 0x4e, 0x47])),
+    }),
+    friendlyId: "test",
+  });
+
+  const res = await app.fetch(new Request("http://x.example/preview/png"));
+
+  assertEquals(res.status, 200);
+  assertEquals(res.headers.get("content-type"), "image/png");
+  assertEquals(res.headers.get("cache-control"), "no-store");
+  assertEquals(new Uint8Array(await res.arrayBuffer()), new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
+});
+
+Deno.test("GET /preview/png returns 500 when previewPng throws", async () => {
+  const app = createApp({
+    renderer: fakeRenderer({
+      previewPng: () => Promise.reject(new Error("cdp-down")),
+    }),
+    friendlyId: "test",
+  });
+
+  const res = await app.fetch(new Request("http://x.example/preview/png"));
+  await res.body?.cancel();
+
+  assertEquals(res.status, 500);
 });
 
 Deno.test("GET /preview/:jobId returns stored HTML for an active job", async () => {

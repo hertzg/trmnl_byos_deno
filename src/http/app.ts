@@ -67,6 +67,14 @@ export function createApp(deps: AppDeps): Hono {
     }
   });
 
+  app.get("/preview/png", async (c) => {
+    const png = await deps.renderer.previewPng();
+    return c.body(png as unknown as ArrayBuffer, 200, {
+      "content-type": "image/png",
+      "cache-control": "no-store",
+    });
+  });
+
   app.get("/preview/:jobId/png", (c) => {
     const png = deps.renderer.getJobPng(c.req.param("jobId"));
     if (png === undefined) return c.body(null, 404);
