@@ -150,6 +150,62 @@ Deno.test("previewHtml: does not affect the canonical current frame", async () =
   const original = await renderer.ensureFrame();
   await renderer.previewHtml();
   const again = await renderer.ensureFrame();
+  assertEquals(again.jobId, original.jobId);
+});
+
+Deno.test("previewPng: returns the rasterized PNG for the onDisplay frame", async () => {
+  const renderer = createRenderer({
+    onDisplay: () => Promise.resolve({ jsx: <div>preview</div>, validForSeconds: 60 }),
+    rasterize: () => Promise.resolve(new Uint8Array([0x89, 0x50, 0x4e, 0x47])),
+    origin: "http://localhost",
+  });
+
+  const png = await renderer.previewPng();
+
+  assertEquals(png, new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
+});
+
+Deno.test("previewPng: when onDisplay throws, falls back to rasterizing errorJsx", async () => {
+  let rasterizedHtml: string | undefined;
+  const renderer = createRenderer({
+    onDisplay: () => {
+      throw new Error("display-down");
+    },
+    rasterize: (url) => {
+      rasterizedHtml = url;
+      return Promise.resolve(new Uint8Array([0xde, 0xad]));
+    },
+    errorJsx: (err: Error) => <div>oops: {err.message}</div>,
+    origin: "http://localhost",
+  });
+
+  const png = await renderer.previewPng();
+
+  assertEquals(png, new Uint8Array([0xde, 0xad]));
+  // The errorJsx HTML was stashed under a jobId and rasterize was called against it.
+  assertStringIncludes(rasterizedHtml ?? "", "/preview/");
+});
+
+Deno.test("previewPng: propagates when rasterize throws", async () => {
+  const renderer = createRenderer({
+    onDisplay: () => Promise.resolve({ jsx: <div>real</div>, validForSeconds: 60 }),
+    rasterize: () => Promise.reject(new Error("cdp-down")),
+    origin: "http://localhost",
+  });
+
+  await assertRejects(() => renderer.previewPng(), Error, "cdp-down");
+});
+
+Deno.test("previewPng: does not affect the canonical current frame", async () => {
+  const renderer = createRenderer({
+    onDisplay: () => Promise.resolve({ jsx: <div>frame</div>, validForSeconds: 60 }),
+    rasterize: () => Promise.resolve(new Uint8Array([0xab])),
+    origin: "http://localhost",
+  });
+
+  const original = await renderer.ensureFrame();
+  await renderer.previewPng();
+  const again = await renderer.ensureFrame();
 
   assertEquals(again.jobId, original.jobId);
 });
