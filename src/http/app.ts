@@ -33,7 +33,10 @@ export function createApp(deps: AppDeps): Hono {
     return c.json({
       status: 0,
       image_url: `${publicOrigin(c)}/preview/${frame.jobId}/png`,
-      filename: `image-${frame.jobId}`,
+      // Content-derived filename: identical input HTML → identical filename, so the
+      // device's SPIFFS cache hits and skips both download and e-ink refresh. See
+      // ADR-0008.
+      filename: `image-${frame.contentHash}`,
       refresh_rate: refreshRate,
       reset_firmware: false,
       update_firmware: false,

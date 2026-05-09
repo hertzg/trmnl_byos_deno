@@ -11,6 +11,7 @@ Each ADR captures a single decision with its context and consequences.
 | [0005](0005-drop-query-overrides-and-preview.md) | Drop /image.png query overrides, preview route, and kind distinction  | Accepted                        |
 | [0006](0006-frame-coordinator.md)                | Frame coordinator: single-flight, validity-driven, job-id correlation | Accepted                        |
 | [0007](0007-preview-url-namespace.md)            | Unified `/preview/*` URL namespace, live vs. addressed                | Accepted                        |
+| [0008](0008-content-hash-filename.md)            | Content-derived `filename` to skip device-side e-ink refresh          | Accepted                        |
 
 ## Format
 

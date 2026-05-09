@@ -58,11 +58,12 @@ Deno.test("GET /preview/:jobId/png returns 404 for unknown jobId", async () => {
   assertEquals(res.status, 404);
 });
 
-Deno.test("GET /api/display returns BYOS JSON with image_url at /preview/:jobId/png and a derived refresh_rate", async () => {
+Deno.test("GET /api/display returns BYOS JSON with image_url at /preview/:jobId/png, content-hash filename, and a derived refresh_rate", async () => {
   const validUntil = new Date(Date.now() + 60_000);
   const app = createApp({
     renderer: fakeRenderer({
-      ensureFrame: () => Promise.resolve({ jobId: "abc", validUntil }),
+      ensureFrame: () =>
+        Promise.resolve({ jobId: "abc", contentHash: "deadbeefcafef00d", validUntil }),
     }),
     friendlyId: "test",
   });
@@ -73,7 +74,7 @@ Deno.test("GET /api/display returns BYOS JSON with image_url at /preview/:jobId/
   const body = await res.json();
   assertEquals(body.status, 0);
   assertEquals(body.image_url, "http://x.example/preview/abc/png");
-  assertEquals(body.filename, "image-abc");
+  assertEquals(body.filename, "image-deadbeefcafef00d");
   assertGreaterOrEqual(body.refresh_rate, 58);
   assertLessOrEqual(body.refresh_rate, 60);
 });

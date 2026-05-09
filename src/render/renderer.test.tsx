@@ -62,6 +62,56 @@ Deno.test("ensureFrame: triggers a fresh render after validity expires", async (
   assertEquals(onDisplayCalls, 2);
 });
 
+Deno.test("ensureFrame: contentHash is stable across renders that produce identical input HTML", async () => {
+  let now = new Date("2026-01-01T00:00:00Z");
+  const renderer = createRenderer({
+    onDisplay: () => Promise.resolve({ jsx: <div>same</div>, validForSeconds: 60 }),
+    rasterize: () => Promise.resolve(new Uint8Array([1])),
+    origin: "http://localhost",
+    now: () => now,
+  });
+
+  const a = await renderer.ensureFrame();
+  now = new Date(now.getTime() + 61_000);
+  const b = await renderer.ensureFrame();
+
+  assertNotEquals(a.jobId, b.jobId);
+  assertEquals(a.contentHash, b.contentHash);
+});
+
+Deno.test("ensureFrame: contentHash differs when input JSX differs", async () => {
+  let now = new Date("2026-01-01T00:00:00Z");
+  let toggle = false;
+  const renderer = createRenderer({
+    onDisplay: () => {
+      const jsx = toggle ? <div>second</div> : <div>first</div>;
+      toggle = !toggle;
+      return Promise.resolve({ jsx, validForSeconds: 60 });
+    },
+    rasterize: () => Promise.resolve(new Uint8Array([1])),
+    origin: "http://localhost",
+    now: () => now,
+  });
+
+  const a = await renderer.ensureFrame();
+  now = new Date(now.getTime() + 61_000);
+  const b = await renderer.ensureFrame();
+
+  assertNotEquals(a.contentHash, b.contentHash);
+});
+
+Deno.test("ensureFrame: contentHash format is 16 lowercase hex chars (fits firmware's 31-char SPIFFS limit with image- prefix)", async () => {
+  const renderer = createRenderer({
+    onDisplay: () => Promise.resolve({ jsx: <div>hi</div>, validForSeconds: 60 }),
+    rasterize: () => Promise.resolve(new Uint8Array([1])),
+    origin: "http://localhost",
+  });
+
+  const frame = await renderer.ensureFrame();
+
+  assertEquals(/^[0-9a-f]{16}$/.test(frame.contentHash), true);
+});
+
 Deno.test("getJobHtml: returns the rendered HTML for an active job", async () => {
   const renderer = createRenderer({
     onDisplay: () => Promise.resolve({ jsx: <div>hello world</div>, validForSeconds: 60 }),
