@@ -3,11 +3,11 @@
 export type DefaultProps = {
   time: string;
   hostname: string;
-  deviceId: string;
+  panel: string;
 };
 
 export default function DefaultTemplate(props: DefaultProps) {
-  const { time, hostname, deviceId } = props;
+  const { time, hostname, panel } = props;
   return (
     <html>
       <head>
@@ -24,7 +24,7 @@ export default function DefaultTemplate(props: DefaultProps) {
             <b>host:</b> {hostname}
           </div>
           <div>
-            <b>device:</b> {deviceId}
+            <b>panel:</b> {panel}
           </div>
           <div>
             <b>time:</b> {time}

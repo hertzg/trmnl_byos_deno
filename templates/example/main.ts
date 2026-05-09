@@ -1,21 +1,21 @@
-import type { Registration, Services } from "../../src/template/loader.ts";
+import type { Registration, SetupConfig } from "../../src/template/loader.ts";
 import Template from "./template.tsx";
 
-// Lazy-render template: renderJsx is called inside onDisplay, so the CDP cost is paid
-// on each device poll. Swap to pre-rendering by calling services.renderJsx in setup
-// (or on a setInterval) and storing the resulting token in a closure variable that
-// onDisplay reads — see ADR-0003.
-export function setup(services: Services): Registration {
+// Lazy template: onDisplay returns fresh JSX each time the renderer asks. The renderer
+// decides how often that happens (a single canonical render is shared across all devices
+// polling within `validForSeconds`). To pre-render, do the work in setup() and have
+// onDisplay return a captured JSX from this closure.
+export function setup(config: SetupConfig): Registration {
   return {
-    async onDisplay(ctx) {
-      const token = await services.renderJsx(
-        Template({
+    onDisplay() {
+      return {
+        jsx: Template({
           time: new Date().toISOString(),
           hostname: Deno.hostname(),
-          deviceId: ctx.device.id || "(no ID header)",
+          panel: `${config.panel.width}×${config.panel.height}`,
         }),
-      );
-      return { token, refreshAfter: 60 };
+        validForSeconds: 60,
+      };
     },
   };
 }
