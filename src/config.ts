@@ -38,6 +38,13 @@ export const INTERNAL_URL_ORIGIN = env(
 // over this path (or override the env var) to ship your own.
 export const TEMPLATE_DIR = resolve(env("TEMPLATE_DIR", "./templates/example"));
 
+// Optional absolute path to a "seed" template (the bundled example, baked into the
+// Docker image at /app/template-seed). When set and TEMPLATE_DIR is empty, the service
+// copies the seed in before loading. Empty/unset = no seeding (the dev workflow, where
+// TEMPLATE_DIR already points at the populated example checked into the repo).
+const seedRaw = env("TEMPLATE_SEED_DIR", "");
+export const TEMPLATE_SEED_DIR = seedRaw ? resolve(seedRaw) : "";
+
 // Service-level render defaults. The template's run() result.render can override these
 // per-request; query-string params on /image.png override both (debug knob).
 // TRMNL X panel: 1872x1404 at deviceScaleFactor=1.8 → CSS viewport 1040x780 (landscape).

@@ -22,7 +22,10 @@ services:
       - "3000:3000"
     volumes:
       - ./src:/app/src:cached
-      - ./templates:/app/templates:cached
+      # Bind-mount the in-repo example as the runtime template. Already populated, so the
+      # boot-time seeder is a no-op here. Swap the host side to point at your own template
+      # dir (empty dirs get auto-seeded with the bundled example on first start).
+      - ./templates/example:/app/template:cached
     environment:
       PUBLIC_URL_ORIGIN: "${PUBLIC_URL_ORIGIN:-http://127.0.0.1:3000}"
       # The chrome sidecar fetches our HTML from this URL. It must be reachable from
@@ -36,5 +39,5 @@ services:
       - deno
       - run
       - --allow-all
-      - --watch=src,templates
+      - --watch=src,/app/template
       - src/main.ts

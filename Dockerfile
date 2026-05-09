@@ -16,11 +16,13 @@ COPY deno.jsonc ./
 COPY src/ ./src/
 RUN deno cache src/main.ts
 
-COPY templates/ ./templates/
+# Bundled example template, kept apart from the runtime template dir. The Deno seeder
+# (src/template/loader.ts) copies this into TEMPLATE_DIR only when TEMPLATE_DIR is empty,
+# so a populated bind-mount is never overwritten.
+COPY templates/example/ /app/template-seed/
 
-# Default template ships at /app/templates/example. Override (or bind-mount your own dir
-# and point this at it) to ship a different one.
-ENV TEMPLATE_DIR=/app/templates/example
+ENV TEMPLATE_DIR=/app/template
+ENV TEMPLATE_SEED_DIR=/app/template-seed
 
 EXPOSE 3000
 

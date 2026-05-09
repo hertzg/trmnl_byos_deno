@@ -8,10 +8,11 @@ import {
   PUBLIC_URL_ORIGIN,
   REFRESH_RATE_SECONDS,
   TEMPLATE_DIR,
+  TEMPLATE_SEED_DIR,
 } from "./config.ts";
 import { renderUrl, resolveCdpEndpoint } from "./render/cdp.ts";
 import { type DitherMode, ditherNative } from "./render/dither.ts";
-import { loadTemplate } from "./template/loader.ts";
+import { loadTemplate, seedTemplateDir } from "./template/loader.ts";
 import {
   type RunContext,
   type DisplayKind,
@@ -98,6 +99,9 @@ function buildContext(req: { url: URL; headers: Headers }, kind: DisplayKind): R
   return { kind, url: req.url, query, headers: req.headers, panel };
 }
 
+if (TEMPLATE_SEED_DIR) {
+  await seedTemplateDir(TEMPLATE_DIR, TEMPLATE_SEED_DIR);
+}
 const template = await loadTemplate(TEMPLATE_DIR);
 console.log(`[template] loaded from ${TEMPLATE_DIR}`);
 
