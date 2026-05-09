@@ -82,6 +82,23 @@ TRMNL X panel geometry (1872×1404 native, 1040×780 CSS @ DPR 1.8, 4-bit graysc
 lives as a registry entry in [src/render/profiles.ts](src/render/profiles.ts). Adding another device
 model is a registry entry, not a sprawl of new env vars.
 
+## Troubleshooting
+
+**`CDP /json/version 502` from the app, every render fails.** The CloakBrowser sidecar is up on
+`:9222` but its inner Xvfb has a stale `/tmp/.X99-lock`, so every Chrome subprocess exits with
+"Missing X server or $DISPLAY" and the CDP multiplexer has nothing to proxy to. Recreate the
+container to wipe `/tmp`:
+
+```sh
+docker compose rm -sf chrome && docker compose up -d chrome
+# or, for a standalone sidecar:
+docker rm -f trmnl-chrome && docker run --rm -d --name trmnl-chrome \
+  -p 127.0.0.1:9222:9222 cloakhq/cloakbrowser cloakserve
+```
+
+A plain restart is not always enough — the lock file survives unless the container's `/tmp` is
+re-created.
+
 ## Writing your own screen
 
 A template is a Deno module exporting a single `setup` function. The runtime calls it once at boot
