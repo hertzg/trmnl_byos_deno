@@ -1,6 +1,9 @@
 # 0001 — Service charter: runtime + proxy + render primitive
 
-**Status:** Accepted — 2026-05-09
+**Status:** Accepted — 2026-05-09 (route names refined during cutover (PR #10):
+the device-facing image moved from `/image.png` to `/render/:token`; the
+internal CDP fetch-back seam from `/_render/:token` to `/preview/:stashKey`.
+Decision unchanged.)
 
 ## Context
 
@@ -23,7 +26,8 @@ The service is responsible for, and only for:
 2. **Non-prescription** — do not impose a lifecycle on user code. The user
    chooses when to compute frames.
 3. **Proxy** — sit between TRMNL firmware and the user template; expose the
-   BYOS endpoints (`/api/setup`, `/api/display`, `/api/log`, `/image.png`).
+   BYOS endpoints (`/api/setup`, `/api/display`, `/api/log`) plus the
+   device-facing image at `/render/:token`.
 4. **Device intel forwarding** — pass headers and identification (MAC/ID,
    panel size, etc.) from firmware to user code on each poll.
 5. **Render primitive** — provide a `renderJsx(jsx)` function user code can
