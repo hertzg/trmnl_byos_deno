@@ -1,9 +1,14 @@
 # 0001 — Service charter: runtime + proxy + render primitive
 
-**Status:** Accepted — 2026-05-09 (route names refined during cutover (PR #10):
-the device-facing image moved from `/image.png` to `/render/:token`; the
-internal CDP fetch-back seam from `/_render/:token` to `/preview/:stashKey`.
-Decision unchanged.)
+**Status:** Accepted — 2026-05-09 (revised during PR #13: the "render
+primitive" framing is replaced by "render pipeline + frame coordinator
++ preview surface" — see ADR-0006. Route names also reshape: the
+device-facing image is now `/preview/:jobId/png` and the CDP fetch-back
+seam is `/preview/:jobId`, both under a unified `/preview/*` namespace
+— see ADR-0007. The original five-point charter below stays accurate
+*in spirit*; specifically, point 5 ("provide a `renderJsx(jsx)` function
+user code can call") no longer reflects the contract — the service now
+*owns* the pipeline and the template returns declarative frames instead.)
 
 ## Context
 

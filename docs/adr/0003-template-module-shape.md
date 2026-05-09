@@ -1,10 +1,22 @@
 # 0003 — Template module shape: `setup` returning `{ onDisplay }`
 
-**Status:** Accepted — 2026-05-09 (naming refined during review:
-`onPoll` → `onDisplay`, `PollContext` → `OnDisplayContext`, `PollResult` →
-`OnDisplayResult`, `services.render` → `services.renderJsx`. Decision
-unchanged.)
-**Related:** ADR-0002 (render protocol)
+**Status:** Revised by ADR-0006 (#13). The `setup`/`onDisplay` shape is
+preserved in spirit (template = declarative; closure = state container)
+but signatures change substantively:
+
+- `setup(services)` → `setup(config: SetupConfig)` — no `Services`
+  argument; `SetupConfig` carries the active device profile.
+- `onDisplay(ctx) → { token, refreshAfter }` →
+  `onDisplay() → { jsx, validForSeconds }` — no per-poll context
+  (frames are shared across the fleet, so per-device branching can't be
+  honoured), and templates return the JSX they want rendered rather
+  than a token they obtained from a service primitive.
+
+The examples below describe the original shape; the new shape is in
+ADR-0006.
+
+**Related:** ADR-0002 (superseded), ADR-0006 (successor for the
+render-side contract)
 
 ## Context
 

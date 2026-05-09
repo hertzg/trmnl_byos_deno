@@ -1,12 +1,12 @@
 # 0002 — Token-based render protocol between service and template
 
-**Status:** Accepted — 2026-05-09 (refinements during review:
-`services.render(...)` → `services.renderJsx(...)` (PR #7);
-device-facing image moved from `/image.png` to `/render/:token` and
-the CDP fetch-back seam from `/_render/:token` to `/preview/:stashKey`,
-with the token now in the URL — eliminating the in-process
-`currentToken` (PR #10). Decisions unchanged.)
-**Related:** ADR-0001 (charter), ADR-0003 (module shape)
+**Status:** Superseded by ADR-0006 (#13) — the template-side render
+primitive (`services.renderJsx`) and content-addressed token protocol
+this ADR defined no longer exist. Templates now return declarative
+frames; the service coordinates rendering. Token-as-PNG-hash is
+replaced by job-id correlation. See ADR-0006 for the full rationale.
+**Related:** ADR-0001 (charter), ADR-0003 (module shape, also revised),
+ADR-0006 (successor)
 
 ## Context
 
