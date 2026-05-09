@@ -51,6 +51,22 @@ export function createApp(deps: AppDeps): Hono {
     return c.body(null, 204);
   });
 
+  app.get("/preview", async (c) => {
+    try {
+      const html = await deps.renderer.previewHtml();
+      return c.html(html, 200, { "cache-control": "no-store" });
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      const escape = (s: string) =>
+        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const body =
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>preview error</title></head>` +
+        `<body><h1>preview error</h1><pre>${escape(e.message)}\n\n${escape(e.stack ?? "")}</pre>` +
+        `</body></html>`;
+      return c.html(body, 500, { "cache-control": "no-store" });
+    }
+  });
+
   app.get("/preview/:jobId/png", (c) => {
     const png = deps.renderer.getJobPng(c.req.param("jobId"));
     if (png === undefined) return c.body(null, 404);
