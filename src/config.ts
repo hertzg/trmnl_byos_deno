@@ -8,7 +8,6 @@ export const PORT = parseInt(env("PORT", "3000"), 10);
 // Empty by default — the request's Host/X-Forwarded-* headers are used. Set this only
 // to override (e.g. behind a reverse proxy with a different external hostname).
 export const PUBLIC_URL_ORIGIN = env("PUBLIC_URL_ORIGIN", "");
-export const REFRESH_RATE_SECONDS = parseInt(env("REFRESH_RATE_SECONDS", "3000"), 10);
 export const FRIENDLY_ID = env("FRIENDLY_ID", "TRMNL");
 
 // HTTP base of the CDP container (cloakhq/cloakbrowser cloakserve). The
@@ -45,9 +44,9 @@ export const TEMPLATE_DIR = resolve(env("TEMPLATE_DIR", "./templates/example"));
 const seedRaw = env("TEMPLATE_SEED_DIR", "");
 export const TEMPLATE_SEED_DIR = seedRaw ? resolve(seedRaw) : "";
 
-// Service-level render defaults — passed into createServices() at boot. Stage-1
-// dims (width/height/dpr) can be overridden per call via services.renderJsx(jsx, opts);
-// stage-2 (bitDepth/dither) is service-only per ADR-0002.
+// Service-level render defaults — passed into createRasterize() and used to seed the
+// SetupConfig handed to templates. Single device profile for now (TRMNL X); a registry
+// lands in #16.
 // TRMNL X panel: 1872x1404 at deviceScaleFactor=1.8 → CSS viewport 1040x780 (landscape).
 export const RENDER_DEFAULTS = {
   width: 1040,

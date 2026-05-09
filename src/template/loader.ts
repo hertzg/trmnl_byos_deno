@@ -1,28 +1,14 @@
 import { join, toFileUrl } from "@std/path";
-import type { RenderOpts, Services } from "../services/index.ts";
+import type { OnDisplayFn } from "../render/renderer.ts";
 
-export type { RenderOpts, Services };
+// Re-export so templates can `import type { Frame } from "<service>/template/loader"`.
+export type { Frame, OnDisplayFn } from "../render/renderer.ts";
 
-// Device-derived data forwarded to user code each time the runtime asks the template
-// what to display. Headers stay on the context as an escape hatch — anything firmware
-// sends that we don't pre-parse is still reachable.
-export type OnDisplayContext = {
-  device: {
-    id: string;
-    panel: { width: number; height: number } | null;
-    headers: Headers;
-  };
-  now: Date;
+// What setup() receives. Carries the active device profile so templates can do
+// responsive layout against the configured panel.
+export type SetupConfig = {
+  panel: { width: number; height: number };
 };
-
-export type OnDisplayResult = {
-  token: string;
-  // Seconds until the device should poll /api/display again. Surfaces as `refresh_rate`
-  // in the BYOS response. Template owns the device clock.
-  refreshAfter: number;
-};
-
-export type OnDisplayFn = (ctx: OnDisplayContext) => Promise<OnDisplayResult>;
 
 // What setup() returns. The closure is the template's state container; onDisplay reads
 // from it. See ADR-0003 for the full shape rationale.
@@ -30,7 +16,7 @@ export type Registration = {
   onDisplay: OnDisplayFn;
 };
 
-export type SetupFn = (services: Services) => Registration | Promise<Registration>;
+export type SetupFn = (config: SetupConfig) => Registration | Promise<Registration>;
 
 export type TemplateModule = {
   setup: SetupFn;
