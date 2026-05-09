@@ -1,6 +1,7 @@
 # 0002 — Token-based render protocol between service and template
 
-**Status:** Accepted — 2026-05-09
+**Status:** Accepted — 2026-05-09 (naming refined during PR #7 review:
+`services.render(...)` → `services.renderJsx(...)`. Decision unchanged.)
 **Related:** ADR-0001 (charter), ADR-0003 (module shape)
 
 ## Context
@@ -22,10 +23,10 @@ We need a handoff that lets the template choose its own moment to render
 The seam between user code and service is a **token**. The service exposes:
 
 ```ts
-services.render(jsx, opts?): Promise<Token>
+services.renderJsx(jsx, opts?): Promise<Token>
 ```
 
-- `services.render` performs the full pipeline (JSX → HTML → CDP rasterize →
+- `services.renderJsx` performs the full pipeline (JSX → HTML → CDP rasterize →
   dither → PNG) **synchronously**: the returned promise resolves only after
   the bytes are in the cache. Rasterization errors throw to the caller, where
   the user can handle or fall back.
@@ -36,7 +37,7 @@ services.render(jsx, opts?): Promise<Token>
   inserts and reads touch the entry's recency.
 
 The user template then returns a token (any token previously obtained from
-`services.render`) when polled by the service. The service tracks the
+`services.renderJsx`) when polled by the service. The service tracks the
 current token in process state; `/image.png` serves the bytes for that
 token.
 
@@ -46,9 +47,9 @@ service-internal and not user-overridable.
 
 ## Consequences
 
-- **Pre-render and lazy converge to one API.** Lazy: call `render` inside
-  the poll handler. Pre-render: call `render` at boot or on a timer, hold
-  the token. The service treats both identically.
+- **Pre-render and lazy converge to one API.** Lazy: call `renderJsx`
+  inside the display handler. Pre-render: call `renderJsx` at boot or on
+  a timer, hold the token. The service treats both identically.
 - **Token = content hash** means rendering the same thing twice is honest —
   the second call still pays the rasterization cost, but the cache slot is
   shared. We accepted this over input-hashing because hashing JSX trees
@@ -56,7 +57,7 @@ service-internal and not user-overridable.
   redundant renders.
 - **Sync resolution** means the user template — not the device handler —
   owns error recovery. Errors land where they happen. A template that wants
-  to never fail can `try { token = await services.render(...) } catch
+  to never fail can `try { token = await services.renderJsx(...) } catch
   { token = lastKnownGood }`.
 - **LRU(16)** is sufficient for the single-device case and the
   pre-rendering patterns we expect (one or a few rotating frames). Templates
@@ -66,5 +67,5 @@ service-internal and not user-overridable.
   `?t=${Date.now()}` — the device doesn't cache and the URL doesn't need to
   encode the token; the service tracks the current token in state.
 - Internal CDP-fetches-back-HTML seam (currently `/_render/:token`) becomes
-  an implementation detail of `services.render` — never exposed to user
-  code. Naming may diverge from the user-facing token.
+  an implementation detail of `services.renderJsx` — never exposed to
+  user code. Naming may diverge from the user-facing token.
