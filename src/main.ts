@@ -1,10 +1,10 @@
 import { join } from "@std/path";
 import {
+  ACTIVE_PROFILE,
   CDP_URL,
   FRIENDLY_ID,
   INTERNAL_URL_ORIGIN,
   PORT,
-  RENDER_DEFAULTS,
   TEMPLATE_DIR,
   TEMPLATE_SEED_DIR,
 } from "./config.ts";
@@ -24,16 +24,12 @@ async function main() {
   const template = await loadTemplate(TEMPLATE_DIR);
   console.log(`[template] loaded from ${TEMPLATE_DIR}`);
 
-  const panel = { width: RENDER_DEFAULTS.width, height: RENDER_DEFAULTS.height };
+  const panel = { width: ACTIVE_PROFILE.width, height: ACTIVE_PROFILE.height };
   const { onDisplay } = await template.setup({ panel });
 
   const rasterize = createRasterize({
     cdpUrl: CDP_URL,
-    width: RENDER_DEFAULTS.width,
-    height: RENDER_DEFAULTS.height,
-    dpr: RENDER_DEFAULTS.dpr,
-    bitDepth: RENDER_DEFAULTS.bitDepth,
-    dither: RENDER_DEFAULTS.dither,
+    ...ACTIVE_PROFILE,
   });
 
   const renderer = createRenderer({

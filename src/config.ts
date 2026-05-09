@@ -1,4 +1,6 @@
 import { resolve } from "@std/path";
+import { getProfile, profileIds } from "./render/profiles.ts";
+import type { DeviceProfile } from "./render/profiles.ts";
 
 function env(key: string, fallback = ""): string {
   return Deno.env.get(key) ?? fallback;
@@ -44,14 +46,17 @@ export const TEMPLATE_DIR = resolve(env("TEMPLATE_DIR", "./templates/example"));
 const seedRaw = env("TEMPLATE_SEED_DIR", "");
 export const TEMPLATE_SEED_DIR = seedRaw ? resolve(seedRaw) : "";
 
-// Service-level render defaults — passed into createRasterize() and used to seed the
-// SetupConfig handed to templates. Single device profile for now (TRMNL X); a registry
-// lands in #16.
-// TRMNL X panel: 1872x1404 at deviceScaleFactor=1.8 → CSS viewport 1040x780 (landscape).
-export const RENDER_DEFAULTS = {
-  width: 1040,
-  height: 780,
-  dpr: 1.8,
-  bitDepth: 4 as 1 | 2 | 4 | 8,
-  dither: "floyd-steinberg" as const,
-};
+// Active device profile, resolved from DEVICE_ID at boot via the hardcoded registry
+// in src/render/profiles.ts. Adding a device model is a registry entry, not a new
+// env var. Unknown id fails fast with the list of valid ids.
+export const DEVICE_ID = env("DEVICE_ID", "trmnl-x");
+
+export const ACTIVE_PROFILE: DeviceProfile = (() => {
+  const p = getProfile(DEVICE_ID);
+  if (!p) {
+    throw new Error(
+      `unknown DEVICE_ID="${DEVICE_ID}". Known ids: ${profileIds().join(", ")}`,
+    );
+  }
+  return p;
+})();
