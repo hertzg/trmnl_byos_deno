@@ -56,7 +56,7 @@ function ditherGrays(
 
 // Floyd-Steinberg error diffusion. Kernel: 7/16 right, 3/16 down-left, 5/16 down, 1/16 down-right.
 /*
- 
+
    + *
  * * *
 

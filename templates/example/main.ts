@@ -1,6 +1,6 @@
 import type { Registration, SetupConfig } from "../../src/template/loader.ts";
 import Template, { type HNStory } from "./template.tsx";
-import { memoize, type MemoizationCacheResult, TtlCache } from "@std/cache";
+import { type MemoizationCacheResult, memoize, TtlCache } from "@std/cache";
 
 const HN_BASE = "https://hacker-news.firebaseio.com/v0";
 
