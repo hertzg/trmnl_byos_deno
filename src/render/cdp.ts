@@ -1,7 +1,9 @@
 import { connect } from "@astral/astral";
 
 type Cdp = ReturnType<
-  Awaited<ReturnType<Awaited<ReturnType<typeof connect>>["newPage"]>>["unsafelyGetCelestialBindings"]
+  Awaited<
+    ReturnType<Awaited<ReturnType<typeof connect>>["newPage"]>
+  >["unsafelyGetCelestialBindings"]
 >;
 
 // Wait for a specific CDP Page.lifecycleEvent (e.g. "firstContentfulPaint", "networkIdle").
@@ -18,7 +20,7 @@ function waitForLifecycleEvent(cdp: Cdp, name: string): Promise<void> {
 
 export interface RenderOptions {
   endpoint: string;
-  content: string;
+  url: string;
 
   deviceWidth: number;
   deviceHeight: number;
@@ -36,8 +38,12 @@ export async function resolveCdpEndpoint(cdpUrl: string | URL): Promise<string> 
   return webSocketDebuggerUrl;
 }
 
-export async function renderHtml(opts: RenderOptions): Promise<Uint8Array> {
-  const { endpoint, content, deviceWidth, deviceHeight, deviceScaleFactor } = opts;
+// Navigates the headless browser to `url` (typically our own server's render endpoint),
+// waits for FCP + networkIdle, and returns a PNG screenshot. Going through a real HTTP
+// fetch (vs. setContent) means relative asset URLs in the HTML resolve naturally — that's
+// what enables /assets/style.css and friends.
+export async function renderUrl(opts: RenderOptions): Promise<Uint8Array> {
+  const { endpoint, url, deviceWidth, deviceHeight, deviceScaleFactor } = opts;
 
   const browser = await connect({ endpoint });
   try {
@@ -52,11 +58,11 @@ export async function renderHtml(opts: RenderOptions): Promise<Uint8Array> {
     const cdp = page.unsafelyGetCelestialBindings();
     await cdp.Page.setLifecycleEventsEnabled({ enabled: true });
 
-    // Listeners must be wired before setContent so we don't miss early events.
+    // Listeners must be wired before goto so we don't miss early events.
     const fcp = waitForLifecycleEvent(cdp, "firstContentfulPaint");
     const networkIdle = waitForLifecycleEvent(cdp, "networkIdle");
 
-    await page.setContent(content);
+    await page.goto(url);
     await Promise.all([fcp, networkIdle]);
 
     return await page.screenshot({ format: "png" });

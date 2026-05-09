@@ -25,6 +25,9 @@ services:
       - ./templates:/app/templates:cached
     environment:
       PUBLIC_URL_ORIGIN: "${PUBLIC_URL_ORIGIN:-http://127.0.0.1:3000}"
+      # The chrome sidecar fetches our HTML from this URL. It must be reachable from
+      # chrome's network namespace — that's the docker-network service name, not localhost.
+      INTERNAL_URL_ORIGIN: "http://trmnl-byos-dev:3000"
       REFRESH_RATE_SECONDS: "10"
       FRIENDLY_ID: "DEV"
       CDP_URL: "http://chrome:9222"
@@ -33,5 +36,5 @@ services:
       - deno
       - run
       - --allow-all
-      - --watch
+      - --watch=src,templates
       - src/main.ts

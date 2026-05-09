@@ -1,6 +1,5 @@
 import { renderToString } from "hono/jsx/dom/server";
-import DefaultTemplate, { type DefaultProps } from "../../templates/default.tsx";
 
-export function renderDefault(props: DefaultProps): string {
-  return "<!DOCTYPE html>" + renderToString(DefaultTemplate(props));
+export function renderJsxToHtml<P>(component: (props: P) => unknown, props: P): string {
+  return "<!DOCTYPE html>" + renderToString(component(props) as ReturnType<typeof renderToString>);
 }

@@ -1,3 +1,5 @@
+import { resolve } from "@std/path";
+
 function env(key: string, fallback = ""): string {
   return Deno.env.get(key) ?? fallback;
 }
@@ -12,3 +14,37 @@ export const FRIENDLY_ID = env("FRIENDLY_ID", "TRMNL");
 // HTTP base of the CDP container (cloakhq/cloakbrowser cloakserve). The
 // per-process WS endpoint is resolved via /json/version on each render.
 export const CDP_URL = env("CDP_URL", "http://localhost:9222");
+
+// URL origin the headless browser uses to fetch our HTML for rasterization. Must be
+// reachable from CDP's network namespace, which is almost never 127.0.0.1 — chrome
+// typically runs in its own container.
+//
+// Default targets the documented dev workflow (deno on host + cloakbrowser via docker):
+// `host.docker.internal` resolves to the host from inside chrome's container on Docker
+// Desktop / Colima / OrbStack (Mac) and on Linux when started with
+// `--add-host=host.docker.internal:host-gateway`.
+//
+// Override scenarios:
+//   - docker-compose: set to the deno service's network hostname (e.g. http://trmnl-byos-dev:3000)
+//   - chrome runs natively on host: set to http://127.0.0.1:${PORT}
+//   - linux without host-gateway: set to the host's LAN IP
+export const INTERNAL_URL_ORIGIN = env(
+  "INTERNAL_URL_ORIGIN",
+  `http://host.docker.internal:${PORT}`,
+);
+
+// Absolute path to the user's template directory. The directory must contain a `main.ts`
+// that exports a `run` function. Defaults to the bundled example template; bind-mount
+// over this path (or override the env var) to ship your own.
+export const TEMPLATE_DIR = resolve(env("TEMPLATE_DIR", "./templates/example"));
+
+// Service-level render defaults. The template's run() result.render can override these
+// per-request; query-string params on /image.png override both (debug knob).
+// TRMNL X panel: 1872x1404 at deviceScaleFactor=1.8 → CSS viewport 1040x780 (landscape).
+export const RENDER_DEFAULTS = {
+  width: 1040,
+  height: 780,
+  dpr: 1.8,
+  bitDepth: 4 as 1 | 2 | 4 | 8,
+  dither: "floyd-steinberg" as const,
+};

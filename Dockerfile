@@ -18,6 +18,10 @@ RUN deno cache src/main.ts
 
 COPY templates/ ./templates/
 
+# Default template ships at /app/templates/example. Override (or bind-mount your own dir
+# and point this at it) to ship a different one.
+ENV TEMPLATE_DIR=/app/templates/example
+
 EXPOSE 3000
 
 CMD ["deno", "run", "--allow-all", "src/main.ts"]
