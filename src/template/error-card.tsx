@@ -1,7 +1,5 @@
 /** @jsxImportSource hono/jsx */
 
-import type { DisplayKind } from "./run.ts";
-
 const css = `
   html, body { margin: 0; padding: 0; background: #fff; color: #000; }
   body {
@@ -23,27 +21,13 @@ const css = `
     white-space: pre-wrap;
     word-break: break-word;
   }
-  .stack {
-    margin-top: 16px;
-    padding: 12px;
-    border: 1px solid #000;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 11px;
-    line-height: 1.3;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
 `;
 
 export type ErrorCardProps = {
-  kind: DisplayKind;
   message: string;
-  stack?: string;
 };
 
 export default function ErrorCard(props: ErrorCardProps) {
-  const { kind, message, stack } = props;
-  const showStack = kind === "preview" && stack;
   return (
     <html>
       <head>
@@ -53,8 +37,7 @@ export default function ErrorCard(props: ErrorCardProps) {
       </head>
       <body>
         <div class="banner">Template error</div>
-        <div class="msg">{message}</div>
-        {showStack ? <div class="stack">{stack}</div> : null}
+        <div class="msg">{props.message}</div>
       </body>
     </html>
   );

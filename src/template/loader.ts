@@ -1,8 +1,39 @@
 import { join, toFileUrl } from "@std/path";
-import type { RunFn } from "./run.ts";
+import type { RenderOpts, Services } from "../services/index.ts";
+
+export type { RenderOpts, Services };
+
+// Device-derived data forwarded to user code each time the runtime asks the template
+// what to display. Headers stay on the context as an escape hatch — anything firmware
+// sends that we don't pre-parse is still reachable.
+export type OnDisplayContext = {
+  device: {
+    id: string;
+    panel: { width: number; height: number } | null;
+    headers: Headers;
+  };
+  now: Date;
+};
+
+export type OnDisplayResult = {
+  token: string;
+  // Seconds until the device should poll /api/display again. Surfaces as `refresh_rate`
+  // in the BYOS response. Template owns the device clock.
+  refreshAfter: number;
+};
+
+export type OnDisplayFn = (ctx: OnDisplayContext) => Promise<OnDisplayResult>;
+
+// What setup() returns. The closure is the template's state container; onDisplay reads
+// from it. See ADR-0003 for the full shape rationale.
+export type Registration = {
+  onDisplay: OnDisplayFn;
+};
+
+export type SetupFn = (services: Services) => Promise<Registration>;
 
 export type TemplateModule = {
-  run: RunFn;
+  setup: SetupFn;
 };
 
 // Copies `source` into `target` only when `target` is empty (or doesn't exist). Used to
@@ -46,8 +77,8 @@ export async function loadTemplate(dir: string): Promise<TemplateModule> {
 
   const url = toFileUrl(mainPath).href;
   const mod = await import(url);
-  if (typeof mod.run !== "function") {
-    throw new Error(`template at ${mainPath} must export a 'run' function`);
+  if (typeof mod.setup !== "function") {
+    throw new Error(`template at ${mainPath} must export a 'setup' function`);
   }
   return mod as TemplateModule;
 }

@@ -17,9 +17,13 @@ export type ServicesConfig = {
   cacheCapacity?: number;
 };
 
+// HTTP path the headless browser fetches stashed HTML from during JSX rasterization.
+// Shared between renderJsx (URL construction) and the route handler in main.ts.
+export const PREVIEW_PATH = "/preview";
+
 // One bag, two roles. User code only sees `renderJsx`. The HTTP layer also calls
-// `bytesFor` (for /image.png) and `htmlForStash` (for the CDP fetch-back seam).
-// The split is by convention, not by type — keeps the surface small.
+// `bytesFor` (for /render/:token) and `htmlForStash` (for the CDP fetch-back seam
+// at PREVIEW_PATH). The split is by convention, not by type — keeps the surface small.
 export type Services = {
   renderJsx(jsx: unknown, opts?: RenderOpts): Promise<string>;
   bytesFor(token: string): Uint8Array | undefined;
@@ -40,7 +44,7 @@ export function createServices(config: ServicesConfig): Services {
         const endpoint = await resolveCdpEndpoint(config.cdpUrl);
         const raw = await renderUrl({
           endpoint,
-          url: `${config.internalUrlOrigin}/_render/${stashKey}`,
+          url: `${config.internalUrlOrigin}${PREVIEW_PATH}/${stashKey}`,
           deviceWidth: opts?.width ?? config.width,
           deviceHeight: opts?.height ?? config.height,
           deviceScaleFactor: opts?.dpr ?? config.dpr,
