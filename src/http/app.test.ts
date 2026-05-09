@@ -1,4 +1,9 @@
-import { assertEquals, assertGreaterOrEqual, assertLessOrEqual } from "@std/assert";
+import {
+  assertEquals,
+  assertGreaterOrEqual,
+  assertLessOrEqual,
+  assertStringIncludes,
+} from "@std/assert";
 import { createApp } from "./app.ts";
 import type { Renderer } from "../render/renderer.ts";
 
@@ -8,6 +13,7 @@ function fakeRenderer(overrides: Partial<Renderer> = {}): Renderer {
     getJobHtml: () => undefined,
     getJobPng: () => undefined,
     renderEphemeral: () => Promise.reject(new Error("renderEphemeral not configured")),
+    previewHtml: () => Promise.reject(new Error("previewHtml not configured")),
     ...overrides,
   };
 }
@@ -118,6 +124,38 @@ Deno.test("POST /api/log accepts a log body, calls onDeviceLog, returns 204", as
 
   assertEquals(res.status, 204);
   assertEquals(logged, [{ id: "AA:BB", body: "device says hi" }]);
+});
+
+Deno.test("GET /preview returns text/html with the live preview HTML and cache-control: no-store", async () => {
+  const app = createApp({
+    renderer: fakeRenderer({
+      previewHtml: () => Promise.resolve("<h1>preview body</h1>"),
+    }),
+    friendlyId: "test",
+  });
+
+  const res = await app.fetch(new Request("http://x.example/preview"));
+
+  assertEquals(res.status, 200);
+  assertEquals((res.headers.get("content-type") ?? "").startsWith("text/html"), true);
+  assertEquals(res.headers.get("cache-control"), "no-store");
+  assertEquals(await res.text(), "<h1>preview body</h1>");
+});
+
+Deno.test("GET /preview returns 500 with stack-trace HTML when previewHtml throws", async () => {
+  const app = createApp({
+    renderer: fakeRenderer({
+      previewHtml: () => Promise.reject(new Error("template-broken")),
+    }),
+    friendlyId: "test",
+  });
+
+  const res = await app.fetch(new Request("http://x.example/preview"));
+
+  assertEquals(res.status, 500);
+  assertEquals((res.headers.get("content-type") ?? "").startsWith("text/html"), true);
+  const body = await res.text();
+  assertStringIncludes(body, "template-broken");
 });
 
 Deno.test("GET /preview/:jobId returns stored HTML for an active job", async () => {

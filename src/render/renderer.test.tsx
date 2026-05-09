@@ -123,6 +123,37 @@ Deno.test("ensureFrame: propagates when rasterize fails on both real and error f
   await assertRejects(() => renderer.ensureFrame(), Error, "always-broken");
 });
 
+Deno.test("previewHtml: renders the onDisplay JSX to HTML without invoking rasterize", async () => {
+  let rasterizeCalls = 0;
+  const renderer = createRenderer({
+    onDisplay: () => Promise.resolve({ jsx: <div>preview body</div>, validForSeconds: 60 }),
+    rasterize: () => {
+      rasterizeCalls++;
+      return Promise.resolve(new Uint8Array([0xff]));
+    },
+    origin: "http://localhost",
+  });
+
+  const html = await renderer.previewHtml();
+
+  assertStringIncludes(html, "preview body");
+  assertEquals(rasterizeCalls, 0);
+});
+
+Deno.test("previewHtml: does not affect the canonical current frame", async () => {
+  const renderer = createRenderer({
+    onDisplay: () => Promise.resolve({ jsx: <div>frame</div>, validForSeconds: 60 }),
+    rasterize: () => Promise.resolve(new Uint8Array([0xab])),
+    origin: "http://localhost",
+  });
+
+  const original = await renderer.ensureFrame();
+  await renderer.previewHtml();
+  const again = await renderer.ensureFrame();
+
+  assertEquals(again.jobId, original.jobId);
+});
+
 Deno.test("renderEphemeral: returns PNG bytes and stores them under a fresh jobId without touching current frame", async () => {
   const renderer = createRenderer({
     onDisplay: () => Promise.resolve({ jsx: <div>frame</div>, validForSeconds: 60 }),
