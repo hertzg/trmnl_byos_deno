@@ -3,9 +3,8 @@ import { getProfile, profileIds } from "./profiles.ts";
 
 Deno.test("getProfile returns the TRMNL X entry by id", () => {
   const profile = getProfile("trmnl-x");
-  assertEquals(profile?.width, 1040);
-  assertEquals(profile?.height, 780);
-  assertEquals(profile?.dpr, 1.8);
+  assertEquals(profile?.width, 1872);
+  assertEquals(profile?.height, 1404);
   assertEquals(profile?.bitDepth, 4);
   assertEquals(profile?.dither, "floyd-steinberg");
 });
