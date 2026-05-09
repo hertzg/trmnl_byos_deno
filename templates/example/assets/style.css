@@ -1,1 +1,189 @@
+/* Targets the trmnl-x panel directly (1872×1404, DPR=1, 4-bit grayscale).
+ * Pure black-on-white, no shadows, no anti-alias trickery — what dithers cleanly.
+ *
+ * Legibility rules of thumb:
+ *   - Solid black-on-white beats outlined: thin borders dither poorly.
+ *   - Body weight 500 (medium), data tokens 700 (bold) — 400 looks washed out after dither.
+ *   - Generous whitespace — adjacent dense elements ghost and compete.
+ *   - Sized for wall/desk distance, not laptop-monitor distance. */
 
+/* Inter Variable — what the TRMNL framework itself uses on high-density displays
+ * (per its font-bundle rules: pixel fonts only on low-density panels, Inter elsewhere).
+ * Self-hosted so the renderer stays offline. One woff2 covers all weights 100–900. */
+@font-face {
+  font-family: "Inter";
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+  src: url("/assets/fonts/inter-variable.woff2") format("woff2-variations");
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 1872px;
+  height: 1404px;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  color: #000;
+  background: #fff;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+body {
+  font-size: 34px;
+  line-height: 1.25;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 48px;
+  gap: 28px;
+}
+
+.frame {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  overflow: hidden;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow: hidden;
+}
+
+.section__header {
+  font-size: 32px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 4px solid #000;
+  padding-bottom: 8px;
+}
+
+.line-row {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.line-row__icon {
+  flex: 0 0 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.line-row__icon img {
+  width: 48px;
+  height: 48px;
+  display: block;
+}
+
+.line-row__content {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+
+.line-label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 14px;
+  align-items: center;
+}
+
+.line-label__badge {
+  flex: 0 0 auto;
+  background: #000;
+  color: #fff;
+  padding: 4px 12px;
+  font-size: 30px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.line-label__direction {
+  flex: 1;
+  min-width: 0;
+  font-size: 30px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  /* Wide gap between hour clusters so the eye chunks the row visually. */
+  gap: 28px;
+}
+
+.timeline__group {
+  display: flex;
+  flex-direction: row;
+  /* Tight gap within an hour — pills here are continuations of the first one. */
+  gap: 8px;
+}
+
+/* Solid-fill pill matches the badge style — same visual weight as the line label, so
+ * the eye reads "U5 → these times" as one row of equal-density tokens. */
+.time-pill {
+  background: #000;
+  color: #fff;
+  padding: 4px 12px;
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.empty-departures {
+  font-style: italic;
+  font-size: 26px;
+  color: #555;
+}
+
+.hn-item {
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.3;
+  border-bottom: 1px solid #999;
+  padding: 8px 0;
+}
+
+.title-bar {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 4px solid #000;
+  padding-top: 16px;
+  font-size: 24px;
+}
+
+.title-bar__title {
+  font-weight: 700;
+}
+
+.title-bar__instance {
+  color: #444;
+}
