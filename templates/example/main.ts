@@ -5,7 +5,7 @@ import Template from "./template.tsx";
 // on each device poll. Swap to pre-rendering by calling services.renderJsx in setup
 // (or on a setInterval) and storing the resulting token in a closure variable that
 // onDisplay reads — see ADR-0003.
-export async function setup(services: Services): Promise<Registration> {
+export function setup(services: Services): Registration {
   return {
     async onDisplay(ctx) {
       const token = await services.renderJsx(

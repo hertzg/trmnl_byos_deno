@@ -1,7 +1,11 @@
 # 0002 — Token-based render protocol between service and template
 
-**Status:** Accepted — 2026-05-09 (naming refined during PR #7 review:
-`services.render(...)` → `services.renderJsx(...)`. Decision unchanged.)
+**Status:** Accepted — 2026-05-09 (refinements during review:
+`services.render(...)` → `services.renderJsx(...)` (PR #7);
+device-facing image moved from `/image.png` to `/render/:token` and
+the CDP fetch-back seam from `/_render/:token` to `/preview/:stashKey`,
+with the token now in the URL — eliminating the in-process
+`currentToken` (PR #10). Decisions unchanged.)
 **Related:** ADR-0001 (charter), ADR-0003 (module shape)
 
 ## Context
@@ -37,9 +41,9 @@ services.renderJsx(jsx, opts?): Promise<Token>
   inserts and reads touch the entry's recency.
 
 The user template then returns a token (any token previously obtained from
-`services.renderJsx`) when polled by the service. The service tracks the
-current token in process state; `/image.png` serves the bytes for that
-token.
+`services.renderJsx`) when polled by the service. The service inlines that
+token into the `image_url` returned to the device; `/render/:token` looks
+up the bytes directly from the cache.
 
 Iteration 1 scope: input is JSX-only (no raw bytes path, no HTML string
 input). Stage-2 parameters (bit depth, dither algorithm) are
@@ -63,9 +67,10 @@ service-internal and not user-overridable.
   pre-rendering patterns we expect (one or a few rotating frames). Templates
   that produce more than 16 distinct frames in flight at once will see
   evictions; that's the template's bug, not the service's.
-- **Cache busting** in `/api/display`'s `image_url` query stays as
-  `?t=${Date.now()}` — the device doesn't cache and the URL doesn't need to
-  encode the token; the service tracks the current token in state.
-- Internal CDP-fetches-back-HTML seam (currently `/_render/:token`) becomes
-  an implementation detail of `services.renderJsx` — never exposed to
-  user code. Naming may diverge from the user-facing token.
+- **Stateless device path.** With the token in the URL path
+  (`/render/:token`), the service holds no per-request state for the
+  device. `/api/display` is a pure read of `onDisplay`'s output.
+- Internal CDP-fetches-back-HTML seam (`/preview/:stashKey`) is an
+  implementation detail of `services.renderJsx` — never exposed to user
+  code. The stash key (UUID) is intentionally distinct from the
+  user-facing token (sha-256 hex).

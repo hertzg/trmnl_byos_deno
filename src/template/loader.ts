@@ -30,7 +30,7 @@ export type Registration = {
   onDisplay: OnDisplayFn;
 };
 
-export type SetupFn = (services: Services) => Promise<Registration>;
+export type SetupFn = (services: Services) => Registration | Promise<Registration>;
 
 export type TemplateModule = {
   setup: SetupFn;
