@@ -1,4 +1,5 @@
-import { Application, Router, send } from "@oak/oak";
+import { Hono } from "hono";
+import { serveStatic } from "hono/deno";
 import { join } from "@std/path";
 import {
   CDP_URL,
@@ -14,9 +15,9 @@ import { renderUrl, resolveCdpEndpoint } from "./render/cdp.ts";
 import { type DitherMode, ditherNative } from "./render/dither.ts";
 import { loadTemplate, seedTemplateDir } from "./template/loader.ts";
 import {
-  type RunContext,
   type DisplayKind,
   type RenderOverrides,
+  type RunContext,
   runTemplate,
 } from "./template/run.ts";
 
@@ -86,17 +87,17 @@ function parseQueryOverrides(q: URLSearchParams): RenderOverrides {
   return overrides;
 }
 
-function buildContext(req: { url: URL; headers: Headers }, kind: DisplayKind): RunContext {
+function buildContext(url: URL, headers: Headers, kind: DisplayKind): RunContext {
   const query: Record<string, string> = {};
-  for (const [k, v] of req.url.searchParams) query[k] = v;
+  for (const [k, v] of url.searchParams) query[k] = v;
 
-  const devW = parseInt(req.headers.get("width") ?? "", 10);
-  const devH = parseInt(req.headers.get("height") ?? "", 10);
+  const devW = parseInt(headers.get("width") ?? "", 10);
+  const devH = parseInt(headers.get("height") ?? "", 10);
   const panel = Number.isFinite(devW) && devW > 0 && Number.isFinite(devH) && devH > 0
     ? { width: devW, height: devH }
     : null;
 
-  return { kind, url: req.url, query, headers: req.headers, panel };
+  return { kind, url, query, headers, panel };
 }
 
 if (TEMPLATE_SEED_DIR) {
@@ -117,31 +118,19 @@ try {
 }
 if (assetsAvailable) console.log(`[assets] serving /assets/* from ${assetsDir}`);
 
-const app = new Application();
+const app = new Hono();
 
-app.use(async (ctx, next) => {
+app.use(async (c, next) => {
   const t0 = Date.now();
-  try {
-    await next();
-  } catch (err) {
-    console.error("[handler]", err);
-    ctx.response.status = 500;
-    ctx.response.body = { error: "internal" };
-  }
+  await next();
   console.log(
-    `${ctx.request.method} ${ctx.request.url.pathname} → ${ctx.response.status} ${
-      Date.now() - t0
-    }ms`,
+    `${c.req.method} ${new URL(c.req.url).pathname} → ${c.res.status} ${Date.now() - t0}ms`,
   );
 });
 
-const router = new Router();
-
-router.get("/", async (ctx) => {
-  const dctx = buildContext(ctx.request, "preview");
-  const { html } = await runTemplate(template, dctx);
-  ctx.response.headers.set("content-type", "text/html; charset=utf-8");
-  ctx.response.body = html;
+app.onError((err, c) => {
+  console.error("[handler]", err);
+  return c.json({ error: "internal" }, 500);
 });
 
 // Per-request HTML stash. /image.png runs the template once, parks the resulting HTML
@@ -152,27 +141,27 @@ router.get("/", async (ctx) => {
 // CDP setContent).
 const pendingRenders = new Map<string, string>();
 
-router.get("/_render/:token", (ctx) => {
-  const html = pendingRenders.get(ctx.params.token ?? "");
-  if (!html) {
-    ctx.response.status = 404;
-    return;
-  }
-  ctx.response.headers.set("content-type", "text/html; charset=utf-8");
-  // Don't let any cache layer hold this — token is one-shot per /image.png request.
-  ctx.response.headers.set("cache-control", "no-store");
-  ctx.response.body = html;
+app.get("/", async (c) => {
+  const dctx = buildContext(new URL(c.req.url), c.req.raw.headers, "preview");
+  const { html } = await runTemplate(template, dctx);
+  return c.html(html);
 });
 
-router.get("/image.png", async (ctx) => {
-  const dctx = buildContext(ctx.request, "device");
+app.get("/_render/:token", (c) => {
+  const html = pendingRenders.get(c.req.param("token") ?? "");
+  if (!html) return c.body(null, 404);
+  // Don't let any cache layer hold this — token is one-shot per /image.png request.
+  return c.html(html, 200, { "cache-control": "no-store" });
+});
+
+app.get("/image.png", async (c) => {
+  const url = new URL(c.req.url);
+  const dctx = buildContext(url, c.req.raw.headers, "device");
   let overrides: RenderOverrides;
   try {
-    overrides = parseQueryOverrides(ctx.request.url.searchParams);
+    overrides = parseQueryOverrides(url.searchParams);
   } catch (err) {
-    ctx.response.status = 400;
-    ctx.response.body = { error: err instanceof Error ? err.message : String(err) };
-    return;
+    return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
   }
 
   const { html, render } = await runTemplate(template, dctx, overrides);
@@ -191,52 +180,45 @@ router.get("/image.png", async (ctx) => {
       bitDepth: render.bitDepth,
       mode: render.dither,
     });
-    ctx.response.headers.set("content-type", "image/png");
-    ctx.response.body = png;
+    return c.body(png as unknown as ArrayBuffer, 200, { "content-type": "image/png" });
   } finally {
     pendingRenders.delete(token);
   }
 });
 
-router.get("/assets/:path*", async (ctx) => {
-  if (!assetsAvailable) {
-    ctx.response.status = 404;
-    return;
-  }
-  const sub = ctx.params.path ?? "";
-  await send(ctx, sub, { root: assetsDir });
-});
+if (assetsAvailable) {
+  app.get("/assets/*", serveStatic({ root: TEMPLATE_DIR }));
+}
 
 // Build the URL the device should fetch the image from. PUBLIC_URL_ORIGIN env wins
 // (use it behind a reverse proxy); otherwise the device's own request tells us how
 // it reached us — Host/X-Forwarded-* headers from the LAN call are exactly what the
 // device used to dial in.
-function publicOrigin(ctx: { request: { url: URL; headers: Headers } }): string {
+function publicOrigin(url: URL, headers: Headers): string {
   if (PUBLIC_URL_ORIGIN) return PUBLIC_URL_ORIGIN;
-  const h = ctx.request.headers;
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? ctx.request.url.host;
-  const proto = h.get("x-forwarded-proto") ?? ctx.request.url.protocol.replace(":", "");
+  const host = headers.get("x-forwarded-host") ?? headers.get("host") ?? url.host;
+  const proto = headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "");
   return `${proto}://${host}`;
 }
 
-router.get("/api/setup", (ctx) => {
-  ctx.response.body = {
+app.get("/api/setup", (c) => {
+  return c.json({
     status: 200,
     api_key: "byos",
     friendly_id: FRIENDLY_ID,
-    image_url: `${publicOrigin(ctx)}/image.png`,
+    image_url: `${publicOrigin(new URL(c.req.url), c.req.raw.headers)}/image.png`,
     message: "Welcome",
-  };
+  });
 });
 
-router.get("/api/display", (ctx) => {
+app.get("/api/display", (c) => {
   const t = Date.now();
   // Cache-buster only — render params are now decided by the template's run() at /image.png time.
-  ctx.response.body = {
+  return c.json({
     // status MUST be 0 here — firmware switches on it; anything else (incl. 200)
     // falls through and the image is never fetched.
     status: 0,
-    image_url: `${publicOrigin(ctx)}/image.png?t=${t}`,
+    image_url: `${publicOrigin(new URL(c.req.url), c.req.raw.headers)}/image.png?t=${t}`,
     filename: `image-${t}`,
     refresh_rate: REFRESH_RATE_SECONDS,
     reset_firmware: false,
@@ -245,18 +227,15 @@ router.get("/api/display", (ctx) => {
     special_function: "none",
     // Forces REFRESH_FULL every cycle on TRMNL X — avoids ghosting between dither variants.
     maximum_compatibility: true,
-  };
+  });
 });
 
-router.post("/api/log", async (ctx) => {
-  const body = await ctx.request.body.text();
-  const id = ctx.request.headers.get("id") ?? ctx.request.headers.get("ID") ?? "(none)";
+app.post("/api/log", async (c) => {
+  const body = await c.req.text();
+  const id = c.req.raw.headers.get("id") ?? c.req.raw.headers.get("ID") ?? "(none)";
   console.log(`[device-log] ${id.toUpperCase()}: ${body}`);
-  ctx.response.status = 204;
+  return c.body(null, 204);
 });
-
-app.use(router.routes());
-app.use(router.allowedMethods());
 
 console.log(`trmnl-byos-deno on :${PORT}`);
-await app.listen({ port: PORT, hostname: "0.0.0.0" });
+Deno.serve({ port: PORT, hostname: "0.0.0.0" }, app.fetch);
