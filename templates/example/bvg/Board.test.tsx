@@ -8,6 +8,7 @@ import type { Row } from "./journey_classifier.ts";
 const ROW: Row = {
   kind: "row",
   leaveByDate: new Date("2025-11-10T07:52:00Z"),
+  plannedLeaveByDate: new Date("2025-11-10T07:52:00Z"),
   arriveByDate: new Date("2025-11-10T08:16:00Z"),
   durationMinutes: 24,
   originLabel: "Hbf",
@@ -24,8 +25,10 @@ const ROW: Row = {
       arrival: new Date("2025-11-10T08:12:00Z"),
       line: { name: "S5", product: "suburban" },
       direction: "Strausberg",
+      realtime: { delaySeconds: 0, cancelled: false, hasRealtime: false, remarks: [] },
     },
   ],
+  alerts: [],
 };
 
 Deno.test("Board renders head and the row list", () => {

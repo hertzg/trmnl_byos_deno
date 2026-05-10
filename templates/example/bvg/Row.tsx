@@ -3,23 +3,31 @@
 // One actionable journey row. Layout per v3 wireframes:
 //
 //   [icon] [leave HH:MM]   [pictogram]                     [arrive HH:MM]   [dur]
-//                                                          at <dest> · <pref>
+//          was HH:MM                                       at <dest> · <pref>
 //          leave <origin>
+//          ⚠ +Nm delay
+//          ⚠ <remark>
 //
-// Slice 1: no realtime alert pill, no prep-buffer time, no exclusion. Those
-// arrive in slices 4/5.
+// Slice 6: the leave-by column carries the realtime "was" caption and the
+// stack of ⚠ alert pills. Visual styling is left for a follow-up — `row__alert`
+// is just a hook so the framework CSS can paint it later.
 
 import type { Row as RowData } from "./journey_classifier.ts";
 import { formatHHMM } from "./time.ts";
 import Pictogram from "./Pictogram.tsx";
 
 export default function Row({ row }: { row: RowData }) {
+  const isShifted = row.leaveByDate.getTime() !== row.plannedLeaveByDate.getTime();
   return (
     <div class="row">
       <div class="row__icon">{row.preferenceIcon}</div>
       <div class="row__leave">
         {formatHHMM(row.leaveByDate)}
+        {isShifted && <small class="row__was">was {formatHHMM(row.plannedLeaveByDate)}</small>}
         <small>leave {row.originLabel}</small>
+        {row.alerts.map((alert) => (
+          <span class={`row__alert row__alert--${alert.kind}`}>⚠ {alert.text}</span>
+        ))}
       </div>
       <Pictogram legs={row.legs} />
       <div class="row__arrive">

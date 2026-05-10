@@ -40,6 +40,7 @@ function transitCandidate(departureIso: string, arrivalIso: string): Candidate {
         arrival,
         line: { name: "S5", product: "suburban" },
         direction: "Strausberg",
+        realtime: { delaySeconds: 0, cancelled: false, hasRealtime: false, remarks: [] },
       },
     ],
     departure,
