@@ -522,19 +522,28 @@ body {
   grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 4px;
+  gap: 2px;
+  margin-top: 2px;
 }
 
-/* Unified ⚠ alert — full-width text, wraps freely. */
+/* Unified ⚠ alert — full-width text, wraps freely. Sized down: a remark is
+ * background detail, the headline figure is the leave-by HH:MM. */
 .row__alert {
   display: block;
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: #000;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0;
+  color: #555;
   word-break: break-word;
   overflow-wrap: anywhere;
+}
+
+/* Delay alerts are slightly more important than service remarks — they
+ * directly affect the leave-by figure on the same row. */
+.row__alert--delay {
+  font-weight: 700;
+  color: #000;
 }
 
 /* "leave now" stamp — same shape as alert pill, stronger. */
