@@ -4,6 +4,13 @@ import { renderToString } from "hono/jsx/dom/server";
 import Pictogram from "./Pictogram.tsx";
 import type { Leg } from "./journey_client.ts";
 
+const EMPTY_RT = {
+  delaySeconds: 0,
+  cancelled: false,
+  hasRealtime: false,
+  remarks: [],
+} as const;
+
 function transit(name: string, product: string, dep: string, arr: string): Leg {
   return {
     kind: "transit",
@@ -13,6 +20,7 @@ function transit(name: string, product: string, dep: string, arr: string): Leg {
     arrival: new Date(arr),
     line: { name, product },
     direction: "",
+    realtime: EMPTY_RT,
   };
 }
 
@@ -26,6 +34,7 @@ function walk(durationMinutes: number): Leg {
     departure: dep,
     arrival: arr,
     durationMinutes,
+    realtime: EMPTY_RT,
   };
 }
 
