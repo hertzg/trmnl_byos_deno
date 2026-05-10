@@ -41,26 +41,46 @@ export async function assembleBoard(
   options: AssembleOptions = {},
 ): Promise<Board> {
   const fetchFn = options.fetchCandidates ?? defaultFetch;
-  const rows: Row[] = [];
 
+  // Step 1 — resolve every preference; collect the active subset.
+  const active: Array<{
+    preference: typeof config.preferences[number];
+    tunables: ReturnType<typeof resolveTunables>;
+    arriveByDate: Date;
+  }> = [];
   for (const preference of config.preferences) {
     const resolution = nextApplicableArriveBy(preference.schedule, preference, now);
     if (!resolution) continue;
-    const tunables = resolveTunables(preference, resolution.applicableRule);
+    active.push({
+      preference,
+      tunables: resolveTunables(preference, resolution.applicableRule),
+      arriveByDate: resolution.arriveByDate,
+    });
+  }
 
-    const fetched = await fetchFn(
-      preference.origin,
-      preference.destination,
-      resolution.arriveByDate,
-    );
-    if (!Array.isArray(fetched)) continue; // FeedError: slice 7 surfaces this.
+  // Step 2 — fetch all active preferences in parallel. Total wall-clock fetch
+  // time is bounded by the slowest individual fetch, not their sum.
+  const fetched = await Promise.all(
+    active.map((a) => fetchFn(a.preference.origin, a.preference.destination, a.arriveByDate)),
+  );
 
-    for (const candidate of fetched as readonly Candidate[]) {
+  // Step 3 — classify each preference's results independently. A `FeedError`
+  // contributes zero rows but does not abort the others. (Slice 9 will branch
+  // the empty-state on partial failure; this slice just tolerates it.)
+  const rows: Row[] = [];
+  for (let i = 0; i < active.length; i++) {
+    const result = fetched[i];
+    if (!Array.isArray(result)) continue;
+    const { preference, tunables } = active[i];
+    for (const candidate of result as readonly Candidate[]) {
       const row = classify(candidate, preference, tunables, now);
       if (row) rows.push(row);
     }
   }
 
+  // Step 4 — stable sort by leave-by ascending. JS `Array.prototype.sort` is
+  // required to be stable since ES2019, so ties preserve concatenation order
+  // (which preserves fetch order, which preserves config order).
   rows.sort((a, b) => a.leaveByDate.getTime() - b.leaveByDate.getTime());
 
   return {
