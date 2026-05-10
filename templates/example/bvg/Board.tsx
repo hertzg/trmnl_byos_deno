@@ -8,6 +8,7 @@
 import type { Board as BoardData } from "./board_assembler.ts";
 import CancelStrip from "./CancelStrip.tsx";
 import EmptyFrame from "./EmptyFrame.tsx";
+import Footnote from "./Footnote.tsx";
 import Head from "./Head.tsx";
 import Row from "./Row.tsx";
 import { formatHHMM } from "./time.ts";
@@ -35,6 +36,7 @@ export default function Board({ board, now }: { board: BoardData; now?: Date }) 
           )}
         </div>
       )}
+      <Footnote clipSummary={board.clipSummary} />
     </div>
   );
 }

@@ -97,6 +97,42 @@ Deno.test("Board renders feedUnreachable empty frame with age sub-text", () => {
   assertStringIncludes(html, "data is 10 m old");
 });
 
+Deno.test("Board renders footnote when clipSummary present", () => {
+  const board: BoardData = {
+    rows: [ROW],
+    emptyReason: "none",
+    fetchedAt: new Date("2025-11-10T07:00:00Z"),
+    windows: [],
+    clipSummary: {
+      perIcon: [{
+        icon: "A",
+        label: "Office",
+        count: 2,
+        nextLeaveBys: [new Date("2025-11-10T08:37:00Z")],
+      }],
+    },
+  };
+  // deno-lint-ignore no-explicit-any
+  const html = renderToString(<Board board={board} /> as any);
+  assertStringIncludes(html, "+2 later");
+  assertStringIncludes(html, "footnote");
+});
+
+Deno.test("Board omits footnote when clipSummary is null", () => {
+  const board: BoardData = {
+    rows: [ROW],
+    emptyReason: "none",
+    fetchedAt: new Date("2025-11-10T07:00:00Z"),
+    windows: [],
+    clipSummary: null,
+  };
+  // deno-lint-ignore no-explicit-any
+  const html = renderToString(<Board board={board} /> as any);
+  if (html.includes("footnote")) {
+    throw new Error(`expected no footnote, got: ${html}`);
+  }
+});
+
 Deno.test("Board renders next-anchor hint inside the noScheduleApplicable frame", () => {
   const board: BoardData = {
     rows: [],

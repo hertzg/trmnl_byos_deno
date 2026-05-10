@@ -70,9 +70,31 @@ export type NextAnchor = {
   preferenceIcon: string;
 };
 
+// ClipSummary — per-icon record of rows that were dropped by the hard row cap.
+//
+// One entry per `preferenceIcon` that had at least one clipped row. `count` is
+// the total dropped for that icon; `nextLeaveBys` are the *first two* leave-by
+// `Date`s of the clipped tail for that icon (i.e. the latest two surviving
+// chronological options the user is missing), in ascending order.
+//
+// Order policy: entries are sorted by `icon` ascending lexicographic so the
+// footnote reads alphabetically (`A: …  B: …`) regardless of fetch/sort order.
+export type ClipSummary = {
+  readonly perIcon: readonly {
+    readonly icon: string;
+    readonly label: string;
+    readonly count: number;
+    readonly nextLeaveBys: readonly Date[];
+  }[];
+};
+
 export type Board = {
   rows: readonly BoardRow[];
   emptyReason: EmptyReason;
+  // Populated when `applyOverflow` clipped rows from the tail. Absent / null
+  // when nothing was clipped, so `EmptyFrame`-style code can branch on
+  // truthiness.
+  clipSummary?: ClipSummary | null;
   // Source-of-truth instant the board was assembled at. Used for the title
   // bar's "fetched at" stamp and for cadence math.
   fetchedAt: Date;
@@ -91,6 +113,10 @@ export type Board = {
 
 export type AssembleOptions = {
   fetchCandidates?: FetchCandidates;
+  // Test-time override for the hard row cap. Production callers leave this
+  // unset; the assembler reads `DEFAULTS.hardRowCap` (per-preference cap is
+  // out of scope for slice 10 — single global default).
+  hardRowCapOverride?: number;
 };
 
 export type BoardAssembler = {
@@ -167,16 +193,26 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
       // order (which preserves fetch order, which preserves config order).
       rows.sort((a, b) => a.leaveByDate.getTime() - b.leaveByDate.getTime());
 
-      // Step 5 — collapse runs of consecutive `CancellationStrip`s with the
+      // Step 5a — hard row cap: clip the tail (latest leave-bys) and produce a
+      // per-icon ClipSummary. Runs BEFORE collapseCancellations so dropped
+      // strips don't inflate collapse counts. Default cap source:
+      // `DEFAULTS.hardRowCap` (per-preference override is out of scope here).
+      const cap = options.hardRowCapOverride ?? defaults.hardRowCapOverride ?? DEFAULTS.hardRowCap;
+      const { kept, clipSummary } = applyOverflow(rows, cap);
+
+      // Step 5b — collapse runs of consecutive `CancellationStrip`s with the
       // same `preferenceIcon`. See `collapseCancellations` for details.
-      const collapsedRows = collapseCancellations(rows);
+      const collapsedRows = collapseCancellations(kept);
 
       // Step 6 — empty-state precedence:
-      //   1. rows present                       → none
+      //   1. rows present (or clipped to zero)  → none
       //   2. else any active fetch failed       → feedUnreachable
       //   3. else                               → noScheduleApplicable
+      // Rows clipped to zero by the cap count as "rows present" — the frame
+      // surfaces the footnote instead of an empty frame, since the screen has
+      // something useful to say (and the schedule isn't quiet, just over cap).
       let emptyReason: EmptyReason;
-      if (collapsedRows.length > 0) emptyReason = "none";
+      if (collapsedRows.length > 0 || rows.length > 0) emptyReason = "none";
       else if (anyFeedError) emptyReason = "feedUnreachable";
       else emptyReason = "noScheduleApplicable";
 
@@ -186,6 +222,8 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
         fetchedAt: now,
         windows: active.map((a) => a.window),
       };
+
+      if (clipSummary) board.clipSummary = clipSummary;
 
       if (emptyReason === "feedUnreachable") {
         board.lastSuccessfulFetchAt = lastSuccessfulFetchAt;
@@ -242,6 +280,54 @@ export function assembleBoard(
   options: AssembleOptions = {},
 ): Promise<Board> {
   return DEFAULT_ASSEMBLER.assembleBoard(config, now, options);
+}
+
+// Hard row cap with tail-clipping. Inputs are pre-sorted by leave-by ascending;
+// keeping the first N preserves the most-imminent options the user actually
+// needs. Dropped rows are folded into a per-icon `ClipSummary` so the footnote
+// can tell the user how many "later" rows they aren't seeing.
+//
+// Behaviour at edge caps:
+//   cap = 0  → no rows survive; ClipSummary summarises everything dropped.
+//              (Defines behaviour per the issue's "cap = 0 → empty rows,
+//              footnote summarises everything dropped" decision.)
+//   cap ≥ N  → all rows kept; ClipSummary is `null`.
+function applyOverflow(
+  rows: readonly BoardRow[],
+  cap: number,
+): { kept: BoardRow[]; clipSummary: ClipSummary | null } {
+  if (rows.length <= cap) {
+    return { kept: rows.slice(), clipSummary: null };
+  }
+  const kept = rows.slice(0, Math.max(0, cap));
+  const dropped = rows.slice(Math.max(0, cap));
+
+  // Group dropped rows by preferenceIcon. Track the icon's label and the first
+  // two leave-by Dates seen (the chronologically-earliest of the clipped tail).
+  type Bucket = { icon: string; label: string; count: number; nextLeaveBys: Date[] };
+  const byIcon = new Map<string, Bucket>();
+  for (const row of dropped) {
+    let bucket = byIcon.get(row.preferenceIcon);
+    if (!bucket) {
+      bucket = { icon: row.preferenceIcon, label: row.preferenceLabel, count: 0, nextLeaveBys: [] };
+      byIcon.set(row.preferenceIcon, bucket);
+    }
+    bucket.count += row.kind === "cancellationStrip" ? row.count : 1;
+    if (bucket.nextLeaveBys.length < 2) bucket.nextLeaveBys.push(row.leaveByDate);
+  }
+
+  // Order policy: alphabetical by icon ascending. The issue example
+  // ("A: …  B: …") demonstrates this; keeps footnote stable across renders.
+  const perIcon = [...byIcon.values()]
+    .sort((a, b) => (a.icon < b.icon ? -1 : a.icon > b.icon ? 1 : 0))
+    .map((b) => ({
+      icon: b.icon,
+      label: b.label,
+      count: b.count,
+      nextLeaveBys: b.nextLeaveBys.slice() as readonly Date[],
+    }));
+
+  return { kept, clipSummary: { perIcon } };
 }
 
 // Walk a sorted `BoardRow[]` and fold consecutive `CancellationStrip` entries

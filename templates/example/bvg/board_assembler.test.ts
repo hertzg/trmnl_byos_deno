@@ -693,6 +693,208 @@ Deno.test("assembleBoard: noScheduleApplicable carries soonest nextAnchor across
   assertEquals(board.nextAnchor?.preferenceIcon, "A");
 });
 
+// ─── slice 10: hard row cap with tail clip footnote ───────────────────────────
+
+// Build N transit candidates spaced 1 minute apart, all OFFICE, with leave-by
+// monotonically increasing. `firstDepBerlin` is the ISO Berlin departure of
+// the first candidate; subsequent ones are +i minutes.
+function manyTransitCandidates(
+  origin: { hafasStopId: string; displayName: string },
+  destination: { hafasStopId: string; displayName: string },
+  firstDepBerlin: string,
+  count: number,
+): Candidate[] {
+  const out: Candidate[] = [];
+  const start = new Date(firstDepBerlin).getTime();
+  for (let i = 0; i < count; i++) {
+    const dep = new Date(start + i * 60_000).toISOString();
+    const arr = new Date(start + i * 60_000 + 12 * 60_000).toISOString();
+    out.push(transitCandidateFor(origin, destination, dep, arr));
+  }
+  return out;
+}
+
+Deno.test("assembleBoard: cap matches row count exactly → no clip summary", async () => {
+  // 8 visible rows; default cap is 10 → all kept, no footnote.
+  // OFFICE walk-out 8m. Window opens at 07:30Z (60m before arrive-by 08:30Z).
+  // First dep 08:39 Berlin = 07:39Z → leave-by 07:31Z (inside window).
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = (origin) => {
+    if (origin.hafasStopId === HBF.hafasStopId) {
+      return Promise.resolve(
+        manyTransitCandidates(HBF, ALEX, "2025-11-10T08:39:00+01:00", 8),
+      );
+    }
+    return Promise.resolve([]);
+  };
+  const board = await assembleBoard(CONFIG, now, { fetchCandidates: stubFetch });
+  assertEquals(board.rows.length, 8);
+  // No clipping — clipSummary should be absent (or null) on the board.
+  assertEquals(board.clipSummary ?? null, null);
+});
+
+Deno.test("assembleBoard: cap=5 on 8 candidates → 5 rows + clipSummary count 3", async () => {
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = (origin) => {
+    if (origin.hafasStopId === HBF.hafasStopId) {
+      return Promise.resolve(
+        manyTransitCandidates(HBF, ALEX, "2025-11-10T08:39:00+01:00", 8),
+      );
+    }
+    return Promise.resolve([]);
+  };
+  const board = await assembleBoard(CONFIG, now, {
+    fetchCandidates: stubFetch,
+    hardRowCapOverride: 5,
+  });
+  assertEquals(board.rows.length, 5);
+  // First 5 leave-bys kept (sorted ascending). Drop count = 3.
+  const summary = board.clipSummary;
+  if (!summary) throw new Error("expected clipSummary");
+  assertEquals(summary.perIcon.length, 1);
+  assertEquals(summary.perIcon[0].icon, "A");
+  assertEquals(summary.perIcon[0].label, "Office");
+  assertEquals(summary.perIcon[0].count, 3);
+  // First two leave-bys of the *clipped tail* (rows 6 & 7 in 0-indexed) — the
+  // dropped tail starts at the 6th candidate. dep[5] = 08:44 Berlin = 07:44Z,
+  // walk-out 8m → leave-by 07:36Z. dep[6] = 08:45 Berlin → leave-by 07:37Z.
+  assertEquals(summary.perIcon[0].nextLeaveBys.length, 2);
+  assertEquals(summary.perIcon[0].nextLeaveBys[0].toISOString(), "2025-11-10T07:36:00.000Z");
+  assertEquals(summary.perIcon[0].nextLeaveBys[1].toISOString(), "2025-11-10T07:37:00.000Z");
+});
+
+Deno.test("assembleBoard: cap=1 on 8 candidates → 1 row + 7 dropped in summary", async () => {
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = (origin) => {
+    if (origin.hafasStopId === HBF.hafasStopId) {
+      return Promise.resolve(
+        manyTransitCandidates(HBF, ALEX, "2025-11-10T08:39:00+01:00", 8),
+      );
+    }
+    return Promise.resolve([]);
+  };
+  const board = await assembleBoard(CONFIG, now, {
+    fetchCandidates: stubFetch,
+    hardRowCapOverride: 1,
+  });
+  assertEquals(board.rows.length, 1);
+  const summary = board.clipSummary;
+  if (!summary) throw new Error("expected clipSummary");
+  assertEquals(summary.perIcon[0].count, 7);
+});
+
+Deno.test("assembleBoard: cap=0 → empty rows, summary covers everything dropped", async () => {
+  // Issue says "define behaviour" for cap=0. We pick: zero visible rows, the
+  // ClipSummary summarises all candidates that would have been rendered.
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = (origin) => {
+    if (origin.hafasStopId === HBF.hafasStopId) {
+      return Promise.resolve(
+        manyTransitCandidates(HBF, ALEX, "2025-11-10T08:39:00+01:00", 4),
+      );
+    }
+    return Promise.resolve([]);
+  };
+  const board = await assembleBoard(CONFIG, now, {
+    fetchCandidates: stubFetch,
+    hardRowCapOverride: 0,
+  });
+  assertEquals(board.rows.length, 0);
+  // emptyReason stays "none" when classifier produced rows that were clipped —
+  // the screen renders the footnote, not an empty frame.
+  assertEquals(board.emptyReason, "none");
+  const summary = board.clipSummary;
+  if (!summary) throw new Error("expected clipSummary even at cap=0");
+  assertEquals(summary.perIcon[0].count, 4);
+});
+
+Deno.test("assembleBoard: cap with mixed icons → footnote groups per icon, alphabetical", async () => {
+  // Two preferences, each contributing many candidates. With cap=2, only the
+  // first two leave-bys survive; everything else is grouped by icon (A vs B)
+  // in the ClipSummary, with entries ordered alphabetically by icon.
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = (origin) => {
+    if (origin.hafasStopId === HBF.hafasStopId) {
+      // OFFICE walk-out 8m, deps 08:40, 08:42, 08:44 Berlin → leave-bys
+      // 07:32Z, 07:34Z, 07:36Z. Three rows.
+      return Promise.resolve([
+        transitCandidateFor(HBF, ALEX, "2025-11-10T08:40:00+01:00", "2025-11-10T08:55:00+01:00"),
+        transitCandidateFor(HBF, ALEX, "2025-11-10T08:42:00+01:00", "2025-11-10T08:57:00+01:00"),
+        transitCandidateFor(HBF, ALEX, "2025-11-10T08:44:00+01:00", "2025-11-10T08:59:00+01:00"),
+      ]);
+    }
+    if (origin.hafasStopId === POTSDAMER.hafasStopId) {
+      // STUDIO walk-out 5m, deps 08:38, 08:41 Berlin → leave-bys 07:33Z, 07:36Z.
+      return Promise.resolve([
+        transitCandidateFor(
+          POTSDAMER,
+          ZOO,
+          "2025-11-10T08:38:00+01:00",
+          "2025-11-10T08:55:00+01:00",
+        ),
+        transitCandidateFor(
+          POTSDAMER,
+          ZOO,
+          "2025-11-10T08:41:00+01:00",
+          "2025-11-10T08:58:00+01:00",
+        ),
+      ]);
+    }
+    return Promise.resolve([]);
+  };
+  const board = await assembleBoard(
+    { preferences: [OFFICE, STUDIO] },
+    now,
+    { fetchCandidates: stubFetch, hardRowCapOverride: 2 },
+  );
+  assertEquals(board.rows.length, 2);
+  // Sort: 07:32 OFFICE, 07:33 STUDIO kept; clipped tail is
+  // 07:34 OFFICE, 07:36 OFFICE, 07:36 STUDIO.
+  const summary = board.clipSummary;
+  if (!summary) throw new Error("expected clipSummary");
+  assertEquals(summary.perIcon.length, 2);
+  // Alphabetical: A first, B second.
+  assertEquals(summary.perIcon[0].icon, "A");
+  assertEquals(summary.perIcon[0].count, 2);
+  assertEquals(summary.perIcon[1].icon, "B");
+  assertEquals(summary.perIcon[1].count, 1);
+});
+
+Deno.test("assembleBoard: collapseCancellations runs AFTER overflow — clipped strips don't inflate counts", async () => {
+  // 12 cancellations from same icon (OFFICE); cap=5 → 5 strips visible. The
+  // collapse pass folds those 5 into ONE strip with `count: 5`. Footnote
+  // shows 7 dropped — NOT 12 minus visible-collapsed-count, because clipping
+  // happens before collapse so the clipped strips are individual entries.
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = (origin) => {
+    if (origin.hafasStopId === HBF.hafasStopId) {
+      // 12 cancellations, deps 08:39…08:50 Berlin (1m apart) so all 12 fall
+      // inside the visibility window after walk-out 8m subtraction.
+      const candidates: Candidate[] = [];
+      const start = new Date("2025-11-10T08:39:00+01:00").getTime();
+      for (let i = 0; i < 12; i++) {
+        const dep = new Date(start + i * 60_000).toISOString();
+        candidates.push(cancelledCandidateFor(HBF, ALEX, dep));
+      }
+      return Promise.resolve(candidates);
+    }
+    return Promise.resolve([]);
+  };
+  const board = await assembleBoard(CONFIG, now, {
+    fetchCandidates: stubFetch,
+    hardRowCapOverride: 5,
+  });
+  // After overflow keeps 5 strips, collapse merges them into 1 with count: 5.
+  assertEquals(board.rows.length, 1);
+  const merged = board.rows[0];
+  if (merged.kind !== "cancellationStrip") throw new Error("expected strip");
+  assertEquals(merged.count, 5);
+  // Footnote: 7 strips were dropped (each is count: 1 from classifier output).
+  const summary = board.clipSummary;
+  if (!summary) throw new Error("expected clipSummary");
+  assertEquals(summary.perIcon[0].count, 7);
+});
+
 Deno.test("assembleBoard: nextAnchor picks the soonest across preferences", async () => {
   // OFFICE fires Mon 09:30; STUDIO fires Sat 14:00. On a Friday evening, the
   // soonest is STUDIO Saturday — even though OFFICE comes first in config.
