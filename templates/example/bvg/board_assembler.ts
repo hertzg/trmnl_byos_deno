@@ -140,8 +140,14 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
     async assembleBoard(config, now, options = {}): Promise<Board> {
       const fetchFn = options.fetchCandidates ?? defaults.fetchCandidates ?? defaultFetch;
 
-      // Step 1 — resolve every preference; collect the active subset.
-      const active: Array<{
+      // Step 1 — resolve every preference's next anchor and the window around
+      // it. A preference is *scheduled* iff `nextApplicableArriveBy` returned
+      // a future arrive-by; it is *active* iff its window has additionally
+      // opened relative to `now` (i.e. now >= opensAt). The two distinctions:
+      //   - scheduled-but-not-yet-open contributes a window for cadence
+      //     (so the screen ticks when the window opens) but no fetch / rows.
+      //   - scheduled-and-open is fetched and classified normally.
+      const scheduled: Array<{
         preference: Preference;
         tunables: ResolvedTunables;
         arriveByDate: Date;
@@ -151,15 +157,16 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
         const resolution = nextApplicableArriveBy(preference.schedule, preference, now);
         if (!resolution) continue;
         const tunables = resolveTunables(preference, resolution.applicableRule);
-        active.push({
+        scheduled.push({
           preference,
           tunables,
           arriveByDate: resolution.arriveByDate,
           window: makeVisibilityWindow(tunables, resolution.arriveByDate),
         });
       }
+      const active = scheduled.filter((s) => s.window.opensAt.getTime() <= now.getTime());
 
-      // Step 2 — fetch all active preferences in parallel.
+      // Step 2 — fetch only currently-open preferences in parallel.
       const fetched = await Promise.all(
         active.map((a) => fetchFn(a.preference.origin, a.preference.destination, a.arriveByDate)),
       );
@@ -220,7 +227,10 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
         rows: collapsedRows,
         emptyReason,
         fetchedAt: now,
-        windows: active.map((a) => a.window),
+        // All scheduled windows feed the cadence so the screen ticks at every
+        // upcoming `opensAt` (not just `closesAt`) — this is what re-activates
+        // a preference that wasn't yet open at the previous render.
+        windows: scheduled.map((s) => s.window),
       };
 
       if (clipSummary) board.clipSummary = clipSummary;

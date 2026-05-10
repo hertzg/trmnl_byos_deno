@@ -58,7 +58,7 @@ function transitCandidate(departureIso: string, arrivalIso: string): Candidate {
 
 Deno.test("assembleBoard runs the pipeline and sorts rows by leave-by ascending", async () => {
   // 2025-11-10 (Monday). Now = 07:00 Berlin = 06:00Z. Schedule fires today 09:30.
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
 
   // Candidates returned by the stubbed fetcher — deliberately unsorted.
   const stubFetch: FetchCandidates = (origin, destination, arriveByDate) => {
@@ -82,7 +82,7 @@ Deno.test("assembleBoard runs the pipeline and sorts rows by leave-by ascending"
 
 Deno.test("assembleBoard returns noScheduleApplicable empty when no preferences active", async () => {
   // Empty config → no active preferences.
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = () => Promise.resolve([]);
   const board = await assembleBoard({ preferences: [] }, now, {
     fetchCandidates: stubFetch,
@@ -146,7 +146,7 @@ function transitCandidateFor(
 }
 
 Deno.test("assembleBoard interleaves rows from two preferences sorted by leave-by", async () => {
-  const now = new Date("2025-11-10T06:00:00Z"); // Monday 07:00 Berlin
+  const now = new Date("2025-11-10T07:30:00Z"); // Monday 07:00 Berlin
 
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
@@ -206,7 +206,7 @@ Deno.test("assembleBoard stable sort: identical leave-by ties preserve fetch ord
   // instants. The first preference in the config (`OFFICE`) must appear before
   // `STUDIO` in the output for any tie. Within one preference, the fetcher's
   // returned order must also be preserved on ties.
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
 
   // OFFICE walk-out is 8m, STUDIO walk-out is 5m. To produce identical leave-by
   // (07:40Z = 08:40 Berlin), OFFICE dep = 08:48 Berlin, STUDIO dep = 08:45 Berlin.
@@ -271,7 +271,7 @@ Deno.test("assembleBoard fetches preferences in parallel, not sequentially", asy
   // Each stubbed fetch waits FETCH_MS. With sequential fetching, total time
   // would be ≥ 2 × FETCH_MS. With parallel fetching, total ≈ 1 × FETCH_MS.
   // We assert the parallel bound with a generous slack to avoid flakes.
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const FETCH_MS = 50;
 
   const stubFetch: FetchCandidates = async (origin) => {
@@ -316,7 +316,7 @@ Deno.test("assembleBoard tolerates a single preference's FeedError; others rende
   // should render STUDIO's row and contribute zero rows from OFFICE. The
   // empty-state branching on partial failure is out-of-scope for this slice
   // (slice 9), so emptyReason stays "none" as long as some rows exist.
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
 
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
@@ -500,7 +500,7 @@ function cancelledCandidateFor(
 }
 
 Deno.test("assembleBoard collapses two adjacent same-icon strips into count: 2", async () => {
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
       return Promise.resolve([
@@ -523,7 +523,7 @@ Deno.test("assembleBoard collapses two adjacent same-icon strips into count: 2",
 });
 
 Deno.test("assembleBoard collapses three adjacent same-icon strips into count: 3", async () => {
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
       return Promise.resolve([
@@ -545,7 +545,7 @@ Deno.test("assembleBoard does NOT collapse strips from different icons next to e
   // OFFICE icon=A and STUDIO icon=B both produce a single cancelled candidate.
   // Sorted, the two strips are adjacent but have different `preferenceIcon` —
   // they must remain two separate strips.
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
       // OFFICE: walk-out 8m, dep 08:50 Berlin → leave-by 07:42Z.
@@ -577,7 +577,7 @@ Deno.test("assembleBoard: a Row between two same-icon strips prevents collapse",
   // Two cancelled OFFICE journeys with a healthy STUDIO row sorted between
   // them by leave-by. Even though the OFFICE strips share an icon, the STUDIO
   // row breaks adjacency → no merge.
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
       // OFFICE walk-out 8m: dep 08:50 → 07:42Z; dep 08:58 → 07:50Z.
@@ -620,7 +620,7 @@ Deno.test("assembleBoard: all active fetches fail → emptyReason feedUnreachabl
   // an upstream fetch failure, the empty state must read as feedUnreachable —
   // not noScheduleApplicable (which would falsely imply the schedule is
   // quiet rather than the network being broken).
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = () =>
     Promise.resolve({ kind: "feed-error", message: "stub" } as const);
   const board = await assembleBoard(CONFIG, now, { fetchCandidates: stubFetch });
@@ -633,7 +633,7 @@ Deno.test("createBoardAssembler: all-feed-error board carries lastSuccessfulFetc
   // must be explicitly null so EmptyFrame can render "0 m old". Uses the
   // factory variant for cache isolation (the free-function `assembleBoard`
   // shares a process-wide cache that other tests warm up).
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = () =>
     Promise.resolve({ kind: "feed-error", message: "stub" } as const);
   const assembler = createBoardAssembler({ fetchCandidates: stubFetch });
@@ -644,8 +644,8 @@ Deno.test("createBoardAssembler: all-feed-error board carries lastSuccessfulFetc
 Deno.test("createBoardAssembler caches lastSuccessfulFetchAt across calls", async () => {
   // First call succeeds → cache is set to that `now`.
   // Second call (later) all-fails → board carries the FIRST call's instant.
-  const firstNow = new Date("2025-11-10T06:00:00Z");
-  const secondNow = new Date("2025-11-10T06:05:00Z");
+  const firstNow = new Date("2025-11-10T07:30:00Z");
+  const secondNow = new Date("2025-11-10T07:35:00Z");
 
   const okFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
@@ -718,7 +718,7 @@ Deno.test("assembleBoard: cap matches row count exactly → no clip summary", as
   // 8 visible rows; default cap is 10 → all kept, no footnote.
   // OFFICE walk-out 8m. Window opens at 07:30Z (60m before arrive-by 08:30Z).
   // First dep 08:39 Berlin = 07:39Z → leave-by 07:31Z (inside window).
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
       return Promise.resolve(
@@ -734,7 +734,7 @@ Deno.test("assembleBoard: cap matches row count exactly → no clip summary", as
 });
 
 Deno.test("assembleBoard: cap=5 on 8 candidates → 5 rows + clipSummary count 3", async () => {
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
       return Promise.resolve(
@@ -764,7 +764,7 @@ Deno.test("assembleBoard: cap=5 on 8 candidates → 5 rows + clipSummary count 3
 });
 
 Deno.test("assembleBoard: cap=1 on 8 candidates → 1 row + 7 dropped in summary", async () => {
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
       return Promise.resolve(
@@ -786,7 +786,7 @@ Deno.test("assembleBoard: cap=1 on 8 candidates → 1 row + 7 dropped in summary
 Deno.test("assembleBoard: cap=0 → empty rows, summary covers everything dropped", async () => {
   // Issue says "define behaviour" for cap=0. We pick: zero visible rows, the
   // ClipSummary summarises all candidates that would have been rendered.
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
       return Promise.resolve(
@@ -812,7 +812,7 @@ Deno.test("assembleBoard: cap with mixed icons → footnote groups per icon, alp
   // Two preferences, each contributing many candidates. With cap=2, only the
   // first two leave-bys survive; everything else is grouped by icon (A vs B)
   // in the ClipSummary, with entries ordered alphabetically by icon.
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
       // OFFICE walk-out 8m, deps 08:40, 08:42, 08:44 Berlin → leave-bys
@@ -865,7 +865,7 @@ Deno.test("assembleBoard: collapseCancellations runs AFTER overflow — clipped 
   // collapse pass folds those 5 into ONE strip with `count: 5`. Footnote
   // shows 7 dropped — NOT 12 minus visible-collapsed-count, because clipping
   // happens before collapse so the clipped strips are individual entries.
-  const now = new Date("2025-11-10T06:00:00Z");
+  const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
     if (origin.hafasStopId === HBF.hafasStopId) {
       // 12 cancellations, deps 08:39…08:50 Berlin (1m apart) so all 12 fall
