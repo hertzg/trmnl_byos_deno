@@ -14,7 +14,7 @@ import {
   type FetchCandidates,
   fetchCandidates as defaultFetch,
 } from "./journey_client.ts";
-import { classify, type Row } from "./journey_classifier.ts";
+import { type BoardRow, classify } from "./journey_classifier.ts";
 import {
   DEFAULTS,
   type ResolvedTunables,
@@ -53,7 +53,7 @@ export function makeVisibilityWindow(
 export type EmptyReason = "none" | "noScheduleApplicable" | "feedUnreachable";
 
 export type Board = {
-  rows: readonly Row[];
+  rows: readonly BoardRow[];
   emptyReason: EmptyReason;
   // Source-of-truth instant the board was assembled at. Used for the title
   // bar's "fetched at" stamp and for cadence math.
@@ -103,7 +103,7 @@ export async function assembleBoard(
   // Step 3 — classify each preference's results independently. A `FeedError`
   // contributes zero rows but does not abort the others. (Slice 9 will branch
   // the empty-state on partial failure; this slice just tolerates it.)
-  const rows: Row[] = [];
+  const rows: BoardRow[] = [];
   for (let i = 0; i < active.length; i++) {
     const result = fetched[i];
     if (!Array.isArray(result)) continue;
@@ -119,12 +119,43 @@ export async function assembleBoard(
   // (which preserves fetch order, which preserves config order).
   rows.sort((a, b) => a.leaveByDate.getTime() - b.leaveByDate.getTime());
 
+  // Step 5 — collapse runs of consecutive `CancellationStrip`s with the same
+  // `preferenceIcon` into a single strip whose `count` is the sum of the run.
+  // Sort placement is preserved by keeping the earliest `leaveByDate` of the
+  // group. A `Row` (or a strip with a different icon) between two strips
+  // breaks adjacency and prevents the merge.
+  const collapsedRows = collapseCancellations(rows);
+
   return {
-    rows,
+    rows: collapsedRows,
     emptyReason: rows.length > 0 ? "none" : "noScheduleApplicable",
     fetchedAt: now,
     windows: active.map((a) => a.window),
   };
+}
+
+// Walk a sorted `BoardRow[]` and fold consecutive `CancellationStrip` entries
+// that share `preferenceIcon` into one. The merged strip keeps the EARLIEST
+// `leaveByDate` of the group (so it occupies the slot the first cancelled
+// journey would have held) and sums `count`. Anything else (a `Row`, or a
+// strip with a different icon) terminates the run.
+function collapseCancellations(rows: readonly BoardRow[]): BoardRow[] {
+  const out: BoardRow[] = [];
+  for (const row of rows) {
+    const last = out[out.length - 1];
+    if (
+      row.kind === "cancellationStrip" &&
+      last &&
+      last.kind === "cancellationStrip" &&
+      last.preferenceIcon === row.preferenceIcon
+    ) {
+      // Merge into the previous strip — leaveByDate already earliest by sort.
+      out[out.length - 1] = { ...last, count: last.count + row.count };
+      continue;
+    }
+    out.push(row);
+  }
+  return out;
 }
 
 // `validForSeconds` shape (slice 3) — head-row tick + window-edge ticks +

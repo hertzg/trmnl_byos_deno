@@ -1,9 +1,20 @@
 import { assertEquals } from "@std/assert";
 import type { VisibilityWindow } from "./board_assembler.ts";
-import { classify } from "./journey_classifier.ts";
+import { type BoardRow, classify, type Row } from "./journey_classifier.ts";
 import type { Candidate, Leg } from "./journey_client.ts";
 import type { Preference, ResolvedTunables } from "./preference.ts";
 import { resolveTunables } from "./preference.ts";
+
+// Test helper: assert classifier returned a `Row` (not a `CancellationStrip`)
+// and narrow the type for the rest of the test body. Throws if the result is
+// null or a strip, so tests can keep accessing `row.alerts`/`row.legs`/etc.
+function assertRow(result: BoardRow | null): Row {
+  if (!result) throw new Error("expected a row, got null");
+  if (result.kind !== "row") {
+    throw new Error(`expected kind=row, got kind=${result.kind}`);
+  }
+  return result;
+}
 
 const HBF = {
   hafasStopId: "900003201",
@@ -54,9 +65,7 @@ const SINGLE_TRANSIT_CANDIDATE: Candidate = {
 Deno.test("classify produces a Row with leave-by, arrive-by and stop labels", () => {
   const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
   const now = new Date("2025-11-10T07:30:00+01:00");
-  const row = classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row");
-  assertEquals(row.kind, "row");
+  const row = assertRow(classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now));
   // Leave-by = first-leg departure − origin.walkingMinutes (8).
   assertEquals(row.leaveByDate.toISOString(), "2025-11-10T06:52:00.000Z");
   // Arrive-by = last-leg arrival + destination.walkingMinutes (4).
@@ -74,8 +83,7 @@ Deno.test("classify produces a Row with leave-by, arrive-by and stop labels", ()
 Deno.test("classify: clean candidate has no alerts and plannedLeaveByDate == leaveByDate", () => {
   const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
   const now = new Date("2025-11-10T07:30:00+01:00");
-  const row = classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row");
+  const row = assertRow(classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now));
   assertEquals(row.alerts, []);
   assertEquals(row.plannedLeaveByDate.getTime(), row.leaveByDate.getTime());
 });
@@ -117,8 +125,7 @@ Deno.test("classify: effective leave-by shifts by delay when hasRealtime=true", 
   const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
   const now = new Date("2025-11-10T07:30:00+01:00");
   const candidate = transitCandidateWithRealtime({ delaySeconds: 240, hasRealtime: true });
-  const row = classify(candidate, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row");
+  const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   // Planned: 08:00 − 8min walk = 07:52 Berlin = 06:52Z.
   assertEquals(row.plannedLeaveByDate.toISOString(), "2025-11-10T06:52:00.000Z");
   // Effective: 08:00 + 4min delay − 8min walk = 07:56 Berlin = 06:56Z.
@@ -129,8 +136,7 @@ Deno.test("classify: hasRealtime=true but delaySeconds=0 → no shift, no alert"
   const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
   const now = new Date("2025-11-10T07:30:00+01:00");
   const candidate = transitCandidateWithRealtime({ delaySeconds: 0, hasRealtime: true });
-  const row = classify(candidate, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row");
+  const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   assertEquals(row.leaveByDate.getTime(), row.plannedLeaveByDate.getTime());
   assertEquals(row.alerts, []);
 });
@@ -141,8 +147,7 @@ Deno.test("classify: hasRealtime=false leaves leave-by unshifted even if delaySe
   // Defensive: a buggy upstream could send delaySeconds without flagging
   // realtime. Without the live-data signal we trust the schedule.
   const candidate = transitCandidateWithRealtime({ delaySeconds: 600, hasRealtime: false });
-  const row = classify(candidate, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row");
+  const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   assertEquals(row.leaveByDate.getTime(), row.plannedLeaveByDate.getTime());
 });
 
@@ -150,8 +155,7 @@ Deno.test("classify: delay >= 60s emits a +Nm delay alert (rounded down to whole
   const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
   const now = new Date("2025-11-10T07:30:00+01:00");
   const candidate = transitCandidateWithRealtime({ delaySeconds: 240, hasRealtime: true });
-  const row = classify(candidate, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row");
+  const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   assertEquals(row.alerts.length, 1);
   assertEquals(row.alerts[0].kind, "delay");
   assertEquals(row.alerts[0].text, "+4m delay");
@@ -161,12 +165,11 @@ Deno.test("classify: delay < 60s does NOT emit a delay alert", () => {
   const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
   const now = new Date("2025-11-10T07:30:00+01:00");
   const candidate = transitCandidateWithRealtime({ delaySeconds: 45, hasRealtime: true });
-  const row = classify(candidate, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row");
+  const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   assertEquals(row.alerts, []);
 });
 
-Deno.test("classify: cancelled leg STILL produces a Row in slice 6 (slice 7 routes cancellations)", () => {
+Deno.test("classify: cancellation on first (only) leg → CancellationStrip, not Row", () => {
   const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
   const now = new Date("2025-11-10T07:30:00+01:00");
   const candidate = transitCandidateWithRealtime({
@@ -174,11 +177,114 @@ Deno.test("classify: cancelled leg STILL produces a Row in slice 6 (slice 7 rout
     cancelled: true,
     hasRealtime: true,
   });
-  const row = classify(candidate, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row, not null");
-  assertEquals(row.kind, "row");
-  // No "cancelled" alert — that's slice 7's CancellationStrip work.
-  assertEquals(row.alerts.filter((a) => a.text.includes("cancel")), []);
+  const result = classify(candidate, WEEKDAY_OFFICE, tunables, now);
+  if (!result) throw new Error("expected a result, got null");
+  assertEquals(result.kind, "cancellationStrip");
+  if (result.kind !== "cancellationStrip") return; // narrow
+  // Strip carries the would-be effective leave-by for sort placement.
+  // Effective leave-by: 08:00 Berlin − 8min walk = 07:52 Berlin = 06:52Z.
+  assertEquals(result.leaveByDate.toISOString(), "2025-11-10T06:52:00.000Z");
+  assertEquals(result.preferenceKey, "weekday-office");
+  assertEquals(result.preferenceLabel, "Office");
+  assertEquals(result.preferenceIcon, "A");
+  assertEquals(result.count, 1);
+});
+
+// Build a multi-transit candidate, with `cancelled` flag set on a chosen leg
+// position. Used by the slice 7 cancellation routing tests.
+function multiTransitWithCancellationOn(position: "first" | "middle" | "last"): Candidate {
+  const legs: Leg[] = [
+    {
+      kind: "transit",
+      origin: { hafasStopId: "a", displayName: "A" },
+      destination: { hafasStopId: "b", displayName: "B" },
+      departure: new Date("2025-11-10T08:00:00+01:00"),
+      arrival: new Date("2025-11-10T08:05:00+01:00"),
+      line: { name: "S5", product: "suburban" },
+      direction: "x",
+      realtime: { delaySeconds: 0, cancelled: false, hasRealtime: true, remarks: [] },
+    },
+    {
+      kind: "transit",
+      origin: { hafasStopId: "b", displayName: "B" },
+      destination: { hafasStopId: "c", displayName: "C" },
+      departure: new Date("2025-11-10T08:08:00+01:00"),
+      arrival: new Date("2025-11-10T08:12:00+01:00"),
+      line: { name: "U2", product: "subway" },
+      direction: "y",
+      realtime: { delaySeconds: 0, cancelled: false, hasRealtime: true, remarks: [] },
+    },
+    {
+      kind: "transit",
+      origin: { hafasStopId: "c", displayName: "C" },
+      destination: { hafasStopId: "d", displayName: "D" },
+      departure: new Date("2025-11-10T08:14:00+01:00"),
+      arrival: new Date("2025-11-10T08:18:00+01:00"),
+      line: { name: "BUS", product: "bus" },
+      direction: "z",
+      realtime: { delaySeconds: 0, cancelled: false, hasRealtime: true, remarks: [] },
+    },
+  ];
+  const idx = position === "first" ? 0 : position === "middle" ? 1 : 2;
+  legs[idx] = {
+    ...legs[idx],
+    realtime: { ...legs[idx].realtime, cancelled: true },
+  } as Leg;
+  return { legs, departure: legs[0].departure, arrival: legs[2].arrival };
+}
+
+Deno.test("classify: cancellation on last leg → CancellationStrip", () => {
+  const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+  const now = new Date("2025-11-10T07:30:00+01:00");
+  const result = classify(
+    multiTransitWithCancellationOn("last"),
+    WEEKDAY_OFFICE,
+    tunables,
+    now,
+  );
+  if (!result) throw new Error("expected a result");
+  assertEquals(result.kind, "cancellationStrip");
+});
+
+Deno.test("classify: cancellation on middle leg → CancellationStrip", () => {
+  const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+  const now = new Date("2025-11-10T07:30:00+01:00");
+  const result = classify(
+    multiTransitWithCancellationOn("middle"),
+    WEEKDAY_OFFICE,
+    tunables,
+    now,
+  );
+  if (!result) throw new Error("expected a result");
+  assertEquals(result.kind, "cancellationStrip");
+});
+
+Deno.test("classify: cancelled candidate outside window is dropped (window check still applies)", () => {
+  const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+  const now = new Date("2025-11-10T06:00:00Z");
+  const candidate = transitCandidateWithRealtime({
+    delaySeconds: 0,
+    cancelled: true,
+    hasRealtime: true,
+  });
+  // Effective leave-by 06:52Z; window opens AFTER it → dropped.
+  const window: VisibilityWindow = {
+    opensAt: new Date("2025-11-10T06:53:00Z"),
+    closesAt: new Date("2025-11-10T09:00:00Z"),
+    arriveByDate: new Date("2025-11-10T08:30:00Z"),
+  };
+  const result = classify(candidate, WEEKDAY_OFFICE, tunables, now, window);
+  assertEquals(result, null);
+});
+
+Deno.test("classify: cancelled candidate hitting an excluded line is dropped", () => {
+  // Cancelled BUS leg AND BUS is in the deny-list → exclusion wins, dropped
+  // entirely. The exclusion check runs before cancellation routing.
+  const tunables = tunablesWith(["BUS"]);
+  const now = new Date("2025-11-10T07:30:00+01:00");
+  const cand = multiTransitWithCancellationOn("last"); // last leg = BUS, cancelled
+  const result = classify(cand, WEEKDAY_OFFICE, tunables, now);
+  assertEquals(result, null);
 });
 
 Deno.test("classify: surfaceable remark (severity=warning) becomes a remark alert", () => {
@@ -189,8 +295,7 @@ Deno.test("classify: surfaceable remark (severity=warning) becomes a remark aler
     hasRealtime: true,
     remarks: [{ text: "U2 lift OOS at Alex", severity: "warning" }],
   });
-  const row = classify(candidate, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row");
+  const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   assertEquals(row.alerts.length, 1);
   assertEquals(row.alerts[0].kind, "remark");
   assertEquals(row.alerts[0].text, "U2 lift OOS at Alex");
@@ -204,8 +309,7 @@ Deno.test("classify: non-surfaceable remark (severity=hint) is filtered out", ()
     hasRealtime: true,
     remarks: [{ text: "Wagon 1 has limited mobility access", severity: "hint" }],
   });
-  const row = classify(candidate, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row");
+  const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   assertEquals(row.alerts, []);
 });
 
@@ -218,8 +322,7 @@ Deno.test("classify: long remark text is truncated", () => {
     hasRealtime: true,
     remarks: [{ text: longText, severity: "warning" }],
   });
-  const row = classify(candidate, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row");
+  const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   assertEquals(row.alerts.length, 1);
   // Truncation cap is 60 chars including ellipsis; total length stays bounded.
   if (row.alerts[0].text.length > 60) {
@@ -257,8 +360,7 @@ Deno.test("classify: max delay across legs wins for the single delay alert", () 
     departure: new Date("2025-11-10T08:00:00+01:00"),
     arrival: new Date("2025-11-10T08:14:00+01:00"),
   };
-  const row = classify(candidate, WEEKDAY_OFFICE, tunables, now);
-  if (!row) throw new Error("expected a row");
+  const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   const delayAlerts = row.alerts.filter((a) => a.kind === "delay");
   assertEquals(delayAlerts.length, 1);
   assertEquals(delayAlerts[0].text, "+5m delay");

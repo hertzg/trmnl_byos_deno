@@ -3,7 +3,7 @@ import { assertStringIncludes } from "@std/assert";
 import { renderToString } from "hono/jsx/dom/server";
 import Board from "./Board.tsx";
 import type { Board as BoardData } from "./board_assembler.ts";
-import type { Row } from "./journey_classifier.ts";
+import type { CancellationStrip, Row } from "./journey_classifier.ts";
 
 const ROW: Row = {
   kind: "row",
@@ -43,6 +43,30 @@ Deno.test("Board renders head and the row list", () => {
   // Row content surfaces.
   assertStringIncludes(html, "S5");
   assertStringIncludes(html, "08:52");
+});
+
+Deno.test("Board renders both Row and CancellationStrip kinds, narrowing on `kind`", () => {
+  const strip: CancellationStrip = {
+    kind: "cancellationStrip",
+    leaveByDate: new Date("2025-11-10T07:55:00Z"),
+    preferenceKey: "office",
+    preferenceLabel: "Office",
+    preferenceIcon: "A",
+    count: 2,
+  };
+  const board: BoardData = {
+    rows: [ROW, strip],
+    emptyReason: "none",
+    fetchedAt: new Date("2025-11-10T07:00:00Z"),
+    windows: [],
+  };
+  // deno-lint-ignore no-explicit-any
+  const html = renderToString(<Board board={board} /> as any);
+  // Row content surfaces.
+  assertStringIncludes(html, "S5");
+  // Strip content surfaces with the pluralised caption.
+  assertStringIncludes(html, "2 journeys cancelled");
+  assertStringIncludes(html, "cancel-strip");
 });
 
 Deno.test("Board renders empty frame when no rows", () => {

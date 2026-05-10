@@ -258,8 +258,10 @@ Deno.test("assembleBoard stable sort: identical leave-by ties preserve fetch ord
   assertEquals(board.rows[2].leaveByDate.toISOString(), "2025-11-10T07:40:00.000Z");
   // Stable order: OFFICE rows first (config order), in fetcher order; STUDIO last.
   assertEquals(board.rows[0].preferenceKey, "office");
+  if (board.rows[0].kind !== "row") throw new Error("expected row");
   assertEquals((board.rows[0].legs[0] as { line: { name: string } }).line.name, "S5");
   assertEquals(board.rows[1].preferenceKey, "office");
+  if (board.rows[1].kind !== "row") throw new Error("expected row");
   assertEquals((board.rows[1].legs[0] as { line: { name: string } }).line.name, "S7");
   assertEquals(board.rows[2].preferenceKey, "studio");
 });
@@ -424,4 +426,147 @@ Deno.test("boardValidForSeconds picks the smallest of head-row, window edges, ce
   // Realtime ceiling is 90s, untilHead is 605s, untilOpens is 200s.
   // min(90, 605, 200) = 90, max(30, 90) = 90.
   assertEquals(boardValidForSeconds(board, now), 90);
+});
+
+// ─── slice 7: cancellation strips + collapse ────────────────────────────────
+
+// Build a one-leg cancelled candidate at the given Berlin departure time, for
+// the given preference's origin/destination.
+function cancelledCandidateFor(
+  origin: { hafasStopId: string; displayName: string },
+  destination: { hafasStopId: string; displayName: string },
+  departureBerlin: string,
+): Candidate {
+  const departure = new Date(departureBerlin);
+  const arrival = new Date(departure.getTime() + 12 * 60_000);
+  return {
+    legs: [
+      {
+        kind: "transit",
+        origin,
+        destination,
+        departure,
+        arrival,
+        line: { name: "S5", product: "suburban" },
+        direction: "Strausberg",
+        realtime: { delaySeconds: 0, cancelled: true, hasRealtime: true, remarks: [] },
+      },
+    ],
+    departure,
+    arrival,
+  };
+}
+
+Deno.test("assembleBoard collapses two adjacent same-icon strips into count: 2", async () => {
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = (origin) => {
+    if (origin.hafasStopId === HBF.hafasStopId) {
+      return Promise.resolve([
+        cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00"),
+        cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:55:00+01:00"),
+      ]);
+    }
+    return Promise.resolve([]);
+  };
+  const board = await assembleBoard(CONFIG, now, { fetchCandidates: stubFetch });
+  assertEquals(board.rows.length, 1);
+  const merged = board.rows[0];
+  assertEquals(merged.kind, "cancellationStrip");
+  if (merged.kind !== "cancellationStrip") return;
+  assertEquals(merged.count, 2);
+  assertEquals(merged.preferenceIcon, "A");
+  // Earliest leave-by of the group is preserved for sort placement.
+  // dep 08:50 Berlin − 8m walk = 08:42 Berlin = 07:42Z.
+  assertEquals(merged.leaveByDate.toISOString(), "2025-11-10T07:42:00.000Z");
+});
+
+Deno.test("assembleBoard collapses three adjacent same-icon strips into count: 3", async () => {
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = (origin) => {
+    if (origin.hafasStopId === HBF.hafasStopId) {
+      return Promise.resolve([
+        cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00"),
+        cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:55:00+01:00"),
+        cancelledCandidateFor(HBF, ALEX, "2025-11-10T09:00:00+01:00"),
+      ]);
+    }
+    return Promise.resolve([]);
+  };
+  const board = await assembleBoard(CONFIG, now, { fetchCandidates: stubFetch });
+  assertEquals(board.rows.length, 1);
+  const merged = board.rows[0];
+  if (merged.kind !== "cancellationStrip") throw new Error("expected strip");
+  assertEquals(merged.count, 3);
+});
+
+Deno.test("assembleBoard does NOT collapse strips from different icons next to each other", async () => {
+  // OFFICE icon=A and STUDIO icon=B both produce a single cancelled candidate.
+  // Sorted, the two strips are adjacent but have different `preferenceIcon` —
+  // they must remain two separate strips.
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = (origin) => {
+    if (origin.hafasStopId === HBF.hafasStopId) {
+      // OFFICE: walk-out 8m, dep 08:50 Berlin → leave-by 07:42Z.
+      return Promise.resolve([
+        cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00"),
+      ]);
+    }
+    if (origin.hafasStopId === POTSDAMER.hafasStopId) {
+      // STUDIO: walk-out 5m, dep 08:50 Berlin → leave-by 07:45Z (next after OFFICE).
+      return Promise.resolve([
+        cancelledCandidateFor(POTSDAMER, ZOO, "2025-11-10T08:50:00+01:00"),
+      ]);
+    }
+    return Promise.resolve([]);
+  };
+  const board = await assembleBoard(
+    { preferences: [OFFICE, STUDIO] },
+    now,
+    { fetchCandidates: stubFetch },
+  );
+  assertEquals(board.rows.length, 2);
+  assertEquals(board.rows[0].kind, "cancellationStrip");
+  assertEquals(board.rows[1].kind, "cancellationStrip");
+  assertEquals(board.rows[0].preferenceIcon, "A");
+  assertEquals(board.rows[1].preferenceIcon, "B");
+});
+
+Deno.test("assembleBoard: a Row between two same-icon strips prevents collapse", async () => {
+  // Two cancelled OFFICE journeys with a healthy STUDIO row sorted between
+  // them by leave-by. Even though the OFFICE strips share an icon, the STUDIO
+  // row breaks adjacency → no merge.
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = (origin) => {
+    if (origin.hafasStopId === HBF.hafasStopId) {
+      // OFFICE walk-out 8m: dep 08:50 → 07:42Z; dep 08:58 → 07:50Z.
+      return Promise.resolve([
+        cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00"),
+        cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:58:00+01:00"),
+      ]);
+    }
+    if (origin.hafasStopId === POTSDAMER.hafasStopId) {
+      // STUDIO walk-out 5m: dep 08:50 Berlin → leave-by 07:45Z (between the
+      // two OFFICE strips).
+      return Promise.resolve([
+        transitCandidateFor(
+          POTSDAMER,
+          ZOO,
+          "2025-11-10T08:50:00+01:00",
+          "2025-11-10T09:05:00+01:00",
+        ),
+      ]);
+    }
+    return Promise.resolve([]);
+  };
+  const board = await assembleBoard(
+    { preferences: [OFFICE, STUDIO] },
+    now,
+    { fetchCandidates: stubFetch },
+  );
+  // Three entries: strip(A) → row(STUDIO) → strip(A). The middle row prevents
+  // the merge.
+  assertEquals(board.rows.length, 3);
+  assertEquals(board.rows[0].kind, "cancellationStrip");
+  assertEquals(board.rows[1].kind, "row");
+  assertEquals(board.rows[2].kind, "cancellationStrip");
 });

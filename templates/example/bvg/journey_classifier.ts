@@ -46,9 +46,24 @@ export type Row = {
   alerts: readonly Alert[];
 };
 
+// A thin "this preference's journey is cancelled" entry. Replaces a `Row` when
+// any leg of the candidate has `realtime.cancelled === true`. Sorted into the
+// row list by `leaveByDate` (the would-be effective leave-by) so the strip
+// keeps the sort slot the cancelled journey would have occupied. The collapse
+// pass in `BoardAssembler` folds runs of consecutive same-icon strips into a
+// single entry by incrementing `count`.
+export type CancellationStrip = {
+  kind: "cancellationStrip";
+  leaveByDate: Date;
+  preferenceKey: string;
+  preferenceLabel: string;
+  preferenceIcon: string;
+  count: number;
+};
+
 // `BoardRow` is the union of all row-shaped things. Slice 1 only emits `Row`;
-// `CancellationStrip` arrives in slice 7.
-export type BoardRow = Row;
+// slice 7 adds `CancellationStrip`.
+export type BoardRow = Row | CancellationStrip;
 
 export function classify(
   candidate: Candidate,
@@ -109,6 +124,23 @@ export function classify(
   // passed is no longer actionable. Slice 8 widens this to allow a small grace
   // window (`imminentDepartureGraceMinutes`); for now strict `< now`.
   if (leaveByDate.getTime() < now.getTime()) return null;
+
+  // Cancellation routing (slice 7). If any leg flags realtime cancellation,
+  // emit a thin `CancellationStrip` instead of a full `Row`. The strip carries
+  // the would-be effective leave-by for sort placement; the assembler's
+  // collapse pass folds consecutive same-icon strips into a count.
+  for (const leg of candidate.legs) {
+    if (leg.realtime.cancelled) {
+      return {
+        kind: "cancellationStrip",
+        leaveByDate,
+        preferenceKey: activePreference.preferenceKey,
+        preferenceLabel: activePreference.rowLabel,
+        preferenceIcon: activePreference.rowIcon,
+        count: 1,
+      };
+    }
+  }
 
   const alerts = buildAlerts(candidate.legs);
 
