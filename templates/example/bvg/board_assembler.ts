@@ -177,8 +177,20 @@ export function boardValidForSeconds(board: Board, now: Date = new Date()): numb
   if (head) {
     // +5s slack absorbs the cycle's render/dispatch latency so the screen
     // re-renders just *after* the head row's leave-by passes, not just before.
+    // Only added when positive — for imminent rows (leave-by already past) the
+    // grace-expiry tick below carries the meaningful schedule instead.
     const untilHead = Math.floor((head.leaveByDate.getTime() - now.getTime()) / 1000) + 5;
-    candidates.push(untilHead);
+    if (untilHead > 0) candidates.push(untilHead);
+  }
+
+  // Imminent-grace expiry ticks (slice 8): for every visible Row, schedule a
+  // re-render at `leaveBy + graceMinutes` so the row drops the moment its
+  // grace window closes. Cancellation strips have no grace concept. Positive
+  // only — past expiries belong to rows that should already have been dropped.
+  for (const row of board.rows) {
+    if (row.kind !== "row") continue;
+    const untilGrace = Math.floor((row.graceExpiresAt.getTime() - now.getTime()) / 1000);
+    if (untilGrace > 0) candidates.push(untilGrace);
   }
 
   // Window-edge ticks: every positive `opensAt − now` and `closesAt − now`

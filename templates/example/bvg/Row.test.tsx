@@ -30,6 +30,8 @@ const ROW: RowData = {
     },
   ],
   alerts: [],
+  imminence: "future",
+  graceExpiresAt: new Date("2025-11-10T07:57:00Z"),
 };
 
 Deno.test("Row renders icon, leave-by, captions, pictogram, arrive-by, duration", () => {
@@ -64,6 +66,21 @@ Deno.test("Row: renders ⚠ pills for each alert under leave-by", () => {
   assertStringIncludes(html, "⚠");
   assertStringIncludes(html, "+4m delay");
   assertStringIncludes(html, "U2 lift OOS at Alex");
+});
+
+Deno.test("Row: imminence=future does NOT render row--leave-now class or stamp", () => {
+  // deno-lint-ignore no-explicit-any
+  const html = renderToString(<Row row={ROW} /> as any);
+  assertEquals(html.includes("row--leave-now"), false);
+  assertEquals(html.includes("leave now"), false);
+});
+
+Deno.test("Row: imminence=leave-now renders row--leave-now class + 'leave now' stamp", () => {
+  const row: RowData = { ...ROW, imminence: "leave-now" };
+  // deno-lint-ignore no-explicit-any
+  const html = renderToString(<Row row={row} /> as any);
+  assertStringIncludes(html, "row--leave-now");
+  assertStringIncludes(html, "leave now");
 });
 
 Deno.test("Row: renders 'was HH:MM' caption when planned ≠ effective leave-by", () => {

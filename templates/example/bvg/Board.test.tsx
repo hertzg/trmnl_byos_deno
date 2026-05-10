@@ -29,6 +29,8 @@ const ROW: Row = {
     },
   ],
   alerts: [],
+  imminence: "future",
+  graceExpiresAt: new Date("2025-11-10T07:57:00Z"),
 };
 
 Deno.test("Board renders head and the row list", () => {

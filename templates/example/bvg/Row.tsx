@@ -18,8 +18,10 @@ import Pictogram from "./Pictogram.tsx";
 
 export default function Row({ row }: { row: RowData }) {
   const isShifted = row.leaveByDate.getTime() !== row.plannedLeaveByDate.getTime();
+  const isImminent = row.imminence === "leave-now";
+  const rowClass = isImminent ? "row row--leave-now" : "row";
   return (
-    <div class="row">
+    <div class={rowClass}>
       <div class="row__icon">{row.preferenceIcon}</div>
       <div class="row__leave">
         {formatHHMM(row.leaveByDate)}
@@ -28,6 +30,7 @@ export default function Row({ row }: { row: RowData }) {
         {row.alerts.map((alert) => (
           <span class={`row__alert row__alert--${alert.kind}`}>⚠ {alert.text}</span>
         ))}
+        {isImminent && <span class="row__leave-now">⚠ leave now</span>}
       </div>
       <Pictogram legs={row.legs} />
       <div class="row__arrive">

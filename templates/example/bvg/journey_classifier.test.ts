@@ -591,12 +591,12 @@ for (const c of WINDOW_CASES) {
   });
 }
 
-Deno.test("classify: candidate whose effective leave-by is in the past is dropped", () => {
+Deno.test("classify: candidate whose effective leave-by is past grace is dropped", () => {
   const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
   // SINGLE_TRANSIT_CANDIDATE has effective leave-by = 06:52Z. Setting `now`
-  // one minute later means the row's leave-by is in the past — slice 3 drops
-  // it. Slice 8 will widen "in the past" by `imminentDepartureGraceMinutes`.
-  const now = new Date("2025-11-10T06:53:00Z");
+  // 6 minutes later (default grace = 5) puts the row past the imminent-grace
+  // window — dropped. Within grace it would be kept as imminent (slice 8).
+  const now = new Date("2025-11-10T06:58:00.001Z");
   const window: VisibilityWindow = {
     opensAt: new Date("2025-11-10T05:00:00Z"),
     closesAt: new Date("2025-11-10T09:00:00Z"),
@@ -617,6 +617,102 @@ Deno.test("classify: candidate whose effective leave-by equals now is kept", () 
   const result = classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now, window);
   if (!result) throw new Error("expected a row, got null");
   assertEquals(result.kind, "row");
+});
+
+// ─── slice 8: imminent-departure grace ─────────────────────────────────────
+
+// SINGLE_TRANSIT_CANDIDATE has effective leave-by 06:52Z. We move `now` around
+// that moment and assert the classifier's grace behaviour. Default grace is 5m.
+
+const PERMISSIVE_WINDOW: VisibilityWindow = {
+  opensAt: new Date("2025-11-10T05:00:00Z"),
+  closesAt: new Date("2025-11-10T09:00:00Z"),
+  arriveByDate: new Date("2025-11-10T08:30:00Z"),
+};
+
+Deno.test("classify imminence: leave-by 0min in past → kept, imminence=leave-now", () => {
+  const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+  // leave-by = 06:52Z; now = 06:52Z → exactly at leave-by, treated as imminent
+  // because boundary is `leaveByDate < now + epsilon (0)`.
+  const now = new Date("2025-11-10T06:52:00.001Z");
+  const row = assertRow(
+    classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now, PERMISSIVE_WINDOW),
+  );
+  assertEquals(row.imminence, "leave-now");
+});
+
+Deno.test("classify imminence: leave-by 4min in past (default grace 5) → kept, imminent", () => {
+  const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+  const now = new Date("2025-11-10T06:56:00Z"); // 4m past leave-by
+  const row = assertRow(
+    classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now, PERMISSIVE_WINDOW),
+  );
+  assertEquals(row.imminence, "leave-now");
+});
+
+Deno.test("classify imminence: leave-by exactly graceMinutes in past → kept, imminent (boundary)", () => {
+  const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+  const now = new Date("2025-11-10T06:57:00Z"); // exactly 5m past leave-by
+  const row = assertRow(
+    classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now, PERMISSIVE_WINDOW),
+  );
+  assertEquals(row.imminence, "leave-now");
+});
+
+Deno.test("classify imminence: leave-by graceMinutes+1ms in past → dropped", () => {
+  const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+  const now = new Date("2025-11-10T06:57:00.001Z"); // 5m + 1ms past leave-by
+  const result = classify(
+    SINGLE_TRANSIT_CANDIDATE,
+    WEEKDAY_OFFICE,
+    tunables,
+    now,
+    PERMISSIVE_WINDOW,
+  );
+  assertEquals(result, null);
+});
+
+Deno.test("classify imminence: leave-by 1min in future → kept, imminence=future", () => {
+  const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+  const now = new Date("2025-11-10T06:51:00Z"); // 1m before leave-by
+  const row = assertRow(
+    classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now, PERMISSIVE_WINDOW),
+  );
+  assertEquals(row.imminence, "future");
+});
+
+Deno.test("classify imminence: per-rule imminentDepartureGraceMinutesOverride is respected", () => {
+  // Override grace to 10 minutes via rule override. leave-by 7m in past → kept,
+  // imminent (would be dropped under default grace=5).
+  const ruleWithGrace: typeof WEEKDAY_OFFICE.schedule[0] = {
+    ...WEEKDAY_OFFICE.schedule[0],
+    imminentDepartureGraceMinutesOverride: 10,
+  };
+  const prefWithRule: Preference = {
+    ...WEEKDAY_OFFICE,
+    schedule: [ruleWithGrace],
+  };
+  const tunables = resolveTunables(prefWithRule, ruleWithGrace);
+  const now = new Date("2025-11-10T06:59:00Z"); // 7m past leave-by
+  const row = assertRow(
+    classify(SINGLE_TRANSIT_CANDIDATE, prefWithRule, tunables, now, PERMISSIVE_WINDOW),
+  );
+  assertEquals(row.imminence, "leave-now");
+});
+
+Deno.test("classify imminence: cancelled candidate at imminent leave-by still emits CancellationStrip", () => {
+  // Cancellation routing must not be replaced by an imminent Row.
+  const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+  const candidate = transitCandidateWithRealtime({
+    delaySeconds: 0,
+    cancelled: true,
+    hasRealtime: true,
+  });
+  // leave-by = 06:52Z; now 3m past → in grace window, would be imminent if not cancelled.
+  const now = new Date("2025-11-10T06:55:00Z");
+  const result = classify(candidate, WEEKDAY_OFFICE, tunables, now, PERMISSIVE_WINDOW);
+  if (!result) throw new Error("expected a result, got null");
+  assertEquals(result.kind, "cancellationStrip");
 });
 
 // Low-frequency line simulation. Six candidates spread evenly through the

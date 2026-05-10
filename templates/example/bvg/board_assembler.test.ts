@@ -418,6 +418,10 @@ Deno.test("boardValidForSeconds picks the smallest of head-row, window edges, ce
       preferenceIcon: "P",
       legs: [],
       alerts: [],
+      imminence: "future",
+      // Far in the future so the grace tick (5min after leaveBy) doesn't
+      // dominate the realtime ceiling in this test.
+      graceExpiresAt: new Date(now.getTime() + 600_000 + 5 * 60_000),
     }],
     emptyReason: "none",
     fetchedAt: now,
@@ -426,6 +430,43 @@ Deno.test("boardValidForSeconds picks the smallest of head-row, window edges, ce
   // Realtime ceiling is 90s, untilHead is 605s, untilOpens is 200s.
   // min(90, 605, 200) = 90, max(30, 90) = 90.
   assertEquals(boardValidForSeconds(board, now), 90);
+});
+
+// ─── slice 8: imminent-departure grace cadence ─────────────────────────────
+
+Deno.test("boardValidForSeconds ticks at the soonest imminent row's grace expiry", () => {
+  // An imminent row whose effective leave-by passed 4m ago. With default grace
+  // = 5min, this row's grace expires in 60s (= 4m past + 5m grace - now). That
+  // tick must dominate the realtime ceiling (90s). The head row's `leaveByDate`
+  // is in the past, so its untilLeaveBy candidate must NOT be added (positive
+  // only), otherwise the negative would clamp to the floor and mask the test.
+  const now = new Date("2025-11-10T07:00:00Z");
+  const leaveByDate = new Date(now.getTime() - 4 * 60_000); // 4m past
+  const board: Board = {
+    rows: [{
+      kind: "row",
+      leaveByDate,
+      plannedLeaveByDate: leaveByDate,
+      arriveByDate: new Date(now.getTime() + 10 * 60_000),
+      durationMinutes: 14,
+      originLabel: "X",
+      destinationLabel: "Y",
+      preferenceKey: "p",
+      preferenceLabel: "P",
+      preferenceIcon: "P",
+      legs: [],
+      alerts: [],
+      imminence: "leave-now",
+      graceExpiresAt: new Date(leaveByDate.getTime() + 5 * 60_000),
+    }],
+    emptyReason: "none",
+    fetchedAt: now,
+    windows: [],
+  };
+  // Grace expiry = leaveByDate + 5min = now + 60s. Cadence: max(floor=30,
+  // min(realtime=90, untilGrace=60)) = 60.
+  const seconds = boardValidForSeconds(board, now);
+  assertEquals(seconds, 60);
 });
 
 // ─── slice 7: cancellation strips + collapse ────────────────────────────────

@@ -44,6 +44,15 @@ export type Row = {
   // Realtime-derived alerts (delays and surfaceable remarks). Empty list = no
   // pills. Cancellation handling is slice 7's problem.
   alerts: readonly Alert[];
+  // Whether this row's effective leave-by has already passed (within the
+  // imminent-departure grace window). `"leave-now"` = leave-by < now, still
+  // within grace; `"future"` = leave-by ≥ now. The renderer paints
+  // "leave-now" rows with hatched bg + "⚠ leave now" stamp.
+  imminence: "leave-now" | "future";
+  // Instant the imminent-grace window expires (= leaveBy + graceMinutes). Once
+  // `now > graceExpiresAt` the row is dropped by the next render. Surfaced so
+  // `BoardAssembler.boardValidForSeconds` can schedule a re-render at this tick.
+  graceExpiresAt: Date;
 };
 
 // A thin "this preference's journey is cancelled" entry. Replaces a `Row` when
@@ -120,10 +129,12 @@ export function classify(
     if (arriveByDate.getTime() > window.closesAt.getTime()) return null;
   }
 
-  // Past-leave-by drop (slice 3). A row whose effective leave-by has already
-  // passed is no longer actionable. Slice 8 widens this to allow a small grace
-  // window (`imminentDepartureGraceMinutes`); for now strict `< now`.
-  if (leaveByDate.getTime() < now.getTime()) return null;
+  // Past-leave-by drop (slice 3 + slice 8 grace). A row whose effective
+  // leave-by is more than `imminentDepartureGraceMinutes` in the past is no
+  // longer actionable and is dropped. Boundary policy: kept at exactly
+  // `≤ graceMinutes` past, dropped at `> graceMinutes`.
+  const graceMs = resolvedTunables.imminentDepartureGraceMinutes * 60_000;
+  if (leaveByDate.getTime() < now.getTime() - graceMs) return null;
 
   // Cancellation routing (slice 7). If any leg flags realtime cancellation,
   // emit a thin `CancellationStrip` instead of a full `Row`. The strip carries
@@ -144,6 +155,14 @@ export function classify(
 
   const alerts = buildAlerts(candidate.legs);
 
+  // Imminence boundary: `leave-now` when `now − graceMinutes ≤ leaveBy < now`
+  // (epsilon = 0, so leaveBy == now is `future`). Anything past grace is
+  // already filtered out above; everything strictly before now is imminent.
+  const imminence: "leave-now" | "future" = leaveByDate.getTime() < now.getTime()
+    ? "leave-now"
+    : "future";
+  const graceExpiresAt = new Date(leaveByDate.getTime() + graceMs);
+
   return {
     kind: "row",
     leaveByDate,
@@ -157,6 +176,8 @@ export function classify(
     preferenceIcon: activePreference.rowIcon,
     legs: candidate.legs,
     alerts,
+    imminence,
+    graceExpiresAt,
   };
 }
 
