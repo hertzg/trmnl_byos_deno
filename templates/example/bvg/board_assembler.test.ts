@@ -1,5 +1,12 @@
 import { assertEquals } from "@std/assert";
-import { assembleBoard } from "./board_assembler.ts";
+import {
+  assembleBoard,
+  type Board,
+  boardValidForSeconds,
+  makeVisibilityWindow,
+  type VisibilityWindow,
+} from "./board_assembler.ts";
+import { resolveTunables } from "./preference.ts";
 import type { Candidate, FetchCandidates } from "./journey_client.ts";
 import type { Preference, RoutesConfig } from "./preference.ts";
 
@@ -332,4 +339,89 @@ Deno.test("assembleBoard tolerates a single preference's FeedError; others rende
   assertEquals(board.rows[0].preferenceKey, "studio");
   assertEquals(board.rows[0].preferenceIcon, "B");
   assertEquals(board.emptyReason, "none");
+});
+
+// ─── slice 3: visibility window + window-edge cadence ──────────────────────
+
+Deno.test("makeVisibilityWindow derives opensAt and closesAt from tunables", () => {
+  // arrive-by 09:30 Berlin = 08:30Z. Defaults: lead 60, late tail 15.
+  const arriveByDate = new Date("2025-11-10T08:30:00Z");
+  const tunables = resolveTunables(OFFICE, OFFICE.schedule[0]);
+  const window = makeVisibilityWindow(tunables, arriveByDate);
+  assertEquals(window.opensAt.toISOString(), "2025-11-10T07:30:00.000Z");
+  assertEquals(window.closesAt.toISOString(), "2025-11-10T08:45:00.000Z");
+  assertEquals(window.arriveByDate, arriveByDate);
+});
+
+Deno.test("boardValidForSeconds ticks at upcoming window opensAt edge", () => {
+  // Synthetic board: no rows, one window opening in 25s.
+  const now = new Date("2025-11-10T07:00:00Z");
+  const window: VisibilityWindow = {
+    opensAt: new Date(now.getTime() + 25_000),
+    closesAt: new Date(now.getTime() + 60 * 60_000),
+    arriveByDate: new Date(now.getTime() + 90 * 60_000),
+  };
+  const board: Board = {
+    rows: [],
+    emptyReason: "noScheduleApplicable",
+    fetchedAt: now,
+    windows: [window],
+  };
+  const seconds = boardValidForSeconds(board, now);
+  // The cadence must tick at-or-before the window opens. Floor is 30s, so the
+  // returned value should be exactly 30 (max(floor=30, 25)). Also asserts the
+  // ceiling does not dominate (idle ceiling is 300, realtime ceiling 90).
+  if (seconds > 30) {
+    throw new Error(`expected validForSeconds ≤ 30, got ${seconds}`);
+  }
+});
+
+Deno.test("boardValidForSeconds returns idle ceiling when no rows and no upcoming edges", () => {
+  // All windows in the past — no upcoming edge.
+  const now = new Date("2025-11-10T10:00:00Z");
+  const window: VisibilityWindow = {
+    opensAt: new Date(now.getTime() - 60 * 60_000),
+    closesAt: new Date(now.getTime() - 30 * 60_000),
+    arriveByDate: new Date(now.getTime() - 45 * 60_000),
+  };
+  const board: Board = {
+    rows: [],
+    emptyReason: "noScheduleApplicable",
+    fetchedAt: now,
+    windows: [window],
+  };
+  assertEquals(boardValidForSeconds(board, now), 300);
+});
+
+Deno.test("boardValidForSeconds picks the smallest of head-row, window edges, ceiling", () => {
+  const now = new Date("2025-11-10T07:00:00Z");
+  // Window opens in 200s (further than realtime ceiling but closer than head).
+  // Realtime ceiling = 90. Smallest is 90.
+  const window: VisibilityWindow = {
+    opensAt: new Date(now.getTime() + 200_000),
+    closesAt: new Date(now.getTime() + 60 * 60_000),
+    arriveByDate: new Date(now.getTime() + 90 * 60_000),
+  };
+  const board: Board = {
+    rows: [{
+      kind: "row",
+      leaveByDate: new Date(now.getTime() + 600_000), // 10m away
+      plannedLeaveByDate: new Date(now.getTime() + 600_000),
+      arriveByDate: new Date(now.getTime() + 1500_000),
+      durationMinutes: 15,
+      originLabel: "X",
+      destinationLabel: "Y",
+      preferenceKey: "p",
+      preferenceLabel: "P",
+      preferenceIcon: "P",
+      legs: [],
+      alerts: [],
+    }],
+    emptyReason: "none",
+    fetchedAt: now,
+    windows: [window],
+  };
+  // Realtime ceiling is 90s, untilHead is 605s, untilOpens is 200s.
+  // min(90, 605, 200) = 90, max(30, 90) = 90.
+  assertEquals(boardValidForSeconds(board, now), 90);
 });

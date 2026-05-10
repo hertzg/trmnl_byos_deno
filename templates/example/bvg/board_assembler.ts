@@ -15,8 +15,37 @@ import {
   fetchCandidates as defaultFetch,
 } from "./journey_client.ts";
 import { classify, type Row } from "./journey_classifier.ts";
-import { resolveTunables, type RoutesConfig } from "./preference.ts";
+import {
+  DEFAULTS,
+  type ResolvedTunables,
+  resolveTunables,
+  type RoutesConfig,
+} from "./preference.ts";
 import { nextApplicableArriveBy } from "./schedule_evaluator.ts";
+
+// VisibilityWindow — the per-active-preference time slot in which candidates
+// are surfaceable. Asymmetric: long lead so the user can plan; short late
+// tail because arriving late is more painful than arriving early.
+//
+// Co-located with `BoardAssembler` rather than `preference.ts` because a
+// window is a derived state per render cycle, not configuration. The board
+// assembler is the only producer; the classifier is the only consumer.
+export type VisibilityWindow = {
+  opensAt: Date;
+  closesAt: Date;
+  arriveByDate: Date;
+};
+
+export function makeVisibilityWindow(
+  tunables: ResolvedTunables,
+  arriveByDate: Date,
+): VisibilityWindow {
+  return {
+    opensAt: new Date(arriveByDate.getTime() - tunables.windowLeadMinutes * 60_000),
+    closesAt: new Date(arriveByDate.getTime() + tunables.windowLateTailMinutes * 60_000),
+    arriveByDate,
+  };
+}
 
 // Reasons the row list might be empty. Slice 1 only distinguishes between
 // "we have rows" and "no schedule fires right now"; `feedUnreachable` arrives
@@ -29,6 +58,9 @@ export type Board = {
   // Source-of-truth instant the board was assembled at. Used for the title
   // bar's "fetched at" stamp and for cadence math.
   fetchedAt: Date;
+  // Per-active-preference visibility windows. Used by `boardValidForSeconds`
+  // to schedule a re-render at each upcoming `opensAt` / `closesAt` crossing.
+  windows: readonly VisibilityWindow[];
 };
 
 export type AssembleOptions = {
@@ -42,19 +74,23 @@ export async function assembleBoard(
 ): Promise<Board> {
   const fetchFn = options.fetchCandidates ?? defaultFetch;
 
-  // Step 1 — resolve every preference; collect the active subset.
+  // Step 1 — resolve every preference; collect the active subset, deriving
+  // each preference's `VisibilityWindow` once per render cycle.
   const active: Array<{
     preference: typeof config.preferences[number];
-    tunables: ReturnType<typeof resolveTunables>;
+    tunables: ResolvedTunables;
     arriveByDate: Date;
+    window: VisibilityWindow;
   }> = [];
   for (const preference of config.preferences) {
     const resolution = nextApplicableArriveBy(preference.schedule, preference, now);
     if (!resolution) continue;
+    const tunables = resolveTunables(preference, resolution.applicableRule);
     active.push({
       preference,
-      tunables: resolveTunables(preference, resolution.applicableRule),
+      tunables,
       arriveByDate: resolution.arriveByDate,
+      window: makeVisibilityWindow(tunables, resolution.arriveByDate),
     });
   }
 
@@ -71,9 +107,9 @@ export async function assembleBoard(
   for (let i = 0; i < active.length; i++) {
     const result = fetched[i];
     if (!Array.isArray(result)) continue;
-    const { preference, tunables } = active[i];
+    const { preference, tunables, window } = active[i];
     for (const candidate of result as readonly Candidate[]) {
-      const row = classify(candidate, preference, tunables, now);
+      const row = classify(candidate, preference, tunables, now, window);
       if (row) rows.push(row);
     }
   }
@@ -87,19 +123,45 @@ export async function assembleBoard(
     rows,
     emptyReason: rows.length > 0 ? "none" : "noScheduleApplicable",
     fetchedAt: now,
+    windows: active.map((a) => a.window),
   };
 }
 
-// `validForSeconds` shape per slice 1 — head-row tick + realtime ceiling +
-// idle ceiling. No window-edge handling yet (slice 2/9).
+// `validForSeconds` shape (slice 3) — head-row tick + window-edge ticks +
+// realtime ceiling, floored. With no rows AND no upcoming window edges we
+// fall back to the idle ceiling.
+//
+// `DEFAULTS` is read directly here (rather than via `resolveTunables`) because
+// the cadence policy is global, not per-preference: every active preference
+// shares the same floor/ceiling. The board assembler is the documented owner
+// of the cadence policy (see PRD "Refresh cadence").
 export function boardValidForSeconds(board: Board, now: Date = new Date()): number {
-  const FLOOR = 30;
-  const REALTIME_CEIL = 90;
-  const IDLE_CEIL = 300;
+  const FLOOR = DEFAULTS.refreshFloorSeconds;
+  const REALTIME_CEIL = DEFAULTS.refreshRealtimeCeilingSeconds;
+  const IDLE_CEIL = DEFAULTS.refreshIdleCeilingSeconds;
+
+  const candidates: number[] = [REALTIME_CEIL];
+
   const head = board.rows[0];
-  if (!head) return IDLE_CEIL;
-  const untilHead = Math.floor(
-    (head.leaveByDate.getTime() - now.getTime()) / 1000,
-  ) + 5;
-  return Math.max(FLOOR, Math.min(REALTIME_CEIL, untilHead));
+  if (head) {
+    // +5s slack absorbs the cycle's render/dispatch latency so the screen
+    // re-renders just *after* the head row's leave-by passes, not just before.
+    const untilHead = Math.floor((head.leaveByDate.getTime() - now.getTime()) / 1000) + 5;
+    candidates.push(untilHead);
+  }
+
+  // Window-edge ticks: every positive `opensAt − now` and `closesAt − now`
+  // across active preferences. Negative deltas (already-crossed edges) are
+  // ignored — the next render cycle will pick up the next edge.
+  for (const w of board.windows) {
+    const untilOpens = Math.floor((w.opensAt.getTime() - now.getTime()) / 1000);
+    if (untilOpens > 0) candidates.push(untilOpens);
+    const untilCloses = Math.floor((w.closesAt.getTime() - now.getTime()) / 1000);
+    if (untilCloses > 0) candidates.push(untilCloses);
+  }
+
+  // No rows AND no upcoming edges → idle ceiling.
+  if (!head && candidates.length === 1) return IDLE_CEIL;
+
+  return Math.max(FLOOR, Math.min(...candidates));
 }

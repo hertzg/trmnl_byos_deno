@@ -36,6 +36,7 @@ Deno.test("Board renders head and the row list", () => {
     rows: [ROW],
     emptyReason: "none",
     fetchedAt: new Date("2025-11-10T07:00:00Z"),
+    windows: [],
   };
   // deno-lint-ignore no-explicit-any
   const html = renderToString(<Board board={board} /> as any);
@@ -49,6 +50,7 @@ Deno.test("Board renders empty frame when no rows", () => {
     rows: [],
     emptyReason: "noScheduleApplicable",
     fetchedAt: new Date("2025-11-10T07:00:00Z"),
+    windows: [],
   };
   // deno-lint-ignore no-explicit-any
   const html = renderToString(<Board board={board} /> as any);

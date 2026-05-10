@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert";
+import type { VisibilityWindow } from "./board_assembler.ts";
 import { classify } from "./journey_classifier.ts";
 import type { Candidate, Leg } from "./journey_client.ts";
 import type { Preference, ResolvedTunables } from "./preference.ts";
@@ -413,3 +414,179 @@ for (const c of EXCLUSION_CASES) {
     }
   });
 }
+
+// ─── slice 3: visibility window ─────────────────────────────────────────────
+
+// SINGLE_TRANSIT_CANDIDATE has effective leave-by 06:52Z and arrive-by 07:16Z.
+
+type WindowCase = {
+  name: string;
+  window: VisibilityWindow;
+  expectDropped: boolean;
+};
+
+const WINDOW_ARRIVE_BY = new Date("2025-11-10T08:30:00Z");
+
+const WINDOW_CASES: readonly WindowCase[] = [
+  {
+    name: "just inside opensAt (opensAt < leave-by) → kept",
+    window: {
+      opensAt: new Date("2025-11-10T06:51:00Z"),
+      closesAt: new Date("2025-11-10T09:00:00Z"),
+      arriveByDate: WINDOW_ARRIVE_BY,
+    },
+    expectDropped: false,
+  },
+  {
+    name: "on the boundary (opensAt == leave-by) → kept (inclusive)",
+    window: {
+      opensAt: new Date("2025-11-10T06:52:00Z"),
+      closesAt: new Date("2025-11-10T09:00:00Z"),
+      arriveByDate: WINDOW_ARRIVE_BY,
+    },
+    expectDropped: false,
+  },
+  {
+    name: "just outside opensAt (opensAt > leave-by) → dropped",
+    window: {
+      opensAt: new Date("2025-11-10T06:53:00Z"),
+      closesAt: new Date("2025-11-10T09:00:00Z"),
+      arriveByDate: WINDOW_ARRIVE_BY,
+    },
+    expectDropped: true,
+  },
+  {
+    name: "closesAt edge: closesAt == arrive-by → kept (inclusive)",
+    window: {
+      opensAt: new Date("2025-11-10T06:00:00Z"),
+      closesAt: new Date("2025-11-10T07:16:00Z"),
+      arriveByDate: WINDOW_ARRIVE_BY,
+    },
+    expectDropped: false,
+  },
+  {
+    name: "closesAt edge: closesAt < arrive-by → dropped",
+    window: {
+      opensAt: new Date("2025-11-10T06:00:00Z"),
+      closesAt: new Date("2025-11-10T07:15:00Z"),
+      arriveByDate: WINDOW_ARRIVE_BY,
+    },
+    expectDropped: true,
+  },
+];
+
+for (const c of WINDOW_CASES) {
+  Deno.test(`classify window: ${c.name}`, () => {
+    const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+    const now = new Date("2025-11-10T06:00:00Z");
+    const result = classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now, c.window);
+    if (c.expectDropped) {
+      assertEquals(result, null);
+    } else {
+      if (!result) throw new Error("expected a row, got null");
+      assertEquals(result.kind, "row");
+    }
+  });
+}
+
+Deno.test("classify: candidate whose effective leave-by is in the past is dropped", () => {
+  const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+  // SINGLE_TRANSIT_CANDIDATE has effective leave-by = 06:52Z. Setting `now`
+  // one minute later means the row's leave-by is in the past — slice 3 drops
+  // it. Slice 8 will widen "in the past" by `imminentDepartureGraceMinutes`.
+  const now = new Date("2025-11-10T06:53:00Z");
+  const window: VisibilityWindow = {
+    opensAt: new Date("2025-11-10T05:00:00Z"),
+    closesAt: new Date("2025-11-10T09:00:00Z"),
+    arriveByDate: new Date("2025-11-10T08:30:00Z"),
+  };
+  const result = classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now, window);
+  assertEquals(result, null);
+});
+
+Deno.test("classify: candidate whose effective leave-by equals now is kept", () => {
+  const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+  const now = new Date("2025-11-10T06:52:00Z");
+  const window: VisibilityWindow = {
+    opensAt: new Date("2025-11-10T05:00:00Z"),
+    closesAt: new Date("2025-11-10T09:00:00Z"),
+    arriveByDate: new Date("2025-11-10T08:30:00Z"),
+  };
+  const result = classify(SINGLE_TRANSIT_CANDIDATE, WEEKDAY_OFFICE, tunables, now, window);
+  if (!result) throw new Error("expected a row, got null");
+  assertEquals(result.kind, "row");
+});
+
+// Low-frequency line simulation. Six candidates spread evenly through the
+// hour before arrive-by (08:30Z). Narrowing the lead-time visibly reduces
+// the surviving count.
+Deno.test("classify: narrowing windowLeadMinutesOverride visibly reduces rows", () => {
+  const arriveByDate = new Date("2025-11-10T08:30:00Z");
+  // Earlier than every candidate's effective leave-by (06:52Z is the earliest).
+  const now = new Date("2025-11-10T06:00:00Z");
+
+  // Candidate departures (Berlin local times — 08:00..08:25 in 5m steps).
+  // After WEEKDAY_OFFICE walk-out (8m) effective leave-by lands at:
+  //   dep 08:00 → 06:52Z, 08:05 → 06:57Z, 08:10 → 07:02Z,
+  //   dep 08:15 → 07:07Z, 08:20 → 07:12Z, 08:25 → 07:17Z
+  const candidates: readonly Candidate[] = [
+    "2025-11-10T08:00:00+01:00",
+    "2025-11-10T08:05:00+01:00",
+    "2025-11-10T08:10:00+01:00",
+    "2025-11-10T08:15:00+01:00",
+    "2025-11-10T08:20:00+01:00",
+    "2025-11-10T08:25:00+01:00",
+  ].map((dep) => ({
+    legs: [{
+      kind: "transit" as const,
+      origin: { hafasStopId: "x", displayName: "X" },
+      destination: { hafasStopId: "y", displayName: "Y" },
+      departure: new Date(dep),
+      arrival: new Date(new Date(dep).getTime() + 12 * 60_000),
+      line: { name: "S5", product: "suburban" } as const,
+      direction: "Anywhere",
+      realtime: EMPTY_RT,
+    }],
+    departure: new Date(dep),
+    arrival: new Date(new Date(dep).getTime() + 12 * 60_000),
+  }));
+
+  type Case = {
+    leadMinutes: number;
+    expectedSurvivors: number;
+  };
+
+  // arrive-by = 08:30Z. opensAt = 08:30Z − leadMinutes.
+  //   lead=90: opensAt=07:00Z   → leave-bys ≥ 07:00Z survive (4)
+  //   lead=60: opensAt=07:30Z   → leave-bys ≥ 07:30Z survive (0 — none)
+  //   lead=40: opensAt=07:50Z   → 0
+  //   lead=120: opensAt=06:30Z  → all 6
+  //   lead=20: opensAt=08:10Z   → 0
+  //
+  // Use a generous late tail so closesAt doesn't disqualify late candidates
+  // (we're isolating the lead-time effect).
+  const cases: readonly Case[] = [
+    { leadMinutes: 120, expectedSurvivors: 6 },
+    { leadMinutes: 90, expectedSurvivors: 4 },
+    { leadMinutes: 60, expectedSurvivors: 0 },
+    { leadMinutes: 20, expectedSurvivors: 0 },
+  ];
+
+  for (const c of cases) {
+    const window: VisibilityWindow = {
+      opensAt: new Date(arriveByDate.getTime() - c.leadMinutes * 60_000),
+      closesAt: new Date(arriveByDate.getTime() + 60 * 60_000),
+      arriveByDate,
+    };
+    const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
+    let surviving = 0;
+    for (const cand of candidates) {
+      if (classify(cand, WEEKDAY_OFFICE, tunables, now, window)) surviving++;
+    }
+    assertEquals(
+      surviving,
+      c.expectedSurvivors,
+      `lead=${c.leadMinutes} expected ${c.expectedSurvivors} got ${surviving}`,
+    );
+  }
+});

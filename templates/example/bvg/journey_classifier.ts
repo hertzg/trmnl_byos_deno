@@ -5,6 +5,7 @@
 // row caption displays, and exclusion filtering against the resolved
 // `excludedLineNames` deny-list. No realtime, no cancellation, no window check.
 
+import type { VisibilityWindow } from "./board_assembler.ts";
 import type { Candidate, Leg } from "./journey_client.ts";
 import type { Preference, ResolvedTunables } from "./preference.ts";
 
@@ -53,7 +54,8 @@ export function classify(
   candidate: Candidate,
   activePreference: Preference,
   resolvedTunables: ResolvedTunables,
-  _now: Date,
+  now: Date,
+  window?: VisibilityWindow,
 ): BoardRow | null {
   const firstLeg = candidate.legs[0];
   const lastLeg = candidate.legs[candidate.legs.length - 1];
@@ -93,6 +95,20 @@ export function classify(
   const durationMinutes = Math.round(
     (arriveByDate.getTime() - leaveByDate.getTime()) / 60_000,
   );
+
+  // Window check (slice 3). Runs AFTER leave-by/arrive-by are computed because
+  // it compares those *effective* (realtime-adjusted, walk-shifted) instants —
+  // not the raw leg times. Boundaries are inclusive on both edges so a
+  // candidate touching opensAt or closesAt is still surfaceable.
+  if (window) {
+    if (leaveByDate.getTime() < window.opensAt.getTime()) return null;
+    if (arriveByDate.getTime() > window.closesAt.getTime()) return null;
+  }
+
+  // Past-leave-by drop (slice 3). A row whose effective leave-by has already
+  // passed is no longer actionable. Slice 8 widens this to allow a small grace
+  // window (`imminentDepartureGraceMinutes`); for now strict `< now`.
+  if (leaveByDate.getTime() < now.getTime()) return null;
 
   const alerts = buildAlerts(candidate.legs);
 
