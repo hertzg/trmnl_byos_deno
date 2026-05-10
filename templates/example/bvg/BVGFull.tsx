@@ -22,7 +22,7 @@ function HeroCard({ dep }: { dep: Departure }) {
     <div class="hero">
       <div class="hero__time-row">
         <LineGlyph product={dep.product} size="xl" />
-        <span class="hero__time">{formatHHMM(dep.leaveBy)}</span>
+        <span class="hero__time">{formatHHMM(dep.when)}</span>
       </div>
       <div class="hero__line-row">
         <LineBadge line={dep.line} product={dep.product} size="lg" />
@@ -35,7 +35,7 @@ function HeroCard({ dep }: { dep: Departure }) {
             {" · "}
           </>
         )}
-        გადის {formatHHMM(dep.when)}
+        გაეტიე {formatHHMM(dep.leaveBy)}
       </div>
     </div>
   );
@@ -47,8 +47,8 @@ export default function BVGFull(
   // Heroes are picked from the heroable subset only — `tableOnly` filters (FEX,
   // airport-bound regionals) are intentionally skipped here so they never become the
   // primary "leave by" prompt.
-  const [first, second] = board.departures.filter((d) => !d.tableOnly);
-  const heroes = new Set([first, second].filter(Boolean));
+  const [first, second, third] = board.departures.filter((d) => !d.tableOnly);
+  const heroes = new Set([first, second, third].filter(Boolean));
 
   // Reserve up to 2 slots for tableOnly entries. They're typically sparse (airport
   // regionals run a few times per day), so without a reservation they'd be pushed
@@ -74,6 +74,7 @@ export default function BVGFull(
         <div class="hero-stack">
           {first && <HeroCard dep={first} />}
           {second && <HeroCard dep={second} />}
+          {third && <HeroCard dep={third} />}
         </div>
         <div class="full-list">
           <div class="full-list__label">შემდეგ</div>

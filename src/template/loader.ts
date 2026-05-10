@@ -1,13 +1,17 @@
 import { join, toFileUrl } from "@std/path";
+import type { DeviceState } from "../device.ts";
 import type { OnDisplayFn } from "../render/renderer.ts";
 
 // Re-export so templates can `import type { Frame } from "<service>/template/loader"`.
 export type { Frame, OnDisplayFn } from "../render/renderer.ts";
 
-// What setup() receives. Carries the active device profile so templates can do
-// responsive layout against the configured panel.
+// What setup() receives. `panel` is the active device profile (responsive layout);
+// `getDevice` is a closure-bound accessor for the most recent device intel reported
+// by the firmware over /api/display headers (battery, RSSI, model, ...). Templates
+// call it inside their onDisplay so each frame reflects the latest poll.
 export type SetupConfig = {
   panel: { width: number; height: number };
+  getDevice: () => DeviceState;
 };
 
 // What setup() returns. The closure is the template's state container; onDisplay reads

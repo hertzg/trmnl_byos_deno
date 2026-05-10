@@ -8,6 +8,7 @@ import {
   TEMPLATE_DIR,
   TEMPLATE_SEED_DIR,
 } from "./config.ts";
+import { createDeviceStateHolder } from "./device.ts";
 import { createRenderer } from "./render/renderer.ts";
 import { createRasterize } from "./render/rasterize.ts";
 import { loadTemplate, seedTemplateDir } from "./template/loader.ts";
@@ -24,8 +25,16 @@ async function main() {
   const template = await loadTemplate(TEMPLATE_DIR);
   console.log(`[template] loaded from ${TEMPLATE_DIR}`);
 
+  // Single closure-bound holder for the latest device-reported headers. The HTTP
+  // layer writes to it from /api/display; the template reads from it inside
+  // onDisplay. See src/device.ts for the full rationale.
+  const deviceState = createDeviceStateHolder();
+
   const panel = { width: ACTIVE_PROFILE.width, height: ACTIVE_PROFILE.height };
-  const { onDisplay } = await template.setup({ panel });
+  const { onDisplay } = await template.setup({
+    panel,
+    getDevice: deviceState.get,
+  });
 
   const rasterize = createRasterize({
     cdpUrl: CDP_URL,
@@ -62,6 +71,7 @@ async function main() {
       renderer,
       friendlyId: FRIENDLY_ID,
       onDeviceLog: (id, body) => console.log(`[device-log] ${id.toUpperCase()}: ${body}`),
+      onDeviceHeaders: (headers) => deviceState.updateFromHeaders(headers),
     }),
   );
 

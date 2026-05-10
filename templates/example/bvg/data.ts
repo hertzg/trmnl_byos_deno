@@ -25,6 +25,11 @@ export type FilterSpec = {
   // airport-bound regionals where the commute decision should be driven by other
   // entries.
   tableOnly?: boolean;
+  // When true, matching departures are dropped entirely. Combined with "first match
+  // wins", this lets an exclusion filter sit before a catch-all to subtract a slice
+  // of an otherwise-permitted line — e.g. drop eastbound short-turns then keep the
+  // rest of the line.
+  exclude?: boolean;
 };
 
 export type RoutesConfig = {
@@ -130,6 +135,28 @@ async function fetchDepartures(stopId: string): Promise<BvgDeparture[]> {
   }
 }
 
+// How long the rendered frame stays valid. Two forces drive a refresh:
+//   - Head expiry: once the top departure's `when` passes, `loadBvgBoard` filters
+//     it out and the list slides up. We want to re-render just after that moment.
+//   - Realtime drift: BVG delays/cancellations can change server-side without any
+//     local trigger, so we cap the validity to pick up updates. Cheap when nothing
+//     changed because contentHash gates rasterize.
+// Empty board (last bus passed, fetch failed) falls back to an idle ceiling so we
+// recover within a few minutes without hammering the upstream.
+export function boardValidForSeconds(board: Board, now: Date = new Date()): number {
+  const FLOOR = 30;
+  const REALTIME_CEIL = 90;
+  const IDLE_CEIL = 300;
+
+  const head = board.departures[0];
+  if (!head) return IDLE_CEIL;
+
+  const untilHead = Math.floor(
+    (new Date(head.when).getTime() - now.getTime()) / 1000,
+  ) + 5;
+  return Math.max(FLOOR, Math.min(REALTIME_CEIL, untilHead));
+}
+
 export async function loadBvgBoard(): Promise<Board> {
   const { title, stop, layout, filters } = ROUTES;
   const raw = await fetchDepartures(stop.id);
@@ -139,6 +166,7 @@ export async function loadBvgBoard(): Promise<Board> {
     .map((d) => {
       const filter = matchFilter(filters, d);
       if (filter === undefined) return null;
+      if (filter?.exclude) return null;
       return toDeparture(d, stop.walkMin, filter?.tableOnly ?? false);
     })
     .filter((d): d is Departure => d !== null)

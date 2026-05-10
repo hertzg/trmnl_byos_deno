@@ -402,3 +402,45 @@ body {
 .title-bar__instance {
   color: #444;
 }
+
+/* Battery indicator anchored to the lower-right corner of the title-bar (the
+ * title-bar uses justify-content: space-between, so the third child lands at the
+ * end). Pure black-and-white CSS battery glyph dithers cleanly on e-ink. */
+.battery {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.battery__shell {
+  position: relative;
+  width: 44px;
+  height: 22px;
+  border: 3px solid #000;
+  padding: 2px;
+  display: flex;
+}
+
+/* Cap on the right side of the shell. */
+.battery__shell::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 5px;
+  margin-left: 2px;
+  width: 4px;
+  height: 8px;
+  background: #000;
+}
+
+.battery__fill {
+  display: block;
+  height: 100%;
+  background: #000;
+}
+
+.battery__pct {
+  font-size: 24px;
+}

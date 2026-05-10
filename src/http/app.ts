@@ -6,6 +6,10 @@ export type AppDeps = {
   renderer: Renderer;
   friendlyId: string;
   onDeviceLog?: (id: string, body: string) => void;
+  // Called with the request headers on each /api/display poll. Used to feed the
+  // shared DeviceState holder (battery, RSSI, model, ...) so templates can render
+  // device-aware chrome without per-device frame branching.
+  onDeviceHeaders?: (headers: Headers) => void;
 };
 
 export function createApp(deps: AppDeps): Hono {
@@ -25,6 +29,7 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.get("/api/display", async (c) => {
+    deps.onDeviceHeaders?.(c.req.raw.headers);
     const frame = await deps.renderer.ensureFrame();
     const refreshRate = Math.max(
       1,

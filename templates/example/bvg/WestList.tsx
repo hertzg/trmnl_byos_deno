@@ -24,8 +24,7 @@ export default function WestList(
         <div key={`${d.line}|${d.direction}|${d.when}`} class="west-list__row">
           <LineGlyph product={d.product} size="md" />
           <div class="west-list__leave">
-            {withLeavePrefix && <span class="west-list__leave-prefix">გადით</span>}
-            {formatHHMM(d.leaveBy)}
+            {formatHHMM(d.when)}
           </div>
           <LineBadge line={d.line} product={d.product} size="md" />
           <div>
@@ -37,7 +36,7 @@ export default function WestList(
                   {" · "}
                 </>
               )}
-              გადის {formatHHMM(d.when)}
+              გაეტიე {formatHHMM(d.leaveBy)}
             </div>
           </div>
         </div>
