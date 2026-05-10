@@ -9,7 +9,7 @@ import {
 } from "./board_assembler.ts";
 import { resolveTunables } from "./preference.ts";
 import type { Candidate, FetchCandidates } from "./journey_client.ts";
-import type { Preference, RoutesConfig } from "./preference.ts";
+import type { Preference, RoutesConfig, Stop } from "./preference.ts";
 
 const HBF = {
   hafasStopId: "900003201",
@@ -62,8 +62,8 @@ Deno.test("assembleBoard runs the pipeline and sorts rows by leave-by ascending"
 
   // Candidates returned by the stubbed fetcher — deliberately unsorted.
   const stubFetch: FetchCandidates = (origin, destination, arriveByDate) => {
-    assertEquals(origin.hafasStopId, "900003201");
-    assertEquals(destination.hafasStopId, "900100003");
+    assertEquals((origin as Stop).hafasStopId, "900003201");
+    assertEquals((destination as Stop).hafasStopId, "900100003");
     assertEquals(arriveByDate.toISOString(), "2025-11-10T08:30:00.000Z");
     return Promise.resolve([
       // Departs 09:00 Berlin, arrives 09:12.
@@ -128,9 +128,9 @@ function transitCandidateFor(
     legs: [
       {
         kind: "transit",
-        origin: { hafasStopId: origin.hafasStopId, displayName: origin.displayName },
+        origin: { hafasStopId: (origin as Stop).hafasStopId, displayName: origin.displayName },
         destination: {
-          hafasStopId: destination.hafasStopId,
+          hafasStopId: (destination as Stop).hafasStopId,
           displayName: destination.displayName,
         },
         departure,
@@ -149,14 +149,14 @@ Deno.test("assembleBoard interleaves rows from two preferences sorted by leave-b
   const now = new Date("2025-11-10T07:30:00Z"); // Monday 07:00 Berlin
 
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       // OFFICE: Hbf → Alex. Walk-out 8m. leave-by = dep − 8m.
       return Promise.resolve([
         // dep 08:50 → leave-by 08:42 Berlin (07:42Z)
         transitCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00", "2025-11-10T09:02:00+01:00"),
       ]);
     }
-    if (origin.hafasStopId === POTSDAMER.hafasStopId) {
+    if ((origin as Stop).hafasStopId === POTSDAMER.hafasStopId) {
       // STUDIO: Potsdamer → Zoo. Walk-out 5m. leave-by = dep − 5m.
       return Promise.resolve([
         // dep 08:40 → leave-by 08:35 Berlin (07:35Z) — should be first
@@ -211,7 +211,7 @@ Deno.test("assembleBoard stable sort: identical leave-by ties preserve fetch ord
   // OFFICE walk-out is 8m, STUDIO walk-out is 5m. To produce identical leave-by
   // (07:40Z = 08:40 Berlin), OFFICE dep = 08:48 Berlin, STUDIO dep = 08:45 Berlin.
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       return Promise.resolve([
         // OFFICE row A: leave-by 07:40Z
         transitCandidateFor(
@@ -231,7 +231,7 @@ Deno.test("assembleBoard stable sort: identical leave-by ties preserve fetch ord
         ),
       ]);
     }
-    if (origin.hafasStopId === POTSDAMER.hafasStopId) {
+    if ((origin as Stop).hafasStopId === POTSDAMER.hafasStopId) {
       return Promise.resolve([
         // STUDIO row: leave-by 07:40Z (tie with OFFICE rows)
         transitCandidateFor(
@@ -276,7 +276,7 @@ Deno.test("assembleBoard fetches preferences in parallel, not sequentially", asy
 
   const stubFetch: FetchCandidates = async (origin) => {
     await new Promise((r) => setTimeout(r, FETCH_MS));
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       return [transitCandidateFor(
         HBF,
         ALEX,
@@ -319,7 +319,7 @@ Deno.test("assembleBoard tolerates a single preference's FeedError; others rende
   const now = new Date("2025-11-10T07:30:00Z");
 
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       return Promise.resolve({ kind: "feed-error", message: "stub failure" } as const);
     }
     return Promise.resolve([
@@ -347,11 +347,11 @@ Deno.test("assembleBoard tolerates a single preference's FeedError; others rende
 // ─── slice 3: visibility window + window-edge cadence ──────────────────────
 
 Deno.test("makeVisibilityWindow derives opensAt and closesAt from tunables", () => {
-  // arrive-by 09:30 Berlin = 08:30Z. Defaults: lead 60, late tail 15.
+  // arrive-by 09:30 Berlin = 08:30Z. Defaults: lead 120, late tail 15.
   const arriveByDate = new Date("2025-11-10T08:30:00Z");
   const tunables = resolveTunables(OFFICE, OFFICE.schedule[0]);
   const window = makeVisibilityWindow(tunables, arriveByDate);
-  assertEquals(window.opensAt.toISOString(), "2025-11-10T07:30:00.000Z");
+  assertEquals(window.opensAt.toISOString(), "2025-11-10T06:30:00.000Z");
   assertEquals(window.closesAt.toISOString(), "2025-11-10T08:45:00.000Z");
   assertEquals(window.arriveByDate, arriveByDate);
 });
@@ -502,7 +502,7 @@ function cancelledCandidateFor(
 Deno.test("assembleBoard collapses two adjacent same-icon strips into count: 2", async () => {
   const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       return Promise.resolve([
         cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00"),
         cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:55:00+01:00"),
@@ -525,7 +525,7 @@ Deno.test("assembleBoard collapses two adjacent same-icon strips into count: 2",
 Deno.test("assembleBoard collapses three adjacent same-icon strips into count: 3", async () => {
   const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       return Promise.resolve([
         cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00"),
         cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:55:00+01:00"),
@@ -547,13 +547,13 @@ Deno.test("assembleBoard does NOT collapse strips from different icons next to e
   // they must remain two separate strips.
   const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       // OFFICE: walk-out 8m, dep 08:50 Berlin → leave-by 07:42Z.
       return Promise.resolve([
         cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00"),
       ]);
     }
-    if (origin.hafasStopId === POTSDAMER.hafasStopId) {
+    if ((origin as Stop).hafasStopId === POTSDAMER.hafasStopId) {
       // STUDIO: walk-out 5m, dep 08:50 Berlin → leave-by 07:45Z (next after OFFICE).
       return Promise.resolve([
         cancelledCandidateFor(POTSDAMER, ZOO, "2025-11-10T08:50:00+01:00"),
@@ -579,14 +579,14 @@ Deno.test("assembleBoard: a Row between two same-icon strips prevents collapse",
   // row breaks adjacency → no merge.
   const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       // OFFICE walk-out 8m: dep 08:50 → 07:42Z; dep 08:58 → 07:50Z.
       return Promise.resolve([
         cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00"),
         cancelledCandidateFor(HBF, ALEX, "2025-11-10T08:58:00+01:00"),
       ]);
     }
-    if (origin.hafasStopId === POTSDAMER.hafasStopId) {
+    if ((origin as Stop).hafasStopId === POTSDAMER.hafasStopId) {
       // STUDIO walk-out 5m: dep 08:50 Berlin → leave-by 07:45Z (between the
       // two OFFICE strips).
       return Promise.resolve([
@@ -648,7 +648,7 @@ Deno.test("createBoardAssembler caches lastSuccessfulFetchAt across calls", asyn
   const secondNow = new Date("2025-11-10T07:35:00Z");
 
   const okFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       return Promise.resolve([
         transitCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00", "2025-11-10T09:02:00+01:00"),
       ]);
@@ -720,7 +720,7 @@ Deno.test("assembleBoard: cap matches row count exactly → no clip summary", as
   // First dep 08:39 Berlin = 07:39Z → leave-by 07:31Z (inside window).
   const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       return Promise.resolve(
         manyTransitCandidates(HBF, ALEX, "2025-11-10T08:39:00+01:00", 8),
       );
@@ -736,7 +736,7 @@ Deno.test("assembleBoard: cap matches row count exactly → no clip summary", as
 Deno.test("assembleBoard: cap=5 on 8 candidates → 5 rows + clipSummary count 3", async () => {
   const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       return Promise.resolve(
         manyTransitCandidates(HBF, ALEX, "2025-11-10T08:39:00+01:00", 8),
       );
@@ -766,7 +766,7 @@ Deno.test("assembleBoard: cap=5 on 8 candidates → 5 rows + clipSummary count 3
 Deno.test("assembleBoard: cap=1 on 8 candidates → 1 row + 7 dropped in summary", async () => {
   const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       return Promise.resolve(
         manyTransitCandidates(HBF, ALEX, "2025-11-10T08:39:00+01:00", 8),
       );
@@ -788,7 +788,7 @@ Deno.test("assembleBoard: cap=0 → empty rows, summary covers everything droppe
   // ClipSummary summarises all candidates that would have been rendered.
   const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       return Promise.resolve(
         manyTransitCandidates(HBF, ALEX, "2025-11-10T08:39:00+01:00", 4),
       );
@@ -814,7 +814,7 @@ Deno.test("assembleBoard: cap with mixed icons → footnote groups per icon, alp
   // in the ClipSummary, with entries ordered alphabetically by icon.
   const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       // OFFICE walk-out 8m, deps 08:40, 08:42, 08:44 Berlin → leave-bys
       // 07:32Z, 07:34Z, 07:36Z. Three rows.
       return Promise.resolve([
@@ -823,7 +823,7 @@ Deno.test("assembleBoard: cap with mixed icons → footnote groups per icon, alp
         transitCandidateFor(HBF, ALEX, "2025-11-10T08:44:00+01:00", "2025-11-10T08:59:00+01:00"),
       ]);
     }
-    if (origin.hafasStopId === POTSDAMER.hafasStopId) {
+    if ((origin as Stop).hafasStopId === POTSDAMER.hafasStopId) {
       // STUDIO walk-out 5m, deps 08:38, 08:41 Berlin → leave-bys 07:33Z, 07:36Z.
       return Promise.resolve([
         transitCandidateFor(
@@ -867,7 +867,7 @@ Deno.test("assembleBoard: collapseCancellations runs AFTER overflow — clipped 
   // happens before collapse so the clipped strips are individual entries.
   const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = (origin) => {
-    if (origin.hafasStopId === HBF.hafasStopId) {
+    if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
       // 12 cancellations, deps 08:39…08:50 Berlin (1m apart) so all 12 fall
       // inside the visibility window after walk-out 8m subtraction.
       const candidates: Candidate[] = [];

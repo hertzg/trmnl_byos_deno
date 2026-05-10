@@ -32,6 +32,24 @@ export type Stop = {
   walkingMinutesBetweenStopAndAddress: number;
 };
 
+// An exact street address as origin/destination. BVG plans the walking legs
+// to/from the nearest stops itself, so no `walkingMinutes…` field is needed.
+// Resolve coordinates with:
+//   curl 'https://v6.bvg.transport.rest/locations?addresses=true&query=<addr>'
+export type Address = {
+  latitude: number;
+  longitude: number;
+  // Free-form address string sent verbatim to BVG (e.g. street + city). Shown
+  // by BVG as the first/last leg's endpoint label.
+  address: string;
+  // Short display name for row captions, e.g. "Home", "Work".
+  displayName: string;
+};
+
+// Either form is accepted as `Preference.origin` and `.destination`. Discriminated
+// structurally: `Stop` has `hafasStopId`, `Address` has `latitude`.
+export type Place = Stop | Address;
+
 export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
 // Day-of-week selector for a ScheduleRule.
@@ -94,12 +112,13 @@ export type Preference = {
   // empty-state hint ("next: Mon 09:30 · A · Office").
   rowLabel: string;
 
-  // Where the user departs from. Different preferences may use different
-  // origin stops even for the same person (e.g. weekday Hbf vs Friday gym).
-  origin: Stop;
+  // Where the user departs from. Either a HAFAS stop or a street address.
+  // Different preferences may use different origins even for the same person
+  // (e.g. weekday home vs Friday gym).
+  origin: Place;
 
-  // Where the user must arrive.
-  destination: Stop;
+  // Where the user must arrive. Either a HAFAS stop or a street address.
+  destination: Place;
 
   // The recurrence and timing of this commute. Preferences with no rules
   // applicable to the current week are inactive.
@@ -135,7 +154,7 @@ export const DEFAULTS = {
   // Visibility window geometry. Asymmetric: long lead so options surface
   // early, short late tail because arriving late is more painful than
   // arriving early.
-  windowLeadMinutes: 60,
+  windowLeadMinutes: 120,
   windowLateTailMinutes: 15,
 
   // Imminent-departure handling.
@@ -143,7 +162,7 @@ export const DEFAULTS = {
 
   // Preparation buffer for "be ready by" anchor. Zero by default — opt in
   // per preference.
-  preparationMinutes: 0,
+  preparationMinutes: 10,
 
   // Exclusions empty by default. Per-preference and per-rule overrides add
   // them where needed.

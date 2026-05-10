@@ -7,7 +7,11 @@
 
 import type { VisibilityWindow } from "./board_assembler.ts";
 import type { Candidate, Leg } from "./journey_client.ts";
-import type { Preference, ResolvedTunables } from "./preference.ts";
+import type { Place, Preference, ResolvedTunables, Stop } from "./preference.ts";
+
+function isStop(p: Place): p is Stop {
+  return "hafasStopId" in p;
+}
 
 // A single warning rendered as a ⚠ pill under the row's leave-by. Both delays
 // and disruption remarks share this shape — they paint with the same visual
@@ -98,16 +102,26 @@ export function classify(
     }
   }
 
-  const walkOutMs = activePreference.origin.walkingMinutesBetweenStopAndAddress * 60_000;
-  const walkInMs = activePreference.destination.walkingMinutesBetweenStopAndAddress * 60_000;
+  // Stop-based origins/destinations need the configured walking buffer between
+  // the platform and the user's address; Address-based ones don't, because BVG
+  // already returns a leading/trailing walking leg from/to the coordinates.
+  const origin = activePreference.origin;
+  const destination = activePreference.destination;
+  const walkOutMs = isStop(origin) ? origin.walkingMinutesBetweenStopAndAddress * 60_000 : 0;
+  const walkInMs = isStop(destination)
+    ? destination.walkingMinutesBetweenStopAndAddress * 60_000
+    : 0;
 
-  // Effective leave-by: first transit leg's planned departure + its realtime
-  // delay, then walked back by the origin walk. If the journey is walking-only
-  // (no transit leg), there's nothing to delay — fall back to firstLeg.
+  // Departure anchor:
+  //   Stop origin    → first transit leg's planned departure, walked back by
+  //                    `walkOutMs` (BVG's response starts at the platform).
+  //   Address origin → first leg's departure (= the walking leg from the
+  //                    address that BVG returned), `walkOutMs` is 0.
+  // Walking-only journeys have no transit leg to delay; fall back to firstLeg.
   const firstTransit = candidate.legs.find((l): l is typeof l & { kind: "transit" } =>
     l.kind === "transit"
   );
-  const anchorLeg = firstTransit ?? firstLeg;
+  const anchorLeg = isStop(origin) ? (firstTransit ?? firstLeg) : firstLeg;
   const plannedDepartureMs = anchorLeg.departure.getTime();
   const effectiveDelayMs = firstTransit && firstTransit.realtime.hasRealtime
     ? firstTransit.realtime.delaySeconds * 1000

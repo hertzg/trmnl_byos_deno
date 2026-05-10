@@ -5,6 +5,8 @@
 // Walking-leg vs transit-leg discrimination is decided here, so the rest of the
 // pipeline only ever sees clean discriminated unions.
 
+import type { Place } from "./preference.ts";
+
 const BVG_JOURNEYS_URL = "https://v6.bvg.transport.rest/journeys";
 
 // ─── domain value objects ───────────────────────────────────────────────────
@@ -233,10 +235,24 @@ export function mapJourneysResponse(body: unknown): Candidate[] {
 // ─── client ─────────────────────────────────────────────────────────────────
 
 export type FetchCandidates = (
-  origin: { hafasStopId: string },
-  destination: { hafasStopId: string },
+  origin: Place,
+  destination: Place,
   arriveByDate: Date,
 ) => Promise<Candidate[] | FeedError>;
+
+// `from`/`to` accept either a HAFAS stop id (set as the bare `from`/`to` param)
+// or a coordinate triple (`from.latitude`/`from.longitude`/`from.address`).
+// BVG resolves the latter into a synthetic POI and prepends/appends a walking
+// leg from the address to the nearest stop.
+function appendPlaceParams(url: URL, prefix: "from" | "to", place: Place): void {
+  if ("hafasStopId" in place) {
+    url.searchParams.set(prefix, place.hafasStopId);
+    return;
+  }
+  url.searchParams.set(`${prefix}.latitude`, String(place.latitude));
+  url.searchParams.set(`${prefix}.longitude`, String(place.longitude));
+  url.searchParams.set(`${prefix}.address`, place.address);
+}
 
 // Default implementation: hit BVG's `/journeys` and map. Network or parse
 // failures produce a `FeedError` so callers can render `feedUnreachable` in a
@@ -247,8 +263,8 @@ export const fetchCandidates: FetchCandidates = async (
   arriveByDate,
 ) => {
   const url = new URL(BVG_JOURNEYS_URL);
-  url.searchParams.set("from", origin.hafasStopId);
-  url.searchParams.set("to", destination.hafasStopId);
+  appendPlaceParams(url, "from", origin);
+  appendPlaceParams(url, "to", destination);
   url.searchParams.set("arrival", arriveByDate.toISOString());
   url.searchParams.set("language", "en");
   try {
