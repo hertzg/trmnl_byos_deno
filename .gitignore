@@ -6,6 +6,7 @@ deno.lock
 .vscode/
 *.log
 .DS_Store
+.claude/
 
 # Per-template private config (e.g. BVG stops/filters). The committed `*.example.ts`
 # is the starter template; the active `routes.ts` is a local copy users edit and keep
