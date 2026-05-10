@@ -29,38 +29,38 @@ function makeRule(overrides: Partial<ScheduleRule> = {}): ScheduleRule {
 
 Deno.test("resolveTunables falls through to DEFAULTS when nothing is set", () => {
   const t = resolveTunables(makePreference(), makeRule());
-  assertEquals(t.windowLeadMinutes, DEFAULTS.windowLeadMinutes);
+  assertEquals(t.windowEarliestArrivalMinutes, DEFAULTS.windowEarliestArrivalMinutes);
   assertEquals(t.windowLateTailMinutes, DEFAULTS.windowLateTailMinutes);
   assertEquals(t.imminentDepartureGraceMinutes, DEFAULTS.imminentDepartureGraceMinutes);
   assertEquals(t.preparationMinutes, DEFAULTS.preparationMinutes);
   assertEquals(t.excludedLineNames, DEFAULTS.excludedLineNames);
 });
 
-Deno.test("resolveTunables cascade: windowLeadMinutes (DEFAULT ← Pref ← Rule)", () => {
+Deno.test("resolveTunables cascade: windowEarliestArrivalMinutes (DEFAULT ← Pref ← Rule)", () => {
   // Preference overrides DEFAULT.
   assertEquals(
-    resolveTunables(makePreference({ windowLeadMinutes: 45 }), makeRule()).windowLeadMinutes,
+    resolveTunables(makePreference({ windowEarliestArrivalMinutes: 45 }), makeRule()).windowEarliestArrivalMinutes,
     45,
   );
   // Rule overrides Preference.
   assertEquals(
     resolveTunables(
-      makePreference({ windowLeadMinutes: 45 }),
-      makeRule({ windowLeadMinutesOverride: 30 }),
-    ).windowLeadMinutes,
+      makePreference({ windowEarliestArrivalMinutes: 45 }),
+      makeRule({ windowEarliestArrivalMinutesOverride: 30 }),
+    ).windowEarliestArrivalMinutes,
     30,
   );
   // Explicit 0 on rule wins over a non-zero preference (does not fall through).
   assertEquals(
     resolveTunables(
-      makePreference({ windowLeadMinutes: 45 }),
-      makeRule({ windowLeadMinutesOverride: 0 }),
-    ).windowLeadMinutes,
+      makePreference({ windowEarliestArrivalMinutes: 45 }),
+      makeRule({ windowEarliestArrivalMinutesOverride: 0 }),
+    ).windowEarliestArrivalMinutes,
     0,
   );
   // Explicit 0 on preference wins over a non-zero default; rule undefined falls through.
   assertEquals(
-    resolveTunables(makePreference({ windowLeadMinutes: 0 }), makeRule()).windowLeadMinutes,
+    resolveTunables(makePreference({ windowEarliestArrivalMinutes: 0 }), makeRule()).windowEarliestArrivalMinutes,
     0,
   );
 });

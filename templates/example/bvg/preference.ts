@@ -75,8 +75,16 @@ export type ScheduleRule = {
   // ── per-rule overrides — replace (don't merge with) the values inherited
   //    from the Preference and DEFAULTS. `undefined` falls through. ──
 
-  // Minutes before the arrive-by moment the visibility window opens.
-  windowLeadMinutesOverride?: number;
+  // Minutes before `arriveBy` that the *earliest acceptable* arrival sits.
+  // Bounds the per-candidate filter: a candidate arriving earlier than
+  // `arriveBy − windowEarliestArrivalMinutes` is dropped.
+  windowEarliestArrivalMinutesOverride?: number;
+
+  // Cold-start fallback for the activation-lead travel buffer. Once the
+  // assembler has observed an actual candidate travel time for this preference
+  // it uses that (ceil to 5 min) instead. Only consulted before the first
+  // successful fetch, so set this to a generous upper bound.
+  fallbackTravelBufferMinutesOverride?: number;
 
   // Minutes after the arrive-by moment the window stays open. Skewed small
   // because arriving late is worse than arriving early.
@@ -127,7 +135,8 @@ export type Preference = {
   // ── per-preference overrides — apply when a ScheduleRule doesn't override
   //    further. Fall through to DEFAULTS when omitted. ──
 
-  windowLeadMinutes?: number;
+  windowEarliestArrivalMinutes?: number;
+  fallbackTravelBufferMinutes?: number;
   windowLateTailMinutes?: number;
   imminentDepartureGraceMinutes?: number;
   preparationMinutes?: number;
@@ -151,11 +160,16 @@ export const TIMEZONE = "Europe/Berlin";
 export const DEFAULTS = {
   timezone: TIMEZONE,
 
-  // Visibility window geometry. Asymmetric: long lead so options surface
-  // early, short late tail because arriving late is more painful than
-  // arriving early.
-  windowLeadMinutes: 120,
+  // Visibility window geometry. Asymmetric: long early-arrival window so
+  // options surface in advance of the user's needed-by time, short late tail
+  // because arriving late is more painful than arriving early.
+  windowEarliestArrivalMinutes: 60,
   windowLateTailMinutes: 15,
+
+  // Cold-start fallback for the activation-lead travel buffer. Used only
+  // before any candidate has been observed for the preference; thereafter the
+  // observed max travel time (ceil to 5 min) replaces it.
+  fallbackTravelBufferMinutes: 120,
 
   // Imminent-departure handling.
   imminentDepartureGraceMinutes: 5,
@@ -185,7 +199,8 @@ export const DEFAULTS = {
 // preference at one point in time. All fields are required and concrete —
 // downstream code never sees `undefined` and never re-reads `DEFAULTS`.
 export type ResolvedTunables = {
-  windowLeadMinutes: number;
+  windowEarliestArrivalMinutes: number;
+  fallbackTravelBufferMinutes: number;
   windowLateTailMinutes: number;
   imminentDepartureGraceMinutes: number;
   preparationMinutes: number;
@@ -197,9 +212,13 @@ export function resolveTunables(
   applicableRule: ScheduleRule,
 ): ResolvedTunables {
   return {
-    windowLeadMinutes: applicableRule.windowLeadMinutesOverride ??
-      preference.windowLeadMinutes ??
-      DEFAULTS.windowLeadMinutes,
+    windowEarliestArrivalMinutes: applicableRule.windowEarliestArrivalMinutesOverride ??
+      preference.windowEarliestArrivalMinutes ??
+      DEFAULTS.windowEarliestArrivalMinutes,
+
+    fallbackTravelBufferMinutes: applicableRule.fallbackTravelBufferMinutesOverride ??
+      preference.fallbackTravelBufferMinutes ??
+      DEFAULTS.fallbackTravelBufferMinutes,
 
     windowLateTailMinutes: applicableRule.windowLateTailMinutesOverride ??
       preference.windowLateTailMinutes ??

@@ -35,20 +35,43 @@ import { nextApplicableArriveBy } from "./schedule_evaluator.ts";
 // window is a derived state per render cycle, not configuration. The board
 // assembler is the only producer; the classifier is the only consumer.
 export type VisibilityWindow = {
+  // Cadence: when the screen first activates for this preference. Equals
+  // `earliestArrival − travelBufferMinutes` so the user has the typical
+  // travel-time buffer before the earliest acceptable arrival.
   opensAt: Date;
+  // Cadence + filter: when the screen deactivates and the latest acceptable
+  // arrival cutoff sits.
   closesAt: Date;
+  // Anchor — the user's `arriveByLocalTime` resolved to an absolute instant.
   arriveByDate: Date;
+  // Filter lower bound: candidates arriving before this are dropped. Equals
+  // `arriveByDate − tunables.windowEarliestArrivalMinutes`.
+  earliestArrival: Date;
 };
 
 export function makeVisibilityWindow(
   tunables: ResolvedTunables,
   arriveByDate: Date,
+  travelBufferMinutes: number,
 ): VisibilityWindow {
+  const earliestArrival = new Date(
+    arriveByDate.getTime() - tunables.windowEarliestArrivalMinutes * 60_000,
+  );
   return {
-    opensAt: new Date(arriveByDate.getTime() - tunables.windowLeadMinutes * 60_000),
+    opensAt: new Date(earliestArrival.getTime() - travelBufferMinutes * 60_000),
     closesAt: new Date(arriveByDate.getTime() + tunables.windowLateTailMinutes * 60_000),
     arriveByDate,
+    earliestArrival,
   };
+}
+
+// Round a candidate's observed travel time up to the nearest 5-minute mark so
+// activation timing stays stable across small fetch-to-fetch jitter.
+const TRAVEL_BUFFER_GRANULARITY_MINUTES = 5;
+function ceilToGranularity(minutes: number): number {
+  if (minutes <= 0) return TRAVEL_BUFFER_GRANULARITY_MINUTES;
+  return Math.ceil(minutes / TRAVEL_BUFFER_GRANULARITY_MINUTES) *
+    TRAVEL_BUFFER_GRANULARITY_MINUTES;
 }
 
 // Reasons the row list might be empty. Three kinds:
@@ -136,6 +159,13 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
   // `null` until the first non-FeedError fetch resolves.
   let lastSuccessfulFetchAt: Date | null = null;
 
+  // Observed maximum candidate travel time (= last leg arrival − first leg
+  // departure, in minutes) per `preferenceKey`. Drives the activation lead so
+  // the screen turns on early enough that the slowest known option is still
+  // catchable. Falls back to `tunables.fallbackTravelBufferMinutes` until the
+  // first successful fetch populates an entry.
+  const observedMaxTravelMinutes = new Map<string, number>();
+
   return {
     async assembleBoard(config, now, options = {}): Promise<Board> {
       const fetchFn = options.fetchCandidates ?? defaults.fetchCandidates ?? defaultFetch;
@@ -157,11 +187,15 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
         const resolution = nextApplicableArriveBy(preference.schedule, preference, now);
         if (!resolution) continue;
         const tunables = resolveTunables(preference, resolution.applicableRule);
+        const observed = observedMaxTravelMinutes.get(preference.preferenceKey);
+        const travelBufferMinutes = observed != null
+          ? ceilToGranularity(observed)
+          : tunables.fallbackTravelBufferMinutes;
         scheduled.push({
           preference,
           tunables,
           arriveByDate: resolution.arriveByDate,
-          window: makeVisibilityWindow(tunables, resolution.arriveByDate),
+          window: makeVisibilityWindow(tunables, resolution.arriveByDate, travelBufferMinutes),
         });
       }
       const active = scheduled.filter((s) => s.window.opensAt.getTime() <= now.getTime());
@@ -181,6 +215,24 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
         else anyFeedError = true;
       }
       if (anySuccess) lastSuccessfulFetchAt = now;
+
+      // Step 2b — refresh per-preference observed travel time cache from the
+      // candidates BVG just returned. Used to tighten activation timing on the
+      // next render (see the `observedMaxTravelMinutes` lookup above).
+      for (let i = 0; i < active.length; i++) {
+        const result = fetched[i];
+        if (!Array.isArray(result) || result.length === 0) continue;
+        const { preference } = active[i];
+        let maxMin = 0;
+        for (const candidate of result) {
+          const firstLeg = candidate.legs[0];
+          const lastLeg = candidate.legs[candidate.legs.length - 1];
+          if (!firstLeg || !lastLeg) continue;
+          const min = (lastLeg.arrival.getTime() - firstLeg.departure.getTime()) / 60_000;
+          if (min > maxMin) maxMin = min;
+        }
+        if (maxMin > 0) observedMaxTravelMinutes.set(preference.preferenceKey, maxMin);
+      }
 
       // Step 3 — classify each preference's results independently. A FeedError
       // contributes zero rows but does not abort others.
@@ -399,12 +451,16 @@ export function boardValidForSeconds(board: Board, now: Date = new Date()): numb
     if (untilGrace > 0) candidates.push(untilGrace);
   }
 
-  // Window-edge ticks: every positive `opensAt − now` and `closesAt − now`
-  // across active preferences. Negative deltas (already-crossed edges) are
-  // ignored — the next render cycle will pick up the next edge.
+  // Window-edge ticks: every positive `opensAt`, `earliestArrival`, and
+  // `closesAt` across active preferences. The `earliestArrival` edge matters
+  // because new candidates qualify the moment their arrival enters the
+  // filter range. Negative deltas (already-crossed edges) are ignored — the
+  // next render cycle will pick up the next edge.
   for (const w of board.windows) {
     const untilOpens = Math.floor((w.opensAt.getTime() - now.getTime()) / 1000);
     if (untilOpens > 0) candidates.push(untilOpens);
+    const untilEarliest = Math.floor((w.earliestArrival.getTime() - now.getTime()) / 1000);
+    if (untilEarliest > 0) candidates.push(untilEarliest);
     const untilCloses = Math.floor((w.closesAt.getTime() - now.getTime()) / 1000);
     if (untilCloses > 0) candidates.push(untilCloses);
   }

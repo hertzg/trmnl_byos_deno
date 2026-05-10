@@ -77,7 +77,7 @@ const A_OFFICE_FRIDAY: Preference = {
     {
       applicableDays: ["fri"],
       arriveByLocalTime: "10:00",
-      windowLeadMinutesOverride: 30, // narrower window on Fri
+      windowEarliestArrivalMinutesOverride: 30, // narrower window on Fri
       excludedLineNamesOverride: [], // override to nothing — bus is fine
     },
   ],
