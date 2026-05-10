@@ -129,6 +129,7 @@ function transitCandidateFor(
         arrival,
         line: { name: lineName, product: "suburban" },
         direction: "Strausberg",
+        realtime: { delaySeconds: 0, cancelled: false, hasRealtime: false, remarks: [] },
       },
     ],
     departure,
