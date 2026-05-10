@@ -1,13 +1,16 @@
 // BoardAssembler — pipeline orchestrator.
 //
-//   resolveActive  →  fetchCandidates  →  classify  →  sort by leave-by
+//   resolveActive  →  fetchCandidates  →  classify  →  sort by leave-by  →  collapse
 //
 // The fetch dependency is injectable so the pipeline can be exercised
 // integration-style with a stubbed client. In production, callers pass the
 // real `fetchCandidates` from `./journey_client.ts`.
 //
-// Slice 1 scope: single preference, single rule, no exclusion, no realtime,
-// no cancellation, no overflow cap, no window-edge cadence.
+// Slice 9: three-kind empty-state precedence (`none` / `feedUnreachable` /
+// `noScheduleApplicable`) plus a `lastSuccessfulFetchAt` cache that survives
+// across calls. The cache is held in a closure inside `createBoardAssembler`
+// (factory variant). The free-function `assembleBoard` keeps a process-wide
+// default assembler for callers that don't need their own cache.
 
 import {
   type Candidate,
@@ -17,6 +20,7 @@ import {
 import { type BoardRow, classify } from "./journey_classifier.ts";
 import {
   DEFAULTS,
+  type Preference,
   type ResolvedTunables,
   resolveTunables,
   type RoutesConfig,
@@ -47,10 +51,24 @@ export function makeVisibilityWindow(
   };
 }
 
-// Reasons the row list might be empty. Slice 1 only distinguishes between
-// "we have rows" and "no schedule fires right now"; `feedUnreachable` arrives
-// in slice 7 alongside realtime + cancellation.
+// Reasons the row list might be empty. Three kinds:
+//   "none"                 rows present, empty frame not rendered
+//   "noScheduleApplicable" no preference is currently active and no fetch
+//                          failed — the screen is genuinely quiet
+//   "feedUnreachable"      at least one active preference's BVG fetch returned
+//                          a FeedError and no rows survived
 export type EmptyReason = "none" | "noScheduleApplicable" | "feedUnreachable";
+
+// Hint surfaced in the `noScheduleApplicable` empty frame so the screen says
+// when it'll be useful again. Computed by walking every preference's schedule
+// (regardless of whether it was active for `now`) and picking the soonest
+// future arrive-by; ties broken by `preferenceKey` for stability.
+export type NextAnchor = {
+  arriveByDate: Date;
+  preferenceKey: string;
+  preferenceLabel: string;
+  preferenceIcon: string;
+};
 
 export type Board = {
   rows: readonly BoardRow[];
@@ -61,77 +79,169 @@ export type Board = {
   // Per-active-preference visibility windows. Used by `boardValidForSeconds`
   // to schedule a re-render at each upcoming `opensAt` / `closesAt` crossing.
   windows: readonly VisibilityWindow[];
+  // Only populated when `emptyReason === "feedUnreachable"`. The instant of
+  // the most recent successful fetch across calls; `null` if no fetch has
+  // ever succeeded since the assembler was created.
+  lastSuccessfulFetchAt?: Date | null;
+  // Only populated when `emptyReason === "noScheduleApplicable"`. The soonest
+  // future arrive-by across all preferences — drives the empty frame's
+  // "next: <weekday> <HH:MM> · <icon> · <label>" sub-text.
+  nextAnchor?: NextAnchor;
 };
 
 export type AssembleOptions = {
   fetchCandidates?: FetchCandidates;
 };
 
-export async function assembleBoard(
+export type BoardAssembler = {
+  assembleBoard(
+    config: RoutesConfig,
+    now: Date,
+    options?: AssembleOptions,
+  ): Promise<Board>;
+};
+
+// Factory variant. Holds the `lastSuccessfulFetchAt` cache in a closure so
+// successive calls share state without exposing a class. Pick the factory
+// over a closure-bound argument because the cache is internal lifecycle
+// state, not a per-call input.
+export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssembler {
+  // Most-recent successful fetch instant across the assembler's lifetime.
+  // `null` until the first non-FeedError fetch resolves.
+  let lastSuccessfulFetchAt: Date | null = null;
+
+  return {
+    async assembleBoard(config, now, options = {}): Promise<Board> {
+      const fetchFn = options.fetchCandidates ?? defaults.fetchCandidates ?? defaultFetch;
+
+      // Step 1 — resolve every preference; collect the active subset.
+      const active: Array<{
+        preference: Preference;
+        tunables: ResolvedTunables;
+        arriveByDate: Date;
+        window: VisibilityWindow;
+      }> = [];
+      for (const preference of config.preferences) {
+        const resolution = nextApplicableArriveBy(preference.schedule, preference, now);
+        if (!resolution) continue;
+        const tunables = resolveTunables(preference, resolution.applicableRule);
+        active.push({
+          preference,
+          tunables,
+          arriveByDate: resolution.arriveByDate,
+          window: makeVisibilityWindow(tunables, resolution.arriveByDate),
+        });
+      }
+
+      // Step 2 — fetch all active preferences in parallel.
+      const fetched = await Promise.all(
+        active.map((a) => fetchFn(a.preference.origin, a.preference.destination, a.arriveByDate)),
+      );
+
+      // Step 2a — update last-successful-fetch cache. Any successful (non
+      // FeedError) result counts as success for cache purposes; partial
+      // success still refreshes the timestamp.
+      let anySuccess = false;
+      let anyFeedError = false;
+      for (const result of fetched) {
+        if (Array.isArray(result)) anySuccess = true;
+        else anyFeedError = true;
+      }
+      if (anySuccess) lastSuccessfulFetchAt = now;
+
+      // Step 3 — classify each preference's results independently. A FeedError
+      // contributes zero rows but does not abort others.
+      const rows: BoardRow[] = [];
+      for (let i = 0; i < active.length; i++) {
+        const result = fetched[i];
+        if (!Array.isArray(result)) continue;
+        const { preference, tunables, window } = active[i];
+        for (const candidate of result as readonly Candidate[]) {
+          const row = classify(candidate, preference, tunables, now, window);
+          if (row) rows.push(row);
+        }
+      }
+
+      // Step 4 — stable sort by leave-by ascending. JS `Array.prototype.sort`
+      // is required to be stable since ES2019, so ties preserve concatenation
+      // order (which preserves fetch order, which preserves config order).
+      rows.sort((a, b) => a.leaveByDate.getTime() - b.leaveByDate.getTime());
+
+      // Step 5 — collapse runs of consecutive `CancellationStrip`s with the
+      // same `preferenceIcon`. See `collapseCancellations` for details.
+      const collapsedRows = collapseCancellations(rows);
+
+      // Step 6 — empty-state precedence:
+      //   1. rows present                       → none
+      //   2. else any active fetch failed       → feedUnreachable
+      //   3. else                               → noScheduleApplicable
+      let emptyReason: EmptyReason;
+      if (collapsedRows.length > 0) emptyReason = "none";
+      else if (anyFeedError) emptyReason = "feedUnreachable";
+      else emptyReason = "noScheduleApplicable";
+
+      const board: Board = {
+        rows: collapsedRows,
+        emptyReason,
+        fetchedAt: now,
+        windows: active.map((a) => a.window),
+      };
+
+      if (emptyReason === "feedUnreachable") {
+        board.lastSuccessfulFetchAt = lastSuccessfulFetchAt;
+      }
+
+      if (emptyReason === "noScheduleApplicable") {
+        const anchor = pickNextAnchor(config.preferences, now);
+        if (anchor) board.nextAnchor = anchor;
+      }
+
+      return board;
+    },
+  };
+}
+
+// Walk every preference's schedule, materialise its next applicable arrive-by,
+// and return the soonest. Ties (same `arriveByDate`) are broken by
+// `preferenceKey` ascending lexicographic so the empty-state hint is stable
+// across renders.
+function pickNextAnchor(
+  preferences: readonly Preference[],
+  now: Date,
+): NextAnchor | undefined {
+  let best: NextAnchor | undefined;
+  for (const preference of preferences) {
+    const resolution = nextApplicableArriveBy(preference.schedule, preference, now);
+    if (!resolution) continue;
+    const candidate: NextAnchor = {
+      arriveByDate: resolution.arriveByDate,
+      preferenceKey: preference.preferenceKey,
+      preferenceLabel: preference.rowLabel,
+      preferenceIcon: preference.rowIcon,
+    };
+    if (!best) {
+      best = candidate;
+      continue;
+    }
+    const cmp = candidate.arriveByDate.getTime() - best.arriveByDate.getTime();
+    if (cmp < 0 || (cmp === 0 && candidate.preferenceKey < best.preferenceKey)) {
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+// Process-wide default assembler. Free-function callers (`assembleBoard`)
+// share its `lastSuccessfulFetchAt` cache across all calls in the same
+// process — which is exactly what `data.ts` needs (one server, one cache).
+const DEFAULT_ASSEMBLER = createBoardAssembler();
+
+export function assembleBoard(
   config: RoutesConfig,
   now: Date,
   options: AssembleOptions = {},
 ): Promise<Board> {
-  const fetchFn = options.fetchCandidates ?? defaultFetch;
-
-  // Step 1 — resolve every preference; collect the active subset, deriving
-  // each preference's `VisibilityWindow` once per render cycle.
-  const active: Array<{
-    preference: typeof config.preferences[number];
-    tunables: ResolvedTunables;
-    arriveByDate: Date;
-    window: VisibilityWindow;
-  }> = [];
-  for (const preference of config.preferences) {
-    const resolution = nextApplicableArriveBy(preference.schedule, preference, now);
-    if (!resolution) continue;
-    const tunables = resolveTunables(preference, resolution.applicableRule);
-    active.push({
-      preference,
-      tunables,
-      arriveByDate: resolution.arriveByDate,
-      window: makeVisibilityWindow(tunables, resolution.arriveByDate),
-    });
-  }
-
-  // Step 2 — fetch all active preferences in parallel. Total wall-clock fetch
-  // time is bounded by the slowest individual fetch, not their sum.
-  const fetched = await Promise.all(
-    active.map((a) => fetchFn(a.preference.origin, a.preference.destination, a.arriveByDate)),
-  );
-
-  // Step 3 — classify each preference's results independently. A `FeedError`
-  // contributes zero rows but does not abort the others. (Slice 9 will branch
-  // the empty-state on partial failure; this slice just tolerates it.)
-  const rows: BoardRow[] = [];
-  for (let i = 0; i < active.length; i++) {
-    const result = fetched[i];
-    if (!Array.isArray(result)) continue;
-    const { preference, tunables, window } = active[i];
-    for (const candidate of result as readonly Candidate[]) {
-      const row = classify(candidate, preference, tunables, now, window);
-      if (row) rows.push(row);
-    }
-  }
-
-  // Step 4 — stable sort by leave-by ascending. JS `Array.prototype.sort` is
-  // required to be stable since ES2019, so ties preserve concatenation order
-  // (which preserves fetch order, which preserves config order).
-  rows.sort((a, b) => a.leaveByDate.getTime() - b.leaveByDate.getTime());
-
-  // Step 5 — collapse runs of consecutive `CancellationStrip`s with the same
-  // `preferenceIcon` into a single strip whose `count` is the sum of the run.
-  // Sort placement is preserved by keeping the earliest `leaveByDate` of the
-  // group. A `Row` (or a strip with a different icon) between two strips
-  // breaks adjacency and prevents the merge.
-  const collapsedRows = collapseCancellations(rows);
-
-  return {
-    rows: collapsedRows,
-    emptyReason: rows.length > 0 ? "none" : "noScheduleApplicable",
-    fetchedAt: now,
-    windows: active.map((a) => a.window),
-  };
+  return DEFAULT_ASSEMBLER.assembleBoard(config, now, options);
 }
 
 // Walk a sorted `BoardRow[]` and fold consecutive `CancellationStrip` entries

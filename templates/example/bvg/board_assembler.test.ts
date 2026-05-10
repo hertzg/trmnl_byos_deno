@@ -3,6 +3,7 @@ import {
   assembleBoard,
   type Board,
   boardValidForSeconds,
+  createBoardAssembler,
   makeVisibilityWindow,
   type VisibilityWindow,
 } from "./board_assembler.ts";
@@ -610,4 +611,104 @@ Deno.test("assembleBoard: a Row between two same-icon strips prevents collapse",
   assertEquals(board.rows[0].kind, "cancellationStrip");
   assertEquals(board.rows[1].kind, "row");
   assertEquals(board.rows[2].kind, "cancellationStrip");
+});
+
+// ─── slice 9: three-kind empty-state precedence ─────────────────────────────
+
+Deno.test("assembleBoard: all active fetches fail → emptyReason feedUnreachable", async () => {
+  // Single active preference whose fetch returns FeedError. With no rows AND
+  // an upstream fetch failure, the empty state must read as feedUnreachable —
+  // not noScheduleApplicable (which would falsely imply the schedule is
+  // quiet rather than the network being broken).
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = () =>
+    Promise.resolve({ kind: "feed-error", message: "stub" } as const);
+  const board = await assembleBoard(CONFIG, now, { fetchCandidates: stubFetch });
+  assertEquals(board.rows.length, 0);
+  assertEquals(board.emptyReason, "feedUnreachable");
+});
+
+Deno.test("createBoardAssembler: all-feed-error board carries lastSuccessfulFetchAt: null on first call", async () => {
+  // A fresh assembler has no prior successful fetch — `lastSuccessfulFetchAt`
+  // must be explicitly null so EmptyFrame can render "0 m old". Uses the
+  // factory variant for cache isolation (the free-function `assembleBoard`
+  // shares a process-wide cache that other tests warm up).
+  const now = new Date("2025-11-10T06:00:00Z");
+  const stubFetch: FetchCandidates = () =>
+    Promise.resolve({ kind: "feed-error", message: "stub" } as const);
+  const assembler = createBoardAssembler({ fetchCandidates: stubFetch });
+  const board = await assembler.assembleBoard(CONFIG, now);
+  assertEquals(board.lastSuccessfulFetchAt, null);
+});
+
+Deno.test("createBoardAssembler caches lastSuccessfulFetchAt across calls", async () => {
+  // First call succeeds → cache is set to that `now`.
+  // Second call (later) all-fails → board carries the FIRST call's instant.
+  const firstNow = new Date("2025-11-10T06:00:00Z");
+  const secondNow = new Date("2025-11-10T06:05:00Z");
+
+  const okFetch: FetchCandidates = (origin) => {
+    if (origin.hafasStopId === HBF.hafasStopId) {
+      return Promise.resolve([
+        transitCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00", "2025-11-10T09:02:00+01:00"),
+      ]);
+    }
+    return Promise.resolve([]);
+  };
+  const errFetch: FetchCandidates = () =>
+    Promise.resolve({ kind: "feed-error", message: "stub" } as const);
+
+  const assembler = createBoardAssembler({ fetchCandidates: okFetch });
+  const first = await assembler.assembleBoard(CONFIG, firstNow);
+  assertEquals(first.emptyReason, "none"); // rows present
+
+  // Swap the fetcher to all-failure on the second call.
+  const second = await assembler.assembleBoard(CONFIG, secondNow, { fetchCandidates: errFetch });
+  assertEquals(second.emptyReason, "feedUnreachable");
+  assertEquals(second.lastSuccessfulFetchAt?.toISOString(), firstNow.toISOString());
+});
+
+Deno.test("assembleBoard: noScheduleApplicable carries soonest nextAnchor across preferences", async () => {
+  // Two preferences: OFFICE (mon-fri 09:30) and STUDIO (mon-fri 09:30). With
+  // no rules applicable on a Saturday, both schedules' next anchor is
+  // Monday 09:30. The tie is broken by `preferenceKey` → "office" < "studio".
+  // To force noScheduleApplicable, we pick a `now` such that nextApplicable
+  // walks 7 days but no rules fire imminently *and* fetches return [].
+  // Saturday 2025-11-15 12:00 Berlin: next mon-fri rule fires Mon 2025-11-17 09:30.
+  const now = new Date("2025-11-15T11:00:00Z"); // Sat 12:00 Berlin
+  const stubFetch: FetchCandidates = () => Promise.resolve([]);
+
+  const board = await assembleBoard(
+    { preferences: [OFFICE, STUDIO] },
+    now,
+    { fetchCandidates: stubFetch },
+  );
+  assertEquals(board.rows.length, 0);
+  assertEquals(board.emptyReason, "noScheduleApplicable");
+  // Monday 2025-11-17 09:30 Berlin = 08:30Z (CET, no DST).
+  assertEquals(board.nextAnchor?.arriveByDate.toISOString(), "2025-11-17T08:30:00.000Z");
+  // Tie-break: "office" < "studio" lexicographically.
+  assertEquals(board.nextAnchor?.preferenceKey, "office");
+  assertEquals(board.nextAnchor?.preferenceLabel, "Office");
+  assertEquals(board.nextAnchor?.preferenceIcon, "A");
+});
+
+Deno.test("assembleBoard: nextAnchor picks the soonest across preferences", async () => {
+  // OFFICE fires Mon 09:30; STUDIO fires Sat 14:00. On a Friday evening, the
+  // soonest is STUDIO Saturday — even though OFFICE comes first in config.
+  const now = new Date("2025-11-14T19:00:00Z"); // Fri 20:00 Berlin
+  const STUDIO_SAT: Preference = {
+    ...STUDIO,
+    schedule: [{ applicableDays: ["sat"], arriveByLocalTime: "14:00" }],
+  };
+  const stubFetch: FetchCandidates = () => Promise.resolve([]);
+  const board = await assembleBoard(
+    { preferences: [OFFICE, STUDIO_SAT] },
+    now,
+    { fetchCandidates: stubFetch },
+  );
+  assertEquals(board.emptyReason, "noScheduleApplicable");
+  // Sat 2025-11-15 14:00 Berlin = 13:00Z.
+  assertEquals(board.nextAnchor?.arriveByDate.toISOString(), "2025-11-15T13:00:00.000Z");
+  assertEquals(board.nextAnchor?.preferenceKey, "studio");
 });

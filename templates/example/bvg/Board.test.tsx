@@ -82,3 +82,39 @@ Deno.test("Board renders empty frame when no rows", () => {
   const html = renderToString(<Board board={board} /> as any);
   assertStringIncludes(html, "nothing to show right now");
 });
+
+Deno.test("Board renders feedUnreachable empty frame with age sub-text", () => {
+  const board: BoardData = {
+    rows: [],
+    emptyReason: "feedUnreachable",
+    fetchedAt: new Date("2025-11-10T07:10:00Z"),
+    windows: [],
+    lastSuccessfulFetchAt: new Date("2025-11-10T07:00:00Z"),
+  };
+  // deno-lint-ignore no-explicit-any
+  const html = renderToString(<Board board={board} /> as any);
+  assertStringIncludes(html, "feed unreachable");
+  assertStringIncludes(html, "data is 10 m old");
+});
+
+Deno.test("Board renders next-anchor hint inside the noScheduleApplicable frame", () => {
+  const board: BoardData = {
+    rows: [],
+    emptyReason: "noScheduleApplicable",
+    fetchedAt: new Date("2025-11-15T11:00:00Z"),
+    windows: [],
+    nextAnchor: {
+      arriveByDate: new Date("2025-11-17T08:30:00.000Z"),
+      preferenceKey: "office",
+      preferenceLabel: "Office",
+      preferenceIcon: "A",
+    },
+  };
+  // deno-lint-ignore no-explicit-any
+  const html = renderToString(<Board board={board} /> as any);
+  assertStringIncludes(html, "nothing to show right now");
+  assertStringIncludes(html, "next:");
+  assertStringIncludes(html, "Mon");
+  assertStringIncludes(html, "09:30");
+  assertStringIncludes(html, "Office");
+});
