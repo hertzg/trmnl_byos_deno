@@ -3,19 +3,29 @@
  *
  * Legibility rules of thumb:
  *   - Solid black-on-white beats outlined: thin borders dither poorly.
- *   - Body weight 500 (medium), data tokens 700 (bold) — 400 looks washed out after dither.
+ *   - Body weight 500 (medium), data tokens 700/900 — 400 looks washed out after dither.
  *   - Generous whitespace — adjacent dense elements ghost and compete.
  *   - Sized for wall/desk distance, not laptop-monitor distance. */
 
-/* Inter Variable — what the TRMNL framework itself uses on high-density displays
- * (per its font-bundle rules: pixel fonts only on low-density panels, Inter elsewhere).
- * Self-hosted so the renderer stays offline. One woff2 covers all weights 100–900. */
+/* Inter Variable for Latin/digits, Noto Sans Georgian Variable for the Georgian
+ * Mkhedruli script. Both self-hosted so the renderer stays offline (per the original
+ * design constraint — the rasterizing browser has no outbound network during a frame).
+ * Per-glyph fallback in the font stack: browsers pick Inter for Latin and Noto Sans
+ * Georgian for Georgian, automatically. */
 @font-face {
   font-family: "Inter";
   font-weight: 100 900;
   font-style: normal;
   font-display: block;
   src: url("/assets/fonts/inter-variable.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Noto Sans Georgian";
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+  src: url("/assets/fonts/noto-sans-georgian-variable.woff2") format("woff2-variations");
 }
 
 * {
@@ -28,7 +38,7 @@ html,
 body {
   width: 1872px;
   height: 1404px;
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Noto Sans Georgian", ui-sans-serif, system-ui, sans-serif;
   color: #000;
   background: #fff;
   -webkit-font-smoothing: none;
@@ -45,130 +55,335 @@ body {
   gap: 28px;
 }
 
-.frame {
+/* The slot fills whatever the body's flex container hands it. With the title-bar
+ * footer at fixed height, this gives the slot ~1776 × 1230 — close enough to the
+ * wireframe target that the layouts inside don't need to scale. */
+.slot {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 56px;
-  overflow: hidden;
-}
-
-.section {
   display: flex;
   flex-direction: column;
-  gap: 20px;
   overflow: hidden;
 }
 
-.section__header {
-  font-size: 32px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+/* ----- shared header ----- */
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   border-bottom: 4px solid #000;
-  padding-bottom: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 24px;
 }
 
-.line-row {
+.head__row {
   display: flex;
-  flex-direction: row;
-  gap: 20px;
-  align-items: center;
-  padding: 6px 0;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
 }
 
-.line-row__icon {
-  flex: 0 0 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.head__title {
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
 }
 
-.line-row__icon img {
-  width: 48px;
-  height: 48px;
-  display: block;
-}
-
-.line-row__content {
-  flex: 1;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 20px;
-  min-width: 0;
-}
-
-.line-label {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: row;
-  gap: 14px;
-  align-items: center;
-}
-
-.line-label__badge {
-  flex: 0 0 auto;
-  background: #000;
-  color: #fff;
-  padding: 4px 12px;
-  font-size: 30px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.line-label__direction {
-  flex: 1;
-  min-width: 0;
-  font-size: 30px;
+.head__stamp {
+  font-size: 22px;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.timeline {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  /* Wide gap between hour clusters so the eye chunks the row visually. */
-  gap: 28px;
-}
-
-.timeline__group {
-  display: flex;
-  flex-direction: row;
-  /* Tight gap within an hour — pills here are continuations of the first one. */
-  gap: 8px;
-}
-
-/* Solid-fill pill matches the badge style — same visual weight as the line label, so
- * the eye reads "U5 → these times" as one row of equal-density tokens. */
-.time-pill {
-  background: #000;
-  color: #fff;
-  padding: 4px 12px;
-  font-size: 28px;
-  font-weight: 700;
+  color: #555;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.empty-departures {
-  font-style: italic;
-  font-size: 26px;
+.head__sub {
+  font-size: 22px;
+  font-weight: 500;
+  color: #444;
+}
+
+/* ----- BVG line tag (mode glyph + line code badge) ----- */
+
+.line-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.line-tag__icon {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.line-tag__icon--xl {
+  width: 96px;
+  height: 96px;
+}
+.line-tag__icon--lg {
+  width: 64px;
+  height: 64px;
+}
+.line-tag__icon--md {
+  width: 44px;
+  height: 44px;
+}
+.line-tag__icon--sm {
+  width: 32px;
+  height: 32px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.badge--xl {
+  font-size: 64px;
+  padding: 8px 18px;
+  min-width: 130px;
+}
+.badge--lg {
+  font-size: 44px;
+  padding: 6px 14px;
+  min-width: 96px;
+}
+.badge--md {
+  font-size: 30px;
+  padding: 4px 12px;
+  min-width: 70px;
+}
+.badge--sm {
+  font-size: 22px;
+  padding: 2px 10px;
+  min-width: 54px;
+}
+
+/* S-Bahn lines: pill shape so the badge echoes the circular brand glyph. Side padding
+ * is bumped slightly so short codes like "S5" still leave breathing room past the
+ * rounded ends. */
+.badge--round {
+  border-radius: 999px;
+  padding-left: 22px;
+  padding-right: 22px;
+}
+
+/* ----- merged west list (used in vertical + full's right column) ----- */
+
+.west-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.west-list__row {
+  display: grid;
+  grid-template-columns: 60px 180px 110px 1fr;
+  gap: 22px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid #999;
+}
+
+.west-list__row:last-child {
+  border-bottom: none;
+}
+
+.west-list__leave {
+  font-size: 44px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.west-list__leave-prefix {
+  display: block;
+  font-size: 16px;
+  font-weight: 500;
+  color: #555;
+  letter-spacing: 0.1em;
+  margin-bottom: 2px;
+}
+
+.west-list__dir {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.west-list__dep {
+  font-size: 20px;
+  font-weight: 500;
+  color: #555;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----- horizontal: column-flow of departure cards ----- */
+
+.h-flow {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 32px;
+}
+
+.h-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 0 0;
+  border-top: 4px solid #000;
+}
+
+.h-card--lead {
+  border-top-width: 12px;
+}
+
+.h-card__label {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   color: #555;
 }
 
-.hn-item {
-  font-size: 28px;
-  font-weight: 500;
-  line-height: 1.3;
-  border-bottom: 1px solid #999;
-  padding: 8px 0;
+.h-card__leave {
+  font-size: 56px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
+
+.h-card--lead .h-card__leave {
+  font-size: 88px;
+}
+
+.h-card__line {
+  margin-top: 4px;
+}
+
+.h-card__dir {
+  font-size: 26px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.h-card__dep {
+  font-size: 18px;
+  font-weight: 500;
+  color: #555;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+/* ----- full: hero card + secondary list ----- */
+
+.full-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 720px 1fr;
+  gap: 64px;
+  min-height: 0;
+}
+
+/* Two stacked hero cards on the left. Equal flex so the available column height
+ * splits 50/50 between them; the gap reads as the divider so the card itself can be
+ * borderless and quieter. */
+.hero-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-height: 0;
+}
+
+.hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  min-height: 0;
+}
+
+.hero + .hero {
+  border-top: 4px solid #000;
+  padding-top: 32px;
+}
+
+.hero__label {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #555;
+}
+
+/* Row 2: glyph + leave-by time. Halved from the single-hero layout (was 220px); two
+ * stacked at 140px still read from across the room while leaving room for rows 3-4. */
+.hero__time-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.hero__time {
+  font-size: 140px;
+  font-weight: 900;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Row 3: line code badge + direction headsign. */
+.hero__line-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.hero__dir {
+  font-size: 36px;
+  font-weight: 700;
+}
+
+/* Row 4: platform + scheduled departure, inline. */
+.hero__dep {
+  font-size: 24px;
+  font-weight: 500;
+  color: #444;
+  margin-top: 4px;
+}
+
+/* Platform marker — bumped to bold black to lift it out of the muted dep line.
+ * Reads "platform N" at glance distance without becoming as loud as the leave-by. */
+.platform {
+  color: #000;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.full-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.full-list__label {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #555;
+  padding-bottom: 14px;
+  border-bottom: 4px solid #000;
+  margin-bottom: 10px;
+}
+
+/* ----- footer / title bar ----- */
 
 .title-bar {
   display: flex;

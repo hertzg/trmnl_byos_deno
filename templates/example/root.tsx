@@ -1,7 +1,7 @@
 /** @jsxImportSource hono/jsx */
 import type { FrameData } from "./data.ts";
 import BVGTimetable from "./bvg/BVGTimetable.tsx";
-import HackerNews from "./hn/HackerNews.tsx";
+import { formatHHMM } from "./bvg/time.ts";
 
 const BERLIN_TZ = "Europe/Berlin";
 
@@ -17,9 +17,7 @@ function formatFetchedAt(now: Date): string {
   }).format(now);
 }
 
-export default function DefaultTemplate(
-  { topStories, stops, fetchedAt }: FrameData,
-) {
+export default function DefaultTemplate({ board, fetchedAt }: FrameData) {
   return (
     <html>
       <head>
@@ -28,14 +26,13 @@ export default function DefaultTemplate(
         <link rel="stylesheet" href="/assets/style.css" />
       </head>
       <body>
-        <main class="frame">
-          <HackerNews stories={topStories} />
-          <BVGTimetable stops={stops} />
-        </main>
+        <BVGTimetable board={board} fetchedAt={fetchedAt} />
         <footer class="title-bar">
           <span class="title-bar__title">trmnl-byos-deno</span>
           <span class="title-bar__instance">
-            transport · hn — updated {formatFetchedAt(fetchedAt)}
+            BVG · {board.stop.name} · განახლდა {formatHHMM(fetchedAt)}
+            {" · "}
+            {formatFetchedAt(fetchedAt)}
           </span>
         </footer>
       </body>

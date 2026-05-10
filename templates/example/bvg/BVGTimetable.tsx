@@ -1,16 +1,23 @@
 /** @jsxImportSource hono/jsx */
-import type { Stop } from "./data.ts";
-import StopSection from "./stop/StopSection.tsx";
+import type { Board } from "./data.ts";
+import BVGFull from "./BVGFull.tsx";
+import BVGHorizontal from "./BVGHorizontal.tsx";
+import BVGVertical from "./BVGVertical.tsx";
 
-// Departures rendered per (line, direction) group. Exactly 4 when the data has at
-// least that many; the 12h fetch window in data.ts guarantees enough headroom even for
-// sparse late-night lines.
-const SLOT_LIMIT = 4;
+// Dispatcher: picks the layout component based on `board.layout`. Falls through to the
+// full-frame variant for unknown values, which is a sensible default since this is the
+// only template the BYOS renders.
 
-export default function BVGTimetable({ stops }: { stops: Stop[] }) {
-  return (
-    <section class="section">
-      {stops.map((stop) => <StopSection stop={stop} slotLimit={SLOT_LIMIT} />)}
-    </section>
-  );
+export default function BVGTimetable(
+  { board, fetchedAt }: { board: Board; fetchedAt: Date },
+) {
+  switch (board.layout) {
+    case "horizontal":
+      return <BVGHorizontal board={board} fetchedAt={fetchedAt} />;
+    case "vertical":
+      return <BVGVertical board={board} fetchedAt={fetchedAt} />;
+    case "full":
+    default:
+      return <BVGFull board={board} fetchedAt={fetchedAt} />;
+  }
 }

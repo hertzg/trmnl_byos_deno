@@ -1,36 +1,49 @@
 // Starter template for the gitignored `routes.ts`. Copy this file to `routes.ts` and
-// replace the stops/filters with the lines you actually care about:
+// edit it for your own commute:
 //
 //   cp templates/example/bvg/routes.example.ts templates/example/bvg/routes.ts
 //
 // Stop IDs come from BVG's HAFAS database. Look one up with:
 //   curl 'https://v6.bvg.transport.rest/locations?query=<name>'
 //
+// One board describes one commute decision: a single from-stop with a walk time, plus
+// the lines/directions that leave it. Departures from all matching filters are merged
+// and sorted by departure time; the layout adds the `walkMin` walk to compute "leave
+// by" deadlines.
+//
 // Filter shape:
-//   { line }                    — any direction at any included stop
-//   { line, stops }             — restrict the line to specific stop IDs
-//   { line, direction }         — substring/regex match against the destination text
-//   { line, direction, stops }  — all three combined
+//   { line }                          — any direction at the stop
+//   { line, direction }               — substring/regex match against the destination
+//   { direction }                     — any line going to a matching destination
+//   { ..., tableOnly: true }          — show in the table but never promote to a hero
+//
+// First-match wins: if a departure matches multiple filters, the first one in the
+// list decides whether it's table-only. Order more specific (heroable) filters
+// before broader (tableOnly) catch-alls.
+//
+// Layouts:
+//   "full"        — two stacked hero cards + planning list (whole frame)
+//   "horizontal"  — six-card column flow (top/bottom strip)
+//   "vertical"    — single list (left/right column)
 
 import type { RoutesConfig } from "./data.ts";
 
-// Demo config: Berlin Mitte. Hauptbahnhof and Alexanderplatz are two of the city's
-// busiest interchanges, so the demo always has plenty of varied data to render.
+// Demo: westbound S/U-Bahn from Berlin Hauptbahnhof, with FEX and any airport-bound
+// regionals listed in the table only.
 export const ROUTES: RoutesConfig = {
-  stops: [
-    "900003201", // S+U Berlin Hauptbahnhof
-    "900100003", // S+U Alexanderplatz Bhf
-  ],
+  title: "→ West",
+  stop: {
+    id: "900003201", // S+U Berlin Hauptbahnhof
+    name: "Hauptbahnhof",
+    walkMin: 8,
+  },
+  layout: "full",
   filters: [
-    // S-Bahn line, both directions, at every included stop.
-    { line: "S7" },
-    // U-Bahn line scoped to one stop (U5's western terminus is Hauptbahnhof).
-    { line: "U5", stops: ["900003201"] },
-    // Tram line filtered to a specific destination — `direction` is a substring/regex.
-    { line: "M4", direction: "Hackescher Markt" },
-    // Airport express, both directions, at every included stop.
-    { line: "FEX" },
-    // Night bus only shown at Alexanderplatz.
-    { line: "N40", stops: ["900100003"] },
+    { line: "S5", direction: "Westkreuz" },
+    { line: "S7", direction: "Potsdam" },
+    { line: "U5" },
+    // Airport options — useful to know about, never the commute decision.
+    { line: "FEX", tableOnly: true },
+    { direction: "Flughafen", tableOnly: true },
   ],
 };

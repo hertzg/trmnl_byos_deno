@@ -1,15 +1,38 @@
-// BVG (Berlin transport) departures fetch + filter + group. Ported from the original
-// TRMNL `Transport` plugin's transform_js. The user's actual stops/filters live in
-// `./routes.ts` (gitignored) — see `./routes.example.ts` for the starter template.
+// BVG (Berlin transport) departures fetch + filter + merge. The user's actual
+// from-stop / walk time / lines live in `./routes.ts` (gitignored) — see
+// `./routes.example.ts` for the starter template.
 
 import { ROUTES } from "./routes.ts";
 
 const BVG_BASE = "https://v6.bvg.transport.rest";
 
-// Per-stop lookahead used when a stop entry doesn't override it. 12 hours is wide
-// enough that any line running at least every ~3 hours yields the 4-departure minimum
-// the timeline targets, even for the last-bus-of-the-day case at 23:50.
-const DEFAULT_STOP_DURATION_MIN = 720;
+// Lookahead window for the single fetch. 12 hours is wide enough that any line running
+// at least every ~3 hours yields enough departures to fill the layout, even at the
+// last-bus-of-the-day case at 23:50.
+const LOOKAHEAD_MIN = 720;
+
+// BVG's `results` parameter defaults to 10 — at a busy interchange that's all
+// S/U-Bahn before any night bus shows up. Bump it so we have headroom for filtering.
+const MAX_RESULTS = 300;
+
+export type Layout = "full" | "horizontal" | "vertical";
+
+export type FilterSpec = {
+  line?: string;
+  direction?: string;
+  // When true, departures matching this filter still appear in the table but are
+  // never promoted to a hero card. Use for "informational" lines like FEX or
+  // airport-bound regionals where the commute decision should be driven by other
+  // entries.
+  tableOnly?: boolean;
+};
+
+export type RoutesConfig = {
+  title: string;
+  stop: { id: string; name: string; walkMin: number };
+  layout: Layout;
+  filters: FilterSpec[];
+};
 
 export type Departure = {
   when: string;
@@ -17,40 +40,21 @@ export type Departure = {
   delayMin: number | null;
   cancelled: boolean;
   realtime: boolean;
-};
-
-export type Group = {
   line: string;
   direction: string;
   product: string;
+  leaveBy: string;
+  platform: string | null;
+  tableOnly: boolean;
+};
+
+export type Board = {
+  title: string;
+  stop: { id: string; name: string; walkMin: number };
+  layout: Layout;
   departures: Departure[];
 };
 
-export type Stop = {
-  id: string;
-  name: string;
-  durationMin: number;
-  total: number;
-  groups: Group[];
-};
-
-type StopSpec = string | { id: string; durationMin?: number };
-
-type FilterSpec = {
-  line?: string;
-  direction?: string;
-  stops?: string[];
-};
-
-// Schema for the gitignored `./routes.ts` config. Exported so that file can type its
-// constant against it without re-declaring the shape.
-export type RoutesConfig = {
-  stops: StopSpec[];
-  filters?: FilterSpec[];
-};
-
-// What the BVG /departures endpoint hands back. Only the fields we actually consume are
-// declared — everything else is dropped during normalization.
 type BvgDeparture = {
   when?: string | null;
   plannedWhen?: string | null;
@@ -58,66 +62,64 @@ type BvgDeparture = {
   cancelled?: boolean;
   prognosisType?: string | null;
   direction?: string | null;
+  platform?: string | null;
+  plannedPlatform?: string | null;
   line?: { name?: string; product?: string };
-  stop?: { name?: string };
 };
 
-type NormalizedStop = { id: string; durationMin: number };
-
-const OPEN_FILTERS = new Set(["", ".", ".*"]);
-
-function normalizeStop(spec: StopSpec): NormalizedStop | null {
-  if (typeof spec === "string") {
-    return { id: spec, durationMin: DEFAULT_STOP_DURATION_MIN };
-  }
-  if (spec && typeof spec === "object" && spec.id) {
-    return {
-      id: spec.id,
-      durationMin: spec.durationMin ?? DEFAULT_STOP_DURATION_MIN,
-    };
-  }
-  return null;
-}
+const OPEN_DIRECTION = new Set(["", ".", ".*"]);
 
 function directionMatches(pattern: string | undefined, text: string): boolean {
-  if (pattern == null || OPEN_FILTERS.has(pattern)) return true;
+  if (pattern == null || OPEN_DIRECTION.has(pattern)) return true;
   return new RegExp(pattern, "i").test(text);
 }
 
-function filterMatches(
-  filter: FilterSpec,
+// Returns the first filter that matches, or null if none does. With no filters at
+// all, every departure passes — equivalent to a single permissive filter — and
+// `tableOnly` defaults to false. The "first match wins" rule lets the user prioritise
+// entries by ordering: e.g. a heroable `S5 → Westkreuz` filter listed before a
+// catch-all `S5` table-only filter promotes the commute direction but still lists
+// the off-direction trains in the table.
+function matchFilter(
+  filters: FilterSpec[],
   dep: BvgDeparture,
-  stopId: string,
-): boolean {
-  if (filter.line && dep.line?.name !== filter.line) return false;
-  if (!directionMatches(filter.direction, dep.direction ?? "")) return false;
-  if (
-    filter.stops && filter.stops.length > 0 && !filter.stops.includes(stopId)
-  ) return false;
-  return true;
+): FilterSpec | null | undefined {
+  if (filters.length === 0) return null;
+  for (const f of filters) {
+    if (f.line && dep.line?.name !== f.line) continue;
+    if (!directionMatches(f.direction, dep.direction ?? "")) continue;
+    return f;
+  }
+  return undefined;
 }
 
-function formatDeparture(d: BvgDeparture): Departure {
+function toDeparture(
+  d: BvgDeparture,
+  walkMin: number,
+  tableOnly: boolean,
+): Departure | null {
+  const when = d.when ?? d.plannedWhen;
+  if (!when) return null;
+  const leaveBy = new Date(new Date(when).getTime() - walkMin * 60_000)
+    .toISOString();
   return {
-    when: (d.when ?? d.plannedWhen) ?? "",
-    plannedWhen: d.plannedWhen ?? "",
+    when,
+    plannedWhen: d.plannedWhen ?? when,
     delayMin: d.delay == null ? null : Math.round(d.delay / 60),
     cancelled: Boolean(d.cancelled),
     realtime: d.prognosisType != null,
+    line: d.line?.name ?? "",
+    direction: d.direction ?? "",
+    product: d.line?.product ?? "",
+    leaveBy,
+    platform: d.platform ?? d.plannedPlatform ?? null,
+    tableOnly,
   };
 }
 
-// BVG's `results` parameter defaults to 10 — at a busy interchange that's all S/U-Bahn
-// before any night bus shows up. Bump it so we have enough headroom that every line
-// passes through the post-fetch filter with its 4-departure minimum intact.
-const MAX_RESULTS_PER_STOP = 300;
-
-async function fetchStop(
-  stopId: string,
-  durationMin: number,
-): Promise<BvgDeparture[]> {
+async function fetchDepartures(stopId: string): Promise<BvgDeparture[]> {
   const url =
-    `${BVG_BASE}/stops/${stopId}/departures?duration=${durationMin}&results=${MAX_RESULTS_PER_STOP}&linesOfStops=false&remarks=true&language=en`;
+    `${BVG_BASE}/stops/${stopId}/departures?duration=${LOOKAHEAD_MIN}&results=${MAX_RESULTS}&linesOfStops=false&remarks=true&language=en`;
   try {
     const r = await fetch(url);
     if (!r.ok) return [];
@@ -128,72 +130,20 @@ async function fetchStop(
   }
 }
 
-function buildStop(
-  spec: NormalizedStop,
-  allDeps: BvgDeparture[],
-  filters: FilterSpec[],
-): Stop {
-  const stopName = allDeps[0]?.stop?.name ?? spec.id;
-  const included = filters.length === 0
-    ? allDeps
-    : allDeps.filter((dep) =>
-      filters.some((f) => filterMatches(f, dep, spec.id))
-    );
+export async function loadBvgBoard(): Promise<Board> {
+  const { title, stop, layout, filters } = ROUTES;
+  const raw = await fetchDepartures(stop.id);
 
-  const groupMap = new Map<string, Group>();
-  for (const dep of included) {
-    const line = dep.line?.name ?? "";
-    const direction = dep.direction ?? "";
-    const key = `${line}|${direction}`;
-    let group = groupMap.get(key);
-    if (!group) {
-      group = {
-        line,
-        direction,
-        product: dep.line?.product ?? "",
-        departures: [],
-      };
-      groupMap.set(key, group);
-    }
-    group.departures.push(formatDeparture(dep));
-  }
+  const now = Date.now();
+  const departures = raw
+    .map((d) => {
+      const filter = matchFilter(filters, d);
+      if (filter === undefined) return null;
+      return toDeparture(d, stop.walkMin, filter?.tableOnly ?? false);
+    })
+    .filter((d): d is Departure => d !== null)
+    .filter((d) => new Date(d.when).getTime() >= now)
+    .sort((a, b) => a.when.localeCompare(b.when));
 
-  const groups = [...groupMap.values()].sort(
-    (a, b) =>
-      a.line.localeCompare(b.line) || a.direction.localeCompare(b.direction),
-  );
-
-  return {
-    id: spec.id,
-    name: stopName,
-    durationMin: spec.durationMin,
-    total: allDeps.length,
-    groups,
-  };
-}
-
-export async function loadBvgStops(): Promise<Stop[]> {
-  const stopSpecs = ROUTES.stops.map(normalizeStop).filter((
-    x,
-  ): x is NormalizedStop => x !== null);
-  const filters = ROUTES.filters ?? [];
-
-  // Multiple stop entries may target the same stopId with different durations — keep the
-  // largest so a single fetch covers every consumer.
-  const maxDurByStop = new Map<string, number>();
-  for (const s of stopSpecs) {
-    maxDurByStop.set(
-      s.id,
-      Math.max(maxDurByStop.get(s.id) ?? 0, s.durationMin),
-    );
-  }
-
-  const fetched = await Promise.all(
-    [...maxDurByStop].map(async ([id, dur]) =>
-      [id, await fetchStop(id, dur)] as const
-    ),
-  );
-  const byStopId = new Map(fetched);
-
-  return stopSpecs.map((s) => buildStop(s, byStopId.get(s.id) ?? [], filters));
+  return { title, stop, layout, departures };
 }
