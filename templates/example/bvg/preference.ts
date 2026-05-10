@@ -121,11 +121,16 @@ export type RoutesConfig = {
 
 // ─── defaults (fallback floor) ──────────────────────────────────────────────
 
+// The board's wall-clock timezone. Constant across the whole config (see PRD
+// "Out of scope: per-preference timezone"). Exported separately so date-math
+// modules consume it without reaching into `DEFAULTS`.
+export const TIMEZONE = "Europe/Berlin";
+
 // All durations are in minutes unless suffixed `Seconds`. All times are in
-// `timezone`. Code outside `resolveTunables` should not read these directly —
+// `TIMEZONE`. Code outside `resolveTunables` should not read these directly —
 // consume `ResolvedTunables` instead so per-preference overrides take effect.
 export const DEFAULTS = {
-  timezone: "Europe/Berlin",
+  timezone: TIMEZONE,
 
   // Visibility window geometry. Asymmetric: long lead so options surface
   // early, short late tail because arriving late is more painful than

@@ -4,12 +4,16 @@
 // current instant, returns the next `(arriveByDate, applicableRule)` pair, or
 // `null` if no rule fires within 7 days.
 //
-// Slice 1 scope: explicit weekday-list `DaySpec` only. Shorthand `"weekday"`,
-// `"weekend"`, `"all"` and DST robustness ship in slice 2.
+// Walks every rule across the next 7 days in `Europe/Berlin`, materialises the
+// concrete `arriveByDate` for each `(day, rule)` pair, and returns the soonest
+// future moment. Ties between rules are broken by rule order — the rule that
+// appears first in the schedule wins. Wall-clock times are interpreted via
+// `Intl.DateTimeFormat` so DST forward and backward transitions resolve
+// correctly: `09:30` always means 09:30 local in `Europe/Berlin`.
 
-import { DEFAULTS, type Preference, type ScheduleRule, type Weekday } from "./preference.ts";
+import { type Preference, type ScheduleRule, TIMEZONE, type Weekday } from "./preference.ts";
 
-const TZ = DEFAULTS.timezone;
+const TZ = TIMEZONE;
 
 const WEEKDAY_INDEX: Record<Weekday, number> = {
   sun: 0,
@@ -69,13 +73,19 @@ function berlinWallClockToInstant(
   return new Date(guess - offsetMinutes * 60_000);
 }
 
+// 1=mon … 5=fri, 6=sat, 0=sun (matches Date#getDay convention).
+const WEEKDAY_SET: number[] = [1, 2, 3, 4, 5];
+const WEEKEND_SET: number[] = [6, 0];
+const ALL_SET: number[] = [0, 1, 2, 3, 4, 5, 6];
+
 function dayMatches(rule: ScheduleRule, weekday: number): boolean {
   const days = rule.applicableDays;
-  // Slice 1: explicit list only. Shorthand strings fall through to a
-  // never-matches result (slice 2 handles them).
   if (Array.isArray(days)) {
     return (days as readonly Weekday[]).some((d) => WEEKDAY_INDEX[d] === weekday);
   }
+  if (days === "weekday") return WEEKDAY_SET.includes(weekday);
+  if (days === "weekend") return WEEKEND_SET.includes(weekday);
+  if (days === "all") return ALL_SET.includes(weekday);
   return false;
 }
 
