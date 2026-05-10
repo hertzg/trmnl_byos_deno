@@ -483,16 +483,12 @@ body {
   padding-left: 12px;
 }
 
-/* Circular preference badge prefix. */
+/* Preference icon prefix — plain glyph, no surrounding circle. */
 .row__icon {
-  width: 88px;
-  height: 88px;
-  border: 4px solid #000;
-  border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 44px;
-  font-weight: 900;
+  font-size: 56px;
+  line-height: 1;
 }
 
 /* Leave-by HH:MM column — the headline figure on the row. */
@@ -520,22 +516,25 @@ body {
   font-style: italic;
 }
 
-/* Unified ⚠ alert pill — used for delays and remarks. Stacks under leave-by. */
+/* Notes band — spans the full row width below the main columns. Holds ⚠
+ * alert text (delays, remarks) and the "leave now" stamp. */
+.row__notes {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* Unified ⚠ alert — full-width text, wraps freely. */
 .row__alert {
-  display: inline-flex;
-  align-self: flex-start;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 10px;
-  border: 2px solid #000;
-  border-radius: 4px;
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: block;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #000;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* "leave now" stamp — same shape as alert pill, stronger. */

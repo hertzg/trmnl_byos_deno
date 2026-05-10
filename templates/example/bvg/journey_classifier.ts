@@ -190,9 +190,9 @@ const DELAY_ALERT_FLOOR_SECONDS = 60;
 // "status" are real disruption signals.
 const SURFACEABLE_REMARK_SEVERITIES: readonly string[] = ["warning", "status"];
 
-// Remark text longer than this is shown elided. Tuned so a pill still fits in
-// the leave-by column without wrapping more than two lines on the e-ink panel.
-const REMARK_TEXT_MAX_CHARS = 60;
+// Remark text longer than this is shown elided. The leave-by column wraps
+// freely; this cap exists to bound truly pathological multi-paragraph remarks.
+const REMARK_TEXT_MAX_CHARS = 200;
 
 function truncateRemark(text: string): string {
   if (text.length <= REMARK_TEXT_MAX_CHARS) return text;

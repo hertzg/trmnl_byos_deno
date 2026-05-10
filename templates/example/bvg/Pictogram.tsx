@@ -29,12 +29,15 @@ function TransitBadge({ leg }: { leg: TransitLeg }) {
 }
 
 export default function Pictogram({ legs }: { legs: readonly Leg[] }) {
-  if (legs.length === 0) return <span class="row__pictogram" />;
+  // Drop zero-minute walking legs — typical for back-to-back same-station
+  // transfers in BVG's response. A 0-minute walk is visual noise.
+  const visibleLegs = legs.filter((l) => l.kind !== "walking" || l.durationMinutes > 0);
+  if (visibleLegs.length === 0) return <span class="row__pictogram" />;
 
   // Walking-only special case: render a single 🚶 N badge.
-  const allWalking = legs.every((l) => l.kind === "walking");
+  const allWalking = visibleLegs.every((l) => l.kind === "walking");
   if (allWalking) {
-    const totalMinutes = legs.reduce(
+    const totalMinutes = visibleLegs.reduce(
       (sum, l) => sum + (l.kind === "walking" ? l.durationMinutes : 0),
       0,
     );
@@ -50,14 +53,14 @@ export default function Pictogram({ legs }: { legs: readonly Leg[] }) {
   // Separator between piece i-1 and piece i, indexed by i (i ≥ 1).
   const separators: string[] = [];
 
-  legs.forEach((leg, i) => {
+  visibleLegs.forEach((leg, i) => {
     if (leg.kind === "walking") {
       pieces.push(<WalkBadge leg={leg} />);
     } else {
       pieces.push(<TransitBadge leg={leg} />);
     }
     if (i === 0) return;
-    const prev = legs[i - 1];
+    const prev = visibleLegs[i - 1];
     // The arrow signals "a transit just ended" — stepping out of a transit
     // leg into anything (another transit, a transfer walk, the destination
     // walk). Anything else is a continuation `·`.

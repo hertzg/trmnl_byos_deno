@@ -27,10 +27,6 @@ export default function Row({ row }: { row: RowData }) {
         {formatHHMM(row.leaveByDate)}
         {isShifted && <small class="row__was">was {formatHHMM(row.plannedLeaveByDate)}</small>}
         <small>leave {row.originLabel}</small>
-        {row.alerts.map((alert) => (
-          <span class={`row__alert row__alert--${alert.kind}`}>⚠ {alert.text}</span>
-        ))}
-        {isImminent && <span class="row__leave-now">⚠ leave now</span>}
       </div>
       <Pictogram legs={row.legs} />
       <div class="row__arrive">
@@ -38,6 +34,14 @@ export default function Row({ row }: { row: RowData }) {
         <small>at {row.destinationLabel} · {row.preferenceLabel}</small>
       </div>
       <div class="row__dur">{row.durationMinutes} min</div>
+      {(row.alerts.length > 0 || isImminent) && (
+        <div class="row__notes">
+          {row.alerts.map((alert) => (
+            <span class={`row__alert row__alert--${alert.kind}`}>⚠ {alert.text}</span>
+          ))}
+          {isImminent && <span class="row__leave-now">⚠ leave now</span>}
+        </div>
+      )}
     </div>
   );
 }

@@ -316,7 +316,7 @@ Deno.test("classify: non-surfaceable remark (severity=hint) is filtered out", ()
 Deno.test("classify: long remark text is truncated", () => {
   const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
   const now = new Date("2025-11-10T07:30:00+01:00");
-  const longText = "A".repeat(120);
+  const longText = "A".repeat(400);
   const candidate = transitCandidateWithRealtime({
     delaySeconds: 0,
     hasRealtime: true,
@@ -324,8 +324,8 @@ Deno.test("classify: long remark text is truncated", () => {
   });
   const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   assertEquals(row.alerts.length, 1);
-  // Truncation cap is 60 chars including ellipsis; total length stays bounded.
-  if (row.alerts[0].text.length > 60) {
+  // Truncation cap is 200 chars including ellipsis; total length stays bounded.
+  if (row.alerts[0].text.length > 200) {
     throw new Error(`expected truncation, got ${row.alerts[0].text.length} chars`);
   }
 });
