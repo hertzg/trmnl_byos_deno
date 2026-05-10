@@ -1,276 +1,464 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<title>BVG journey board — wireframes v4 (pictogram alternatives)</title>
-<style>
-  :root {
-    --ink: #000;
-    --paper: #fff;
-    --muted: #555;
-    --hairline: #000;
-    --soft: #ddd;
-  }
-  body {
-    margin: 0;
-    background: #f4f4f4;
-    font-family: ui-sans-serif, system-ui, sans-serif;
-    color: #111;
-    padding: 32px;
-  }
-  h1 { font-size: 22px; margin: 0 0 8px; }
-  p.lead { color: #555; margin: 0 0 32px; max-width: 70ch; }
-  section { margin: 0 0 48px; }
-  section > header { margin-bottom: 12px; }
-  section > header h2 { font-size: 18px; margin: 0 0 4px; }
-  section > header p { margin: 0; color: #555; font-size: 14px; max-width: 80ch; }
+  <head>
+    <meta charset="utf-8">
+    <title>BVG journey board — wireframes v4 (pictogram alternatives)</title>
+    <style>
+      :root {
+        --ink: #000;
+        --paper: #fff;
+        --muted: #555;
+        --hairline: #000;
+        --soft: #ddd;
+      }
+      body {
+        margin: 0;
+        background: #f4f4f4;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        color: #111;
+        padding: 32px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 8px;
+      }
+      p.lead {
+        color: #555;
+        margin: 0 0 32px;
+        max-width: 70ch;
+      }
+      section {
+        margin: 0 0 48px;
+      }
+      section > header {
+        margin-bottom: 12px;
+      }
+      section > header h2 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+      section > header p {
+        margin: 0;
+        color: #555;
+        font-size: 14px;
+        max-width: 80ch;
+      }
 
-  .frame-scale {
-    transform: scale(0.5);
-    transform-origin: top left;
-    width: 936px;
-    height: 702px;
-  }
-  .frame {
-    width: 1872px;
-    height: 1404px;
-    background: var(--paper);
-    color: var(--ink);
-    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-    font-weight: 500;
-    font-size: 34px;
-    line-height: 1.25;
-    padding: 40px 48px;
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-    box-sizing: border-box;
-    border: 1px solid #999;
-  }
+      .frame-scale {
+        transform: scale(0.5);
+        transform-origin: top left;
+        width: 936px;
+        height: 702px;
+      }
+      .frame {
+        width: 1872px;
+        height: 1404px;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+        font-weight: 500;
+        font-size: 34px;
+        line-height: 1.25;
+        padding: 40px 48px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        box-sizing: border-box;
+        border: 1px solid #999;
+      }
 
-  /* ---- header ---- */
-  .head { display: flex; flex-direction: column; gap: 4px; border-bottom: 4px solid var(--hairline); padding-bottom: 12px; }
-  .head__row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
-  .head__title { font-size: 38px; font-weight: 900; letter-spacing: 0.03em; }
-  .head__stamp { font-size: 22px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .head__sub { font-size: 22px; color: var(--muted); }
+      /* ---- header ---- */
+      .head {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-bottom: 4px solid var(--hairline);
+        padding-bottom: 12px;
+      }
+      .head__row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 16px;
+      }
+      .head__title {
+        font-size: 38px;
+        font-weight: 900;
+        letter-spacing: 0.03em;
+      }
+      .head__stamp {
+        font-size: 22px;
+        font-weight: 500;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .head__sub {
+        font-size: 22px;
+        color: var(--muted);
+      }
 
-  /* ---- list & rows ---- */
-  .list { flex: 1; display: flex; flex-direction: column; }
-  .row {
-    display: grid;
-    grid-template-columns: 80px 200px 1fr 160px 110px;
-    align-items: center;
-    gap: 24px;
-    padding: 22px 0;
-    border-bottom: 2px solid var(--soft);
-    font-variant-numeric: tabular-nums;
-  }
-  .row:last-child { border-bottom: 0; }
-  .row__icon {
-    width: 80px; height: 80px;
-    border: 4px solid var(--ink);
-    border-radius: 50%;
-    display: grid; place-items: center;
-    font-size: 42px; font-weight: 900;
-  }
-  .row__leave { font-size: 60px; font-weight: 900; letter-spacing: -0.01em; }
-  .row__leave small { display: block; font-size: 20px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
-  .row__pictogram { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .row__arrive { text-align: right; font-size: 36px; font-weight: 700; }
-  .row__arrive small { display: block; font-size: 20px; font-weight: 500; color: var(--muted); }
-  .row__dur { text-align: right; font-size: 26px; font-weight: 700; color: var(--muted); }
+      /* ---- list & rows ---- */
+      .list {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 80px 200px 1fr 160px 110px;
+        align-items: center;
+        gap: 24px;
+        padding: 22px 0;
+        border-bottom: 2px solid var(--soft);
+        font-variant-numeric: tabular-nums;
+      }
+      .row:last-child {
+        border-bottom: 0;
+      }
+      .row__icon {
+        width: 80px;
+        height: 80px;
+        border: 4px solid var(--ink);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 42px;
+        font-weight: 900;
+      }
+      .row__leave {
+        font-size: 60px;
+        font-weight: 900;
+        letter-spacing: -0.01em;
+      }
+      .row__leave small {
+        display: block;
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--muted);
+        letter-spacing: 0;
+      }
+      .row__pictogram {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .row__arrive {
+        text-align: right;
+        font-size: 36px;
+        font-weight: 700;
+      }
+      .row__arrive small {
+        display: block;
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+      .row__dur {
+        text-align: right;
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--muted);
+      }
 
-  /* ---- pictogram pieces ---- */
-  .leg-walk {
-    font-size: 28px; font-weight: 700; color: var(--ink);
-    display: inline-flex; align-items: center; gap: 4px;
-  }
-  .leg-walk::before { content: "🚶"; font-size: 32px; }
-  .leg-line {
-    border: 3px solid var(--ink); background: var(--ink); color: var(--paper);
-    font-weight: 900; font-size: 28px;
-    padding: 6px 14px;
-    border-radius: 6px;
-    letter-spacing: 0.03em;
-  }
-  .leg-line.bus { border-radius: 30px; }
-  .leg-arrow { color: var(--ink); font-weight: 900; font-size: 28px; }
+      /* ---- pictogram pieces ---- */
+      .leg-walk {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--ink);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .leg-walk::before {
+        content: "🚶";
+        font-size: 32px;
+      }
+      .leg-line {
+        border: 3px solid var(--ink);
+        background: var(--ink);
+        color: var(--paper);
+        font-weight: 900;
+        font-size: 28px;
+        padding: 6px 14px;
+        border-radius: 6px;
+        letter-spacing: 0.03em;
+      }
+      .leg-line.bus {
+        border-radius: 30px;
+      }
+      .leg-arrow {
+        color: var(--ink);
+        font-weight: 900;
+        font-size: 28px;
+      }
 
-  /* ---- alt group: badges abutting, no inner separator ---- */
-  .alt-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;             /* tiny gap, no arrow */
-  }
-  .alt-group .leg-line { border-radius: 4px; }
-  .alt-group .leg-line.next {
-    /* the line departing first in the group, mildly emphasised */
-    box-shadow: 0 0 0 3px var(--ink);
-  }
+      /* ---- alt group: badges abutting, no inner separator ---- */
+      .alt-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px; /* tiny gap, no arrow */
+      }
+      .alt-group .leg-line {
+        border-radius: 4px;
+      }
+      .alt-group .leg-line.next {
+        /* the line departing first in the group, mildly emphasised */
+        box-shadow: 0 0 0 3px var(--ink);
+      }
 
-  /* alt-pill variant — single badge, slash-joined names */
-  .leg-line.alt-pill { padding: 6px 16px; }
+      /* alt-pill variant — single badge, slash-joined names */
+      .leg-line.alt-pill {
+        padding: 6px 16px;
+      }
 
-  /* alt-stack variant — vertical pair inside one bracket */
-  .alt-stack {
-    display: inline-flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 4px 8px;
-    border: 3px solid var(--ink);
-    border-radius: 6px;
-  }
-  .alt-stack .leg-line {
-    border: 0;
-    border-radius: 0;
-    padding: 0 4px;
-    background: transparent;
-    color: var(--ink);
-    font-size: 22px;
-  }
+      /* alt-stack variant — vertical pair inside one bracket */
+      .alt-stack {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 8px;
+        border: 3px solid var(--ink);
+        border-radius: 6px;
+      }
+      .alt-stack .leg-line {
+        border: 0;
+        border-radius: 0;
+        padding: 0 4px;
+        background: transparent;
+        color: var(--ink);
+        font-size: 22px;
+      }
 
-  /* ---- timing: range vs next ---- */
-  .row__leave .range {
-    font-size: 24px; font-weight: 700; color: var(--muted);
-    margin-top: 2px; display: block;
-    letter-spacing: 0;
-  }
+      /* ---- timing: range vs next ---- */
+      .row__leave .range {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--muted);
+        margin-top: 2px;
+        display: block;
+        letter-spacing: 0;
+      }
 
-  .footnote { font-size: 22px; color: var(--muted); padding-top: 12px; border-top: 2px solid var(--soft); }
+      .footnote {
+        font-size: 22px;
+        color: var(--muted);
+        padding-top: 12px;
+        border-top: 2px solid var(--soft);
+      }
 
-  /* ---- comparison ---- */
-  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  .compare > div { display: flex; flex-direction: column; gap: 8px; }
-  .compare h3 { font-size: 14px; margin: 0 0 8px; color: #333; }
+      /* ---- comparison ---- */
+      .compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .compare > div {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .compare h3 {
+        font-size: 14px;
+        margin: 0 0 8px;
+        color: #333;
+      }
 
-  .resolved {
-    border-left: 4px solid #2a7;
-    background: #2a701b08;
-    padding: 8px 16px;
-    margin: 0 0 24px;
-    font-size: 14px;
-    color: #333;
-  }
-  .dropped {
-    border-left: 4px solid #c33;
-    background: #c3300008;
-    padding: 12px 16px;
-    margin: 0 0 24px;
-    font-size: 14px;
-    color: #333;
-  }
-  .dropped strong { color: #c33; }
-  body > section { opacity: 0.55; }
-  body > section:hover { opacity: 1; }
-</style>
-</head>
-<body>
-
-<h1>BVG journey board — wireframes v4 <span style="color: #c33">[DROPPED]</span></h1>
-<p class="lead">
-  Iteration 4 explored merging line alternatives within a leg. <strong>Decision:
-  dropped.</strong> The HAFAS-backed BVG <code>/journeys</code> endpoint returns each
-  connection as a fully concrete journey — one line per leg, with no native
-  alternatives field. The separate <code>/journeys/:ref/alternatives</code> endpoint
-  exists but is a per-leg lookup that would require additional round-trips and
-  client-side merge logic — i.e. we'd be implementing the behaviour ourselves. Per
-  the directive "if HAFAS doesn't give it, leave it out of scope", merging is not
-  built. Journeys render with one line per leg (v3 convention).
-</p>
-
-<div class="dropped">
-  <strong>Status: dropped.</strong>
-  Sections below are preserved for reference only — they document the rejected design.
-  Active conventions remain v3:<br>
-  • one row per BVG journey, no client-side merging;<br>
-  • one transit-line badge per leg;<br>
-  • repeated near-identical rows (S5 / S7 close in time) are tolerated as the cost of
-    deferring to the API.
-</div>
-
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>1 · Side-by-side: before merging vs after merging</h2>
-    <p>
-      Left: two rows, one per BVG candidate (current v3 behaviour). Right: collapsed
-      into one row per journey shape, alt-group rendering as
-      <span class="alt-group" style="vertical-align: middle"><span class="leg-line">S5</span><span class="leg-line">S7</span></span>
-      with no arrow/dot between the alternatives.
+      .resolved {
+        border-left: 4px solid #2a7;
+        background: #2a701b08;
+        padding: 8px 16px;
+        margin: 0 0 24px;
+        font-size: 14px;
+        color: #333;
+      }
+      .dropped {
+        border-left: 4px solid #c33;
+        background: #c3300008;
+        padding: 12px 16px;
+        margin: 0 0 24px;
+        font-size: 14px;
+        color: #333;
+      }
+      .dropped strong {
+        color: #c33;
+      }
+      body > section {
+        opacity: 0.55;
+      }
+      body > section:hover {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>BVG journey board — wireframes v4 <span style="color: #c33">[DROPPED]</span></h1>
+    <p class="lead">
+      Iteration 4 explored merging line alternatives within a leg. <strong>Decision:
+        dropped.</strong> The HAFAS-backed BVG <code>/journeys</code> endpoint returns each
+      connection as a fully concrete journey — one line per leg, with no native alternatives field.
+      The separate <code>/journeys/:ref/alternatives</code> endpoint exists but is a per-leg lookup
+      that would require additional round-trips and client-side merge logic — i.e. we'd be
+      implementing the behaviour ourselves. Per the directive "if HAFAS doesn't give it, leave it
+      out of scope", merging is not built. Journeys render with one line per leg (v3 convention).
     </p>
-  </header>
-  <div class="compare">
-    <div>
-      <h3>v3 — separate rows</h3>
-      <div class="frame-scale">
-        <div class="frame">
-          <div class="head">
-            <div class="head__row">
-              <div class="head__title">Journeys</div>
-              <div class="head__stamp">Mon · 08:14</div>
+
+    <div class="dropped">
+      <strong>Status: dropped.</strong>
+      Sections below are preserved for reference only — they document the rejected design. Active
+      conventions remain v3:<br>
+      • one row per BVG journey, no client-side merging;<br>
+      • one transit-line badge per leg;<br>
+      • repeated near-identical rows (S5 / S7 close in time) are tolerated as the cost of deferring
+      to the API.
+    </div>
+
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>1 · Side-by-side: before merging vs after merging</h2>
+        <p>
+          Left: two rows, one per BVG candidate (current v3 behaviour). Right: collapsed into one
+          row per journey shape, alt-group rendering as
+          <span class="alt-group" style="vertical-align: middle"><span class="leg-line"
+            >S5</span><span class="leg-line">S7</span></span>
+          with no arrow/dot between the alternatives.
+        </p>
+      </header>
+      <div class="compare">
+        <div>
+          <h3>v3 — separate rows</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Mon · 08:14</div>
+                </div>
+                <div class="head__sub">leave-by · journey · arrive-by</div>
+              </div>
+              <div class="list">
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S5</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:08<small>at Schöneberg</small></div>
+                  <div class="row__dur">44 m</div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:31<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S7</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:15<small>at Schöneberg</small></div>
+                  <div class="row__dur">44 m</div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:39<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S5</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:23<small>at Schöneberg</small></div>
+                  <div class="row__dur">44 m</div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:46<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S7</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:30<small>at Schöneberg</small></div>
+                  <div class="row__dur">44 m</div>
+                </div>
+              </div>
             </div>
-            <div class="head__sub">leave-by · journey · arrive-by</div>
           </div>
-          <div class="list">
-            <div class="row">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:24<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S5</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-walk">6</span>
+        </div>
+        <div>
+          <h3>v4 — merged with alt-group</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Mon · 08:14</div>
+                </div>
+                <div class="head__sub">leave-by · journey · arrive-by</div>
               </div>
-              <div class="row__arrive">09:08<small>at Schöneberg</small></div>
-              <div class="row__dur">44 m</div>
-            </div>
-            <div class="row">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:31<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S7</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-walk">6</span>
+              <div class="list">
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">
+                    08:24
+                    <small>leave Hbf · S5 next</small>
+                  </div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="alt-group">
+                      <span class="leg-line next">S5</span><span class="leg-line">S7</span>
+                    </span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:08<small>at Schöneberg</small></div>
+                  <div class="row__dur">44 m</div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">
+                    08:39
+                    <small>leave Hbf · S5 next</small>
+                  </div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="alt-group">
+                      <span class="leg-line next">S5</span><span class="leg-line">S7</span>
+                    </span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:23<small>at Schöneberg</small></div>
+                  <div class="row__dur">44 m</div>
+                </div>
               </div>
-              <div class="row__arrive">09:15<small>at Schöneberg</small></div>
-              <div class="row__dur">44 m</div>
-            </div>
-            <div class="row">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:39<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S5</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-walk">6</span>
-              </div>
-              <div class="row__arrive">09:23<small>at Schöneberg</small></div>
-              <div class="row__dur">44 m</div>
-            </div>
-            <div class="row">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:46<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S7</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-walk">6</span>
-              </div>
-              <div class="row__arrive">09:30<small>at Schöneberg</small></div>
-              <div class="row__dur">44 m</div>
+              <div class="footnote">2 rows freed for the other person</div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    <div>
-      <h3>v4 — merged with alt-group</h3>
+    </section>
+
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>2 · Multi-leg journey with alternatives mid-trip</h2>
+        <p>
+          The alt-group can sit on any transit leg, not just the first or last. Here: S5/S7 to a
+          transfer hub, then walk, then either U2 or U8 to destination.
+        </p>
+      </header>
       <div class="frame-scale">
         <div class="frame">
           <div class="head">
@@ -285,7 +473,177 @@
               <div class="row__icon">A</div>
               <div class="row__leave">
                 08:24
-                <small>leave Hbf · S5 next</small>
+                <small>leave Hbf · S5 → U2 next</small>
+              </div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="alt-group">
+                  <span class="leg-line next">S5</span><span class="leg-line">S7</span>
+                </span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">2</span>
+                <span class="leg-arrow">·</span>
+                <span class="alt-group">
+                  <span class="leg-line next">U2</span><span class="leg-line">U8</span>
+                </span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:09<small>at Alex · Office</small></div>
+              <div class="row__dur">45 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">
+                08:32
+                <small>leave Hbf · S8 next</small>
+              </div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="alt-group">
+                  <span class="leg-line next">S8</span><span class="leg-line">S9</span>
+                </span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-walk">6</span>
+              </div>
+              <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">49 m</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>3 · Three rendering options for the alt-group itself</h2>
+        <p>
+          The user spec is "walk · S5 S7 · walk" (badges adjacent, no separator inside). That's
+          variant A. Showing two alternatives — pill-merged (B) and stacked (C) — to compare. I
+          recommend A — closest to spec, scans cleanly under e-ink dither.
+        </p>
+      </header>
+      <div class="compare" style="grid-template-columns: 1fr 1fr 1fr">
+        <div>
+          <h3>A — adjacent badges (recommended)</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Variant A · adjacent</div>
+                  <div class="head__stamp">Mon · 08:14</div>
+                </div>
+              </div>
+              <div class="list">
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="alt-group">
+                      <span class="leg-line next">S5</span><span class="leg-line">S7</span>
+                    </span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:08<small>at Schöneberg</small></div>
+                  <div class="row__dur">44 m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>B — slash-joined single pill</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Variant B · slash</div>
+                  <div class="head__stamp">Mon · 08:14</div>
+                </div>
+              </div>
+              <div class="list">
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line alt-pill">S5 / S7</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:08<small>at Schöneberg</small></div>
+                  <div class="row__dur">44 m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>C — stacked vertically</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Variant C · stacked</div>
+                  <div class="head__stamp">Mon · 08:14</div>
+                </div>
+              </div>
+              <div class="list">
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="alt-stack">
+                      <span class="leg-line">S5</span>
+                      <span class="leg-line">S7</span>
+                    </span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:08<small>at Schöneberg</small></div>
+                  <div class="row__dur">44 m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>4 · Edge case — alt members at different times</h2>
+        <p>
+          When merging, the row's leave-by reflects the <em>next-departing</em> alt (visually
+          emphasised in the badge). The small caption names which one is leaving next. This is
+          enough for the user to identify the imminent option without showing both timestamps.
+        </p>
+      </header>
+      <div class="frame-scale">
+        <div class="frame">
+          <div class="head">
+            <div class="head__row">
+              <div class="head__title">Journeys</div>
+              <div class="head__stamp">Mon · 08:14</div>
+            </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
+          </div>
+          <div class="list">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">
+                08:24
+                <small>leave Hbf · S5 next (S7 +7 m)</small>
               </div>
               <div class="row__pictogram">
                 <span class="leg-walk">8</span>
@@ -302,343 +660,127 @@
             <div class="row">
               <div class="row__icon">A</div>
               <div class="row__leave">
-                08:39
-                <small>leave Hbf · S5 next</small>
+                08:31
+                <small>leave Hbf · S7 next (S5 +8 m)</small>
               </div>
               <div class="row__pictogram">
                 <span class="leg-walk">8</span>
                 <span class="leg-arrow">·</span>
                 <span class="alt-group">
-                  <span class="leg-line next">S5</span><span class="leg-line">S7</span>
+                  <span class="leg-line next">S7</span><span class="leg-line">S5</span>
                 </span>
                 <span class="leg-arrow">·</span>
                 <span class="leg-walk">6</span>
               </div>
-              <div class="row__arrive">09:23<small>at Schöneberg</small></div>
+              <div class="row__arrive">09:15<small>at Schöneberg</small></div>
               <div class="row__dur">44 m</div>
             </div>
           </div>
-          <div class="footnote">2 rows freed for the other person</div>
+          <div class="footnote">
+            order of badges follows next-leaving; emphasis (ring) marks which line departs first
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>2 · Multi-leg journey with alternatives mid-trip</h2>
-    <p>
-      The alt-group can sit on any transit leg, not just the first or last. Here: S5/S7
-      to a transfer hub, then walk, then either U2 or U8 to destination.
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Mon · 08:14</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">
-            08:24
-            <small>leave Hbf · S5 → U2 next</small>
-          </div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="alt-group">
-              <span class="leg-line next">S5</span><span class="leg-line">S7</span>
-            </span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">2</span>
-            <span class="leg-arrow">·</span>
-            <span class="alt-group">
-              <span class="leg-line next">U2</span><span class="leg-line">U8</span>
-            </span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:09<small>at Alex · Office</small></div>
-          <div class="row__dur">45 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">
-            08:32
-            <small>leave Hbf · S8 next</small>
-          </div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="alt-group">
-              <span class="leg-line next">S8</span><span class="leg-line">S9</span>
-            </span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-walk">6</span>
-          </div>
-          <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">49 m</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>3 · Three rendering options for the alt-group itself</h2>
-    <p>
-      The user spec is "walk · S5 S7 · walk" (badges adjacent, no separator inside).
-      That's variant A. Showing two alternatives — pill-merged (B) and stacked (C) — to
-      compare. I recommend A — closest to spec, scans cleanly under e-ink dither.
-    </p>
-  </header>
-  <div class="compare" style="grid-template-columns: 1fr 1fr 1fr">
-    <div>
-      <h3>A — adjacent badges (recommended)</h3>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>5 · Edge case — one alt member is delayed/cancelled</h2>
+        <p>
+          When realtime hits one of the alts: the affected badge gets struck through (or dimmed)
+          inside the group, leaving the survivor as the implicit answer. If both members of an alt
+          are gone, the journey becomes a normal cancellation strip (v3 §4).
+        </p>
+      </header>
       <div class="frame-scale">
         <div class="frame">
           <div class="head">
             <div class="head__row">
-              <div class="head__title">Variant A · adjacent</div>
+              <div class="head__title">Journeys</div>
               <div class="head__stamp">Mon · 08:14</div>
             </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
           </div>
           <div class="list">
             <div class="row">
               <div class="row__icon">A</div>
-              <div class="row__leave">08:24<small>leave Hbf</small></div>
+              <div class="row__leave">
+                08:31
+                <small>leave Hbf · S7 only (S5 cancelled)</small>
+              </div>
               <div class="row__pictogram">
                 <span class="leg-walk">8</span>
                 <span class="leg-arrow">·</span>
                 <span class="alt-group">
-                  <span class="leg-line next">S5</span><span class="leg-line">S7</span>
+                  <span class="leg-line next">S7</span><span
+                    class="leg-line"
+                    style="text-decoration: line-through; text-decoration-thickness: 3px; opacity: 0.55"
+                  >S5</span>
                 </span>
                 <span class="leg-arrow">·</span>
                 <span class="leg-walk">6</span>
               </div>
-              <div class="row__arrive">09:08<small>at Schöneberg</small></div>
+              <div class="row__arrive">09:15<small>at Schöneberg</small></div>
               <div class="row__dur">44 m</div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div>
-      <h3>B — slash-joined single pill</h3>
-      <div class="frame-scale">
-        <div class="frame">
-          <div class="head">
-            <div class="head__row">
-              <div class="head__title">Variant B · slash</div>
-              <div class="head__stamp">Mon · 08:14</div>
-            </div>
-          </div>
-          <div class="list">
             <div class="row">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:24<small>leave Hbf</small></div>
+              <div class="row__icon">B</div>
+              <div class="row__leave">08:32<small>leave Hbf</small></div>
               <div class="row__pictogram">
                 <span class="leg-walk">8</span>
                 <span class="leg-arrow">·</span>
-                <span class="leg-line alt-pill">S5 / S7</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-walk">6</span>
-              </div>
-              <div class="row__arrive">09:08<small>at Schöneberg</small></div>
-              <div class="row__dur">44 m</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div>
-      <h3>C — stacked vertically</h3>
-      <div class="frame-scale">
-        <div class="frame">
-          <div class="head">
-            <div class="head__row">
-              <div class="head__title">Variant C · stacked</div>
-              <div class="head__stamp">Mon · 08:14</div>
-            </div>
-          </div>
-          <div class="list">
-            <div class="row">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:24<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="alt-stack">
-                  <span class="leg-line">S5</span>
-                  <span class="leg-line">S7</span>
+                <span class="alt-group">
+                  <span class="leg-line next">S8</span><span class="leg-line">S9</span>
                 </span>
                 <span class="leg-arrow">·</span>
                 <span class="leg-walk">6</span>
               </div>
-              <div class="row__arrive">09:08<small>at Schöneberg</small></div>
-              <div class="row__dur">44 m</div>
+              <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">49 m</div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>4 · Edge case — alt members at different times</h2>
-    <p>
-      When merging, the row's leave-by reflects the <em>next-departing</em> alt
-      (visually emphasised in the badge). The small caption names which one is leaving
-      next. This is enough for the user to identify the imminent option without showing
-      both timestamps.
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Mon · 08:14</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">
-            08:24
-            <small>leave Hbf · S5 next (S7 +7 m)</small>
-          </div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="alt-group">
-              <span class="leg-line next">S5</span><span class="leg-line">S7</span>
-            </span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-walk">6</span>
-          </div>
-          <div class="row__arrive">09:08<small>at Schöneberg</small></div>
-          <div class="row__dur">44 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">
-            08:31
-            <small>leave Hbf · S7 next (S5 +8 m)</small>
-          </div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="alt-group">
-              <span class="leg-line next">S7</span><span class="leg-line">S5</span>
-            </span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-walk">6</span>
-          </div>
-          <div class="row__arrive">09:15<small>at Schöneberg</small></div>
-          <div class="row__dur">44 m</div>
-        </div>
-      </div>
-      <div class="footnote">order of badges follows next-leaving; emphasis (ring) marks which line departs first</div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>5 · Edge case — one alt member is delayed/cancelled</h2>
-    <p>
-      When realtime hits one of the alts: the affected badge gets struck through (or
-      dimmed) inside the group, leaving the survivor as the implicit answer. If both
-      members of an alt are gone, the journey becomes a normal cancellation strip
-      (v3 §4).
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Mon · 08:14</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">
-            08:31
-            <small>leave Hbf · S7 only (S5 cancelled)</small>
-          </div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="alt-group">
-              <span class="leg-line next">S7</span><span class="leg-line" style="text-decoration: line-through; text-decoration-thickness: 3px; opacity: 0.55">S5</span>
-            </span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-walk">6</span>
-          </div>
-          <div class="row__arrive">09:15<small>at Schöneberg</small></div>
-          <div class="row__dur">44 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">08:32<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="alt-group">
-              <span class="leg-line next">S8</span><span class="leg-line">S9</span>
-            </span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-walk">6</span>
-          </div>
-          <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">49 m</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>6 · Merging rule — when does collapse happen?</h2>
-    <p>
-      Two BVG candidates merge into one alt-group row iff:
-    </p>
-    <ul style="font-size: 14px; color: #555; max-width: 80ch; margin: 8px 0; padding-left: 24px">
-      <li>they share the same <strong>walking-leg sequence</strong> (start, transfers, end durations match);</li>
-      <li>they share the same <strong>transit-leg start &amp; end stops</strong>;</li>
-      <li>they differ only by the <strong>line name</strong> on one or more transit legs;</li>
-      <li>both lines are in the user's <code>accept</code> list (otherwise treat as unrelated journeys);</li>
-      <li>their leave-bys are within a configurable spread (default 15 m) — beyond that they're really separate options.</li>
-    </ul>
-  </header>
-  <p style="font-size: 13px; color: #555; max-width: 80ch">
-    Example outcomes:
-    <br>• <code>walk·S5·walk</code> + <code>walk·S7·walk</code> with same stops, 7 m apart → <strong>merge</strong>
-    <br>• <code>walk·S5·walk·U2·walk</code> + <code>walk·S7·walk·U8·walk</code> → <strong>merge with two alt-groups</strong>
-    <br>• <code>walk·S5·walk</code> + <code>walk·BUS·walk</code> with bus excluded → <strong>BUS row hidden, no merge needed</strong>
-    <br>• <code>walk·S5·walk·U2·walk</code> + <code>walk·S5·walk·BUS·walk</code> with bus excluded → S5+U2 only, no merge
-  </p>
-</section>
-
-</body>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>6 · Merging rule — when does collapse happen?</h2>
+        <p>
+          Two BVG candidates merge into one alt-group row iff:
+        </p>
+        <ul
+          style="font-size: 14px; color: #555; max-width: 80ch; margin: 8px 0; padding-left: 24px"
+        >
+          <li>
+            they share the same <strong>walking-leg sequence</strong> (start, transfers, end
+            durations match);
+          </li>
+          <li>they share the same <strong>transit-leg start &amp; end stops</strong>;</li>
+          <li>they differ only by the <strong>line name</strong> on one or more transit legs;</li>
+          <li>
+            both lines are in the user's <code>accept</code> list (otherwise treat as unrelated
+            journeys);
+          </li>
+          <li>
+            their leave-bys are within a configurable spread (default 15 m) — beyond that they're
+            really separate options.
+          </li>
+        </ul>
+      </header>
+      <p style="font-size: 13px; color: #555; max-width: 80ch">
+        Example outcomes:
+        <br>• <code>walk·S5·walk</code> + <code>walk·S7·walk</code> with same stops, 7 m apart →
+        <strong>merge</strong>
+        <br>• <code>walk·S5·walk·U2·walk</code> + <code>walk·S7·walk·U8·walk</code> → <strong>merge
+          with two alt-groups</strong>
+        <br>• <code>walk·S5·walk</code> + <code>walk·BUS·walk</code> with bus excluded → <strong>BUS
+          row hidden, no merge needed</strong>
+        <br>• <code>walk·S5·walk·U2·walk</code> + <code>walk·S5·walk·BUS·walk</code> with bus
+        excluded → S5+U2 only, no merge
+      </p>
+    </section>
+  </body>
 </html>

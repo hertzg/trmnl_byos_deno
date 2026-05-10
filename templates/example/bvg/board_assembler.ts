@@ -1,0 +1,85 @@
+// BoardAssembler — pipeline orchestrator.
+//
+//   resolveActive  →  fetchCandidates  →  classify  →  sort by leave-by
+//
+// The fetch dependency is injectable so the pipeline can be exercised
+// integration-style with a stubbed client. In production, callers pass the
+// real `fetchCandidates` from `./journey_client.ts`.
+//
+// Slice 1 scope: single preference, single rule, no exclusion, no realtime,
+// no cancellation, no overflow cap, no window-edge cadence.
+
+import {
+  type Candidate,
+  type FetchCandidates,
+  fetchCandidates as defaultFetch,
+} from "./journey_client.ts";
+import { classify, type Row } from "./journey_classifier.ts";
+import { resolveTunables, type RoutesConfig } from "./preference.ts";
+import { nextApplicableArriveBy } from "./schedule_evaluator.ts";
+
+// Reasons the row list might be empty. Slice 1 only distinguishes between
+// "we have rows" and "no schedule fires right now"; `feedUnreachable` arrives
+// in slice 7 alongside realtime + cancellation.
+export type EmptyReason = "none" | "noScheduleApplicable" | "feedUnreachable";
+
+export type Board = {
+  rows: readonly Row[];
+  emptyReason: EmptyReason;
+  // Source-of-truth instant the board was assembled at. Used for the title
+  // bar's "fetched at" stamp and for cadence math.
+  fetchedAt: Date;
+};
+
+export type AssembleOptions = {
+  fetchCandidates?: FetchCandidates;
+};
+
+export async function assembleBoard(
+  config: RoutesConfig,
+  now: Date,
+  options: AssembleOptions = {},
+): Promise<Board> {
+  const fetchFn = options.fetchCandidates ?? defaultFetch;
+  const rows: Row[] = [];
+
+  for (const preference of config.preferences) {
+    const resolution = nextApplicableArriveBy(preference.schedule, preference, now);
+    if (!resolution) continue;
+    const tunables = resolveTunables(preference, resolution.applicableRule);
+
+    const fetched = await fetchFn(
+      preference.origin,
+      preference.destination,
+      resolution.arriveByDate,
+    );
+    if (!Array.isArray(fetched)) continue; // FeedError: slice 7 surfaces this.
+
+    for (const candidate of fetched as readonly Candidate[]) {
+      const row = classify(candidate, preference, tunables, now);
+      if (row) rows.push(row);
+    }
+  }
+
+  rows.sort((a, b) => a.leaveByDate.getTime() - b.leaveByDate.getTime());
+
+  return {
+    rows,
+    emptyReason: rows.length > 0 ? "none" : "noScheduleApplicable",
+    fetchedAt: now,
+  };
+}
+
+// `validForSeconds` shape per slice 1 — head-row tick + realtime ceiling +
+// idle ceiling. No window-edge handling yet (slice 2/9).
+export function boardValidForSeconds(board: Board, now: Date = new Date()): number {
+  const FLOOR = 30;
+  const REALTIME_CEIL = 90;
+  const IDLE_CEIL = 300;
+  const head = board.rows[0];
+  if (!head) return IDLE_CEIL;
+  const untilHead = Math.floor(
+    (head.leaveByDate.getTime() - now.getTime()) / 1000,
+  ) + 5;
+  return Math.max(FLOOR, Math.min(REALTIME_CEIL, untilHead));
+}

@@ -181,10 +181,9 @@ export function resolveTunables(
       preference.windowLateTailMinutes ??
       DEFAULTS.windowLateTailMinutes,
 
-    imminentDepartureGraceMinutes:
-      applicableRule.imminentDepartureGraceMinutesOverride ??
-        preference.imminentDepartureGraceMinutes ??
-        DEFAULTS.imminentDepartureGraceMinutes,
+    imminentDepartureGraceMinutes: applicableRule.imminentDepartureGraceMinutesOverride ??
+      preference.imminentDepartureGraceMinutes ??
+      DEFAULTS.imminentDepartureGraceMinutes,
 
     preparationMinutes: applicableRule.preparationMinutesOverride ??
       preference.preparationMinutes ??

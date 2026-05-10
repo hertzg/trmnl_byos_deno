@@ -1,22 +1,8 @@
 /** @jsxImportSource hono/jsx */
 import type { DeviceState } from "../../src/device.ts";
 import type { FrameData } from "./data.ts";
-import BVGTimetable from "./bvg/BVGTimetable.tsx";
+import Board from "./bvg/Board.tsx";
 import { formatHHMM } from "./bvg/time.ts";
-
-const BERLIN_TZ = "Europe/Berlin";
-
-function formatFetchedAt(now: Date): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: BERLIN_TZ,
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(now);
-}
 
 // Battery shell + fill + percent text. Renders nothing when the device hasn't
 // reported a battery voltage yet (first poll after boot, or non-battery clients
@@ -55,13 +41,14 @@ export default function DefaultTemplate(
         <link rel="stylesheet" href="/assets/style.css" />
       </head>
       <body>
-        <BVGTimetable board={board} fetchedAt={fetchedAt} />
+        <Board board={board} />
         <footer class="title-bar">
           <span class="title-bar__title">trmnl-byos-deno</span>
           <span class="title-bar__instance">
             ტრანსპორტი
             {" · "}
-            შემდეგი განახლება {formatHHMM(nextRefreshAt)} (+{formatRefreshIn(fetchedAt, nextRefreshAt)})
+            შემდეგი განახლება {formatHHMM(nextRefreshAt)}{" "}
+            (+{formatRefreshIn(fetchedAt, nextRefreshAt)})
           </span>
           <Battery device={device} />
         </footer>

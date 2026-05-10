@@ -1,797 +1,1089 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<title>BVG journey board — wireframes v2 (user-story decisions)</title>
-<style>
-  :root {
-    --ink: #000;
-    --paper: #fff;
-    --muted: #555;
-    --hairline: #000;
-    --soft: #ddd;
-  }
-  body {
-    margin: 0;
-    background: #f4f4f4;
-    font-family: ui-sans-serif, system-ui, sans-serif;
-    color: #111;
-    padding: 32px;
-  }
-  h1 { font-size: 22px; margin: 0 0 8px; }
-  p.lead { color: #555; margin: 0 0 32px; max-width: 70ch; }
-  section { margin: 0 0 48px; }
-  section > header { margin-bottom: 12px; }
-  section > header h2 { font-size: 18px; margin: 0 0 4px; }
-  section > header p { margin: 0; color: #555; font-size: 14px; max-width: 80ch; }
+  <head>
+    <meta charset="utf-8">
+    <title>BVG journey board — wireframes v2 (user-story decisions)</title>
+    <style>
+      :root {
+        --ink: #000;
+        --paper: #fff;
+        --muted: #555;
+        --hairline: #000;
+        --soft: #ddd;
+      }
+      body {
+        margin: 0;
+        background: #f4f4f4;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        color: #111;
+        padding: 32px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 8px;
+      }
+      p.lead {
+        color: #555;
+        margin: 0 0 32px;
+        max-width: 70ch;
+      }
+      section {
+        margin: 0 0 48px;
+      }
+      section > header {
+        margin-bottom: 12px;
+      }
+      section > header h2 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+      section > header p {
+        margin: 0;
+        color: #555;
+        font-size: 14px;
+        max-width: 80ch;
+      }
 
-  /* ---- TRMNL panel scaling ---- */
-  .frame-scale {
-    transform: scale(0.5);
-    transform-origin: top left;
-    width: 936px;
-    height: 702px;
-  }
-  .frame {
-    width: 1872px;
-    height: 1404px;
-    background: var(--paper);
-    color: var(--ink);
-    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-    font-weight: 500;
-    font-size: 34px;
-    line-height: 1.25;
-    padding: 40px 48px;
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-    box-sizing: border-box;
-    border: 1px solid #999;
-  }
+      /* ---- TRMNL panel scaling ---- */
+      .frame-scale {
+        transform: scale(0.5);
+        transform-origin: top left;
+        width: 936px;
+        height: 702px;
+      }
+      .frame {
+        width: 1872px;
+        height: 1404px;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+        font-weight: 500;
+        font-size: 34px;
+        line-height: 1.25;
+        padding: 40px 48px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        box-sizing: border-box;
+        border: 1px solid #999;
+      }
 
-  /* ---- shared header ---- */
-  .head {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    border-bottom: 4px solid var(--hairline);
-    padding-bottom: 12px;
-  }
-  .head__row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 16px;
-  }
-  .head__title { font-size: 38px; font-weight: 900; letter-spacing: 0.03em; }
-  .head__stamp { font-size: 22px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .head__sub { font-size: 22px; color: var(--muted); }
+      /* ---- shared header ---- */
+      .head {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-bottom: 4px solid var(--hairline);
+        padding-bottom: 12px;
+      }
+      .head__row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 16px;
+      }
+      .head__title {
+        font-size: 38px;
+        font-weight: 900;
+        letter-spacing: 0.03em;
+      }
+      .head__stamp {
+        font-size: 22px;
+        font-weight: 500;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .head__sub {
+        font-size: 22px;
+        color: var(--muted);
+      }
 
-  /* ---- list & rows ---- */
-  .list { flex: 1; display: flex; flex-direction: column; }
-  .row {
-    display: grid;
-    grid-template-columns: 80px 160px 1fr 160px 110px;
-    align-items: center;
-    gap: 24px;
-    padding: 22px 0;
-    border-bottom: 2px solid var(--soft);
-    font-variant-numeric: tabular-nums;
-  }
-  .row:last-child { border-bottom: 0; }
-  .row__icon {
-    width: 80px; height: 80px;
-    border: 4px solid var(--ink);
-    border-radius: 50%;
-    display: grid; place-items: center;
-    font-size: 42px; font-weight: 900;
-  }
-  .row__leave { font-size: 60px; font-weight: 900; letter-spacing: -0.01em; }
-  .row__leave small { display: block; font-size: 20px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
-  .row__pictogram { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .row__arrive { text-align: right; font-size: 36px; font-weight: 700; }
-  .row__arrive small { display: block; font-size: 20px; font-weight: 500; color: var(--muted); }
-  .row__dur { text-align: right; font-size: 26px; font-weight: 700; color: var(--muted); }
+      /* ---- list & rows ---- */
+      .list {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 80px 160px 1fr 160px 110px;
+        align-items: center;
+        gap: 24px;
+        padding: 22px 0;
+        border-bottom: 2px solid var(--soft);
+        font-variant-numeric: tabular-nums;
+      }
+      .row:last-child {
+        border-bottom: 0;
+      }
+      .row__icon {
+        width: 80px;
+        height: 80px;
+        border: 4px solid var(--ink);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 42px;
+        font-weight: 900;
+      }
+      .row__leave {
+        font-size: 60px;
+        font-weight: 900;
+        letter-spacing: -0.01em;
+      }
+      .row__leave small {
+        display: block;
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--muted);
+        letter-spacing: 0;
+      }
+      .row__pictogram {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .row__arrive {
+        text-align: right;
+        font-size: 36px;
+        font-weight: 700;
+      }
+      .row__arrive small {
+        display: block;
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+      .row__dur {
+        text-align: right;
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--muted);
+      }
 
-  /* ---- pictogram pieces ---- */
-  .leg-walk {
-    font-size: 28px; font-weight: 700; color: var(--ink);
-    display: inline-flex; align-items: center; gap: 4px;
-  }
-  .leg-walk::before { content: "🚶"; font-size: 32px; }
-  .leg-line {
-    border: 3px solid var(--ink); background: var(--ink); color: var(--paper);
-    font-weight: 900; font-size: 28px; padding: 6px 14px; border-radius: 6px;
-    letter-spacing: 0.03em;
-  }
-  .leg-line.bus { border-radius: 30px; }
-  .leg-arrow { color: var(--ink); font-weight: 900; font-size: 28px; }
+      /* ---- pictogram pieces ---- */
+      .leg-walk {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--ink);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .leg-walk::before {
+        content: "🚶";
+        font-size: 32px;
+      }
+      .leg-line {
+        border: 3px solid var(--ink);
+        background: var(--ink);
+        color: var(--paper);
+        font-weight: 900;
+        font-size: 28px;
+        padding: 6px 14px;
+        border-radius: 6px;
+        letter-spacing: 0.03em;
+      }
+      .leg-line.bus {
+        border-radius: 30px;
+      }
+      .leg-arrow {
+        color: var(--ink);
+        font-weight: 900;
+        font-size: 28px;
+      }
 
-  /* ---- empty / footnote ---- */
-  .empty { flex: 1; display: grid; place-items: center; text-align: center; }
-  .empty__big { font-size: 72px; font-weight: 900; color: var(--ink); }
-  .empty__sub { font-size: 28px; color: var(--muted); margin-top: 16px; }
-  .footnote { font-size: 22px; color: var(--muted); padding-top: 12px; border-top: 2px solid var(--soft); }
+      /* ---- empty / footnote ---- */
+      .empty {
+        flex: 1;
+        display: grid;
+        place-items: center;
+        text-align: center;
+      }
+      .empty__big {
+        font-size: 72px;
+        font-weight: 900;
+        color: var(--ink);
+      }
+      .empty__sub {
+        font-size: 28px;
+        color: var(--muted);
+        margin-top: 16px;
+      }
+      .footnote {
+        font-size: 22px;
+        color: var(--muted);
+        padding-top: 12px;
+        border-top: 2px solid var(--soft);
+      }
 
-  /* ---- realtime decorations ---- */
-  .badge-rt {
-    display: inline-block;
-    border: 2px solid var(--ink);
-    background: var(--ink);
-    color: var(--paper);
-    font-size: 16px; font-weight: 900;
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin-left: 6px;
-    letter-spacing: 0.05em;
-    vertical-align: middle;
-  }
-  .row.cancelled { opacity: 0.65; }
-  .row.cancelled .row__leave,
-  .row.cancelled .row__arrive,
-  .row.cancelled .row__pictogram { text-decoration: line-through; text-decoration-thickness: 3px; }
-  .row.cancelled .row__leave::after {
-    content: "✕ cancelled";
-    display: block;
-    font-size: 18px; font-weight: 900; color: var(--ink);
-    margin-top: 4px;
-    text-decoration: none;
-    letter-spacing: 0.05em;
-  }
-  .row__remark {
-    grid-column: 2 / 5;
-    margin-top: 6px;
-    font-size: 20px; color: var(--muted); font-weight: 500;
-    border-left: 4px solid var(--ink); padding-left: 12px;
-  }
-  .leg-line.tight { box-shadow: 0 0 0 4px var(--ink); margin: 0 4px; }
-  .leg-walk.tight {
-    background: var(--ink); color: var(--paper);
-    padding: 2px 6px; border-radius: 4px;
-  }
-  .leg-walk.tight::before { color: var(--paper); }
+      /* ---- realtime decorations ---- */
+      .badge-rt {
+        display: inline-block;
+        border: 2px solid var(--ink);
+        background: var(--ink);
+        color: var(--paper);
+        font-size: 16px;
+        font-weight: 900;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 6px;
+        letter-spacing: 0.05em;
+        vertical-align: middle;
+      }
+      .row.cancelled {
+        opacity: 0.65;
+      }
+      .row.cancelled .row__leave,
+      .row.cancelled .row__arrive,
+      .row.cancelled .row__pictogram {
+        text-decoration: line-through;
+        text-decoration-thickness: 3px;
+      }
+      .row.cancelled .row__leave::after {
+        content: "✕ cancelled";
+        display: block;
+        font-size: 18px;
+        font-weight: 900;
+        color: var(--ink);
+        margin-top: 4px;
+        text-decoration: none;
+        letter-spacing: 0.05em;
+      }
+      .row__remark {
+        grid-column: 2 / 5;
+        margin-top: 6px;
+        font-size: 20px;
+        color: var(--muted);
+        font-weight: 500;
+        border-left: 4px solid var(--ink);
+        padding-left: 12px;
+      }
+      .leg-line.tight {
+        box-shadow: 0 0 0 4px var(--ink);
+        margin: 0 4px;
+      }
+      .leg-walk.tight {
+        background: var(--ink);
+        color: var(--paper);
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      .leg-walk.tight::before {
+        color: var(--paper);
+      }
 
-  /* ---- prep buffer column ---- */
-  .row.prep { grid-template-columns: 80px 200px 1fr 160px 110px; }
-  .row.prep .row__leave small { color: var(--ink); font-weight: 700; }
+      /* ---- prep buffer column ---- */
+      .row.prep {
+        grid-template-columns: 80px 200px 1fr 160px 110px;
+      }
+      .row.prep .row__leave small {
+        color: var(--ink);
+        font-weight: 700;
+      }
 
-  /* ---- timeline diagram (abstract, not a frame) ---- */
-  .timeline {
-    background: #fff;
-    border: 1px solid #999;
-    padding: 32px;
-    width: 936px;
-    box-sizing: border-box;
-    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-  }
-  .tl-axis {
-    position: relative;
-    height: 220px;
-    margin: 24px 0;
-    border-left: 2px solid #000;
-    border-right: 2px solid #000;
-  }
-  .tl-baseline { position: absolute; left: 0; right: 0; top: 80px; height: 4px; background: #000; }
-  .tl-anchor {
-    position: absolute;
-    left: 50%; top: 0; bottom: 0;
-    width: 4px; background: #000;
-    transform: translateX(-50%);
-  }
-  .tl-anchor::before {
-    content: "arrive-by T";
-    position: absolute;
-    top: -22px; left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-    font-weight: 900; font-size: 16px;
-  }
-  .tl-window {
-    position: absolute;
-    left: 0; right: 0; top: 60px;
-    height: 44px;
-    background: #00000014;
-    border: 2px dashed #000;
-  }
-  .tl-window::before {
-    content: "window: 1 h centered on T";
-    position: absolute;
-    top: 50%; left: 12px;
-    transform: translateY(-50%);
-    font-weight: 700; font-size: 14px;
-    color: #000;
-  }
-  .tl-edge { position: absolute; top: 50px; bottom: 50px; width: 2px; background: #000; }
-  .tl-edge.l { left: 0; }
-  .tl-edge.r { right: 0; }
-  .tl-edge::after { position: absolute; bottom: -22px; font-size: 14px; font-weight: 500; white-space: nowrap; }
-  .tl-edge.l::after { content: "T − 30"; left: 0; }
-  .tl-edge.r::after { content: "T + 30"; right: 0; }
-  .tl-cand {
-    position: absolute;
-    top: 70px;
-    width: 18px; height: 24px;
-    background: #000;
-    transform: translateX(-50%);
-  }
-  .tl-cand::after {
-    content: attr(data-arr);
-    position: absolute;
-    bottom: -20px; left: 50%;
-    transform: translateX(-50%);
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-  .tl-cand.late { background: #555; }
-  .tl-cand.out  { background: transparent; border: 2px dashed #999; opacity: 0.5; }
-  .tl-now { position: absolute; top: 0; bottom: 0; width: 2px; background: #000; }
-  .tl-now::before {
-    content: "now";
-    position: absolute;
-    top: -22px; left: 50%;
-    transform: translateX(-50%);
-    font-weight: 700; font-size: 14px;
-  }
-  .tl-now::after {
-    content: "";
-    position: absolute;
-    top: 0; left: -8px;
-    border-left: 9px solid transparent;
-    border-right: 9px solid transparent;
-    border-top: 12px solid #000;
-  }
-  .legend {
-    display: flex; gap: 24px; flex-wrap: wrap;
-    font-size: 14px; color: #333;
-    margin-top: 32px;
-  }
-  .legend > div { display: flex; align-items: center; gap: 8px; }
-  .legend .swatch { width: 18px; height: 18px; background: #000; }
-  .legend .swatch.late { background: #555; }
-  .legend .swatch.out  { background: transparent; border: 2px dashed #999; }
+      /* ---- timeline diagram (abstract, not a frame) ---- */
+      .timeline {
+        background: #fff;
+        border: 1px solid #999;
+        padding: 32px;
+        width: 936px;
+        box-sizing: border-box;
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+      }
+      .tl-axis {
+        position: relative;
+        height: 220px;
+        margin: 24px 0;
+        border-left: 2px solid #000;
+        border-right: 2px solid #000;
+      }
+      .tl-baseline {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 80px;
+        height: 4px;
+        background: #000;
+      }
+      .tl-anchor {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: #000;
+        transform: translateX(-50%);
+      }
+      .tl-anchor::before {
+        content: "arrive-by T";
+        position: absolute;
+        top: -22px;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font-weight: 900;
+        font-size: 16px;
+      }
+      .tl-window {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 60px;
+        height: 44px;
+        background: #00000014;
+        border: 2px dashed #000;
+      }
+      .tl-window::before {
+        content: "window: 1 h centered on T";
+        position: absolute;
+        top: 50%;
+        left: 12px;
+        transform: translateY(-50%);
+        font-weight: 700;
+        font-size: 14px;
+        color: #000;
+      }
+      .tl-edge {
+        position: absolute;
+        top: 50px;
+        bottom: 50px;
+        width: 2px;
+        background: #000;
+      }
+      .tl-edge.l {
+        left: 0;
+      }
+      .tl-edge.r {
+        right: 0;
+      }
+      .tl-edge::after {
+        position: absolute;
+        bottom: -22px;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .tl-edge.l::after {
+        content: "T − 30";
+        left: 0;
+      }
+      .tl-edge.r::after {
+        content: "T + 30";
+        right: 0;
+      }
+      .tl-cand {
+        position: absolute;
+        top: 70px;
+        width: 18px;
+        height: 24px;
+        background: #000;
+        transform: translateX(-50%);
+      }
+      .tl-cand::after {
+        content: attr(data-arr);
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .tl-cand.late {
+        background: #555;
+      }
+      .tl-cand.out {
+        background: transparent;
+        border: 2px dashed #999;
+        opacity: 0.5;
+      }
+      .tl-now {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #000;
+      }
+      .tl-now::before {
+        content: "now";
+        position: absolute;
+        top: -22px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .tl-now::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -8px;
+        border-left: 9px solid transparent;
+        border-right: 9px solid transparent;
+        border-top: 12px solid #000;
+      }
+      .legend {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        font-size: 14px;
+        color: #333;
+        margin-top: 32px;
+      }
+      .legend > div {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .legend .swatch {
+        width: 18px;
+        height: 18px;
+        background: #000;
+      }
+      .legend .swatch.late {
+        background: #555;
+      }
+      .legend .swatch.out {
+        background: transparent;
+        border: 2px dashed #999;
+      }
 
-  /* ---- side-by-side comparison container ---- */
-  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  .compare > div { display: flex; flex-direction: column; gap: 8px; }
-  .compare h3 { font-size: 14px; margin: 0 0 8px; color: #333; }
-</style>
-</head>
-<body>
-
-<h1>BVG journey board — wireframes v2 (user-story decisions)</h1>
-<p class="lead">
-  Iteration 2: each section visualizes a follow-up question or proposed user story.
-  Where I'm asking you to pick between options, frames render side-by-side. Section 9
-  &amp; 10 are abstract timeline diagrams; the rest are device frames at native
-  1872 × 1404 scaled to 50 % for preview.
-</p>
-
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>9 · Window concept — 1 h centered on arrive-by</h2>
-    <p>
-      Abstract timeline. The deadline T sits in the middle of the window. Candidates
-      arriving before T (filled bars) and after T (gray bars) both appear. Candidates
-      outside ±30 min (dashed) are dropped. Compare to the old "before-only"
-      interpretation on the right.
+      /* ---- side-by-side comparison container ---- */
+      .compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .compare > div {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .compare h3 {
+        font-size: 14px;
+        margin: 0 0 8px;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>BVG journey board — wireframes v2 (user-story decisions)</h1>
+    <p class="lead">
+      Iteration 2: each section visualizes a follow-up question or proposed user story. Where I'm
+      asking you to pick between options, frames render side-by-side. Section 9 &amp; 10 are
+      abstract timeline diagrams; the rest are device frames at native 1872 × 1404 scaled to 50 %
+      for preview.
     </p>
-  </header>
-  <div class="compare">
-    <div>
-      <h3>NEW — centered window (this design)</h3>
-      <div class="timeline">
-        <div style="font-size: 14px; color: #333; margin-bottom: 8px">arrive-by 09:30 · window 1 h</div>
-        <div class="tl-axis">
-          <div class="tl-anchor"></div>
-          <div class="tl-window"></div>
-          <div class="tl-baseline"></div>
-          <div class="tl-edge l"></div>
-          <div class="tl-edge r"></div>
-          <div class="tl-cand out"  style="left: 8%"  data-arr="08:55"></div>
-          <div class="tl-cand"      style="left: 22%" data-arr="09:09"></div>
-          <div class="tl-cand"      style="left: 38%" data-arr="09:21"></div>
-          <div class="tl-cand"      style="left: 50%" data-arr="09:29"></div>
-          <div class="tl-cand late" style="left: 64%" data-arr="09:38"></div>
-          <div class="tl-cand late" style="left: 78%" data-arr="09:54"></div>
-          <div class="tl-cand out"  style="left: 94%" data-arr="10:08"></div>
-        </div>
-        <div class="legend">
-          <div><span class="swatch"></span> on-time arrival (in window)</div>
-          <div><span class="swatch late"></span> arrives late but still inside window</div>
-          <div><span class="swatch out"></span> outside window — dropped</div>
-        </div>
-      </div>
-    </div>
-    <div>
-      <h3>OLD — before-only window (earlier proposal)</h3>
-      <div class="timeline">
-        <div style="font-size: 14px; color: #333; margin-bottom: 8px">arrive-by 09:30 · showFromMin 60</div>
-        <div class="tl-axis">
-          <div class="tl-anchor" style="left: 100%"></div>
-          <div class="tl-window" style="background: #00000014; border: 2px dashed #000"></div>
-          <div class="tl-baseline"></div>
-          <div class="tl-edge l"></div>
-          <div class="tl-edge r"></div>
-          <div class="tl-cand out" style="left: 8%"  data-arr="08:55"></div>
-          <div class="tl-cand"     style="left: 22%" data-arr="09:09"></div>
-          <div class="tl-cand"     style="left: 38%" data-arr="09:21"></div>
-          <div class="tl-cand"     style="left: 78%" data-arr="09:29"></div>
-          <div class="tl-cand out" style="left: 94%" data-arr="09:38"></div>
-        </div>
-        <div class="legend">
-          <div><span class="swatch"></span> on-time (kept)</div>
-          <div><span class="swatch out"></span> arriving late OR too early — dropped</div>
-        </div>
-        <p style="font-size: 13px; color: #555; margin-top: 12px">
-          loses the "I'd rather arrive 5 min late than miss the train I want" planning case.
+
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>9 · Window concept — 1 h centered on arrive-by</h2>
+        <p>
+          Abstract timeline. The deadline T sits in the middle of the window. Candidates arriving
+          before T (filled bars) and after T (gray bars) both appear. Candidates outside ±30 min
+          (dashed) are dropped. Compare to the old "before-only" interpretation on the right.
         </p>
+      </header>
+      <div class="compare">
+        <div>
+          <h3>NEW — centered window (this design)</h3>
+          <div class="timeline">
+            <div style="font-size: 14px; color: #333; margin-bottom: 8px">
+              arrive-by 09:30 · window 1 h
+            </div>
+            <div class="tl-axis">
+              <div class="tl-anchor"></div>
+              <div class="tl-window"></div>
+              <div class="tl-baseline"></div>
+              <div class="tl-edge l"></div>
+              <div class="tl-edge r"></div>
+              <div class="tl-cand out" style="left: 8%" data-arr="08:55"></div>
+              <div class="tl-cand" style="left: 22%" data-arr="09:09"></div>
+              <div class="tl-cand" style="left: 38%" data-arr="09:21"></div>
+              <div class="tl-cand" style="left: 50%" data-arr="09:29"></div>
+              <div class="tl-cand late" style="left: 64%" data-arr="09:38"></div>
+              <div class="tl-cand late" style="left: 78%" data-arr="09:54"></div>
+              <div class="tl-cand out" style="left: 94%" data-arr="10:08"></div>
+            </div>
+            <div class="legend">
+              <div><span class="swatch"></span> on-time arrival (in window)</div>
+              <div><span class="swatch late"></span> arrives late but still inside window</div>
+              <div><span class="swatch out"></span> outside window — dropped</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>OLD — before-only window (earlier proposal)</h3>
+          <div class="timeline">
+            <div style="font-size: 14px; color: #333; margin-bottom: 8px">
+              arrive-by 09:30 · showFromMin 60
+            </div>
+            <div class="tl-axis">
+              <div class="tl-anchor" style="left: 100%"></div>
+              <div class="tl-window" style="background: #00000014; border: 2px dashed #000"></div>
+              <div class="tl-baseline"></div>
+              <div class="tl-edge l"></div>
+              <div class="tl-edge r"></div>
+              <div class="tl-cand out" style="left: 8%" data-arr="08:55"></div>
+              <div class="tl-cand" style="left: 22%" data-arr="09:09"></div>
+              <div class="tl-cand" style="left: 38%" data-arr="09:21"></div>
+              <div class="tl-cand" style="left: 78%" data-arr="09:29"></div>
+              <div class="tl-cand out" style="left: 94%" data-arr="09:38"></div>
+            </div>
+            <div class="legend">
+              <div><span class="swatch"></span> on-time (kept)</div>
+              <div><span class="swatch out"></span> arriving late OR too early — dropped</div>
+            </div>
+            <p style="font-size: 13px; color: #555; margin-top: 12px">
+              loses the "I'd rather arrive 5 min late than miss the train I want" planning case.
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>10 · Auto-hide via window geometry</h2>
-    <p>
-      As "now" advances rightward through the window, the candidate set on each side
-      of "now" shrinks naturally. Once "now" passes T + 30, the window contains no
-      future leave-by, the preference produces zero rows, and the visual disappears
-      without a separate cutoff rule.
-    </p>
-  </header>
-  <div class="compare" style="grid-template-columns: 1fr 1fr 1fr">
-    <div>
-      <h3>08:35 — early, full window</h3>
-      <div class="timeline">
-        <div class="tl-axis">
-          <div class="tl-anchor"></div>
-          <div class="tl-window"></div>
-          <div class="tl-baseline"></div>
-          <div class="tl-edge l"></div>
-          <div class="tl-edge r"></div>
-          <div class="tl-now"  style="left: 16%"></div>
-          <div class="tl-cand"      style="left: 22%" data-arr="09:09"></div>
-          <div class="tl-cand"      style="left: 38%" data-arr="09:21"></div>
-          <div class="tl-cand"      style="left: 50%" data-arr="09:29"></div>
-          <div class="tl-cand late" style="left: 64%" data-arr="09:38"></div>
-          <div class="tl-cand late" style="left: 78%" data-arr="09:54"></div>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>10 · Auto-hide via window geometry</h2>
+        <p>
+          As "now" advances rightward through the window, the candidate set on each side of "now"
+          shrinks naturally. Once "now" passes T + 30, the window contains no future leave-by, the
+          preference produces zero rows, and the visual disappears without a separate cutoff rule.
+        </p>
+      </header>
+      <div class="compare" style="grid-template-columns: 1fr 1fr 1fr">
+        <div>
+          <h3>08:35 — early, full window</h3>
+          <div class="timeline">
+            <div class="tl-axis">
+              <div class="tl-anchor"></div>
+              <div class="tl-window"></div>
+              <div class="tl-baseline"></div>
+              <div class="tl-edge l"></div>
+              <div class="tl-edge r"></div>
+              <div class="tl-now" style="left: 16%"></div>
+              <div class="tl-cand" style="left: 22%" data-arr="09:09"></div>
+              <div class="tl-cand" style="left: 38%" data-arr="09:21"></div>
+              <div class="tl-cand" style="left: 50%" data-arr="09:29"></div>
+              <div class="tl-cand late" style="left: 64%" data-arr="09:38"></div>
+              <div class="tl-cand late" style="left: 78%" data-arr="09:54"></div>
+            </div>
+            <p style="font-size: 13px; color: #555">5 rows visible</p>
+          </div>
         </div>
-        <p style="font-size: 13px; color: #555">5 rows visible</p>
-      </div>
-    </div>
-    <div>
-      <h3>09:25 — past T, fading</h3>
-      <div class="timeline">
-        <div class="tl-axis">
-          <div class="tl-anchor"></div>
-          <div class="tl-window"></div>
-          <div class="tl-baseline"></div>
-          <div class="tl-edge l"></div>
-          <div class="tl-edge r"></div>
-          <div class="tl-now"  style="left: 78%"></div>
-          <div class="tl-cand late" style="left: 78%" data-arr="09:54"></div>
+        <div>
+          <h3>09:25 — past T, fading</h3>
+          <div class="timeline">
+            <div class="tl-axis">
+              <div class="tl-anchor"></div>
+              <div class="tl-window"></div>
+              <div class="tl-baseline"></div>
+              <div class="tl-edge l"></div>
+              <div class="tl-edge r"></div>
+              <div class="tl-now" style="left: 78%"></div>
+              <div class="tl-cand late" style="left: 78%" data-arr="09:54"></div>
+            </div>
+            <p style="font-size: 13px; color: #555">1 row visible</p>
+          </div>
         </div>
-        <p style="font-size: 13px; color: #555">1 row visible</p>
-      </div>
-    </div>
-    <div>
-      <h3>10:02 — past T + 30, gone</h3>
-      <div class="timeline">
-        <div class="tl-axis">
-          <div class="tl-anchor"></div>
-          <div class="tl-window"></div>
-          <div class="tl-baseline"></div>
-          <div class="tl-edge l"></div>
-          <div class="tl-edge r"></div>
-          <div class="tl-now"  style="left: 100%"></div>
+        <div>
+          <h3>10:02 — past T + 30, gone</h3>
+          <div class="timeline">
+            <div class="tl-axis">
+              <div class="tl-anchor"></div>
+              <div class="tl-window"></div>
+              <div class="tl-baseline"></div>
+              <div class="tl-edge l"></div>
+              <div class="tl-edge r"></div>
+              <div class="tl-now" style="left: 100%"></div>
+            </div>
+            <p style="font-size: 13px; color: #555">
+              preference auto-hides; falls back to next anchor
+            </p>
+          </div>
         </div>
-        <p style="font-size: 13px; color: #555">preference auto-hides; falls back to next anchor</p>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>11 · Realtime delays &amp; cancellations</h2>
-    <p>
-      Three rows showing the realtime spectrum: on-time, delayed (BVG <code>delay</code>
-      surfaced as +Nm badge with adjusted leave-by), and cancelled (struck through,
-      kept visible for one cycle so the user sees what disappeared). The cancelled row
-      could alternatively be hard-removed — variant on right.
-    </p>
-  </header>
-  <div class="compare">
-    <div>
-      <h3>Variant A — keep cancelled row visible</h3>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>11 · Realtime delays &amp; cancellations</h2>
+        <p>
+          Three rows showing the realtime spectrum: on-time, delayed (BVG <code>delay</code>
+          surfaced as +Nm badge with adjusted leave-by), and cancelled (struck through, kept visible
+          for one cycle so the user sees what disappeared). The cancelled row could alternatively be
+          hard-removed — variant on right.
+        </p>
+      </header>
+      <div class="compare">
+        <div>
+          <h3>Variant A — keep cancelled row visible</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
+                </div>
+              </div>
+              <div class="list">
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S5</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">2</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">U2</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">4</span>
+                  </div>
+                  <div class="row__arrive">09:09<small>at Alex · Office</small></div>
+                  <div class="row__dur">45 m</div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">
+                    08:43<small>leave Hbf · was 08:39</small><span class="badge-rt">+4m</span>
+                  </div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">U8</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">4</span>
+                  </div>
+                  <div class="row__arrive">09:18<small>at Alex · Office</small></div>
+                  <div class="row__dur">35 m</div>
+                </div>
+                <div class="row cancelled">
+                  <div class="row__icon">B</div>
+                  <div class="row__leave">08:32<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S8</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
+                  <div class="row__dur">49 m</div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">B</div>
+                  <div class="row__leave">08:47<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S9</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
+                  <div class="row__dur">51 m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>Variant B — silently drop cancelled</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
+                </div>
+              </div>
+              <div class="list">
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S5</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">2</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">U2</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">4</span>
+                  </div>
+                  <div class="row__arrive">09:09<small>at Alex · Office</small></div>
+                  <div class="row__dur">45 m</div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">
+                    08:43<small>leave Hbf · was 08:39</small><span class="badge-rt">+4m</span>
+                  </div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">U8</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">4</span>
+                  </div>
+                  <div class="row__arrive">09:18<small>at Alex · Office</small></div>
+                  <div class="row__dur">35 m</div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">B</div>
+                  <div class="row__leave">08:47<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S9</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
+                  <div class="row__dur">51 m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>12 · API failure / stale data</h2>
+        <p>
+          Distinct from "nothing to show right now" (which means: the schedule has nothing
+          upcoming). Here the BVG fetch failed or returned empty for a reason. The timestamp ages
+          and a warning replaces the empty hint.
+        </p>
+      </header>
+      <div class="compare">
+        <div>
+          <h3>"nothing to show" — schedule empty (existing)</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Sat · 22:14 · updated 22:13</div>
+                </div>
+              </div>
+              <div class="empty">
+                <div>
+                  <div class="empty__big">nothing to show right now</div>
+                  <div class="empty__sub">next: Mon 09:30 · A · Office</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>"feed unreachable" — fetch failed</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Mon · 08:24 · last good 08:09</div>
+                </div>
+              </div>
+              <div class="empty">
+                <div>
+                  <div class="empty__big">feed unreachable</div>
+                  <div class="empty__sub">data is 15 m old · retrying</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>13 · Service disruption remarks</h2>
+        <p>
+          BVG returns <code>remarks</code> on legs with construction/closures. Two placement
+          options: a per-row note under the pictogram (left) — useful but adds visual density —
+          versus a global header strip (right) — quieter but less precise about which row is
+          affected.
+        </p>
+      </header>
+      <div class="compare">
+        <div>
+          <h3>Variant A — per-row remark</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
+                </div>
+              </div>
+              <div class="list">
+                <div class="row" style="border-bottom: 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S5</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">2</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">U2</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">4</span>
+                  </div>
+                  <div class="row__arrive">09:09<small>at Alex · Office</small></div>
+                  <div class="row__dur">45 m</div>
+                  <div class="row__remark">
+                    U2: Alexanderplatz lift out of service · S5: short turn at Westkreuz, change
+                    advised
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">B</div>
+                  <div class="row__leave">08:32<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S8</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
+                  <div class="row__dur">49 m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>Variant B — global header strip</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
+                </div>
+                <div class="head__sub" style="color: #000; font-weight: 700">
+                  ⚠ U2 lift OOS · S5 short turn Westkreuz
+                </div>
+              </div>
+              <div class="list">
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S5</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">2</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">U2</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">4</span>
+                  </div>
+                  <div class="row__arrive">09:09<small>at Alex · Office</small></div>
+                  <div class="row__dur">45 m</div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">B</div>
+                  <div class="row__leave">08:32<small>leave Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S8</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
+                  <div class="row__dur">49 m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>14 · Preparation time — "be ready by"</h2>
+        <p>
+          Each preference declares <code>prepMin</code>. The leave-by column shows "ready HH:MM" as
+          the dominant figure (because that's what the user actually acts on) and the actual
+          leave-by HH:MM as a secondary line. Variant B reverses that emphasis.
+        </p>
+      </header>
+      <div class="compare">
+        <div>
+          <h3>Variant A — ready-by dominant</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Mon · 07:45 · updated 07:44</div>
+                </div>
+                <div class="head__sub">be ready by · journey · arrive-by</div>
+              </div>
+              <div class="list">
+                <div class="row prep">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:09<small>prep 15 · leave 08:24</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S5</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">2</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">U2</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">4</span>
+                  </div>
+                  <div class="row__arrive">09:09<small>at Alex · Office</small></div>
+                  <div class="row__dur">45 m</div>
+                </div>
+                <div class="row prep">
+                  <div class="row__icon">B</div>
+                  <div class="row__leave">08:22<small>prep 10 · leave 08:32</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S8</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
+                  <div class="row__dur">49 m</div>
+                </div>
+                <div class="row prep">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>prep 15 · leave 08:39</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">U8</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">4</span>
+                  </div>
+                  <div class="row__arrive">09:14<small>at Alex · Office</small></div>
+                  <div class="row__dur">35 m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>Variant B — leave-by dominant, prep secondary</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Mon · 07:45 · updated 07:44</div>
+                </div>
+                <div class="head__sub">leave-by · journey · arrive-by</div>
+              </div>
+              <div class="list">
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>ready 08:09 (15 m)</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S5</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">2</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">U2</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">4</span>
+                  </div>
+                  <div class="row__arrive">09:09<small>at Alex · Office</small></div>
+                  <div class="row__dur">45 m</div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">B</div>
+                  <div class="row__leave">08:32<small>ready 08:22 (10 m)</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">S8</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">6</span>
+                  </div>
+                  <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
+                  <div class="row__dur">49 m</div>
+                </div>
+                <div class="row">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:39<small>ready 08:24 (15 m)</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span>
+                    <span class="leg-arrow">·</span>
+                    <span class="leg-line">U8</span>
+                    <span class="leg-arrow">→</span>
+                    <span class="leg-walk">4</span>
+                  </div>
+                  <div class="row__arrive">09:14<small>at Alex · Office</small></div>
+                  <div class="row__dur">35 m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>15 · Tight transfer warning</h2>
+        <p>
+          Sub-3-minute transfer flagged: the offending walk segment renders inverted (white-on-black
+          pill) and the line badges either side gain a thick ring. Visual nudge that this option is
+          risky under realtime delay.
+        </p>
+      </header>
       <div class="frame-scale">
         <div class="frame">
           <div class="head">
             <div class="head__row">
               <div class="head__title">Journeys</div>
               <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
-            </div>
-          </div>
-          <div class="list">
-            <div class="row">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:24<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S5</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">2</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">U2</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">4</span>
-              </div>
-              <div class="row__arrive">09:09<small>at Alex · Office</small></div>
-              <div class="row__dur">45 m</div>
-            </div>
-            <div class="row">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:43<small>leave Hbf · was 08:39</small><span class="badge-rt">+4m</span></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">U8</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">4</span>
-              </div>
-              <div class="row__arrive">09:18<small>at Alex · Office</small></div>
-              <div class="row__dur">35 m</div>
-            </div>
-            <div class="row cancelled">
-              <div class="row__icon">B</div>
-              <div class="row__leave">08:32<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S8</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">6</span>
-              </div>
-              <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
-              <div class="row__dur">49 m</div>
-            </div>
-            <div class="row">
-              <div class="row__icon">B</div>
-              <div class="row__leave">08:47<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S9</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">6</span>
-              </div>
-              <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
-              <div class="row__dur">51 m</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div>
-      <h3>Variant B — silently drop cancelled</h3>
-      <div class="frame-scale">
-        <div class="frame">
-          <div class="head">
-            <div class="head__row">
-              <div class="head__title">Journeys</div>
-              <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
-            </div>
-          </div>
-          <div class="list">
-            <div class="row">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:24<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S5</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">2</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">U2</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">4</span>
-              </div>
-              <div class="row__arrive">09:09<small>at Alex · Office</small></div>
-              <div class="row__dur">45 m</div>
-            </div>
-            <div class="row">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:43<small>leave Hbf · was 08:39</small><span class="badge-rt">+4m</span></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">U8</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">4</span>
-              </div>
-              <div class="row__arrive">09:18<small>at Alex · Office</small></div>
-              <div class="row__dur">35 m</div>
-            </div>
-            <div class="row">
-              <div class="row__icon">B</div>
-              <div class="row__leave">08:47<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S9</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">6</span>
-              </div>
-              <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
-              <div class="row__dur">51 m</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>12 · API failure / stale data</h2>
-    <p>
-      Distinct from "nothing to show right now" (which means: the schedule has nothing
-      upcoming). Here the BVG fetch failed or returned empty for a reason. The
-      timestamp ages and a warning replaces the empty hint.
-    </p>
-  </header>
-  <div class="compare">
-    <div>
-      <h3>"nothing to show" — schedule empty (existing)</h3>
-      <div class="frame-scale">
-        <div class="frame">
-          <div class="head">
-            <div class="head__row">
-              <div class="head__title">Journeys</div>
-              <div class="head__stamp">Sat · 22:14 · updated 22:13</div>
-            </div>
-          </div>
-          <div class="empty">
-            <div>
-              <div class="empty__big">nothing to show right now</div>
-              <div class="empty__sub">next: Mon 09:30 · A · Office</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div>
-      <h3>"feed unreachable" — fetch failed</h3>
-      <div class="frame-scale">
-        <div class="frame">
-          <div class="head">
-            <div class="head__row">
-              <div class="head__title">Journeys</div>
-              <div class="head__stamp">Mon · 08:24 · last good 08:09</div>
-            </div>
-          </div>
-          <div class="empty">
-            <div>
-              <div class="empty__big">feed unreachable</div>
-              <div class="empty__sub">data is 15 m old · retrying</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>13 · Service disruption remarks</h2>
-    <p>
-      BVG returns <code>remarks</code> on legs with construction/closures. Two
-      placement options: a per-row note under the pictogram (left) — useful but adds
-      visual density — versus a global header strip (right) — quieter but less
-      precise about which row is affected.
-    </p>
-  </header>
-  <div class="compare">
-    <div>
-      <h3>Variant A — per-row remark</h3>
-      <div class="frame-scale">
-        <div class="frame">
-          <div class="head">
-            <div class="head__row">
-              <div class="head__title">Journeys</div>
-              <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
-            </div>
-          </div>
-          <div class="list">
-            <div class="row" style="border-bottom: 0">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:24<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S5</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">2</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">U2</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">4</span>
-              </div>
-              <div class="row__arrive">09:09<small>at Alex · Office</small></div>
-              <div class="row__dur">45 m</div>
-              <div class="row__remark">U2: Alexanderplatz lift out of service · S5: short turn at Westkreuz, change advised</div>
-            </div>
-            <div class="row">
-              <div class="row__icon">B</div>
-              <div class="row__leave">08:32<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S8</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">6</span>
-              </div>
-              <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
-              <div class="row__dur">49 m</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div>
-      <h3>Variant B — global header strip</h3>
-      <div class="frame-scale">
-        <div class="frame">
-          <div class="head">
-            <div class="head__row">
-              <div class="head__title">Journeys</div>
-              <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
-            </div>
-            <div class="head__sub" style="color: #000; font-weight: 700">⚠ U2 lift OOS · S5 short turn Westkreuz</div>
-          </div>
-          <div class="list">
-            <div class="row">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:24<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S5</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">2</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">U2</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">4</span>
-              </div>
-              <div class="row__arrive">09:09<small>at Alex · Office</small></div>
-              <div class="row__dur">45 m</div>
-            </div>
-            <div class="row">
-              <div class="row__icon">B</div>
-              <div class="row__leave">08:32<small>leave Hbf</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S8</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">6</span>
-              </div>
-              <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
-              <div class="row__dur">49 m</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>14 · Preparation time — "be ready by"</h2>
-    <p>
-      Each preference declares <code>prepMin</code>. The leave-by column shows
-      "ready HH:MM" as the dominant figure (because that's what the user actually
-      acts on) and the actual leave-by HH:MM as a secondary line. Variant B reverses
-      that emphasis.
-    </p>
-  </header>
-  <div class="compare">
-    <div>
-      <h3>Variant A — ready-by dominant</h3>
-      <div class="frame-scale">
-        <div class="frame">
-          <div class="head">
-            <div class="head__row">
-              <div class="head__title">Journeys</div>
-              <div class="head__stamp">Mon · 07:45 · updated 07:44</div>
-            </div>
-            <div class="head__sub">be ready by · journey · arrive-by</div>
-          </div>
-          <div class="list">
-            <div class="row prep">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:09<small>prep 15 · leave 08:24</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S5</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">2</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">U2</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">4</span>
-              </div>
-              <div class="row__arrive">09:09<small>at Alex · Office</small></div>
-              <div class="row__dur">45 m</div>
-            </div>
-            <div class="row prep">
-              <div class="row__icon">B</div>
-              <div class="row__leave">08:22<small>prep 10 · leave 08:32</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S8</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">6</span>
-              </div>
-              <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
-              <div class="row__dur">49 m</div>
-            </div>
-            <div class="row prep">
-              <div class="row__icon">A</div>
-              <div class="row__leave">08:24<small>prep 15 · leave 08:39</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">U8</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">4</span>
-              </div>
-              <div class="row__arrive">09:14<small>at Alex · Office</small></div>
-              <div class="row__dur">35 m</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div>
-      <h3>Variant B — leave-by dominant, prep secondary</h3>
-      <div class="frame-scale">
-        <div class="frame">
-          <div class="head">
-            <div class="head__row">
-              <div class="head__title">Journeys</div>
-              <div class="head__stamp">Mon · 07:45 · updated 07:44</div>
             </div>
             <div class="head__sub">leave-by · journey · arrive-by</div>
           </div>
           <div class="list">
             <div class="row">
               <div class="row__icon">A</div>
-              <div class="row__leave">08:24<small>ready 08:09 (15 m)</small></div>
+              <div class="row__leave">08:24<small>leave Hbf</small></div>
               <div class="row__pictogram">
                 <span class="leg-walk">8</span>
                 <span class="leg-arrow">·</span>
-                <span class="leg-line">S5</span>
+                <span class="leg-line tight">S5</span>
                 <span class="leg-arrow">→</span>
-                <span class="leg-walk">2</span>
+                <span class="leg-walk tight">2</span>
                 <span class="leg-arrow">·</span>
-                <span class="leg-line">U2</span>
+                <span class="leg-line tight">U2</span>
                 <span class="leg-arrow">→</span>
                 <span class="leg-walk">4</span>
               </div>
@@ -799,21 +1091,8 @@
               <div class="row__dur">45 m</div>
             </div>
             <div class="row">
-              <div class="row__icon">B</div>
-              <div class="row__leave">08:32<small>ready 08:22 (10 m)</small></div>
-              <div class="row__pictogram">
-                <span class="leg-walk">8</span>
-                <span class="leg-arrow">·</span>
-                <span class="leg-line">S8</span>
-                <span class="leg-arrow">→</span>
-                <span class="leg-walk">6</span>
-              </div>
-              <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
-              <div class="row__dur">49 m</div>
-            </div>
-            <div class="row">
               <div class="row__icon">A</div>
-              <div class="row__leave">08:39<small>ready 08:24 (15 m)</small></div>
+              <div class="row__leave">08:39<small>leave Hbf</small></div>
               <div class="row__pictogram">
                 <span class="leg-walk">8</span>
                 <span class="leg-arrow">·</span>
@@ -827,170 +1106,276 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>15 · Tight transfer warning</h2>
-    <p>
-      Sub-3-minute transfer flagged: the offending walk segment renders inverted
-      (white-on-black pill) and the line badges either side gain a thick ring.
-      Visual nudge that this option is risky under realtime delay.
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">08:24<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line tight">S5</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk tight">2</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line tight">U2</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:09<small>at Alex · Office</small></div>
-          <div class="row__dur">45 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">08:39<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U8</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:14<small>at Alex · Office</small></div>
-          <div class="row__dur">35 m</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>16 · Walk-only journey</h2>
-    <p>
-      For short A→B distances BVG can return a single walking leg as the fastest
-      option. Render as a single pictogram with no transit badges.
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">08:42<small>leave home</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">18</span>
-          </div>
-          <div class="row__arrive">09:00<small>at Alex · Office</small></div>
-          <div class="row__dur">18 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">08:54<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U8</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:14<small>at Alex · Office</small></div>
-          <div class="row__dur">20 m</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>17 · Density thinning — frequent line</h2>
-    <p>
-      Rush-hour S-Bahn returns 8 candidates 4 min apart. Left: every candidate as a
-      row — accurate but drowns out person B. Right: thinned to every other (or
-      "max 4 per preference"), making room for B's options.
-    </p>
-  </header>
-  <div class="compare">
-    <div>
-      <h3>Variant A — no thinning (8 A-rows visible)</h3>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>16 · Walk-only journey</h2>
+        <p>
+          For short A→B distances BVG can return a single walking leg as the fastest option. Render
+          as a single pictogram with no transit badges.
+        </p>
+      </header>
       <div class="frame-scale">
         <div class="frame">
           <div class="head">
             <div class="head__row">
               <div class="head__title">Journeys</div>
-              <div class="head__stamp">Mon · 08:14</div>
+              <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
+            </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
+          </div>
+          <div class="list">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:42<small>leave home</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">18</span>
+              </div>
+              <div class="row__arrive">09:00<small>at Alex · Office</small></div>
+              <div class="row__dur">18 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:54<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U8</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:14<small>at Alex · Office</small></div>
+              <div class="row__dur">20 m</div>
             </div>
           </div>
-          <div class="list" style="font-size: 28px">
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:24<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:09</div><div class="row__dur">45m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:28<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:13</div><div class="row__dur">45m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:32<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:17</div><div class="row__dur">45m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:36<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:21</div><div class="row__dur">45m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:40<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:25</div><div class="row__dur">45m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:44<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:29</div><div class="row__dur">45m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:48<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:33</div><div class="row__dur">45m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:52<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:37</div><div class="row__dur">45m</div></div>
-          </div>
-          <div class="footnote">B · Studio · 3 candidates clipped — overflow tail</div>
         </div>
       </div>
-    </div>
-    <div>
-      <h3>Variant B — thinned to max 4 per preference</h3>
-      <div class="frame-scale">
-        <div class="frame">
-          <div class="head">
-            <div class="head__row">
-              <div class="head__title">Journeys</div>
-              <div class="head__stamp">Mon · 08:14</div>
-            </div>
-          </div>
-          <div class="list" style="font-size: 28px">
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:24<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:09</div><div class="row__dur">45m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">B</div><div class="row__leave">08:32<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S8</span></div><div class="row__arrive">09:21</div><div class="row__dur">49m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:32<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:17</div><div class="row__dur">45m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">B</div><div class="row__leave">08:47<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S9</span></div><div class="row__arrive">09:38</div><div class="row__dur">51m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:40<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:25</div><div class="row__dur">45m</div></div>
-            <div class="row" style="padding: 14px 0"><div class="row__icon">A</div><div class="row__leave">08:48<small>Hbf</small></div><div class="row__pictogram"><span class="leg-walk">8</span><span class="leg-arrow">·</span><span class="leg-line">S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span class="leg-arrow">·</span><span class="leg-line">U2</span></div><div class="row__arrive">09:33</div><div class="row__dur">45m</div></div>
-          </div>
-          <div class="footnote">A: every-other shown · 4 in-between hidden · B: full set</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-</body>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>17 · Density thinning — frequent line</h2>
+        <p>
+          Rush-hour S-Bahn returns 8 candidates 4 min apart. Left: every candidate as a row —
+          accurate but drowns out person B. Right: thinned to every other (or "max 4 per
+          preference"), making room for B's options.
+        </p>
+      </header>
+      <div class="compare">
+        <div>
+          <h3>Variant A — no thinning (8 A-rows visible)</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Mon · 08:14</div>
+                </div>
+              </div>
+              <div class="list" style="font-size: 28px">
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:09</div>
+                  <div class="row__dur">45m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:28<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:13</div>
+                  <div class="row__dur">45m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:32<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:17</div>
+                  <div class="row__dur">45m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:36<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:21</div>
+                  <div class="row__dur">45m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:40<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:25</div>
+                  <div class="row__dur">45m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:44<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:29</div>
+                  <div class="row__dur">45m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:48<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:33</div>
+                  <div class="row__dur">45m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:52<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:37</div>
+                  <div class="row__dur">45m</div>
+                </div>
+              </div>
+              <div class="footnote">B · Studio · 3 candidates clipped — overflow tail</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>Variant B — thinned to max 4 per preference</h3>
+          <div class="frame-scale">
+            <div class="frame">
+              <div class="head">
+                <div class="head__row">
+                  <div class="head__title">Journeys</div>
+                  <div class="head__stamp">Mon · 08:14</div>
+                </div>
+              </div>
+              <div class="list" style="font-size: 28px">
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:24<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:09</div>
+                  <div class="row__dur">45m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">B</div>
+                  <div class="row__leave">08:32<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S8</span>
+                  </div>
+                  <div class="row__arrive">09:21</div>
+                  <div class="row__dur">49m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:32<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:17</div>
+                  <div class="row__dur">45m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">B</div>
+                  <div class="row__leave">08:47<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S9</span>
+                  </div>
+                  <div class="row__arrive">09:38</div>
+                  <div class="row__dur">51m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:40<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:25</div>
+                  <div class="row__dur">45m</div>
+                </div>
+                <div class="row" style="padding: 14px 0">
+                  <div class="row__icon">A</div>
+                  <div class="row__leave">08:48<small>Hbf</small></div>
+                  <div class="row__pictogram">
+                    <span class="leg-walk">8</span><span class="leg-arrow">·</span><span
+                      class="leg-line"
+                    >S5</span><span class="leg-arrow">→</span><span class="leg-walk">2</span><span
+                      class="leg-arrow"
+                    >·</span><span class="leg-line">U2</span>
+                  </div>
+                  <div class="row__arrive">09:33</div>
+                  <div class="row__dur">45m</div>
+                </div>
+              </div>
+              <div class="footnote">A: every-other shown · 4 in-between hidden · B: full set</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </body>
 </html>

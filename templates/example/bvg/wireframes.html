@@ -1,839 +1,853 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<title>BVG journey board — wireframes</title>
-<style>
-  :root {
-    --ink: #000;
-    --paper: #fff;
-    --muted: #555;
-    --hairline: #000;
-    --soft: #ddd;
-  }
-  body {
-    margin: 0;
-    background: #f4f4f4;
-    font-family: ui-sans-serif, system-ui, sans-serif;
-    color: #111;
-    padding: 32px;
-  }
-  h1 { font-size: 22px; margin: 0 0 8px; }
-  p.lead { color: #555; margin: 0 0 32px; max-width: 70ch; }
-  section { margin: 0 0 48px; }
-  section > header {
-    margin-bottom: 12px;
-  }
-  section > header h2 {
-    font-size: 18px;
-    margin: 0 0 4px;
-  }
-  section > header p {
-    margin: 0;
-    color: #555;
-    font-size: 14px;
-    max-width: 80ch;
-  }
+  <head>
+    <meta charset="utf-8">
+    <title>BVG journey board — wireframes</title>
+    <style>
+      :root {
+        --ink: #000;
+        --paper: #fff;
+        --muted: #555;
+        --hairline: #000;
+        --soft: #ddd;
+      }
+      body {
+        margin: 0;
+        background: #f4f4f4;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        color: #111;
+        padding: 32px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 8px;
+      }
+      p.lead {
+        color: #555;
+        margin: 0 0 32px;
+        max-width: 70ch;
+      }
+      section {
+        margin: 0 0 48px;
+      }
+      section > header {
+        margin-bottom: 12px;
+      }
+      section > header h2 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+      section > header p {
+        margin: 0;
+        color: #555;
+        font-size: 14px;
+        max-width: 80ch;
+      }
 
-  /* The TRMNL panel is 1872×1404, 4-bit grayscale. We render at 1:1 inside an
-     outer wrapper that scales the visual to ~50% so several frames fit a screen. */
-  .frame-scale {
-    transform: scale(0.5);
-    transform-origin: top left;
-    width: 936px;   /* 1872 * 0.5 */
-    height: 702px;  /* 1404 * 0.5 */
-    margin-bottom: 0;
-  }
-  .frame {
-    width: 1872px;
-    height: 1404px;
-    background: var(--paper);
-    color: var(--ink);
-    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-    font-weight: 500;
-    font-size: 34px;
-    line-height: 1.25;
-    padding: 40px 48px;
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-    box-sizing: border-box;
-    border: 1px solid #999;
-  }
+      /* The TRMNL panel is 1872×1404, 4-bit grayscale. We render at 1:1 inside an
+         outer wrapper that scales the visual to ~50% so several frames fit a screen. */
+      .frame-scale {
+        transform: scale(0.5);
+        transform-origin: top left;
+        width: 936px; /* 1872 * 0.5 */
+        height: 702px; /* 1404 * 0.5 */
+        margin-bottom: 0;
+      }
+      .frame {
+        width: 1872px;
+        height: 1404px;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+        font-weight: 500;
+        font-size: 34px;
+        line-height: 1.25;
+        padding: 40px 48px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        box-sizing: border-box;
+        border: 1px solid #999;
+      }
 
-  /* ---- shared header ---- */
-  .head {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    border-bottom: 4px solid var(--hairline);
-    padding-bottom: 12px;
-  }
-  .head__row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 16px;
-  }
-  .head__title {
-    font-size: 38px;
-    font-weight: 900;
-    letter-spacing: 0.03em;
-  }
-  .head__stamp {
-    font-size: 22px;
-    font-weight: 500;
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
-  }
-  .head__sub {
-    font-size: 22px;
-    color: var(--muted);
-  }
+      /* ---- shared header ---- */
+      .head {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-bottom: 4px solid var(--hairline);
+        padding-bottom: 12px;
+      }
+      .head__row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 16px;
+      }
+      .head__title {
+        font-size: 38px;
+        font-weight: 900;
+        letter-spacing: 0.03em;
+      }
+      .head__stamp {
+        font-size: 22px;
+        font-weight: 500;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .head__sub {
+        font-size: 22px;
+        color: var(--muted);
+      }
 
-  /* ---- journey list ---- */
-  .list {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-  .row {
-    display: grid;
-    grid-template-columns: 80px 160px 1fr 160px 110px;
-    align-items: center;
-    gap: 24px;
-    padding: 22px 0;
-    border-bottom: 2px solid var(--soft);
-    font-variant-numeric: tabular-nums;
-  }
-  .row:last-child { border-bottom: 0; }
+      /* ---- journey list ---- */
+      .list {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 80px 160px 1fr 160px 110px;
+        align-items: center;
+        gap: 24px;
+        padding: 22px 0;
+        border-bottom: 2px solid var(--soft);
+        font-variant-numeric: tabular-nums;
+      }
+      .row:last-child {
+        border-bottom: 0;
+      }
 
-  .row__icon {
-    width: 80px; height: 80px;
-    border: 4px solid var(--ink);
-    border-radius: 50%;
-    display: grid; place-items: center;
-    font-size: 42px; font-weight: 900;
-  }
-  .row__leave {
-    font-size: 60px;
-    font-weight: 900;
-    letter-spacing: -0.01em;
-  }
-  .row__leave small {
-    display: block;
-    font-size: 20px;
-    font-weight: 500;
-    color: var(--muted);
-    letter-spacing: 0;
-  }
-  .row__pictogram {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .row__arrive {
-    text-align: right;
-    font-size: 36px;
-    font-weight: 700;
-  }
-  .row__arrive small {
-    display: block;
-    font-size: 20px;
-    font-weight: 500;
-    color: var(--muted);
-  }
-  .row__dur {
-    text-align: right;
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--muted);
-  }
+      .row__icon {
+        width: 80px;
+        height: 80px;
+        border: 4px solid var(--ink);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 42px;
+        font-weight: 900;
+      }
+      .row__leave {
+        font-size: 60px;
+        font-weight: 900;
+        letter-spacing: -0.01em;
+      }
+      .row__leave small {
+        display: block;
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--muted);
+        letter-spacing: 0;
+      }
+      .row__pictogram {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .row__arrive {
+        text-align: right;
+        font-size: 36px;
+        font-weight: 700;
+      }
+      .row__arrive small {
+        display: block;
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+      .row__dur {
+        text-align: right;
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--muted);
+      }
 
-  /* ---- pictogram pieces ---- */
-  .leg-walk {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--ink);
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .leg-walk::before {
-    content: "🚶";
-    font-size: 32px;
-  }
-  .leg-line {
-    border: 3px solid var(--ink);
-    background: var(--ink);
-    color: var(--paper);
-    font-weight: 900;
-    font-size: 28px;
-    padding: 6px 14px;
-    border-radius: 6px;
-    letter-spacing: 0.03em;
-  }
-  .leg-line.bus { border-radius: 30px; }
-  .leg-arrow {
-    color: var(--ink);
-    font-weight: 900;
-    font-size: 28px;
-  }
+      /* ---- pictogram pieces ---- */
+      .leg-walk {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--ink);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .leg-walk::before {
+        content: "🚶";
+        font-size: 32px;
+      }
+      .leg-line {
+        border: 3px solid var(--ink);
+        background: var(--ink);
+        color: var(--paper);
+        font-weight: 900;
+        font-size: 28px;
+        padding: 6px 14px;
+        border-radius: 6px;
+        letter-spacing: 0.03em;
+      }
+      .leg-line.bus {
+        border-radius: 30px;
+      }
+      .leg-arrow {
+        color: var(--ink);
+        font-weight: 900;
+        font-size: 28px;
+      }
 
-  /* ---- variants ---- */
-  .row.warn {
-    background: repeating-linear-gradient(
-      45deg,
-      transparent 0 14px,
-      #00000010 14px 28px
-    );
-    padding-left: 12px;
-    padding-right: 12px;
-    border-left: 8px solid var(--ink);
-  }
-  .row.warn .row__leave::after {
-    content: "⚠ leave now";
-    display: block;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--ink);
-    margin-top: 4px;
-    letter-spacing: 0.05em;
-  }
+      /* ---- variants ---- */
+      .row.warn {
+        background: repeating-linear-gradient(
+          45deg,
+          transparent 0 14px,
+          #00000010 14px 28px
+        );
+        padding-left: 12px;
+        padding-right: 12px;
+        border-left: 8px solid var(--ink);
+      }
+      .row.warn .row__leave::after {
+        content: "⚠ leave now";
+        display: block;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--ink);
+        margin-top: 4px;
+        letter-spacing: 0.05em;
+      }
 
-  .empty {
-    flex: 1;
-    display: grid;
-    place-items: center;
-    text-align: center;
-  }
-  .empty__big {
-    font-size: 72px;
-    font-weight: 900;
-    color: var(--ink);
-  }
-  .empty__sub {
-    font-size: 28px;
-    color: var(--muted);
-    margin-top: 16px;
-  }
+      .empty {
+        flex: 1;
+        display: grid;
+        place-items: center;
+        text-align: center;
+      }
+      .empty__big {
+        font-size: 72px;
+        font-weight: 900;
+        color: var(--ink);
+      }
+      .empty__sub {
+        font-size: 28px;
+        color: var(--muted);
+        margin-top: 16px;
+      }
 
-  .footnote {
-    font-size: 22px;
-    color: var(--muted);
-    padding-top: 12px;
-    border-top: 2px solid var(--soft);
-  }
+      .footnote {
+        font-size: 22px;
+        color: var(--muted);
+        padding-top: 12px;
+        border-top: 2px solid var(--soft);
+      }
 
-  .pref-no-match {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    padding: 22px 0;
-    border-bottom: 2px solid var(--soft);
-    color: var(--muted);
-    font-style: italic;
-  }
-</style>
-</head>
-<body>
-
-<h1>BVG journey board — wireframes</h1>
-<p class="lead">
-  All frames render at the panel's native 1872 × 1404, scaled to 50 % for preview.
-  Layout is a unified rows list, each row tagged with a person icon, sorted by leave-by.
-  Pictogram convention: <span class="leg-walk">8</span> = 8-min walk, boxed code = transit
-  leg, pill-shaped = bus, arrows separate legs.
-</p>
-
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>1 · Typical weekday morning, two people active</h2>
-    <p>
-      Person A (Office): two acceptable shapes (S5+U2, U8) producing three candidates
-      within the 60-min window before the 09:30 deadline. Person B (Studio): two S-line
-      candidates before the 10:00 deadline. Rows interleaved by leave-by ascending.
+      .pref-no-match {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        padding: 22px 0;
+        border-bottom: 2px solid var(--soft);
+        color: var(--muted);
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>BVG journey board — wireframes</h1>
+    <p class="lead">
+      All frames render at the panel's native 1872 × 1404, scaled to 50 % for preview. Layout is a
+      unified rows list, each row tagged with a person icon, sorted by leave-by. Pictogram
+      convention: <span class="leg-walk">8</span> = 8-min walk, boxed code = transit leg,
+      pill-shaped = bus, arrows separate legs.
     </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">08:24<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S5</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">2</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U2</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:09<small>at Alex · Office</small></div>
-          <div class="row__dur">45 m</div>
-        </div>
 
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">08:32<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S8</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">6</span>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>1 · Typical weekday morning, two people active</h2>
+        <p>
+          Person A (Office): two acceptable shapes (S5+U2, U8) producing three candidates within the
+          60-min window before the 09:30 deadline. Person B (Studio): two S-line candidates before
+          the 10:00 deadline. Rows interleaved by leave-by ascending.
+        </p>
+      </header>
+      <div class="frame-scale">
+        <div class="frame">
+          <div class="head">
+            <div class="head__row">
+              <div class="head__title">Journeys</div>
+              <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
+            </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
           </div>
-          <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">49 m</div>
-        </div>
+          <div class="list">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:24<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">2</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U2</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:09<small>at Alex · Office</small></div>
+              <div class="row__dur">45 m</div>
+            </div>
 
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">08:39<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U8</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:14<small>at Alex · Office</small></div>
-          <div class="row__dur">35 m</div>
-        </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">08:32<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S8</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">6</span>
+              </div>
+              <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">49 m</div>
+            </div>
 
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">08:47<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S9</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">6</span>
-          </div>
-          <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">51 m</div>
-        </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:39<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U8</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:14<small>at Alex · Office</small></div>
+              <div class="row__dur">35 m</div>
+            </div>
 
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">08:54<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S5</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">2</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U2</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:24<small>at Alex · Office</small></div>
-          <div class="row__dur">30 m</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">08:47<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S9</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">6</span>
+              </div>
+              <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">51 m</div>
+            </div>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>2 · Edge case — within-grace warning on the head row</h2>
-    <p>
-      The first candidate's leave-by is 2 min in the past but still within the 5-min
-      global grace window. Row gets a hatched background, left bar, and a "leave now"
-      stamp. The remaining rows render normally.
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Mon · 08:26 · updated 08:25</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="row warn">
-          <div class="row__icon">A</div>
-          <div class="row__leave">08:24<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S5</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">2</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U2</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:54<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">2</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U2</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:24<small>at Alex · Office</small></div>
+              <div class="row__dur">30 m</div>
+            </div>
           </div>
-          <div class="row__arrive">09:09<small>at Alex · Office</small></div>
-          <div class="row__dur">45 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">08:39<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U8</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:14<small>at Alex · Office</small></div>
-          <div class="row__dur">35 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">08:47<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S9</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">6</span>
-          </div>
-          <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">51 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">08:54<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S5</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">2</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U2</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:24<small>at Alex · Office</small></div>
-          <div class="row__dur">30 m</div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>3 · Edge case — empty active set</h2>
-    <p>
-      Saturday evening, all weekday and Saturday-studio rules have passed; nothing
-      upcoming until Monday. Literal "nothing to show right now" with a soft hint about
-      the next scheduled deadline.
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Sat · 22:14 · updated 22:13</div>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>2 · Edge case — within-grace warning on the head row</h2>
+        <p>
+          The first candidate's leave-by is 2 min in the past but still within the 5-min global
+          grace window. Row gets a hatched background, left bar, and a "leave now" stamp. The
+          remaining rows render normally.
+        </p>
+      </header>
+      <div class="frame-scale">
+        <div class="frame">
+          <div class="head">
+            <div class="head__row">
+              <div class="head__title">Journeys</div>
+              <div class="head__stamp">Mon · 08:26 · updated 08:25</div>
+            </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
+          </div>
+          <div class="list">
+            <div class="row warn">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:24<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">2</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U2</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:09<small>at Alex · Office</small></div>
+              <div class="row__dur">45 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:39<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U8</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:14<small>at Alex · Office</small></div>
+              <div class="row__dur">35 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">08:47<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S9</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">6</span>
+              </div>
+              <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">51 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:54<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">2</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U2</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:24<small>at Alex · Office</small></div>
+              <div class="row__dur">30 m</div>
+            </div>
+          </div>
         </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
       </div>
-      <div class="empty">
-        <div>
-          <div class="empty__big">nothing to show right now</div>
-          <div class="empty__sub">next: Mon 09:30 · A · Office</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>4 · Edge case — one preference active, one fading out</h2>
-    <p>
-      08:55 Mon. Person A's 09:30 deadline still leaves 2 candidates in the window.
-      Person B's 10:00 deadline window opens at 09:00, so they're not yet visible. This
-      is the "person 1's stuff fades, person 2's stuff arrives" transition you described.
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Mon · 08:55 · updated 08:54</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">08:54<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S5</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">2</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U2</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>3 · Edge case — empty active set</h2>
+        <p>
+          Saturday evening, all weekday and Saturday-studio rules have passed; nothing upcoming
+          until Monday. Literal "nothing to show right now" with a soft hint about the next
+          scheduled deadline.
+        </p>
+      </header>
+      <div class="frame-scale">
+        <div class="frame">
+          <div class="head">
+            <div class="head__row">
+              <div class="head__title">Journeys</div>
+              <div class="head__stamp">Sat · 22:14 · updated 22:13</div>
+            </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
           </div>
-          <div class="row__arrive">09:24<small>at Alex · Office</small></div>
-          <div class="row__dur">30 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">09:09<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U8</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
+          <div class="empty">
+            <div>
+              <div class="empty__big">nothing to show right now</div>
+              <div class="empty__sub">next: Mon 09:30 · A · Office</div>
+            </div>
           </div>
-          <div class="row__arrive">09:29<small>at Alex · Office</small></div>
-          <div class="row__dur">20 m</div>
         </div>
       </div>
-      <div class="footnote">B · Studio · window opens 09:00 · arrive-by 10:00</div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>5 · Edge case — preference active but no acceptable candidates</h2>
-    <p>
-      Person A's window is open, but BVG returns only bus combinations and nothing
-      matching their <code>accept</code> shapes. Two ways to render this — left as a
-      silent skip (preference shows nothing, reads as "off"), right as an inline note
-      (helps you notice the filter is too narrow today).
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys — variant A: silent skip</div>
-          <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">08:32<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S8</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">6</span>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>4 · Edge case — one preference active, one fading out</h2>
+        <p>
+          08:55 Mon. Person A's 09:30 deadline still leaves 2 candidates in the window. Person B's
+          10:00 deadline window opens at 09:00, so they're not yet visible. This is the "person 1's
+          stuff fades, person 2's stuff arrives" transition you described.
+        </p>
+      </header>
+      <div class="frame-scale">
+        <div class="frame">
+          <div class="head">
+            <div class="head__row">
+              <div class="head__title">Journeys</div>
+              <div class="head__stamp">Mon · 08:55 · updated 08:54</div>
+            </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
           </div>
-          <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">49 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">08:47<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S9</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">6</span>
+          <div class="list">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:54<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">2</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U2</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:24<small>at Alex · Office</small></div>
+              <div class="row__dur">30 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">09:09<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U8</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:29<small>at Alex · Office</small></div>
+              <div class="row__dur">20 m</div>
+            </div>
           </div>
-          <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">51 m</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="frame-scale" style="margin-top: 24px">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys — variant B: inline note</div>
-          <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="pref-no-match">
-          <div class="row__icon">A</div>
-          <div>A · Office — no S5+U2 or U8 in the next 60 m (S-Bahn disruption?)</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">08:32<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S8</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">6</span>
-          </div>
-          <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">49 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">08:47<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S9</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">6</span>
-          </div>
-          <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">51 m</div>
+          <div class="footnote">B · Studio · window opens 09:00 · arrive-by 10:00</div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>6 · Edge case — overflow (more candidates than rows)</h2>
-    <p>
-      Friday, both people active, dense rush hour, nine candidates in the windows.
-      Hard cap at ~8 visible rows; overflow drops from the tail (latest leave-by per
-      preference) and a footnote summarises what was clipped.
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Fri · 09:02 · updated 09:01</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">09:14<small>leave Lehrter</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">3</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line bus">M10</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>5 · Edge case — preference active but no acceptable candidates</h2>
+        <p>
+          Person A's window is open, but BVG returns only bus combinations and nothing matching
+          their <code>accept</code> shapes. Two ways to render this — left as a silent skip
+          (preference shows nothing, reads as "off"), right as an inline note (helps you notice the
+          filter is too narrow today).
+        </p>
+      </header>
+      <div class="frame-scale">
+        <div class="frame">
+          <div class="head">
+            <div class="head__row">
+              <div class="head__title">Journeys — variant A: silent skip</div>
+              <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
+            </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
           </div>
-          <div class="row__arrive">09:42<small>at Alex · Office (Fri)</small></div>
-          <div class="row__dur">28 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">09:17<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S8</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">6</span>
+          <div class="list">
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">08:32<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S8</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">6</span>
+              </div>
+              <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">49 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">08:47<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S9</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">6</span>
+              </div>
+              <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">51 m</div>
+            </div>
           </div>
-          <div class="row__arrive">09:54<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">37 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">09:22<small>leave Lehrter</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">3</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line bus">M10</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">2</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U2</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:51<small>at Alex · Office (Fri)</small></div>
-          <div class="row__dur">29 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">09:24<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S9</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">6</span>
-          </div>
-          <div class="row__arrive">10:01<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">37 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">09:29<small>leave Lehrter</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">3</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line bus">M10</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:57<small>at Alex · Office (Fri)</small></div>
-          <div class="row__dur">28 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">B</div>
-          <div class="row__leave">09:32<small>leave Hbf</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">8</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S8</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">6</span>
-          </div>
-          <div class="row__arrive">10:09<small>at Schöneweide · Studio</small></div>
-          <div class="row__dur">37 m</div>
         </div>
       </div>
-      <div class="footnote">+3 later · A: 09:37, 09:44 · B: 09:39 · arrive-by 10:00 / 10:00</div>
-    </div>
-  </div>
-</section>
+      <div class="frame-scale" style="margin-top: 24px">
+        <div class="frame">
+          <div class="head">
+            <div class="head__row">
+              <div class="head__title">Journeys — variant B: inline note</div>
+              <div class="head__stamp">Mon · 08:14 · updated 08:13</div>
+            </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
+          </div>
+          <div class="list">
+            <div class="pref-no-match">
+              <div class="row__icon">A</div>
+              <div>A · Office — no S5+U2 or U8 in the next 60 m (S-Bahn disruption?)</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">08:32<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S8</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">6</span>
+              </div>
+              <div class="row__arrive">09:21<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">49 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">08:47<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S9</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">6</span>
+              </div>
+              <div class="row__arrive">09:38<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">51 m</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>7 · Edge case — different start stop on Fridays</h2>
-    <p>
-      Person A's <code>Office</code> preference uses Hbf Mon-Thu, but the
-      <code>Office (Fri)</code> preference uses Lehrter Str. The leave-stop label in the
-      row's small caption differentiates them. Both icons read "A" because they're the
-      same person.
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Fri · 09:00 · updated 08:59</div>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>6 · Edge case — overflow (more candidates than rows)</h2>
+        <p>
+          Friday, both people active, dense rush hour, nine candidates in the windows. Hard cap at
+          ~8 visible rows; overflow drops from the tail (latest leave-by per preference) and a
+          footnote summarises what was clipped.
+        </p>
+      </header>
+      <div class="frame-scale">
+        <div class="frame">
+          <div class="head">
+            <div class="head__row">
+              <div class="head__title">Journeys</div>
+              <div class="head__stamp">Fri · 09:02 · updated 09:01</div>
+            </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
+          </div>
+          <div class="list">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">09:14<small>leave Lehrter</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">3</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line bus">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:42<small>at Alex · Office (Fri)</small></div>
+              <div class="row__dur">28 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:17<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S8</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">6</span>
+              </div>
+              <div class="row__arrive">09:54<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">37 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">09:22<small>leave Lehrter</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">3</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line bus">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">2</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U2</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:51<small>at Alex · Office (Fri)</small></div>
+              <div class="row__dur">29 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:24<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S9</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">6</span>
+              </div>
+              <div class="row__arrive">10:01<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">37 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">09:29<small>leave Lehrter</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">3</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line bus">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:57<small>at Alex · Office (Fri)</small></div>
+              <div class="row__dur">28 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:32<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S8</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">6</span>
+              </div>
+              <div class="row__arrive">10:09<small>at Schöneweide · Studio</small></div>
+              <div class="row__dur">37 m</div>
+            </div>
+          </div>
+          <div class="footnote">
+            +3 later · A: 09:37, 09:44 · B: 09:39 · arrive-by 10:00 / 10:00
+          </div>
         </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
       </div>
-      <div class="list">
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">09:14<small>leave Lehrter</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">3</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line bus">M10</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:42<small>at Alex · Office (Fri)</small></div>
-          <div class="row__dur">28 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">09:29<small>leave Lehrter</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">3</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line bus">M10</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">2</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U2</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:58<small>at Alex · Office (Fri)</small></div>
-          <div class="row__dur">29 m</div>
-        </div>
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">09:44<small>leave Lehrter</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">3</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line bus">M10</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">4</span>
-          </div>
-          <div class="row__arrive">09:57<small>at Alex · Office (Fri)</small></div>
-          <div class="row__dur">13 m</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- ============================================================ -->
-<section>
-  <header>
-    <h2>8 · Edge case — evening home, transitioning into next-day morning</h2>
-    <p>
-      18:42 Mon. Person A's "Home" preference (arrive-by 19:00) shows a single
-      remaining option. Once it passes, the screen falls into "nothing to show right
-      now · next: Tue 09:30" until tomorrow morning. The footnote shows the upcoming
-      anchor so the screen never feels broken.
-    </p>
-  </header>
-  <div class="frame-scale">
-    <div class="frame">
-      <div class="head">
-        <div class="head__row">
-          <div class="head__title">Journeys</div>
-          <div class="head__stamp">Mon · 18:42 · updated 18:41</div>
-        </div>
-        <div class="head__sub">leave-by · journey · arrive-by</div>
-      </div>
-      <div class="list">
-        <div class="row">
-          <div class="row__icon">A</div>
-          <div class="row__leave">18:38<small>leave Alex</small></div>
-          <div class="row__pictogram">
-            <span class="leg-walk">4</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">U2</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">2</span>
-            <span class="leg-arrow">·</span>
-            <span class="leg-line">S5</span>
-            <span class="leg-arrow">→</span>
-            <span class="leg-walk">8</span>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>7 · Edge case — different start stop on Fridays</h2>
+        <p>
+          Person A's <code>Office</code> preference uses Hbf Mon-Thu, but the
+          <code>Office (Fri)</code> preference uses Lehrter Str. The leave-stop label in the row's
+          small caption differentiates them. Both icons read "A" because they're the same person.
+        </p>
+      </header>
+      <div class="frame-scale">
+        <div class="frame">
+          <div class="head">
+            <div class="head__row">
+              <div class="head__title">Journeys</div>
+              <div class="head__stamp">Fri · 09:00 · updated 08:59</div>
+            </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
           </div>
-          <div class="row__arrive">19:08<small>at Hbf · Home</small></div>
-          <div class="row__dur">30 m</div>
+          <div class="list">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">09:14<small>leave Lehrter</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">3</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line bus">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:42<small>at Alex · Office (Fri)</small></div>
+              <div class="row__dur">28 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">09:29<small>leave Lehrter</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">3</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line bus">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">2</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U2</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:58<small>at Alex · Office (Fri)</small></div>
+              <div class="row__dur">29 m</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">09:44<small>leave Lehrter</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">3</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line bus">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">4</span>
+              </div>
+              <div class="row__arrive">09:57<small>at Alex · Office (Fri)</small></div>
+              <div class="row__dur">13 m</div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="footnote">next anchor · Tue 09:30 · A · Office</div>
-    </div>
-  </div>
-</section>
+    </section>
 
-</body>
+    <!-- ============================================================ -->
+    <section>
+      <header>
+        <h2>8 · Edge case — evening home, transitioning into next-day morning</h2>
+        <p>
+          18:42 Mon. Person A's "Home" preference (arrive-by 19:00) shows a single remaining option.
+          Once it passes, the screen falls into "nothing to show right now · next: Tue 09:30" until
+          tomorrow morning. The footnote shows the upcoming anchor so the screen never feels broken.
+        </p>
+      </header>
+      <div class="frame-scale">
+        <div class="frame">
+          <div class="head">
+            <div class="head__row">
+              <div class="head__title">Journeys</div>
+              <div class="head__stamp">Mon · 18:42 · updated 18:41</div>
+            </div>
+            <div class="head__sub">leave-by · journey · arrive-by</div>
+          </div>
+          <div class="list">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">18:38<small>leave Alex</small></div>
+              <div class="row__pictogram">
+                <span class="leg-walk">4</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">U2</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">2</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-walk">8</span>
+              </div>
+              <div class="row__arrive">19:08<small>at Hbf · Home</small></div>
+              <div class="row__dur">30 m</div>
+            </div>
+          </div>
+          <div class="footnote">next anchor · Tue 09:30 · A · Office</div>
+        </div>
+      </div>
+    </section>
+  </body>
 </html>
