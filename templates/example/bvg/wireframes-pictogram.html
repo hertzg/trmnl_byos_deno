@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>BVG journey board — pictogram glyph comparison</title>
+    <style>
+      :root {
+        --ink: #000;
+        --paper: #fff;
+        --muted: #555;
+        --soft: #ddd;
+      }
+      body {
+        margin: 0;
+        background: #f4f4f4;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        color: #111;
+        padding: 32px;
+      }
+      h1 { font-size: 22px; margin: 0 0 8px; }
+      h3 { font-size: 14px; margin: 24px 0 8px; text-transform: uppercase; letter-spacing: 0.05em; color: #333; }
+      p.lead { color: #555; margin: 0 0 16px; max-width: 80ch; }
+      p.lead code { background: #e8e8e8; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+
+      .legend {
+        background: var(--paper);
+        border: 1px solid #999;
+        padding: 16px 20px;
+        margin-bottom: 32px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .opt {
+        background: var(--paper);
+        border: 1px solid #999;
+        padding: 20px 24px 24px;
+      }
+      .opt > header { margin-bottom: 12px; }
+      .opt h2 { font-size: 18px; margin: 0 0 4px; font-weight: 800; }
+      .opt p { margin: 0; font-size: 13px; color: #555; max-width: 60ch; }
+
+      /* mock e-ink frame */
+      .frame-scale {
+        transform: scale(0.5);
+        transform-origin: top left;
+        width: 850px;
+        margin-top: 16px;
+      }
+      .frame-scale.legend-scale { transform: scale(0.6); width: 1020px; }
+      .frame {
+        width: 1700px;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+        font-weight: 500;
+        font-size: 34px;
+        padding: 24px 32px;
+        box-sizing: border-box;
+        border: 2px solid var(--ink);
+      }
+      .frame.legend-frame { padding: 32px; }
+
+      .row {
+        display: grid;
+        grid-template-columns: 80px 200px 1fr 160px 110px;
+        align-items: center;
+        gap: 24px;
+        padding: 18px 0;
+        border-bottom: 2px solid var(--soft);
+        font-variant-numeric: tabular-nums;
+      }
+      .row:last-child { border-bottom: 0; }
+      .row__icon {
+        width: 80px; height: 80px;
+        border: 4px solid var(--ink);
+        border-radius: 50%;
+        display: grid; place-items: center;
+        font-size: 42px; font-weight: 900;
+      }
+      .row__leave { font-size: 60px; font-weight: 900; letter-spacing: -0.01em; }
+      .row__leave small { display: block; font-size: 20px; font-weight: 500; color: var(--muted); }
+      .row__pictogram { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .row__arrive { text-align: right; font-size: 36px; font-weight: 700; }
+      .row__arrive small { display: block; font-size: 20px; font-weight: 500; color: var(--muted); }
+      .row__dur { text-align: right; font-size: 26px; font-weight: 700; color: var(--muted); }
+
+      /* ─── transit pills, one shape per BVG product ──────────────────── */
+      .leg-line {
+        background: var(--ink);
+        color: var(--paper);
+        font-weight: 900;
+        font-size: 28px;
+        padding: 6px 14px;
+        letter-spacing: 0.03em;
+        line-height: 1;
+        display: inline-block;
+      }
+      .leg-line.suburban { border-radius: 999px; padding: 6px 18px; }
+      .leg-line.bus { border-radius: 999px; padding: 6px 18px; }
+      .leg-line.subway { border-radius: 4px; }
+      .leg-line.tram { border-radius: 4px; }
+      .leg-line.regional {
+        border-radius: 4px;
+        transform: rotate(45deg);
+        display: inline-grid; place-items: center;
+        width: 36px; height: 36px;
+        font-size: 22px;
+        padding: 0;
+      }
+      .leg-line.regional > span { transform: rotate(-45deg); display: inline-block; }
+      .leg-line.national {
+        background: var(--paper);
+        color: var(--ink);
+        border: 4px solid var(--ink);
+        border-radius: 999px;
+        padding: 4px 16px;
+      }
+      .leg-arrow { color: var(--ink); font-weight: 900; font-size: 28px; }
+
+      /* ─── walk treatments ─────────────────────────────────────────────── */
+
+      /* shared: figure-only crop */
+      .walk-fig {
+        width: 22px; height: 32px;
+        flex: none;
+      }
+      .walk-fig-lg { width: 28px; height: 40px; flex: none; }
+
+      /* A — current: system emoji */
+      .walk-A { font-size: 28px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+      .walk-A::before { content: "🚶"; font-size: 32px; }
+
+      /* B — outlined rect pill, no figure */
+      .walk-B {
+        border: 3px solid var(--ink);
+        background: var(--paper); color: var(--ink);
+        font-weight: 800; font-size: 26px;
+        padding: 4px 14px; border-radius: 6px;
+        letter-spacing: 0.02em;
+      }
+
+      /* C — outlined pill + official BVG figure */
+      .walk-C {
+        border: 3px solid var(--ink);
+        background: var(--paper); color: var(--ink);
+        font-weight: 800; font-size: 26px;
+        padding: 2px 12px 2px 8px; border-radius: 6px;
+        display: inline-flex; align-items: center; gap: 4px;
+      }
+
+      /* D — official BVG figure only, no border */
+      .walk-D { font-size: 28px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+
+      /* E — pure italic text */
+      .walk-E { font-size: 24px; font-weight: 600; font-style: italic; color: var(--ink); }
+
+      /* F — dashed-border pill + figure */
+      .walk-F {
+        border: 3px dashed var(--ink);
+        background: var(--paper); color: var(--ink);
+        font-weight: 800; font-size: 26px;
+        padding: 4px 14px; border-radius: 4px;
+        display: inline-flex; align-items: center; gap: 6px;
+      }
+
+      /* G — italic underlined text + tiny figure */
+      .walk-G {
+        font-size: 26px; font-weight: 600; font-style: italic;
+        text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px;
+        display: inline-flex; align-items: center; gap: 4px;
+      }
+
+      /* H — outlined CIRCLE with figure inside (mirrors BVG product shape language) */
+      .walk-H {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: 28px; font-weight: 800;
+      }
+      .walk-H .glyph {
+        width: 56px; height: 56px;
+        border: 3px solid var(--ink);
+        border-radius: 50%;
+        display: inline-grid; place-items: center;
+        background: var(--paper); color: var(--ink);
+      }
+      .walk-H .glyph svg { width: 30px; height: 42px; }
+
+      /* I — filled CIRCLE with white figure inside (parallels filled S/Bus pills) */
+      .walk-I {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: 28px; font-weight: 800;
+      }
+      .walk-I .glyph {
+        width: 56px; height: 56px;
+        border-radius: 50%;
+        display: inline-grid; place-items: center;
+        background: var(--ink); color: var(--paper);
+      }
+      .walk-I .glyph svg { width: 30px; height: 42px; }
+
+      /* J / K — BVG product SVGs used as the leg glyph -------------------- */
+      .bvg-glyph {
+        width: 44px;
+        height: 44px;
+        vertical-align: middle;
+        flex: none;
+      }
+      /* walking figure-only: drops the white circle, keeps just the BVG figure */
+      .bvg-glyph.fig-only {
+        width: 26px;
+        height: 38px;
+      }
+      .leg-bvg {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: 800;
+        font-size: 26px;
+        letter-spacing: 0.02em;
+        font-variant-numeric: tabular-nums;
+      }
+      .leg-bvg.walk {
+        font-weight: 700;
+        gap: 6px;
+      }
+      /* tighten the arrow inside the BVG-glyph variants — smaller glyphs
+         need a slimmer separator to keep the rhythm */
+      .opt-J .leg-arrow,
+      .opt-K .leg-arrow {
+        font-size: 22px;
+      }
+      .opt-J .row__pictogram,
+      .opt-K .row__pictogram {
+        gap: 8px;
+      }
+      /* J variant: SVGs in their native colors (will dither on real e-ink) */
+      /* K variant: flatten to high-contrast 1-bit-ish silhouette */
+      .opt-K .bvg-glyph {
+        filter: grayscale(1) contrast(2.4) brightness(0.85);
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- inlined symbol: official BVG haf_prod_walk figure (cropped to figure only) -->
+    <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+      <symbol id="walk-fig" viewBox="22 8 56 88">
+        <path fill="currentColor" d="M52.643,16.263c0-1.71-0.564-3.13-1.694-4.26s-2.551-1.695-4.264-1.695s-3.133,0.564-4.264,1.695
+          c-1.131,1.131-1.728,2.551-1.792,4.26c0.064,1.743,0.661,3.163,1.792,4.26c1.131,1.259,2.551,1.89,4.264,1.89
+          s3.133-0.631,4.264-1.89C52.076,19.427,52.643,18.007,52.643,16.263z M72.163,45.758L55.792,29.292
+          c-0.969-1.195-2.243-2.258-3.828-3.197c-1.679-0.872-3.633-1.341-5.861-1.405c-2.002,0.064-3.73,0.564-5.184,1.503
+          c-1.454,1-2.746,2.033-3.874,3.099l-8.088,7.701c-0.421,0.356-0.695,0.759-0.823,1.21c-0.195,0.451-0.29,1.146-0.29,2.081v13.367
+          c1.195,0.064,2.423-0.485,3.682-1.646c1.259-1.131,1.92-3.389,1.987-6.781v-4.26l5.861-5.425l0,0v16.756l-9.929,24.987
+          c-0.808,1.969-1.243,3.648-1.307,5.038c-0.064,1.518,0.064,2.776,0.387,3.779c0.744,2.033,1.807,3.227,3.197,3.584l14.193-33.222
+          l0,0l5.714,24.795c0.744,3.163,1.841,5.376,3.294,6.635c1.39,1.195,3.31,1.792,5.763,1.792l-7.461-37.291v-16.95l0,0l9.832,9.685
+          C65.961,47.904,68.997,48.114,72.163,45.758z"/>
+      </symbol>
+    </svg>
+
+    <h1>pictogram glyph comparison</h1>
+    <p class="lead">
+      walking-leg treatments shown alongside the full set of BVG transit
+      shapes. each transit mode keeps its product semiotics
+      (<code>S-Bahn / Bus = circle</code>,
+      <code>U-Bahn / Tram = square</code>,
+      <code>Regional = diamond</code>,
+      <code>IC/ICE = circle, inverted</code>) so the pictogram reads as one
+      shape language. all walk options use the official BVG
+      <code>haf_prod_walk</code> figure (where a figure is present) flattened
+      to 1-bit black. options H and I extend BVG's product-shape system to
+      the walk leg itself, treating it as its own "product".
+    </p>
+
+    <div class="legend">
+      <h3 style="margin-top:0">transit shape legend</h3>
+      <p style="font-size:13px;color:#666;margin:0 0 8px">
+        BVG product → pill shape mapping used in every option below.
+      </p>
+      <div class="frame-scale legend-scale">
+        <div class="frame legend-frame">
+          <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+            <span class="leg-line suburban">S5</span>
+            <span style="font-size:18px;color:#555">S-Bahn</span>
+            <span class="leg-line subway">U2</span>
+            <span style="font-size:18px;color:#555">U-Bahn</span>
+            <span class="leg-line tram">M10</span>
+            <span style="font-size:18px;color:#555">tram</span>
+            <span class="leg-line bus">240</span>
+            <span style="font-size:18px;color:#555">bus / express</span>
+            <span class="leg-line regional"><span>RE3</span></span>
+            <span style="font-size:18px;color:#555;margin-left:24px">regional</span>
+            <span class="leg-line national">IC</span>
+            <span style="font-size:18px;color:#555">IC / ICE</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+
+      <!-- ============================================================== -->
+      <section class="opt">
+        <header>
+          <h2>A — current: system emoji 🚶</h2>
+          <p>baseline. emoji renders dithered grey on e-ink and clashes with
+            the bold filled pills. fuzzy on every refresh.</p>
+        </header>
+        <div class="frame-scale">
+          <div class="frame">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">07:42<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-A">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-A">2</span>
+              </div>
+              <div class="row__arrive">08:14<small>at Office</small></div>
+              <div class="row__dur">32 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:01<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-A">8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line subway">U2</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-A">4</span>
+              </div>
+              <div class="row__arrive">08:38<small>at Office</small></div>
+              <div class="row__dur">37 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:12<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-A">5</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line tram">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line bus">240</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-A">3</span>
+              </div>
+              <div class="row__arrive">09:48<small>at Studio</small></div>
+              <div class="row__dur">36 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:10<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-A">14</span>
+              </div>
+              <div class="row__arrive">08:24<small>at Café</small></div>
+              <div class="row__dur">14 min</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <section class="opt">
+        <header>
+          <h2>B — outlined rect pill, "walk N"</h2>
+          <p>visual inverse of the filled pill: same family, outlined instead
+            of filled. no figure. shape-collides with U-Bahn/tram square; the
+            inverted fill plus the word "walk" is what disambiguates.</p>
+        </header>
+        <div class="frame-scale">
+          <div class="frame">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">07:42<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-B">walk 8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-B">walk 2</span>
+              </div>
+              <div class="row__arrive">08:14<small>at Office</small></div>
+              <div class="row__dur">32 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:01<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-B">walk 8</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line subway">U2</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-B">walk 4</span>
+              </div>
+              <div class="row__arrive">08:38<small>at Office</small></div>
+              <div class="row__dur">37 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:12<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-B">walk 5</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line tram">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line bus">240</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-B">walk 3</span>
+              </div>
+              <div class="row__arrive">09:48<small>at Studio</small></div>
+              <div class="row__dur">36 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:10<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-B">walk 14</span>
+              </div>
+              <div class="row__arrive">08:24<small>at Café</small></div>
+              <div class="row__dur">14 min</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <section class="opt">
+        <header>
+          <h2>C — outlined rect pill + BVG figure</h2>
+          <p>option B with the official BVG walking figure (1-bit) inside.
+            keeps iconic affordance; renders crisp.</p>
+        </header>
+        <div class="frame-scale">
+          <div class="frame">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">07:42<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-C"><svg class="walk-fig"><use href="#walk-fig"/></svg>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-C"><svg class="walk-fig"><use href="#walk-fig"/></svg>2m</span>
+              </div>
+              <div class="row__arrive">08:14<small>at Office</small></div>
+              <div class="row__dur">32 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:01<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-C"><svg class="walk-fig"><use href="#walk-fig"/></svg>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line subway">U2</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-C"><svg class="walk-fig"><use href="#walk-fig"/></svg>4m</span>
+              </div>
+              <div class="row__arrive">08:38<small>at Office</small></div>
+              <div class="row__dur">37 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:12<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-C"><svg class="walk-fig"><use href="#walk-fig"/></svg>5m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line tram">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line bus">240</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-C"><svg class="walk-fig"><use href="#walk-fig"/></svg>3m</span>
+              </div>
+              <div class="row__arrive">09:48<small>at Studio</small></div>
+              <div class="row__dur">36 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:10<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-C"><svg class="walk-fig"><use href="#walk-fig"/></svg>14m</span>
+              </div>
+              <div class="row__arrive">08:24<small>at Café</small></div>
+              <div class="row__dur">14 min</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <section class="opt">
+        <header>
+          <h2>D — BVG figure only, no border</h2>
+          <p>official figure beside bold minutes, no enclosing shape.
+            transit pills dominate the row; walks recede as connector tissue.
+            the figure on its own is unmistakable.</p>
+        </header>
+        <div class="frame-scale">
+          <div class="frame">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">07:42<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-D"><svg class="walk-fig"><use href="#walk-fig"/></svg>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-D"><svg class="walk-fig"><use href="#walk-fig"/></svg>2m</span>
+              </div>
+              <div class="row__arrive">08:14<small>at Office</small></div>
+              <div class="row__dur">32 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:01<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-D"><svg class="walk-fig"><use href="#walk-fig"/></svg>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line subway">U2</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-D"><svg class="walk-fig"><use href="#walk-fig"/></svg>4m</span>
+              </div>
+              <div class="row__arrive">08:38<small>at Office</small></div>
+              <div class="row__dur">37 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:12<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-D"><svg class="walk-fig"><use href="#walk-fig"/></svg>5m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line tram">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line bus">240</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-D"><svg class="walk-fig"><use href="#walk-fig"/></svg>3m</span>
+              </div>
+              <div class="row__arrive">09:48<small>at Studio</small></div>
+              <div class="row__dur">36 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:10<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-D"><svg class="walk-fig"><use href="#walk-fig"/></svg>14m</span>
+              </div>
+              <div class="row__arrive">08:24<small>at Café</small></div>
+              <div class="row__dur">14 min</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <section class="opt">
+        <header>
+          <h2>E — italic text only</h2>
+          <p>no glyph. italic distinguishes it from other text. quietest
+            possible treatment; transit pills carry the entire load.</p>
+        </header>
+        <div class="frame-scale">
+          <div class="frame">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">07:42<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-E">walk 8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-E">walk 2m</span>
+              </div>
+              <div class="row__arrive">08:14<small>at Office</small></div>
+              <div class="row__dur">32 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:01<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-E">walk 8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line subway">U2</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-E">walk 4m</span>
+              </div>
+              <div class="row__arrive">08:38<small>at Office</small></div>
+              <div class="row__dur">37 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:12<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-E">walk 5m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line tram">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line bus">240</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-E">walk 3m</span>
+              </div>
+              <div class="row__arrive">09:48<small>at Studio</small></div>
+              <div class="row__dur">36 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:10<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-E">walk 14m</span>
+              </div>
+              <div class="row__arrive">08:24<small>at Café</small></div>
+              <div class="row__dur">14 min</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <section class="opt">
+        <header>
+          <h2>F — dashed-border pill + figure</h2>
+          <p>same rect family as transit pills, but dashed = "transient /
+            human-powered". figure inside reinforces meaning.</p>
+        </header>
+        <div class="frame-scale">
+          <div class="frame">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">07:42<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-F"><svg class="walk-fig"><use href="#walk-fig"/></svg>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-F"><svg class="walk-fig"><use href="#walk-fig"/></svg>2m</span>
+              </div>
+              <div class="row__arrive">08:14<small>at Office</small></div>
+              <div class="row__dur">32 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:01<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-F"><svg class="walk-fig"><use href="#walk-fig"/></svg>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line subway">U2</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-F"><svg class="walk-fig"><use href="#walk-fig"/></svg>4m</span>
+              </div>
+              <div class="row__arrive">08:38<small>at Office</small></div>
+              <div class="row__dur">37 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:12<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-F"><svg class="walk-fig"><use href="#walk-fig"/></svg>5m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line tram">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line bus">240</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-F"><svg class="walk-fig"><use href="#walk-fig"/></svg>3m</span>
+              </div>
+              <div class="row__arrive">09:48<small>at Studio</small></div>
+              <div class="row__dur">36 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:10<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-F"><svg class="walk-fig"><use href="#walk-fig"/></svg>14m</span>
+              </div>
+              <div class="row__arrive">08:24<small>at Café</small></div>
+              <div class="row__dur">14 min</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <section class="opt">
+        <header>
+          <h2>G — italic underlined text + tiny figure</h2>
+          <p>no pill. small BVG figure beside italic underlined text. recedes
+            the most; lets the strong shape language of the BVG transit pills
+            breathe.</p>
+        </header>
+        <div class="frame-scale">
+          <div class="frame">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">07:42<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-G"><svg class="walk-fig" style="width:18px;height:26px"><use href="#walk-fig"/></svg>walk 8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-G"><svg class="walk-fig" style="width:18px;height:26px"><use href="#walk-fig"/></svg>walk 2m</span>
+              </div>
+              <div class="row__arrive">08:14<small>at Office</small></div>
+              <div class="row__dur">32 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:01<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-G"><svg class="walk-fig" style="width:18px;height:26px"><use href="#walk-fig"/></svg>walk 8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line subway">U2</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-G"><svg class="walk-fig" style="width:18px;height:26px"><use href="#walk-fig"/></svg>walk 4m</span>
+              </div>
+              <div class="row__arrive">08:38<small>at Office</small></div>
+              <div class="row__dur">37 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:12<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-G"><svg class="walk-fig" style="width:18px;height:26px"><use href="#walk-fig"/></svg>walk 5m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line tram">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line bus">240</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-G"><svg class="walk-fig" style="width:18px;height:26px"><use href="#walk-fig"/></svg>walk 3m</span>
+              </div>
+              <div class="row__arrive">09:48<small>at Studio</small></div>
+              <div class="row__dur">36 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:10<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-G"><svg class="walk-fig" style="width:18px;height:26px"><use href="#walk-fig"/></svg>walk 14m</span>
+              </div>
+              <div class="row__arrive">08:24<small>at Café</small></div>
+              <div class="row__dur">14 min</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <section class="opt">
+        <header>
+          <h2>H — BVG circle, outlined (matches product glyph system)</h2>
+          <p>treat walk as its own product. official BVG figure inside a
+            black-outlined circle, identical visual register to <code>IC/ICE</code>.
+            minutes sit beside, bold. extends BVG's shape language naturally.</p>
+        </header>
+        <div class="frame-scale">
+          <div class="frame">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">07:42<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-H"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-H"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>2m</span>
+              </div>
+              <div class="row__arrive">08:14<small>at Office</small></div>
+              <div class="row__dur">32 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:01<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-H"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line subway">U2</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-H"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>4m</span>
+              </div>
+              <div class="row__arrive">08:38<small>at Office</small></div>
+              <div class="row__dur">37 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:12<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-H"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>5m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line tram">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line bus">240</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-H"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>3m</span>
+              </div>
+              <div class="row__arrive">09:48<small>at Studio</small></div>
+              <div class="row__dur">36 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:10<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-H"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>14m</span>
+              </div>
+              <div class="row__arrive">08:24<small>at Café</small></div>
+              <div class="row__dur">14 min</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <section class="opt">
+        <header>
+          <h2>I — BVG circle, filled (parallels S-Bahn / bus)</h2>
+          <p>filled black circle with the figure knocked out white inside.
+            same weight class as the dominant transit pills. risk: very
+            heavy at row scale; many circles in one pictogram could compete
+            with the line code.</p>
+        </header>
+        <div class="frame-scale">
+          <div class="frame">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">07:42<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-I"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-I"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>2m</span>
+              </div>
+              <div class="row__arrive">08:14<small>at Office</small></div>
+              <div class="row__dur">32 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:01<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="walk-I"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line suburban">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line subway">U2</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-I"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>4m</span>
+              </div>
+              <div class="row__arrive">08:38<small>at Office</small></div>
+              <div class="row__dur">37 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:12<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-I"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>5m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-line tram">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-line bus">240</span>
+                <span class="leg-arrow">·</span>
+                <span class="walk-I"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>3m</span>
+              </div>
+              <div class="row__arrive">09:48<small>at Studio</small></div>
+              <div class="row__dur">36 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:10<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="walk-I"><span class="glyph"><svg><use href="#walk-fig"/></svg></span>14m</span>
+              </div>
+              <div class="row__arrive">08:24<small>at Café</small></div>
+              <div class="row__dur">14 min</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <section class="opt opt-J">
+        <header>
+          <h2>J — BVG product SVGs (native colors)</h2>
+          <p>drop the styled text pill; use the official BVG product glyphs
+            directly (S, U, M, BUS, RE, IC, walk). full line name stays
+            beside the glyph — a rail-replacement bus running as S7 shows
+            BUS-glyph + "S7", which the digit-only form would lose. on real
+            e-ink the colors will dither to grayscale; this is unfiltered.</p>
+        </header>
+        <div class="frame-scale">
+          <div class="frame">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">07:42<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_comm_t.svg" alt="">S5</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>2m</span>
+              </div>
+              <div class="row__arrive">08:14<small>at Office</small></div>
+              <div class="row__dur">32 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:01<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_comm_t.svg" alt="">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_sub_t.svg" alt="">U2</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>4m</span>
+              </div>
+              <div class="row__arrive">08:38<small>at Office</small></div>
+              <div class="row__dur">37 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:12<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>5m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_tram_t.svg" alt="">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_bus_t.svg" alt="">240</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>3m</span>
+              </div>
+              <div class="row__arrive">09:48<small>at Studio</small></div>
+              <div class="row__dur">36 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">C</div>
+              <div class="row__leave">10:05<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>6m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_reg.svg" alt="">RE3</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_ic.svg" alt="">2374</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>4m</span>
+              </div>
+              <div class="row__arrive">11:48<small>at Hamburg Hbf</small></div>
+              <div class="row__dur">1h 43m</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <section class="opt opt-K">
+        <header>
+          <h2>K — BVG product SVGs, 1-bit flattened</h2>
+          <p>same as J but with a grayscale + contrast filter to approximate
+            how the glyphs render on a true 1-bit display. shape language is
+            preserved; color noise removed. line number stays as plain bold
+            text after the glyph.</p>
+        </header>
+        <div class="frame-scale">
+          <div class="frame">
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">07:42<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_comm_t.svg" alt="">S5</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>2m</span>
+              </div>
+              <div class="row__arrive">08:14<small>at Office</small></div>
+              <div class="row__dur">32 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">A</div>
+              <div class="row__leave">08:01<small>leave Hbf</small></div>
+              <div class="row__pictogram">
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>8m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_comm_t.svg" alt="">S5</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_sub_t.svg" alt="">U2</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>4m</span>
+              </div>
+              <div class="row__arrive">08:38<small>at Office</small></div>
+              <div class="row__dur">37 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">B</div>
+              <div class="row__leave">09:12<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>5m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_tram_t.svg" alt="">M10</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_bus_t.svg" alt="">240</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>3m</span>
+              </div>
+              <div class="row__arrive">09:48<small>at Studio</small></div>
+              <div class="row__dur">36 min</div>
+            </div>
+            <div class="row">
+              <div class="row__icon">C</div>
+              <div class="row__leave">10:05<small>leave Home</small></div>
+              <div class="row__pictogram">
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>6m</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_reg.svg" alt="">RE3</span>
+                <span class="leg-arrow">→</span>
+                <span class="leg-bvg"><img class="bvg-glyph" src="../assets/bvg/haf_prod_ic.svg" alt="">2374</span>
+                <span class="leg-arrow">·</span>
+                <span class="leg-bvg walk"><svg class="bvg-glyph fig-only"><use href="#walk-fig"/></svg>4m</span>
+              </div>
+              <div class="row__arrive">11:48<small>at Hamburg Hbf</small></div>
+              <div class="row__dur">1h 43m</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </body>
+</html>

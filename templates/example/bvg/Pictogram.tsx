@@ -1,40 +1,51 @@
 /** @jsxImportSource hono/jsx */
 
-// Journey pictogram — v3 convention.
+// Journey pictogram — one BVG product glyph per leg, line name beside it.
 //
-//   walk · transit → walk · transit → walk
+//   <walk-fig> 8m · <S-glyph> S5 → <U-glyph> U2 · <walk-fig> 4m
 //
 // Punctuation rules:
 //   "·"  separates a walk from an adjacent transit leg (continuation).
 //   "→"  separates two transits (transfer).
 //
-// A walking-only journey collapses to a single `🚶 N` badge with no
-// punctuation — keeps short walks visible without inventing fake transit
-// structure.
+// The brand shape lives in the glyph (round S/Bus, square U/M, diamond RE,
+// circle IC/ICE, walking figure on a white circle that vanishes on paper).
+// The line name stays beside the glyph as plain bold text — keeping the full
+// name "S7" even when a substitute bus is running it makes the substitution
+// visible (BUS-glyph + "S7"), which a digit-only form would collapse.
+//
+// A walking-only journey collapses to a single figure + N badge.
 
 import type { Leg, TransitLeg, WalkingLeg } from "./journey_client.ts";
+import LineGlyph from "./LineGlyph.tsx";
 
 function WalkBadge({ leg }: { leg: WalkingLeg }) {
   return (
     <span class="leg-walk">
-      🚶{leg.durationMinutes}
+      <LineGlyph product="walking" size="md" />
+      {leg.durationMinutes}m
     </span>
   );
 }
 
 function TransitBadge({ leg }: { leg: TransitLeg }) {
-  // Bus pills, everything else stays rectangular — matches v3 wireframes.
-  const shape = leg.line.product === "bus" ? " bus" : "";
-  return <span class={`leg-line${shape}`}>{leg.line.name}</span>;
+  return (
+    <span class="leg-line">
+      <LineGlyph product={leg.line.product} size="md" />
+      {leg.line.name}
+    </span>
+  );
 }
 
 export default function Pictogram({ legs }: { legs: readonly Leg[] }) {
   // Drop zero-minute walking legs — typical for back-to-back same-station
   // transfers in BVG's response. A 0-minute walk is visual noise.
-  const visibleLegs = legs.filter((l) => l.kind !== "walking" || l.durationMinutes > 0);
+  const visibleLegs = legs.filter((l) =>
+    l.kind !== "walking" || l.durationMinutes > 0
+  );
   if (visibleLegs.length === 0) return <span class="row__pictogram" />;
 
-  // Walking-only special case: render a single 🚶 N badge.
+  // Walking-only special case: render a single figure + N badge.
   const allWalking = visibleLegs.every((l) => l.kind === "walking");
   if (allWalking) {
     const totalMinutes = visibleLegs.reduce(
@@ -43,7 +54,10 @@ export default function Pictogram({ legs }: { legs: readonly Leg[] }) {
     );
     return (
       <span class="row__pictogram">
-        <span class="leg-walk">🚶{totalMinutes}</span>
+        <span class="leg-walk">
+          <LineGlyph product="walking" size="md" />
+          {totalMinutes}m
+        </span>
       </span>
     );
   }

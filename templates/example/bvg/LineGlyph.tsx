@@ -22,6 +22,10 @@ const PRODUCT_ICONS: Record<string, string> = {
   nationalExpress: `${ICON_BASE}/haf_prod_ice.svg`,
   ferry: `${ICON_BASE}/haf_prod_ship.svg`,
   taxi: `${ICON_BASE}/haf_prod_taxi_t.svg`,
+  // Walking-leg glyph (BVG figure on a white circle). On the journey board the
+  // circle disappears against the white paper, leaving just the figure — so
+  // walks read quieter than the colour-filled transit shapes.
+  walking: `${ICON_BASE}/haf_prod_walk.svg`,
 };
 
 export type LineGlyphSize = "xl" | "lg" | "md" | "sm";

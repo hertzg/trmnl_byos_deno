@@ -60,7 +60,7 @@ Deno.test("Pictogram renders walk · line → walk · line → walk", () => {
   assertStringIncludes(html, "→");
 });
 
-Deno.test("Pictogram renders walking-only journey as a single 🚶 N badge", () => {
+Deno.test("Pictogram renders walking-only journey as a single figure + N badge", () => {
   const legs: Leg[] = [walk(12)];
   // deno-lint-ignore no-explicit-any
   const html = renderToString(<Pictogram legs={legs} /> as any);

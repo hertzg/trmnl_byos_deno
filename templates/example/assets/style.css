@@ -25,7 +25,8 @@
   font-weight: 100 900;
   font-style: normal;
   font-display: block;
-  src: url("/assets/fonts/noto-sans-georgian-variable.woff2") format("woff2-variations");
+  src: url("/assets/fonts/noto-sans-georgian-variable.woff2")
+    format("woff2-variations");
 }
 
 * {
@@ -38,7 +39,8 @@ html,
 body {
   width: 1872px;
   height: 1404px;
-  font-family: "Inter", "Noto Sans Georgian", ui-sans-serif, system-ui, sans-serif;
+  font-family:
+    "Inter", "Noto Sans Georgian", ui-sans-serif, system-ui, sans-serif;
   color: #000;
   background: #fff;
   -webkit-font-smoothing: none;
@@ -560,41 +562,40 @@ body {
   letter-spacing: 0.04em;
 }
 
-/* Pictogram — walks and transit legs interleaved with separators. */
+/* Pictogram — each leg is a BVG product glyph followed by the line name
+   (or minutes for walks). The glyph carries the brand shape & letter; the
+   name stays plain so substitutions (e.g. BUS-glyph + "S7" for a rail
+   replacement) remain readable. */
 .row__pictogram {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.leg-walk {
-  font-size: 28px;
-  font-weight: 700;
+.leg-walk,
+.leg-line {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.leg-walk {
+  gap: 6px;
+  font-size: 26px;
+  font-weight: 700;
 }
 
 .leg-line {
-  background: #000;
-  color: #fff;
-  font-weight: 900;
-  font-size: 28px;
-  padding: 6px 14px;
-  border-radius: 6px;
-  letter-spacing: 0.03em;
-}
-
-.leg-line.bus {
-  border-radius: 999px;
-  padding-left: 18px;
-  padding-right: 18px;
+  gap: 4px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .leg-arrow {
   font-weight: 900;
-  font-size: 28px;
+  font-size: 22px;
 }
 
 /* Arrive-by column. Right-aligned, smaller than leave-by. */
