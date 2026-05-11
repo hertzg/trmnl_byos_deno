@@ -11,31 +11,40 @@ import EmptyFrame from "./EmptyFrame.tsx";
 import Footnote from "./Footnote.tsx";
 import Head from "./Head.tsx";
 import Row from "./Row.tsx";
-import { formatHHMM } from "./time.ts";
 
-export default function Board({ board, now }: { board: BoardData; now?: Date }) {
+export default function Board(
+  { board, now }: { board: BoardData; now?: Date },
+) {
   const renderNow = now ?? board.fetchedAt;
   const isEmpty = board.emptyReason !== "none";
   return (
     <div class="slot slot--full">
-      <Head
-        title="Commute"
-        stamp={`updated ${formatHHMM(board.fetchedAt)}`}
-      />
-      {isEmpty ? <EmptyFrame board={board} now={renderNow} /> : (
-        <div class="list">
-          {board.rows.map((row) =>
-            row.kind === "row"
-              ? <Row key={row.preferenceKey + row.leaveByDate.toISOString()} row={row} />
-              : (
-                <CancelStrip
-                  key={"cancel-" + row.preferenceKey + row.leaveByDate.toISOString()}
-                  strip={row}
-                />
-              )
-          )}
-        </div>
-      )}
+      {/* The "updated HH:MM" stamp was dropped — minute-rolls forced the
+          device to repaint a frame with no new info, draining battery. The
+          rows already carry their own leave-by times. */}
+      <Head title="Commute" />
+      {isEmpty
+        ? <EmptyFrame board={board} now={renderNow} />
+        : (
+          <div class="list">
+            {board.rows.map((row) =>
+              row.kind === "row"
+                ? (
+                  <Row
+                    key={row.preferenceKey + row.leaveByDate.toISOString()}
+                    row={row}
+                  />
+                )
+                : (
+                  <CancelStrip
+                    key={"cancel-" + row.preferenceKey +
+                      row.leaveByDate.toISOString()}
+                    strip={row}
+                  />
+                )
+            )}
+          </div>
+        )}
       <Footnote clipSummary={board.clipSummary} />
     </div>
   );

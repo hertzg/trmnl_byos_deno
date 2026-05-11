@@ -2,7 +2,6 @@
 import type { DeviceState } from "../../src/device.ts";
 import type { FrameData } from "./data.ts";
 import Board from "./bvg/Board.tsx";
-import { formatHHMM } from "./bvg/time.ts";
 
 // Battery shell + fill + percent text. Renders nothing when the device hasn't
 // reported a battery voltage yet (first poll after boot, or non-battery clients
@@ -22,17 +21,13 @@ function Battery({ device }: { device: DeviceState }) {
   );
 }
 
-function formatRefreshIn(from: Date, until: Date): string {
-  const secs = Math.max(0, Math.round((until.getTime() - from.getTime()) / 1000));
-  if (secs < 60) return `${secs}s`;
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return s === 0 ? `${m}m` : `${m}m ${s}s`;
-}
-
 export default function DefaultTemplate(
-  { board, fetchedAt, device, nextRefreshAt }: FrameData,
+  { board, device }: FrameData,
 ) {
+  // The footer used to carry "next update HH:MM (+Ns)" and the head a
+  // "updated HH:MM" stamp. Both ticked between refreshes, forcing the e-ink
+  // panel to repaint every cycle for no information gain — battery drain.
+  // Pure static chrome now; rows carry their own timestamps.
   return (
     <html>
       <head>
@@ -44,12 +39,7 @@ export default function DefaultTemplate(
         <Board board={board} />
         <footer class="title-bar">
           <span class="title-bar__title">trmnl-byos-deno</span>
-          <span class="title-bar__instance">
-            ტრანსპორტი
-            {" · "}
-            შემდეგი განახლება {formatHHMM(nextRefreshAt)}{" "}
-            (+{formatRefreshIn(fetchedAt, nextRefreshAt)})
-          </span>
+          <span class="title-bar__instance">ტრანსპორტი</span>
           <Battery device={device} />
         </footer>
       </body>
