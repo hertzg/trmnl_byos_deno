@@ -9,6 +9,12 @@ import type { Place } from "./preference.ts";
 
 const BVG_JOURNEYS_URL = "https://v6.bvg.transport.rest/journeys";
 
+// Hard ceiling on a single /journeys call. The board's refresh cadence is in
+// the 30–300s range (see DEFAULTS), so anything slower than ~10s would
+// already be on track to miss the next refresh — fail fast and let the
+// pipeline render `feedUnreachable` instead of holding the request open.
+const FETCH_TIMEOUT_MS = 10_000;
+
 // ─── domain value objects ───────────────────────────────────────────────────
 
 // A transit line (e.g. S5, U2, M10). Mirrors HAFAS line metadata down to the
@@ -268,13 +274,16 @@ export const fetchCandidates: FetchCandidates = async (
   url.searchParams.set("arrival", arriveByDate.toISOString());
   url.searchParams.set("language", "en");
   try {
-    const r = await fetch(url);
+    const r = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!r.ok) {
       return { kind: "feed-error", message: `HTTP ${r.status}` };
     }
     const body = await r.json();
     return mapJourneysResponse(body);
   } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      return { kind: "feed-error", message: `timeout after ${FETCH_TIMEOUT_MS}ms` };
+    }
     return {
       kind: "feed-error",
       message: err instanceof Error ? err.message : String(err),
