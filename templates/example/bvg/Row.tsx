@@ -26,7 +26,6 @@ export default function Row({ row }: { row: RowData }) {
       <div class="row__leave">
         {formatHHMM(row.leaveByDate)}
         {isShifted && <small class="row__was">was {formatHHMM(row.plannedLeaveByDate)}</small>}
-        <small>leave {row.originLabel}</small>
       </div>
       <Pictogram legs={row.legs} />
       <div class="row__arrive">

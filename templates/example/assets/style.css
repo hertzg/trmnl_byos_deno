@@ -5,7 +5,10 @@
  *   - Solid black-on-white beats outlined: thin borders dither poorly.
  *   - Body weight 500 (medium), data tokens 700/900 — 400 looks washed out after dither.
  *   - Generous whitespace — adjacent dense elements ghost and compete.
- *   - Sized for wall/desk distance, not laptop-monitor distance. */
+ *   - Sized for wall/desk distance, not laptop-monitor distance.
+ *
+ * Sizing: all dimensions are expressed in rem. The html base below pegs
+ * 1rem = 10px so px-thinking still works arithmetically (32px = 3.2rem). */
 
 /* Inter Variable for Latin/digits, Noto Sans Georgian Variable for the Georgian
  * Mkhedruli script. Both self-hosted so the renderer stays offline (per the original
@@ -35,6 +38,12 @@
   padding: 0;
 }
 
+/* Anchor the rem base at 10px so every other length stays one decimal away
+ * from its physical-pixel equivalent on the fixed-resolution panel. */
+html {
+  font-size: 10px;
+}
+
 html,
 body {
   width: 1872px;
@@ -48,13 +57,13 @@ body {
 }
 
 body {
-  font-size: 34px;
+  font-size: 3.4rem;
   line-height: 1.25;
   font-weight: 500;
   display: flex;
   flex-direction: column;
-  padding: 40px 48px;
-  gap: 28px;
+  padding: 4rem 4.8rem;
+  gap: 2.8rem;
 }
 
 /* The slot fills whatever the body's flex container hands it. With the title-bar
@@ -72,27 +81,27 @@ body {
 .head {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  border-bottom: 4px solid #000;
-  padding-bottom: 12px;
-  margin-bottom: 24px;
+  gap: 0.4rem;
+  border-bottom: 0.4rem solid #000;
+  padding-bottom: 1.2rem;
+  margin-bottom: 2.4rem;
 }
 
 .head__row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 16px;
+  gap: 1.6rem;
 }
 
 .head__title {
-  font-size: 38px;
+  font-size: 3.8rem;
   font-weight: 900;
   letter-spacing: 0.03em;
 }
 
 .head__stamp {
-  font-size: 22px;
+  font-size: 2.2rem;
   font-weight: 500;
   color: #555;
   font-variant-numeric: tabular-nums;
@@ -100,7 +109,7 @@ body {
 }
 
 .head__sub {
-  font-size: 22px;
+  font-size: 2.2rem;
   font-weight: 500;
   color: #444;
 }
@@ -110,7 +119,7 @@ body {
 .line-tag {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.8rem;
   white-space: nowrap;
 }
 
@@ -120,20 +129,20 @@ body {
 }
 
 .line-tag__icon--xl {
-  width: 96px;
-  height: 96px;
+  width: 9.6rem;
+  height: 9.6rem;
 }
 .line-tag__icon--lg {
-  width: 64px;
-  height: 64px;
+  width: 6.4rem;
+  height: 6.4rem;
 }
 .line-tag__icon--md {
-  width: 44px;
-  height: 44px;
+  width: 3.2rem;
+  height: 3.2rem;
 }
 .line-tag__icon--sm {
-  width: 32px;
-  height: 32px;
+  width: 3.2rem;
+  height: 3.2rem;
 }
 
 .badge {
@@ -148,33 +157,33 @@ body {
 }
 
 .badge--xl {
-  font-size: 64px;
-  padding: 8px 18px;
-  min-width: 130px;
+  font-size: 6.4rem;
+  padding: 0.8rem 1.8rem;
+  min-width: 13rem;
 }
 .badge--lg {
-  font-size: 44px;
-  padding: 6px 14px;
-  min-width: 96px;
+  font-size: 4.4rem;
+  padding: 0.6rem 1.4rem;
+  min-width: 9.6rem;
 }
 .badge--md {
-  font-size: 30px;
-  padding: 4px 12px;
-  min-width: 70px;
+  font-size: 3rem;
+  padding: 0.4rem 1.2rem;
+  min-width: 7rem;
 }
 .badge--sm {
-  font-size: 22px;
-  padding: 2px 10px;
-  min-width: 54px;
+  font-size: 2.2rem;
+  padding: 0.2rem 1rem;
+  min-width: 5.4rem;
 }
 
 /* S-Bahn lines: pill shape so the badge echoes the circular brand glyph. Side padding
  * is bumped slightly so short codes like "S5" still leave breathing room past the
  * rounded ends. */
 .badge--round {
-  border-radius: 999px;
-  padding-left: 22px;
-  padding-right: 22px;
+  border-radius: 9999px;
+  padding-left: 2.2rem;
+  padding-right: 2.2rem;
 }
 
 /* ----- merged west list (used in vertical + full's right column) ----- */
@@ -186,11 +195,11 @@ body {
 
 .west-list__row {
   display: grid;
-  grid-template-columns: 60px 180px 110px 1fr;
-  gap: 22px;
+  grid-template-columns: 6rem 18rem 11rem 1fr;
+  gap: 2.2rem;
   align-items: center;
-  padding: 14px 0;
-  border-bottom: 1px solid #999;
+  padding: 1.4rem 0;
+  border-bottom: 0.1rem solid #999;
 }
 
 .west-list__row:last-child {
@@ -198,7 +207,7 @@ body {
 }
 
 .west-list__leave {
-  font-size: 44px;
+  font-size: 4.4rem;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -206,20 +215,20 @@ body {
 
 .west-list__leave-prefix {
   display: block;
-  font-size: 16px;
+  font-size: 1.6rem;
   font-weight: 500;
   color: #555;
   letter-spacing: 0.1em;
-  margin-bottom: 2px;
+  margin-bottom: 0.2rem;
 }
 
 .west-list__dir {
-  font-size: 28px;
+  font-size: 2.8rem;
   font-weight: 700;
 }
 
 .west-list__dep {
-  font-size: 20px;
+  font-size: 2rem;
   font-weight: 500;
   color: #555;
   font-variant-numeric: tabular-nums;
@@ -231,55 +240,55 @@ body {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 32px;
+  gap: 3.2rem;
 }
 
 .h-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 0 0;
-  border-top: 4px solid #000;
+  gap: 1rem;
+  padding: 1.6rem 0 0;
+  border-top: 0.4rem solid #000;
 }
 
 .h-card--lead {
-  border-top-width: 12px;
+  border-top-width: 1.2rem;
 }
 
 .h-card__label {
-  font-size: 18px;
+  font-size: 1.8rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   color: #555;
 }
 
 .h-card__leave {
-  font-size: 56px;
+  font-size: 5.6rem;
   font-weight: 900;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
 .h-card--lead .h-card__leave {
-  font-size: 88px;
+  font-size: 8.8rem;
 }
 
 .h-card__line {
-  margin-top: 4px;
+  margin-top: 0.4rem;
 }
 
 .h-card__dir {
-  font-size: 26px;
+  font-size: 2.6rem;
   font-weight: 700;
-  margin-top: 6px;
+  margin-top: 0.6rem;
 }
 
 .h-card__dep {
-  font-size: 18px;
+  font-size: 1.8rem;
   font-weight: 500;
   color: #555;
   font-variant-numeric: tabular-nums;
-  margin-top: 2px;
+  margin-top: 0.2rem;
 }
 
 /* ----- full: hero card + secondary list ----- */
@@ -287,8 +296,8 @@ body {
 .full-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: 720px 1fr;
-  gap: 64px;
+  grid-template-columns: 72rem 1fr;
+  gap: 6.4rem;
   min-height: 0;
 }
 
@@ -298,7 +307,7 @@ body {
 .hero-stack {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 3.2rem;
   min-height: 0;
 }
 
@@ -307,17 +316,17 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 16px;
+  gap: 1.6rem;
   min-height: 0;
 }
 
 .hero + .hero {
-  border-top: 4px solid #000;
-  padding-top: 32px;
+  border-top: 0.4rem solid #000;
+  padding-top: 3.2rem;
 }
 
 .hero__label {
-  font-size: 26px;
+  font-size: 2.6rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   color: #555;
@@ -328,11 +337,11 @@ body {
 .hero__time-row {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 2.4rem;
 }
 
 .hero__time {
-  font-size: 140px;
+  font-size: 14rem;
   font-weight: 900;
   line-height: 0.9;
   font-variant-numeric: tabular-nums;
@@ -343,21 +352,21 @@ body {
 .hero__line-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 4px;
+  gap: 1.6rem;
+  margin-top: 0.4rem;
 }
 
 .hero__dir {
-  font-size: 36px;
+  font-size: 3.6rem;
   font-weight: 700;
 }
 
 /* Row 4: platform + scheduled departure, inline. */
 .hero__dep {
-  font-size: 24px;
+  font-size: 2.4rem;
   font-weight: 500;
   color: #444;
-  margin-top: 4px;
+  margin-top: 0.4rem;
 }
 
 /* Platform marker — bumped to bold black to lift it out of the muted dep line.
@@ -376,13 +385,13 @@ body {
 }
 
 .full-list__label {
-  font-size: 22px;
+  font-size: 2.2rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   color: #555;
-  padding-bottom: 14px;
-  border-bottom: 4px solid #000;
-  margin-bottom: 10px;
+  padding-bottom: 1.4rem;
+  border-bottom: 0.4rem solid #000;
+  margin-bottom: 1rem;
 }
 
 /* ----- footer / title bar ----- */
@@ -392,9 +401,9 @@ body {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  border-top: 4px solid #000;
-  padding-top: 16px;
-  font-size: 24px;
+  border-top: 0.4rem solid #000;
+  padding-top: 1.6rem;
+  font-size: 2.4rem;
 }
 
 .title-bar__title {
@@ -411,7 +420,7 @@ body {
 .battery {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 1rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -444,7 +453,7 @@ body {
 }
 
 .battery__pct {
-  font-size: 24px;
+  font-size: 2.4rem;
 }
 
 /* ===== journey board ===== */
@@ -460,12 +469,12 @@ body {
  * Imminent rows add a hatched left border via .row--leave-now. */
 .row {
   display: grid;
-  grid-template-columns: 96px 220px 1fr 220px 130px;
+  grid-template-columns: 7.2rem 18rem 1fr 18rem 10rem;
   align-items: center;
-  gap: 28px;
-  padding: 22px 0;
-  border-bottom: 2px solid #ddd;
+  padding: 1.2rem 0;
+  border-bottom: 0.2rem solid #ddd;
   font-variant-numeric: tabular-nums;
+  gap: 1rem;
 }
 
 .row:last-child {
@@ -477,42 +486,44 @@ body {
   background: repeating-linear-gradient(
     135deg,
     #fff 0,
-    #fff 10px,
-    #eaeaea 10px,
-    #eaeaea 14px
+    #fff 1rem,
+    #eaeaea 1rem,
+    #eaeaea 1.4rem
   );
-  border-left: 8px solid #000;
-  padding-left: 12px;
+  border-left: 0.8rem solid #000;
+  padding-left: 1.2rem;
 }
 
 /* Preference icon prefix — plain glyph, no surrounding circle. */
 .row__icon {
   display: grid;
   place-items: center;
-  font-size: 56px;
+  font-size: 4rem;
   line-height: 1;
 }
 
 /* Leave-by HH:MM column — the headline figure on the row. */
 .row__leave {
-  font-size: 60px;
+  font-size: 4.6rem;
   font-weight: 900;
   letter-spacing: -0.01em;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.2rem;
+  line-height: 1;
 }
 
 .row__leave small {
-  font-size: 22px;
+  font-size: 1.7rem;
   font-weight: 500;
   color: #555;
   letter-spacing: 0;
+  line-height: 1.1;
 }
 
 /* "was HH:MM" caption shown when realtime delay shifts the leave-by. */
 .row__was {
-  font-size: 20px;
+  font-size: 1.6rem;
   font-weight: 600;
   color: #555;
   font-style: italic;
@@ -524,15 +535,15 @@ body {
   grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-top: 2px;
+  gap: 0.2rem;
+  margin-top: 0.2rem;
 }
 
 /* Unified ⚠ alert — full-width text, wraps freely. Sized down: a remark is
  * background detail, the headline figure is the leave-by HH:MM. */
 .row__alert {
   display: block;
-  font-size: 16px;
+  font-size: 1.6rem;
   font-weight: 400;
   line-height: 1.2;
   letter-spacing: 0;
@@ -553,11 +564,11 @@ body {
   display: inline-flex;
   align-self: flex-start;
   align-items: center;
-  gap: 6px;
-  padding: 2px 10px;
+  gap: 0.6rem;
+  padding: 0.2rem 1rem;
   background: #000;
   color: #fff;
-  font-size: 22px;
+  font-size: 2.2rem;
   font-weight: 900;
   letter-spacing: 0.04em;
 }
@@ -569,7 +580,7 @@ body {
 .row__pictogram {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.8rem;
   flex-wrap: wrap;
 }
 
@@ -581,40 +592,42 @@ body {
 }
 
 .leg-walk {
-  gap: 6px;
-  font-size: 26px;
+  gap: 0.6rem;
+  font-size: 2.2rem;
   font-weight: 700;
 }
 
 .leg-line {
-  gap: 4px;
-  font-size: 26px;
+  gap: 0.4rem;
+  font-size: 2.2rem;
   font-weight: 800;
   letter-spacing: 0.02em;
 }
 
 .leg-arrow {
   font-weight: 900;
-  font-size: 22px;
+  font-size: 1.8rem;
 }
 
 /* Arrive-by column. Right-aligned, smaller than leave-by. */
 .row__arrive {
   text-align: right;
-  font-size: 38px;
+  font-size: 3rem;
   font-weight: 700;
+  line-height: 1;
 }
 
 .row__arrive small {
   display: block;
-  font-size: 20px;
+  font-size: 1.6rem;
   font-weight: 500;
   color: #555;
+  margin-top: 0.2rem;
 }
 
 .row__dur {
   text-align: right;
-  font-size: 26px;
+  font-size: 2.2rem;
   font-weight: 700;
   color: #555;
 }
@@ -622,28 +635,28 @@ body {
 /* Cancellation strip — replaces a full row with a thin strikethrough line. */
 .cancel-strip {
   display: grid;
-  grid-template-columns: 48px 1fr;
+  grid-template-columns: 4.8rem 1fr;
   align-items: center;
-  gap: 24px;
-  padding: 8px 0;
-  border-bottom: 2px solid #ddd;
-  font-size: 24px;
+  gap: 2.4rem;
+  padding: 0.8rem 0;
+  border-bottom: 0.2rem solid #ddd;
+  font-size: 2.4rem;
   color: #555;
   font-style: italic;
   text-decoration: line-through;
   text-decoration-color: #000;
-  text-decoration-thickness: 2px;
-  min-height: 36px;
+  text-decoration-thickness: 0.2rem;
+  min-height: 3.6rem;
 }
 
 .cancel-strip__icon {
-  width: 40px;
-  height: 40px;
-  border: 2px solid #000;
+  width: 4rem;
+  height: 4rem;
+  border: 0.2rem solid #000;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 22px;
+  font-size: 2.2rem;
   font-weight: 900;
   font-style: normal;
   text-decoration: none;
@@ -660,31 +673,31 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 16px;
+  gap: 1.6rem;
   text-align: center;
 }
 
 .empty__big {
-  font-size: 64px;
+  font-size: 6.4rem;
   font-weight: 900;
   letter-spacing: 0.02em;
 }
 
 .empty__sub {
-  font-size: 28px;
+  font-size: 2.8rem;
   font-weight: 500;
   color: #555;
 }
 
 /* Clip-summary footnote — appears at the bottom when overflow tail is dropped. */
 .footnote {
-  font-size: 24px;
+  font-size: 2.4rem;
   color: #555;
-  padding-top: 16px;
-  border-top: 2px solid #ddd;
+  padding-top: 1.6rem;
+  border-top: 0.2rem solid #ddd;
   display: flex;
   flex-wrap: wrap;
-  gap: 18px;
+  gap: 1.8rem;
   font-variant-numeric: tabular-nums;
 }
 
