@@ -15,6 +15,12 @@ const BVG_JOURNEYS_URL = "https://v6.bvg.transport.rest/journeys";
 // pipeline render `feedUnreachable` instead of holding the request open.
 const FETCH_TIMEOUT_MS = 10_000;
 
+// HAFAS `/journeys` defaults to 3 results, which truncates the visibility
+// window long before `windowEarliestArrivalMinutes` can. Ask for a generous
+// upper bound and let the local filter trim — at the few-hour scale the
+// window covers, BVG rarely has more than this anyway.
+const RESULTS_PER_REQUEST = 50;
+
 // ─── domain value objects ───────────────────────────────────────────────────
 
 // A transit line (e.g. S5, U2, M10). Mirrors HAFAS line metadata down to the
@@ -243,7 +249,10 @@ export function mapJourneysResponse(body: unknown): Candidate[] {
 export type FetchCandidates = (
   origin: Place,
   destination: Place,
-  arriveByDate: Date,
+  // Latest acceptable arrival instant (= window's `closesAt`). HAFAS returns
+  // journeys arriving *at or before* this moment, so anchoring at the late-tail
+  // edge — not the user's arrive-by — is what lets late-tail candidates surface.
+  latestArrivalDate: Date,
 ) => Promise<Candidate[] | FeedError>;
 
 // `from`/`to` accept either a HAFAS stop id (set as the bare `from`/`to` param)
@@ -266,12 +275,13 @@ function appendPlaceParams(url: URL, prefix: "from" | "to", place: Place): void 
 export const fetchCandidates: FetchCandidates = async (
   origin,
   destination,
-  arriveByDate,
+  latestArrivalDate,
 ) => {
   const url = new URL(BVG_JOURNEYS_URL);
   appendPlaceParams(url, "from", origin);
   appendPlaceParams(url, "to", destination);
-  url.searchParams.set("arrival", arriveByDate.toISOString());
+  url.searchParams.set("arrival", latestArrivalDate.toISOString());
+  url.searchParams.set("results", String(RESULTS_PER_REQUEST));
   url.searchParams.set("language", "en");
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });

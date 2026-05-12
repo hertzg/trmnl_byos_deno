@@ -200,9 +200,15 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
       }
       const active = scheduled.filter((s) => s.window.opensAt.getTime() <= now.getTime());
 
-      // Step 2 — fetch only currently-open preferences in parallel.
+      // Step 2 — fetch only currently-open preferences in parallel. Anchor the
+      // request at the window's `closesAt` (not `arriveByDate`): HAFAS returns
+      // journeys arriving *on or before* the anchor, so anchoring at the
+      // late-tail edge is what lets candidates arriving after the user's
+      // arrive-by — but still within the late tail — surface.
       const fetched = await Promise.all(
-        active.map((a) => fetchFn(a.preference.origin, a.preference.destination, a.arriveByDate)),
+        active.map((a) =>
+          fetchFn(a.preference.origin, a.preference.destination, a.window.closesAt)
+        ),
       );
 
       // Step 2a — update last-successful-fetch cache. Any successful (non

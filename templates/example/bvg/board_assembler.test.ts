@@ -61,10 +61,11 @@ Deno.test("assembleBoard runs the pipeline and sorts rows by leave-by ascending"
   const now = new Date("2025-11-10T07:30:00Z");
 
   // Candidates returned by the stubbed fetcher — deliberately unsorted.
-  const stubFetch: FetchCandidates = (origin, destination, arriveByDate) => {
+  const stubFetch: FetchCandidates = (origin, destination, latestArrivalDate) => {
     assertEquals((origin as Stop).hafasStopId, "900003201");
     assertEquals((destination as Stop).hafasStopId, "900100003");
-    assertEquals(arriveByDate.toISOString(), "2025-11-10T08:30:00.000Z");
+    // Anchor = window.closesAt = arriveBy (08:30Z) + DEFAULTS.windowLateTailMinutes (15) = 08:45Z.
+    assertEquals(latestArrivalDate.toISOString(), "2025-11-10T08:45:00.000Z");
     return Promise.resolve([
       // Departs 09:00 Berlin, arrives 09:12.
       transitCandidate("2025-11-10T09:00:00+01:00", "2025-11-10T09:12:00+01:00"),
