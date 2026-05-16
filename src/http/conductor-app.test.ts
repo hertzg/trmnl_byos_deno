@@ -2,7 +2,6 @@ import { assertEquals, assertGreaterOrEqual, assertLessOrEqual } from "@std/asse
 import { spy } from "@std/testing/mock";
 import { createConductorApp } from "./conductor-app.ts";
 import type { Conductor, TriggerOutput } from "../conductor/conductor.ts";
-import type { HtmlShelf } from "../render/html-shelf.ts";
 
 const T0 = Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]");
 
@@ -10,7 +9,6 @@ function buildApp(
   overrides: {
     triggerOutput?: TriggerOutput;
     conductor?: Conductor;
-    htmlShelf?: HtmlShelf;
     onDeviceLog?: (id: string, body: string) => void;
     now?: () => Temporal.ZonedDateTime;
     friendlyId?: string;
@@ -28,11 +26,6 @@ function buildApp(
     conductor,
     friendlyId: overrides.friendlyId ?? "ID",
     pluginAssetsDir: "/tmp",
-    htmlShelf: overrides.htmlShelf ?? {
-      shelve: () => "id",
-      fetch: () => undefined,
-      remove: () => {},
-    },
     onDeviceLog: overrides.onDeviceLog,
     now: overrides.now ?? (() => T0),
   });
@@ -125,37 +118,6 @@ Deno.test("GET /images/:identity/png returns 404 for an unknown identity", async
 
   await app.request("/api/display");
   const res = await app.request("/images/somethingelse/png");
-  await res.body?.cancel();
-
-  assertEquals(res.status, 404);
-});
-
-Deno.test("GET /preview/:id returns shelved HTML for the internal CDP fetch-back", async () => {
-  const shelved = new Map([["abc", "<!DOCTYPE html><p>x</p>"]]);
-  const shelf: HtmlShelf = {
-    shelve: (html) => {
-      shelved.set("new", html);
-      return "new";
-    },
-    fetch: (id) => shelved.get(id),
-    remove: (id) => {
-      shelved.delete(id);
-    },
-  };
-
-  const { app } = buildApp({ htmlShelf: shelf });
-
-  const res = await app.request("/preview/abc");
-
-  assertEquals(res.status, 200);
-  assertEquals(res.headers.get("content-type")?.startsWith("text/html"), true);
-  assertEquals(await res.text(), "<!DOCTYPE html><p>x</p>");
-});
-
-Deno.test("GET /preview/:id returns 404 for a missing shelf entry", async () => {
-  const { app } = buildApp();
-
-  const res = await app.request("/preview/missing");
   await res.body?.cancel();
 
   assertEquals(res.status, 404);

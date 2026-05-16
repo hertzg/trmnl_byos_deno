@@ -1,13 +1,11 @@
 import { Hono } from "hono";
 import { serveStatic } from "hono/deno";
 import type { Conductor } from "../conductor/conductor.ts";
-import type { HtmlShelf } from "../render/html-shelf.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "./request.ts";
 
 export type ConductorAppDeps = {
   conductor: Conductor;
-  htmlShelf: HtmlShelf;
   friendlyId: string;
   pluginAssetsDir: string;
   onDeviceLog?: (id: string, body: string) => void;
@@ -60,12 +58,6 @@ export function createConductorApp(deps: ConductorAppDeps): Hono {
     const png = deps.conductor.getCurrentImage(c.req.param("identity"));
     if (png === undefined) return c.body(null, 404);
     return c.body(png as unknown as ArrayBuffer, 200, { "content-type": "image/png" });
-  });
-
-  app.get("/preview/:id", (c) => {
-    const html = deps.htmlShelf.fetch(c.req.param("id"));
-    if (html === undefined) return c.body(null, 404);
-    return c.html(html, 200, { "cache-control": "no-store" });
   });
 
   app.use("/assets/*", serveStatic({ root: deps.pluginAssetsDir }));
