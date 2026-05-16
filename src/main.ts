@@ -1,4 +1,6 @@
 import { join } from "@std/path";
+import { Hono } from "hono";
+import { logger } from "hono/logger";
 import {
   ACTIVE_PROFILE,
   CDP_URL,
@@ -15,44 +17,53 @@ import { identityFor } from "./render/identity.ts";
 import { createCdpRasterize } from "./render/cdp-rasterize.ts";
 import { createRasterize } from "./render/rasterize.ts";
 import { loadPlugin, seedPluginDir } from "./plugin/loader.ts";
-import { Hono } from "hono";
-import { logger } from "hono/logger";
 
 async function main() {
+  // 1. Seed the Plugin directory if requested, then load the Plugin.
   if (PLUGIN_SEED_DIR) {
     await seedPluginDir(PLUGIN_DIR, PLUGIN_SEED_DIR);
   }
-
   const plugin = await loadPlugin(PLUGIN_DIR);
   console.log(`[plugin] loaded from ${PLUGIN_DIR}`);
 
-  const cdp = createCdpRasterize({
-    origin: INTERNAL_URL_ORIGIN,
-    fetchPngFromUrl: createRasterize({ cdpUrl: CDP_URL, ...ACTIVE_PROFILE }),
-  });
+  // 2. Runtime services the Conductor depends on.
+  const now = () => Temporal.Now.zonedDateTimeISO();
+  const errorView = (err: Error) => ErrorView(err);
+  const errorValidity = Temporal.Duration.from({ seconds: 30 });
+  const pluginAssetsDir = join(PLUGIN_DIR, "assets");
+  const onDeviceLog = (id: string, body: string) =>
+    console.log(`[device-log] ${id.toUpperCase()}: ${body}`);
 
+  // 3. Rasterizer chain: URL-fetching CDP backend → shelf-backed bridge that
+  // exposes Conductor's (html, hints) → png API and owns the /__internal/render
+  // sub-app CDP fetches from.
+  const fetchPngFromUrl = createRasterize({ cdpUrl: CDP_URL, ...ACTIVE_PROFILE });
+  const cdp = createCdpRasterize({ origin: INTERNAL_URL_ORIGIN, fetchPngFromUrl });
+
+  // 4. Renderer pair (pure functions; no instance state).
+  const renderer = { deriveHtml, rasterize: cdp.rasterize };
+
+  // 5. Conductor wires the Plugin, Renderer, and BYOS surface together and
+  // exposes its own Hono sub-app.
   const conductor = createConductor({
     plugin,
-    renderer: { deriveHtml, rasterize: cdp.rasterize },
+    renderer,
     identityFor,
-    errorView: (err) => ErrorView(err),
-    errorValidity: Temporal.Duration.from({ seconds: 30 }),
+    errorView,
+    errorValidity,
     friendlyId: FRIENDLY_ID,
-    pluginAssetsDir: join(PLUGIN_DIR, "assets"),
-    onDeviceLog: (id, body) => console.log(`[device-log] ${id.toUpperCase()}: ${body}`),
-    now: () => Temporal.Now.zonedDateTimeISO(),
+    pluginAssetsDir,
+    onDeviceLog,
+    now,
   });
 
-  const app = new Hono();
-
-  app.use(logger());
-
-  app.onError((err, c) => {
-    console.error("[handler]", err);
-    return c.json({ error: "internal" }, 500);
-  });
-
-  app
+  // 6. Parent app: access log + error handler, then compose the sub-apps.
+  const app = new Hono()
+    .use(logger())
+    .onError((err, c) => {
+      console.error("[handler]", err);
+      return c.json({ error: "internal" }, 500);
+    })
     .route("/", conductor)
     .route("/", cdp.app);
 
