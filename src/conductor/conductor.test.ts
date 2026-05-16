@@ -363,6 +363,23 @@ Deno.test("GET /preview/png returns the rasterized PNG and does not touch Curren
   assertEquals(secondPoll.filename, firstPoll.filename);
 });
 
+Deno.test("GET /assets/:file serves files from pluginAssetsDir without the /assets prefix duplicating in the path", async () => {
+  const assetsDir = await Deno.makeTempDir({ prefix: "conductor-assets-test-" });
+  await Deno.writeTextFile(`${assetsDir}/style.css`, ".x { color: red; }");
+
+  const conductor = createConductor({
+    ...defaults({ pluginAssetsDir: assetsDir }),
+    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "" }) },
+    renderer: { deriveHtml: () => "", rasterize: () => Promise.resolve(new Uint8Array()) },
+    identityFor: () => "x",
+  });
+
+  const res = await conductor.request("/assets/style.css");
+
+  assertEquals(res.status, 200);
+  assertEquals(await res.text(), ".x { color: red; }");
+});
+
 Deno.test("POST /api/log returns 204 and invokes onDeviceLog with the id header + body", async () => {
   const onDeviceLog = spy((_id: string, _body: string) => {});
   const conductor = createConductor({

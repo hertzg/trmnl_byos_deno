@@ -154,5 +154,15 @@ export function createConductor(deps: ConductorDeps): Hono {
         "cache-control": "no-store",
       });
     })
-    .use("/assets/*", serveStatic({ root: deps.pluginAssetsDir }));
+    // serveStatic appends the full request path to `root` (it doesn't strip
+    // the matched URL prefix), so we rewrite `/assets/foo.css` → `/foo.css`
+    // before lookup. That way `pluginAssetsDir` honestly points at the dir
+    // that contains the files, not at its parent.
+    .use(
+      "/assets/*",
+      serveStatic({
+        root: deps.pluginAssetsDir,
+        rewriteRequestPath: (path) => path.replace(/^\/assets/, ""),
+      }),
+    );
 }
