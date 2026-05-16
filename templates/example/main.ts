@@ -1,17 +1,23 @@
-import type { Registration, SetupConfig } from "../../src/template/loader.ts";
+import type { Plugin, RunContext } from "../../src/plugin/plugin.ts";
 import { boardValidForSeconds } from "./bvg/board_assembler.ts";
-import { loadAll } from "./data.ts";
-import Template from "./root.tsx";
+import { type FrameData, loadAll } from "./data.ts";
+import DefaultTemplate from "./root.tsx";
 
-export function setup({ getDevice }: SetupConfig): Registration {
+function View(state: FrameData) {
+  return DefaultTemplate(state);
+}
+
+export default function (): Plugin<FrameData> {
   return {
-    async onDisplay() {
+    async run(ctx: RunContext) {
       const data = await loadAll();
-      const validForSeconds = boardValidForSeconds(data.board, data.fetchedAt);
-      const nextRefreshAt = new Date(Date.now() + validForSeconds * 1000);
+      const validSeconds = Math.max(1, boardValidForSeconds(data.board, data.fetchedAt));
+      const validity = Temporal.Duration.from({ seconds: validSeconds });
+      const nextRefreshAt = new Date(ctx.t.add(validity).toInstant().epochMilliseconds);
       return {
-        jsx: Template({ ...data, device: getDevice(), nextRefreshAt }),
-        validForSeconds,
+        state: { ...data, device: ctx.device, nextRefreshAt },
+        validity,
+        view: View,
       };
     },
   };

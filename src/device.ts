@@ -1,59 +1,14 @@
-// Per-device intel reported by the firmware on every /api/display poll
+// Per-Device intel reported by the firmware on every /api/display poll
 // (see usetrmnl/trmnl-firmware src/api-client/display.cpp addHeaders()):
 //
 //   ID, Battery-Voltage, RSSI, FW-Version, Model, Width, Height, ...
 //
-// The frame coordinator (ADR-0006) is built around fleet-shared frames and
-// explicitly forbids per-device branching at the template surface. To stay
-// inside that contract while still surfacing device data, we keep a single
-// last-seen DeviceState in a closure: every poll updates it; the template's
-// onDisplay reads it when generating the next frame. For one-device setups
-// (the BYOS norm) the value is always correct; for multi-device setups it
-// would reflect "the most recent device's report", which is acceptable since
-// the rendered frame is shared anyway.
+// The Conductor (ADR-0003) owns the latest DeviceReport itself and stamps
+// it into the RunContext on every trigger. The Conductor's /api/display
+// route handler calls `parseDeviceHeaders(req.raw.headers)` and, when it
+// gets a non-null report, updates its internal `latestDevice` directly.
 
-export type DeviceState = {
-  id: string | null;
-  batteryVoltage: number | null;
-  // Computed from voltage via voltageToPercent — see notes there.
-  batteryPercent: number | null;
-  rssi: number | null;
-  fwVersion: string | null;
-  model: string | null;
-  width: number | null;
-  height: number | null;
-  refreshRate: number | null;
-  lastSeenAt: Date | null;
-};
-
-const EMPTY: DeviceState = {
-  id: null,
-  batteryVoltage: null,
-  batteryPercent: null,
-  rssi: null,
-  fwVersion: null,
-  model: null,
-  width: null,
-  height: null,
-  refreshRate: null,
-  lastSeenAt: null,
-};
-
-export type DeviceStateHolder = {
-  get(): DeviceState;
-  updateFromHeaders(headers: Headers, now?: () => Date): void;
-};
-
-export function createDeviceStateHolder(): DeviceStateHolder {
-  let state: DeviceState = EMPTY;
-  return {
-    get: () => state,
-    updateFromHeaders(headers, now = () => new Date()) {
-      const parsed = parseDeviceHeaders(headers);
-      state = { ...state, ...parsed, lastSeenAt: now() };
-    },
-  };
-}
+import type { DeviceReport } from "./plugin/plugin.ts";
 
 // Linear Li-ion approximation: 4.2 V → 100 %, 3.3 V → 0 %, clamped. Reasonable
 // for an at-a-glance indicator; the discharge curve is non-linear in reality
@@ -80,10 +35,18 @@ function readNumber(headers: Headers, name: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function parseDeviceHeaders(headers: Headers): Partial<DeviceState> {
+// Returns `null` when the request didn't carry the `ID` header — without it
+// we have no Device identity to attach the report to, so the caller treats
+// the request as not-a-Device-poll and keeps its previous state.
+export function parseDeviceHeaders(
+  headers: Headers,
+  now: () => Temporal.ZonedDateTime = () => Temporal.Now.zonedDateTimeISO(),
+): DeviceReport | null {
+  const id = readHeader(headers, "ID");
+  if (!id) return null;
   const batteryVoltage = readNumber(headers, "Battery-Voltage");
   return {
-    id: readHeader(headers, "ID"),
+    id,
     batteryVoltage,
     batteryPercent: voltageToPercent(batteryVoltage),
     rssi: readNumber(headers, "RSSI"),
@@ -92,5 +55,6 @@ export function parseDeviceHeaders(headers: Headers): Partial<DeviceState> {
     width: readNumber(headers, "Width"),
     height: readNumber(headers, "Height"),
     refreshRate: readNumber(headers, "Refresh-Rate"),
+    lastSeenAt: now(),
   };
 }

@@ -34,17 +34,19 @@ export const INTERNAL_URL_ORIGIN = env(
   `http://host.docker.internal:${PORT}`,
 );
 
-// Absolute path to the user's template directory. The directory must contain a `main.ts`
-// that exports a `run` function. Defaults to the bundled example template; bind-mount
-// over this path (or override the env var) to ship your own.
-export const TEMPLATE_DIR = resolve(env("TEMPLATE_DIR", "./templates/example"));
+// Absolute path to the user's Plugin directory. The directory must contain a
+// `main.ts` whose default export is a factory returning a Plugin (ADR-0002).
+// Defaults to the bundled example Plugin; bind-mount over this path (or
+// override the env var) to ship your own.
+export const PLUGIN_DIR = resolve(env("PLUGIN_DIR", "./templates/example"));
 
-// Optional absolute path to a "seed" template (the bundled example, baked into the
-// Docker image at /app/template-seed). When set and TEMPLATE_DIR is empty, the service
-// copies the seed in before loading. Empty/unset = no seeding (the dev workflow, where
-// TEMPLATE_DIR already points at the populated example checked into the repo).
-const seedRaw = env("TEMPLATE_SEED_DIR", "");
-export const TEMPLATE_SEED_DIR = seedRaw ? resolve(seedRaw) : "";
+// Optional absolute path to a "seed" Plugin (the bundled example, baked into
+// the Docker image at /app/plugin-seed). When set and PLUGIN_DIR is empty,
+// the service copies the seed in before loading. Empty/unset = no seeding
+// (the dev workflow, where PLUGIN_DIR already points at the populated
+// example checked into the repo).
+const seedRaw = env("PLUGIN_SEED_DIR", "");
+export const PLUGIN_SEED_DIR = seedRaw ? resolve(seedRaw) : "";
 
 // Active device profile, resolved from DEVICE_ID at boot via the hardcoded registry
 // in src/render/profiles.ts. Adding a device model is a registry entry, not a new

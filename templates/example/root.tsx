@@ -1,13 +1,13 @@
 /** @jsxImportSource hono/jsx */
-import type { DeviceState } from "../../src/device.ts";
+import type { DeviceReport } from "../../src/plugin/plugin.ts";
 import type { FrameData } from "./data.ts";
 import Board from "./bvg/Board.tsx";
 
 // Battery shell + fill + percent text. Renders nothing when the device hasn't
 // reported a battery voltage yet (first poll after boot, or non-battery clients
 // like the local /preview view).
-function Battery({ device }: { device: DeviceState }) {
-  if (device.batteryPercent == null) return null;
+function Battery({ device }: { device: DeviceReport | null }) {
+  if (!device || device.batteryPercent == null) return null;
   return (
     <span class="battery" title={`${device.batteryVoltage?.toFixed(2)} V`}>
       <span class="battery__shell">
