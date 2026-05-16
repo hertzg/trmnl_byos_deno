@@ -24,7 +24,6 @@
     "hono": "jsr:@hono/hono@^4",
     "hono/deno": "jsr:@hono/hono@^4/deno",
     "hono/logger": "jsr:@hono/hono@^4/logger",
-    "hono/request-id": "jsr:@hono/hono@^4/request-id",
     "hono/jsx": "jsr:@hono/hono@^4/jsx",
     "hono/jsx/jsx-runtime": "jsr:@hono/hono@^4/jsx/jsx-runtime",
     "hono/jsx/dom/server": "jsr:@hono/hono@^4/jsx/dom/server"
