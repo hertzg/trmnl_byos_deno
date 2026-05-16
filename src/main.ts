@@ -16,6 +16,7 @@ import { createCdpRasterize } from "./render/cdp-rasterize.ts";
 import { createRasterize } from "./render/rasterize.ts";
 import { loadPlugin, seedPluginDir } from "./plugin/loader.ts";
 import { Hono } from "hono";
+import { logger } from "hono/logger";
 
 async function main() {
   if (PLUGIN_SEED_DIR) {
@@ -44,13 +45,7 @@ async function main() {
 
   const app = new Hono();
 
-  app.use(async (c, next) => {
-    const t0 = Date.now();
-    await next();
-    console.log(
-      `${c.req.method} ${new URL(c.req.url).pathname} → ${c.res.status} ${Date.now() - t0}ms`,
-    );
-  });
+  app.use(logger());
 
   app.onError((err, c) => {
     console.error("[handler]", err);
