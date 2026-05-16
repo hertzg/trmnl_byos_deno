@@ -1,13 +1,13 @@
-import type { DeviceState } from "../../src/device.ts";
+import type { DeviceReport } from "../../src/plugin/plugin.ts";
 import { assembleBoard, type Board } from "./bvg/board_assembler.ts";
 import { ROUTES } from "./bvg/routes.ts";
 
 // One frame's worth of inputs. main.ts produces this from loadAll() + the latest
-// DeviceState; root.tsx consumes it.
+// DeviceReport; root.tsx consumes it.
 export type FrameData = {
   board: Board;
   fetchedAt: Date;
-  device: DeviceState;
+  device: DeviceReport;
   nextRefreshAt: Date;
 };
 

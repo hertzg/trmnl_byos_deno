@@ -4,49 +4,50 @@ import {
   CDP_URL,
   FRIENDLY_ID,
   INTERNAL_URL_ORIGIN,
+  PLUGIN_DIR,
+  PLUGIN_SEED_DIR,
   PORT,
-  TEMPLATE_DIR,
-  TEMPLATE_SEED_DIR,
 } from "./config.ts";
-import { createDeviceStateHolder } from "./device.ts";
-import { createRenderer } from "./render/renderer.ts";
+import { createDeviceReportHolder } from "./device.ts";
+import { createConductor } from "./conductor/conductor.ts";
+import ErrorView from "./conductor/error-view.tsx";
+import { deriveHtml } from "./render/derive.ts";
+import { identityFor } from "./render/identity.ts";
+import { createHtmlShelf } from "./render/html-shelf.ts";
+import { createRasterizeAdapter } from "./render/rasterize-adapter.ts";
 import { createRasterize } from "./render/rasterize.ts";
-import { loadTemplate, seedTemplateDir } from "./template/loader.ts";
-import ErrorCard from "./template/error-card.tsx";
-import { createApp } from "./http/app.ts";
+import { loadPlugin, seedPluginDir } from "./plugin/loader.ts";
+import { createConductorApp } from "./http/conductor-app.ts";
 import { Hono } from "hono";
-import { serveStatic } from "hono/deno";
 
 async function main() {
-  if (TEMPLATE_SEED_DIR) {
-    await seedTemplateDir(TEMPLATE_DIR, TEMPLATE_SEED_DIR);
+  if (PLUGIN_SEED_DIR) {
+    await seedPluginDir(PLUGIN_DIR, PLUGIN_SEED_DIR);
   }
 
-  const template = await loadTemplate(TEMPLATE_DIR);
-  console.log(`[template] loaded from ${TEMPLATE_DIR}`);
+  const plugin = await loadPlugin(PLUGIN_DIR);
+  console.log(`[plugin] loaded from ${PLUGIN_DIR}`);
 
-  // Single closure-bound holder for the latest device-reported headers. The HTTP
-  // layer writes to it from /api/display; the template reads from it inside
-  // onDisplay. See src/device.ts for the full rationale.
-  const deviceState = createDeviceStateHolder();
+  const deviceHolder = createDeviceReportHolder();
+  const htmlShelf = createHtmlShelf();
 
-  const panel = { width: ACTIVE_PROFILE.width, height: ACTIVE_PROFILE.height };
-  const { onDisplay } = await template.setup({
-    panel,
-    getDevice: deviceState.get,
-  });
-
-  const rasterize = createRasterize({
+  const fetchPngFromUrl = createRasterize({
     cdpUrl: CDP_URL,
     ...ACTIVE_PROFILE,
   });
 
-  const renderer = createRenderer({
-    onDisplay,
-    rasterize,
+  const rasterize = createRasterizeAdapter({
+    shelf: htmlShelf,
     origin: INTERNAL_URL_ORIGIN,
-    errorJsx: (err) => ErrorCard({ message: err.message }),
-    errorValiditySeconds: 30,
+    fetchPngFromUrl,
+  });
+
+  const conductor = createConductor({
+    plugin,
+    renderer: { deriveHtml, rasterize },
+    identityFor,
+    errorView: (err) => ErrorView(err),
+    errorValidity: Temporal.Duration.from({ seconds: 30 }),
   });
 
   const app = new Hono();
@@ -64,31 +65,18 @@ async function main() {
     return c.json({ error: "internal" }, 500);
   });
 
-  // BYOS + addressed-preview routes from the testable factory.
   app.route(
     "/",
-    createApp({
-      renderer,
+    createConductorApp({
+      conductor,
+      deviceHolder,
+      htmlShelf,
       friendlyId: FRIENDLY_ID,
+      pluginAssetsDir: join(PLUGIN_DIR, "assets"),
       onDeviceLog: (id, body) => console.log(`[device-log] ${id.toUpperCase()}: ${body}`),
-      onDeviceHeaders: (headers) => deviceState.updateFromHeaders(headers),
+      now: () => Temporal.Now.zonedDateTimeISO(),
     }),
   );
-
-  // Probe for an assets/ subdirectory once at boot. If it exists, /assets/* serves files
-  // from it; otherwise the route 404s.
-  const assetsDir = join(TEMPLATE_DIR, "assets");
-  let assetsAvailable = false;
-  try {
-    const stat = await Deno.stat(assetsDir);
-    assetsAvailable = stat.isDirectory;
-  } catch {
-    assetsAvailable = false;
-  }
-  if (assetsAvailable) {
-    console.log(`[assets] serving /assets/* from ${assetsDir}`);
-    app.get("/assets/*", serveStatic({ root: TEMPLATE_DIR }));
-  }
 
   console.log(`trmnl-byos-deno on :${PORT}`);
   await Deno.serve({ port: PORT, hostname: "0.0.0.0" }, app.fetch).finished;

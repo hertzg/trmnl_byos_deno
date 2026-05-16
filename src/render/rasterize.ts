@@ -1,6 +1,10 @@
 import { renderUrl, resolveCdpEndpoint } from "./cdp.ts";
 import { type DitherMode, ditherNative } from "./dither.ts";
-import type { RasterizeFn } from "./renderer.ts";
+
+// Fetch the PNG bytes that come back from CDP for a given URL.
+// `createRasterizeAdapter` wraps this into the Conductor's
+// (html, hints) → PNG shape via an in-memory html shelf.
+export type FetchPngFromUrl = (url: string) => Promise<Uint8Array>;
 
 export type RasterizeConfig = {
   cdpUrl: string;
@@ -14,7 +18,7 @@ export type RasterizeConfig = {
 // dither it to the device-ready PNG. CDP renders at the panel's native resolution with
 // deviceScaleFactor=1; the TRMNL framework CSS handles CSS-to-physical scaling on the
 // page side via `transform: scale(--pixel-ratio)`.
-export function createRasterize(config: RasterizeConfig): RasterizeFn {
+export function createRasterize(config: RasterizeConfig): FetchPngFromUrl {
   return async (url: string) => {
     const endpoint = await resolveCdpEndpoint(config.cdpUrl);
     const raw = await renderUrl({

@@ -3,14 +3,14 @@ import type { Plugin, Result, RunContext } from "../plugin/plugin.ts";
 // The Conductor is opaque to the Plugin's state shape — `any` here is
 // the orchestrator's "I don't know S, and I shouldn't have to" boundary.
 // Plugin authors keep full type safety inside their own `run` and `view`.
-// deno-lint-ignore no-explicit-any
 export type RendererDep = {
+  // deno-lint-ignore no-explicit-any
   deriveHtml(result: Result<any>): string | Promise<string>;
   rasterize(html: string, hints?: Record<string, unknown>): Promise<Uint8Array>;
 };
 
-// deno-lint-ignore no-explicit-any
 export type ConductorDeps = {
+  // deno-lint-ignore no-explicit-any
   plugin: Plugin<any>;
   renderer: RendererDep;
   identityFor: (html: string) => string | Promise<string>;

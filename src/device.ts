@@ -1,54 +1,26 @@
-// Per-device intel reported by the firmware on every /api/display poll
+// Per-Device intel reported by the firmware on every /api/display poll
 // (see usetrmnl/trmnl-firmware src/api-client/display.cpp addHeaders()):
 //
 //   ID, Battery-Voltage, RSSI, FW-Version, Model, Width, Height, ...
 //
-// The frame coordinator (ADR-0006) is built around fleet-shared frames and
-// explicitly forbids per-device branching at the template surface. To stay
-// inside that contract while still surfacing device data, we keep a single
-// last-seen DeviceState in a closure: every poll updates it; the template's
-// onDisplay reads it when generating the next frame. For one-device setups
-// (the BYOS norm) the value is always correct; for multi-device setups it
-// would reflect "the most recent device's report", which is acceptable since
-// the rendered frame is shared anyway.
+// The Conductor (ADR-0003) builds a fresh RunContext for every trigger and
+// includes the latest DeviceReport in `ctx.device`. This file owns parsing
+// the headers into the DeviceReport shape (declared in src/plugin/plugin.ts)
+// and the closure-bound holder that the HTTP layer updates from the request
+// headers on each poll.
 
-export type DeviceState = {
-  id: string | null;
-  batteryVoltage: number | null;
-  // Computed from voltage via voltageToPercent — see notes there.
-  batteryPercent: number | null;
-  rssi: number | null;
-  fwVersion: string | null;
-  model: string | null;
-  width: number | null;
-  height: number | null;
-  refreshRate: number | null;
-  lastSeenAt: Date | null;
+import { type DeviceReport, EMPTY_DEVICE_REPORT } from "./plugin/plugin.ts";
+
+export type DeviceReportHolder = {
+  get(): DeviceReport;
+  updateFromHeaders(headers: Headers, now?: () => Temporal.ZonedDateTime): void;
 };
 
-const EMPTY: DeviceState = {
-  id: null,
-  batteryVoltage: null,
-  batteryPercent: null,
-  rssi: null,
-  fwVersion: null,
-  model: null,
-  width: null,
-  height: null,
-  refreshRate: null,
-  lastSeenAt: null,
-};
-
-export type DeviceStateHolder = {
-  get(): DeviceState;
-  updateFromHeaders(headers: Headers, now?: () => Date): void;
-};
-
-export function createDeviceStateHolder(): DeviceStateHolder {
-  let state: DeviceState = EMPTY;
+export function createDeviceReportHolder(): DeviceReportHolder {
+  let state: DeviceReport = EMPTY_DEVICE_REPORT;
   return {
     get: () => state,
-    updateFromHeaders(headers, now = () => new Date()) {
+    updateFromHeaders(headers, now = () => Temporal.Now.zonedDateTimeISO()) {
       const parsed = parseDeviceHeaders(headers);
       state = { ...state, ...parsed, lastSeenAt: now() };
     },
@@ -80,7 +52,9 @@ function readNumber(headers: Headers, name: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function parseDeviceHeaders(headers: Headers): Partial<DeviceState> {
+export function parseDeviceHeaders(
+  headers: Headers,
+): Omit<Partial<DeviceReport>, "lastSeenAt"> {
   const batteryVoltage = readNumber(headers, "Battery-Voltage");
   return {
     id: readHeader(headers, "ID"),

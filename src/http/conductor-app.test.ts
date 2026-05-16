@@ -2,6 +2,7 @@ import { assertEquals, assertGreaterOrEqual, assertLessOrEqual } from "@std/asse
 import { spy } from "@std/testing/mock";
 import { createConductorApp } from "./conductor-app.ts";
 import type { Conductor, TriggerOutput } from "../conductor/conductor.ts";
+import { type DeviceReport, EMPTY_DEVICE_REPORT } from "../plugin/plugin.ts";
 
 function stubConductor(out: TriggerOutput): Conductor {
   return {
@@ -11,11 +12,11 @@ function stubConductor(out: TriggerOutput): Conductor {
 }
 
 function deviceHolder() {
-  let last: Record<string, unknown> = {};
+  let last: DeviceReport = EMPTY_DEVICE_REPORT;
   return {
     get: () => last,
     updateFromHeaders: (h: Headers) => {
-      last = { id: h.get("id") };
+      last = { ...EMPTY_DEVICE_REPORT, id: h.get("id") };
     },
   };
 }
@@ -47,9 +48,7 @@ Deno.test("GET /api/display triggers a poll, captures the device headers, and re
   const now = Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]");
   const expiresAt = now.add({ minutes: 5 });
 
-  const trigger = spy(() =>
-    Promise.resolve({ png, identity: "deadbeefcafef00d", expiresAt })
-  );
+  const trigger = spy(() => Promise.resolve({ png, identity: "deadbeefcafef00d", expiresAt }));
   const holder = deviceHolder();
 
   const app = createConductorApp({
@@ -75,7 +74,7 @@ Deno.test("GET /api/display triggers a poll, captures the device headers, and re
   assertEquals(body.filename, "image-deadbeefcafef00d");
   assertGreaterOrEqual(body.refresh_rate, 299);
   assertLessOrEqual(body.refresh_rate, 300);
-  assertEquals(holder.get(), { id: "AA:BB:CC" });
+  assertEquals(holder.get().id, "AA:BB:CC");
 });
 
 Deno.test("GET /images/:identity/png serves the Current Image PNG when identity matches", async () => {

@@ -1,6 +1,7 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { join } from "@std/path";
 import { loadPlugin } from "./loader.ts";
+import { EMPTY_DEVICE_REPORT } from "./plugin.ts";
 
 async function writeFixture(content: string): Promise<string> {
   const dir = await Deno.makeTempDir({ prefix: "plugin-loader-test-" });
@@ -27,7 +28,7 @@ Deno.test("loadPlugin returns the Plugin produced by the default-exported factor
   const result = await plugin.run({
     t: Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]"),
     intent: "poll",
-    device: {},
+    device: EMPTY_DEVICE_REPORT,
   });
 
   assertEquals(result.state, { ok: true });
@@ -52,7 +53,7 @@ Deno.test("loadPlugin passes the config blob to the factory", async () => {
   const result = await plugin.run({
     t: Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]"),
     intent: "poll",
-    device: {},
+    device: EMPTY_DEVICE_REPORT,
   });
 
   assertEquals(result.state, { apiKey: "xyz", count: 7 });
