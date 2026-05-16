@@ -55,10 +55,10 @@ Deno.test("first poll calls run + deriveHtml + rasterize and the resulting PNG i
     identityFor: () => "id",
   });
 
-  const display = await conductor.request("/api/display");
+  const display = await conductor.app.request("/api/display");
   const body = await display.json();
   const identity = body.filename.replace(/^image-/, "");
-  const imageRes = await conductor.request(`/images/${identity}/png`);
+  const imageRes = await conductor.app.request(`/images/${identity}/png`);
 
   assertEquals(identity, "id");
   assertSpyCalls(run, 1);
@@ -80,11 +80,11 @@ Deno.test("polls inside the validity window reuse the Current Image without re-i
     identityFor: (html) => html,
   });
 
-  await (await conductor.request("/api/display")).body?.cancel();
+  await (await conductor.app.request("/api/display")).body?.cancel();
   c.advance({ minutes: 1 });
-  await (await conductor.request("/api/display")).body?.cancel();
+  await (await conductor.app.request("/api/display")).body?.cancel();
   c.advance({ minutes: 3 });
-  await (await conductor.request("/api/display")).body?.cancel();
+  await (await conductor.app.request("/api/display")).body?.cancel();
 
   assertSpyCalls(run, 1);
   assertSpyCalls(deriveHtml, 1);
@@ -108,16 +108,16 @@ Deno.test("poll after expiry rasterizes a fresh Current Image when the derived H
     identityFor: (html) => `id-${html}`,
   });
 
-  await (await conductor.request("/api/display")).body?.cancel();
+  await (await conductor.app.request("/api/display")).body?.cancel();
   c.advance({ minutes: 6 });
-  await (await conductor.request("/api/display")).body?.cancel();
+  await (await conductor.app.request("/api/display")).body?.cancel();
 
   assertSpyCalls(run, 2);
   assertSpyCalls(deriveHtml, 2);
   assertSpyCalls(rasterize, 2);
 
   // The Current Image is now the second PNG; /images/id-b/png returns it.
-  const res = await conductor.request("/images/id-b/png");
+  const res = await conductor.app.request("/images/id-b/png");
   assertEquals(new Uint8Array(await res.arrayBuffer()), pngs[1]);
 });
 
@@ -135,15 +135,15 @@ Deno.test("poll after expiry skips rasterize and keeps the Current Image when th
     identityFor: () => "stable-identity",
   });
 
-  await (await conductor.request("/api/display")).body?.cancel();
+  await (await conductor.app.request("/api/display")).body?.cancel();
   c.advance({ minutes: 6 });
-  await (await conductor.request("/api/display")).body?.cancel();
+  await (await conductor.app.request("/api/display")).body?.cancel();
 
   assertSpyCalls(run, 2);
   assertSpyCalls(deriveHtml, 2);
   assertSpyCalls(rasterize, 1);
 
-  const res = await conductor.request("/images/stable-identity/png");
+  const res = await conductor.app.request("/images/stable-identity/png");
   assertEquals(new Uint8Array(await res.arrayBuffer()), expectedPng);
 });
 
@@ -167,9 +167,9 @@ Deno.test("when Plugin.run throws, the error view is rendered and reused inside 
     errorView,
   });
 
-  const first = await (await conductor.request("/api/display")).json();
+  const first = await (await conductor.app.request("/api/display")).json();
   c.advance({ seconds: 20 });
-  const second = await (await conductor.request("/api/display")).json();
+  const second = await (await conductor.app.request("/api/display")).json();
 
   // The error result's validity (30s) governs reuse: 20s < 30s so the
   // second call short-circuits — no further run/errorView/rasterize.
@@ -180,7 +180,7 @@ Deno.test("when Plugin.run throws, the error view is rendered and reused inside 
   assertEquals(second.filename, first.filename);
 
   const imgUrl = new URL(first.image_url);
-  const img = await conductor.request(imgUrl.pathname);
+  const img = await conductor.app.request(imgUrl.pathname);
   assertEquals(new Uint8Array(await img.arrayBuffer()), errorPng);
 });
 
@@ -211,7 +211,7 @@ Deno.test("when deriveHtml throws on the Plugin's Result, the error view is rend
     errorView,
   });
 
-  const res = await (await conductor.request("/api/display")).json();
+  const res = await (await conductor.app.request("/api/display")).json();
 
   assertSpyCalls(run, 1);
   assertSpyCalls(deriveHtml, 2); // once for Plugin (threw), once for error view
@@ -248,7 +248,7 @@ Deno.test("when rasterize throws on the Plugin's HTML, the error view is rendere
     errorView,
   });
 
-  const res = await (await conductor.request("/api/display")).json();
+  const res = await (await conductor.app.request("/api/display")).json();
 
   assertSpyCalls(run, 1);
   assertSpyCalls(deriveHtml, 2); // once for Plugin, once for error view
@@ -271,7 +271,7 @@ Deno.test("GET /api/setup returns BYOS setup JSON with friendlyId", async () => 
     identityFor: () => "x",
   });
 
-  const res = await conductor.request("/api/setup");
+  const res = await conductor.app.request("/api/setup");
   const body = await res.json();
 
   assertEquals(res.status, 200);
@@ -290,7 +290,7 @@ Deno.test("GET /api/display returns image_url / filename / refresh_rate derived 
     identityFor: () => "deadbeefcafef00d",
   });
 
-  const res = await conductor.request("/api/display", { headers: { id: "AA:BB:CC" } });
+  const res = await conductor.app.request("/api/display", { headers: { id: "AA:BB:CC" } });
   const body = await res.json();
 
   assertEquals(res.status, 200);
@@ -317,7 +317,8 @@ Deno.test("GET /api/display forwards a parsed DeviceReport into the next Plugin.
     identityFor: () => "x",
   });
 
-  await (await conductor.request("/api/display", { headers: { id: "AA:BB:CC" } })).body?.cancel();
+  await (await conductor.app.request("/api/display", { headers: { id: "AA:BB:CC" } })).body
+    ?.cancel();
 
   assertEquals(run.calls.length, 1);
   assertEquals(run.calls[0].args[0].device?.id, "AA:BB:CC");
@@ -339,7 +340,7 @@ Deno.test("GET /api/display leaves ctx.device null when the request has no ID he
     identityFor: () => "x",
   });
 
-  await (await conductor.request("/api/display")).body?.cancel();
+  await (await conductor.app.request("/api/display")).body?.cancel();
 
   assertEquals(run.calls.length, 1);
   assertEquals(run.calls[0].args[0].device, null);
@@ -356,8 +357,8 @@ Deno.test("GET /images/:identity/png returns 404 for an unknown identity", async
     identityFor: () => "knownid000000000",
   });
 
-  await (await conductor.request("/api/display")).body?.cancel();
-  const res = await conductor.request("/images/somethingelse/png");
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  const res = await conductor.app.request("/images/somethingelse/png");
   await res.body?.cancel();
 
   assertEquals(res.status, 404);
@@ -387,14 +388,14 @@ Deno.test("GET /preview returns the live HTML at t=now and does not touch Curren
   // Prime Current state with a poll, then scrub via /preview. Current state
   // must not advance — a subsequent /api/display inside the original
   // validity window still serves the poll's image.
-  const firstPoll = await (await conductor.request("/api/display")).json();
+  const firstPoll = await (await conductor.app.request("/api/display")).json();
 
-  const preview = await conductor.request("/preview");
+  const preview = await conductor.app.request("/preview");
   assertEquals(preview.status, 200);
   assertEquals(preview.headers.get("content-type")?.startsWith("text/html"), true);
   assertEquals(await preview.text(), "<p>scrub</p>");
 
-  const secondPoll = await (await conductor.request("/api/display")).json();
+  const secondPoll = await (await conductor.app.request("/api/display")).json();
   assertEquals(secondPoll.filename, firstPoll.filename);
   assertSpyCalls(rasterize, 1); // poll triggered one rasterize; /preview never did
 });
@@ -423,331 +424,22 @@ Deno.test("GET /preview/png returns the rasterized PNG and does not touch Curren
     identityFor: (html) => `id-${html}`,
   });
 
-  const firstPoll = await (await conductor.request("/api/display")).json();
+  const firstPoll = await (await conductor.app.request("/api/display")).json();
   // After the poll, Current Image is `pollPng` with identity `id-<p>poll</p>`.
 
-  const preview = await conductor.request("/preview/png");
+  const preview = await conductor.app.request("/preview/png");
   assertEquals(preview.status, 200);
   assertEquals(preview.headers.get("content-type"), "image/png");
   assertEquals(new Uint8Array(await preview.arrayBuffer()), previewPng);
   assertSpyCalls(rasterize, 2); // poll + preview/png both rasterized
 
   // Current state untouched: /api/display still serves the poll's image.
-  const secondPoll = await (await conductor.request("/api/display")).json();
+  const secondPoll = await (await conductor.app.request("/api/display")).json();
   assertEquals(secondPoll.filename, firstPoll.filename);
 });
 
-// ─── dashboard at / ────────────────────────────────────────────────────────
-
-Deno.test("GET / returns 200 with an HTML dashboard page", async () => {
-  const conductor = createConductor({
-    ...defaults(),
-    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
-    renderer: {
-      deriveHtml: () => "<p>x</p>",
-      rasterize: () => Promise.resolve(new Uint8Array([0x89])),
-    },
-    identityFor: () => "x",
-  });
-
-  const res = await conductor.request("/");
-
-  assertEquals(res.status, 200);
-  assertEquals(res.headers.get("content-type")?.startsWith("text/html"), true);
-  await res.body?.cancel();
-});
-
-Deno.test("GET / runs the Plugin with intent=scrub and does not mutate Current Result/Image", async () => {
-  const c = clock();
-  const run = spy((ctx: RunContext) => ({
-    state: { intent: ctx.intent },
-    validity: fiveMin,
-    view: (s: { intent: string }) => `<p>${s.intent}</p>`,
-  }));
-  const rasterize = spy(() => Promise.resolve(new Uint8Array([0xaa])));
-
-  const conductor = createConductor({
-    ...defaults({ now: c.now }),
-    plugin: { run },
-    renderer: {
-      deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
-      rasterize,
-    },
-    identityFor: (html) => `id-${html}`,
-  });
-
-  // Prime Current state with a real poll.
-  const firstPoll = await (await conductor.request("/api/display")).json();
-  assertSpyCalls(rasterize, 1);
-
-  // Dashboard scrubs.
-  await (await conductor.request("/")).body?.cancel();
-
-  // The dashboard's run was a scrub.
-  assertEquals(run.calls.at(-1)?.args[0].intent, "scrub");
-
-  // Inside the original validity window, /api/display still serves the
-  // poll's image — Current state untouched.
-  c.advance({ minutes: 1 });
-  const secondPoll = await (await conductor.request("/api/display")).json();
-  assertEquals(secondPoll.filename, firstPoll.filename);
-});
-
-Deno.test("GET / defaults t to the Current Result's commit moment when one exists", async () => {
-  const c = clock();
-  const run = spy((_ctx: RunContext) => ({
-    state: {},
-    validity: fiveMin,
-    view: () => "<p>x</p>",
-  }));
-
-  const conductor = createConductor({
-    ...defaults({ now: c.now }),
-    plugin: { run },
-    renderer: {
-      deriveHtml: () => "<p>x</p>",
-      rasterize: () => Promise.resolve(new Uint8Array([0x01])),
-    },
-    identityFor: () => "id",
-  });
-
-  // Poll at T0 → Current Result committed at T0. (No wall-clock advance, so
-  // the forward-only clamp t_min = max(T0, now=T0) = T0 doesn't fight the
-  // default. When wall-clock advances past commit, the clamp wins — see the
-  // "clamped forward" test below.)
-  await (await conductor.request("/api/display")).body?.cancel();
-  await (await conductor.request("/")).body?.cancel();
-
-  const scrubCall = run.calls.at(-1)!;
-  assertEquals(scrubCall.args[0].intent, "scrub");
-  assertEquals(scrubCall.args[0].t.toString(), T0.toString());
-});
-
-Deno.test("GET / defaults t to now when no Current Result exists", async () => {
-  const c = clock();
-  const run = spy((_ctx: RunContext) => ({
-    state: {},
-    validity: fiveMin,
-    view: () => "<p>x</p>",
-  }));
-
-  const conductor = createConductor({
-    ...defaults({ now: c.now }),
-    plugin: { run },
-    renderer: {
-      deriveHtml: () => "<p>x</p>",
-      rasterize: () => Promise.resolve(new Uint8Array([0x01])),
-    },
-    identityFor: () => "id",
-  });
-
-  await (await conductor.request("/")).body?.cancel();
-
-  // No prior poll, so default t is now.
-  assertEquals(run.calls.length, 1);
-  assertEquals(run.calls[0].args[0].intent, "scrub");
-  assertEquals(run.calls[0].args[0].t.toString(), T0.toString());
-});
-
-Deno.test("GET /?t=<future> scrubs the Plugin at the supplied t", async () => {
-  const run = spy((_ctx: RunContext) => ({
-    state: {},
-    validity: fiveMin,
-    view: () => "<p>x</p>",
-  }));
-
-  const conductor = createConductor({
-    ...defaults(),
-    plugin: { run },
-    renderer: {
-      deriveHtml: () => "<p>x</p>",
-      rasterize: () => Promise.resolve(new Uint8Array([0x01])),
-    },
-    identityFor: () => "id",
-  });
-
-  // Datetime-local input format: YYYY-MM-DDTHH:MM (no timezone). The server
-  // interprets it in its own timezone (deps.now().timeZoneId, Europe/Berlin).
-  const tFuture = T0.add({ minutes: 30 }); // 2026-05-16T10:30[Europe/Berlin]
-  await (await conductor.request("/?t=2026-05-16T10:30")).body?.cancel();
-
-  assertEquals(run.calls.length, 1);
-  assertEquals(run.calls[0].args[0].intent, "scrub");
-  assertEquals(run.calls[0].args[0].t.toString(), tFuture.toString());
-});
-
-Deno.test("GET /?t passes the requested t through unchanged — past, present, or future", async () => {
-  const c = clock();
-  const run = spy((_ctx: RunContext) => ({
-    state: {},
-    validity: fiveMin,
-    view: () => "<p>x</p>",
-  }));
-  const conductor = createConductor({
-    ...defaults({ now: c.now }),
-    plugin: { run },
-    renderer: {
-      deriveHtml: () => "<p>x</p>",
-      rasterize: () => Promise.resolve(new Uint8Array([0x01])),
-    },
-    identityFor: () => "id",
-  });
-
-  // Commit at T0. Advance wall clock so commit is in the past.
-  await (await conductor.request("/api/display")).body?.cancel();
-  c.advance({ minutes: 5 });
-
-  // ?t before commit — no clamp. Plugin.run is pure; running it at an
-  // arbitrary past `t` is a legitimate debug query.
-  await (await conductor.request("/?t=2026-05-16T09:00")).body?.cancel();
-  assertEquals(
-    run.calls.at(-1)?.args[0].t.toString(),
-    at("2026-05-16T09:00").toString(),
-  );
-
-  // ?t between commit and now — passes through.
-  await (await conductor.request("/?t=2026-05-16T10:02")).body?.cancel();
-  assertEquals(
-    run.calls.at(-1)?.args[0].t.toString(),
-    at("2026-05-16T10:02").toString(),
-  );
-
-  // ?t in the future — passes through.
-  await (await conductor.request("/?t=2026-05-16T15:00")).body?.cancel();
-  assertEquals(
-    run.calls.at(-1)?.args[0].t.toString(),
-    at("2026-05-16T15:00").toString(),
-  );
-});
-
-Deno.test("GET / renders the rendered Image, the scrubber, and Result metadata", async () => {
-  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // PNG magic prefix
-  const conductor = createConductor({
-    ...defaults(),
-    plugin: {
-      run: () => ({
-        state: { msg: "hello" },
-        validity: Temporal.Duration.from({ minutes: 7 }),
-        view: function MyPluginView(s: { msg: string }) {
-          return `<p>${s.msg}</p>`;
-        },
-      }),
-    },
-    renderer: {
-      deriveHtml: (r: Result<{ msg: string }>) => String(r.view(r.state)),
-      rasterize: () => Promise.resolve(png),
-    },
-    identityFor: () => "dashid",
-  });
-
-  const res = await conductor.request("/");
-  const html = await res.text();
-
-  // Image: inline as data URL so the page is one round trip.
-  const b64 = "iVBORw=="; // base64 of [0x89, 0x50, 0x4e, 0x47]
-  assertEquals(html.includes(`data:image/png;base64,${b64}`), true, "PNG data URL missing");
-
-  // Forward-only scrubber.
-  assertEquals(html.includes('name="t"'), true, "scrubber input missing");
-  assertEquals(html.includes('type="datetime-local"'), true, "datetime-local input missing");
-
-  // Result metadata, human-formatted (not raw ZonedDateTime / PT-duration).
-  assertEquals(html.includes("7m"), true, "validity duration missing");
-  assertEquals(html.includes("MyPluginView"), true, "view identity missing");
-  assertEquals(html.includes("dashid"), true, "image identity missing");
-  // Chosen t (shown to user as the input's value attribute, in datetime-local
-  // format YYYY-MM-DDTHH:MM).
-  assertEquals(html.includes("2026-05-16T10:00"), true, "chosen t missing");
-});
-
-Deno.test("GET / renders the Plugin's Result.state as JSON for debugging", async () => {
-  const conductor = createConductor({
-    ...defaults(),
-    plugin: {
-      run: () => ({
-        state: { departures: [{ line: "U7", at: "10:05" }], count: 1 },
-        validity: fiveMin,
-        view: () => "<p>x</p>",
-      }),
-    },
-    renderer: {
-      deriveHtml: () => "<p>x</p>",
-      rasterize: () => Promise.resolve(new Uint8Array([0])),
-    },
-    identityFor: () => "id",
-  });
-
-  // JSX HTML-escapes quotes inside text nodes; decode to check the JSON the
-  // browser ultimately renders to the operator.
-  const decoded = (await (await conductor.request("/")).text()).replaceAll("&quot;", '"');
-
-  assertEquals(decoded.includes('"line"'), true, "state JSON key missing");
-  assertEquals(decoded.includes('"U7"'), true, "state JSON value missing");
-  assertEquals(decoded.includes('"count": 1'), true, "state JSON pretty-printed");
-});
-
-Deno.test("GET / emits forward step links whose ?t= is t + offset in datetime-local form", async () => {
-  const c = clock(at("2026-05-16T10:00")); // T0
-  const conductor = createConductor({
-    ...defaults({ now: c.now }),
-    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
-    renderer: {
-      deriveHtml: () => "<p>x</p>",
-      rasterize: () => Promise.resolve(new Uint8Array([0])),
-    },
-    identityFor: () => "id",
-  });
-
-  const html = await (await conductor.request("/")).text();
-
-  // From T0=10:00, the +5m link should jump to 10:05.
-  assertEquals(
-    html.includes("?t=2026-05-16T10%3A05") || html.includes("?t=2026-05-16T10:05"),
-    true,
-  );
-  // +1h → 11:00.
-  assertEquals(
-    html.includes("?t=2026-05-16T11%3A00") || html.includes("?t=2026-05-16T11:00"),
-    true,
-  );
-});
-
-Deno.test("GET / surfaces both committed and current identities when a Current Result exists", async () => {
-  const c = clock();
-  // The Plugin returns a state whose serialized form changes with t. The
-  // identityFor stub mirrors that, so committed identity != current identity
-  // after scrubbing forward.
-  const run = (ctx: RunContext) => ({
-    state: { at: ctx.t.toString() },
-    validity: fiveMin,
-    view: (s: { at: string }) => `<p>${s.at}</p>`,
-  });
-  const conductor = createConductor({
-    ...defaults({ now: c.now }),
-    plugin: { run },
-    renderer: {
-      deriveHtml: (r: Result<{ at: string }>) => String(r.view(r.state)),
-      rasterize: () => Promise.resolve(new Uint8Array([0])),
-    },
-    identityFor: (html) => `id-${html.length}-${html.slice(-10, -4)}`,
-  });
-
-  // Poll commits identity X at T0.
-  const poll = await (await conductor.request("/api/display")).json();
-  const committedIdentity = poll.filename.replace(/^image-/, "");
-
-  // Scrub to T0+1h — Plugin's state.at changes, so identity changes.
-  await (await conductor.request("/?t=2026-05-16T11:00")).body?.cancel();
-
-  // Page must show both identities. (Visit dashboard at a non-trivial t so
-  // the committed and current columns differ.)
-  const html = await (await conductor.request("/?t=2026-05-16T11:00")).text();
-  assertEquals(html.includes(committedIdentity), true, "committed identity missing");
-  assertEquals(html.includes("11:00"), true, "current t missing in metadata");
-  // Column headers present.
-  assertEquals(html.includes("committed"), true);
-  assertEquals(html.includes("current"), true);
-});
+// (Dashboard at `/` lives in its own peer sub-app — see
+// src/dashboard/dashboard.test.ts for its HTTP tests.)
 
 Deno.test("GET /assets/:file serves files from pluginAssetsDir without the /assets prefix duplicating in the path", async () => {
   const assetsDir = await Deno.makeTempDir({ prefix: "conductor-assets-test-" });
@@ -760,7 +452,7 @@ Deno.test("GET /assets/:file serves files from pluginAssetsDir without the /asse
     identityFor: () => "x",
   });
 
-  const res = await conductor.request("/assets/style.css");
+  const res = await conductor.app.request("/assets/style.css");
 
   assertEquals(res.status, 200);
   assertEquals(await res.text(), ".x { color: red; }");
@@ -775,7 +467,7 @@ Deno.test("POST /api/log returns 204 and invokes onDeviceLog with the id header 
     identityFor: () => "x",
   });
 
-  const res = await conductor.request("/api/log", {
+  const res = await conductor.app.request("/api/log", {
     method: "POST",
     headers: { id: "AA:BB:CC" },
     body: "hello",

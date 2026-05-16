@@ -1,26 +1,41 @@
 /** @jsxImportSource hono/jsx */
 
 // Dashboard at /. ADR-0005: a Plugin-debugging surface, not just a preview.
-// The `t` scrubber drives the Conductor at arbitrary moments (past, present,
-// future — Plugin.run is a pure function of ctx) and renders what the Plugin
-// produced, side-by-side with what the Device is currently being served. The
-// committed-vs-current diff and the rendered state make two silent Plugin
-// bugs visible (docs/plugin-authoring.md):
+// The `t` scrubber drives the Conductor (default lands on the Current
+// Result's commit moment; explicit `?t=` clamps forward to it) and renders
+// what the Plugin produced side-by-side with what the Device is currently
+// being served. The committed-vs-current diff and the rendered state make
+// two silent Plugin bugs visible (docs/plugin-authoring.md):
 //   - a view that reads wall-clock looks identical at every scrub position
 //     even though `state` is identical
 //   - a Plugin that computes `validity` against wall-clock has an `expiresAt`
 //     that doesn't slide with `t`
 
-import type { Result } from "../plugin/plugin.ts";
+import type { ScrubTimings } from "../conductor/conductor.ts";
+import type { DeviceReport, Result } from "../plugin/plugin.ts";
 
 export type DashboardProps = {
   t: Temporal.ZonedDateTime;
+  // What the operator's `?t=` parsed to, before forward-only clamping.
+  // Null when no `?t=` was supplied (or parse failed). The page shows a
+  // notice when `t !== tRequested` so the snap isn't silent.
+  tRequested: Temporal.ZonedDateTime | null;
+  // Set when `?t=` was supplied but Temporal.PlainDateTime.from threw.
+  parseError: string | null;
   now: Temporal.ZonedDateTime;
   // What the Device is currently being served by /api/display. Null until
   // the first poll has populated Current Result + Current Image.
-  committed: { t: Temporal.ZonedDateTime; result: Result<unknown>; identity: string } | null;
+  committed: {
+    t: Temporal.ZonedDateTime;
+    result: Result<unknown>;
+    identity: string;
+    device: DeviceReport | null;
+  } | null;
   // What the dashboard's scrub at `t` produced. Always present.
-  current: { result: Result<unknown>; identity: string };
+  current: { result: Result<unknown>; identity: string; device: DeviceReport | null };
+  // Per-step wall-clock for the scrub that produced `current`. Rendered as
+  // a proportional horizontal bar at the top of the page.
+  timings: ScrubTimings;
   pngBase64: string;
 };
 
@@ -72,8 +87,8 @@ function stepHref(t: Temporal.ZonedDateTime, by: Temporal.DurationLike): string 
 }
 
 // Quick-jump increments. Chosen to span the kinds of validity windows a Plugin
-// typically uses — sub-minute (no, scrubber granularity is 1 minute), minutes
-// for "departures every 5", hours for "photo of the day".
+// typically uses — minutes for "departures every 5", hours for "photo of the
+// day". Picker is minute-granular, so no sub-minute steps.
 const STEPS: Array<{ label: string; by: Temporal.DurationLike }> = [
   { label: "+1m", by: { minutes: 1 } },
   { label: "+5m", by: { minutes: 5 } },
@@ -148,6 +163,27 @@ const css = `
   table.meta .muted { color: #888; font-family: inherit; font-style: italic; }
   p.head { margin: 8px 0 16px; font-size: 12px; color: #555; }
   p.head code { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #111; }
+  p.notice {
+    margin: 0 0 16px; padding: 8px 12px; font-size: 13px;
+    background: #fffbe6; border: 1px solid #f0c040; color: #663d00;
+  }
+  p.notice code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .timings {
+    display: flex; width: 100%; margin-bottom: 8px; height: 28px;
+    border: 1px solid #ddd; background: #fff; font-size: 12px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .timings .seg {
+    display: flex; align-items: center; padding: 0 8px;
+    border-right: 1px solid #ddd; white-space: nowrap;
+  }
+  .timings .seg:last-child { border-right: none; }
+  .timings .seg:nth-child(1) { background: #e3f2fd; }
+  .timings .seg:nth-child(2) { background: #f3e5f5; }
+  .timings .seg:nth-child(3) { background: #fff3e0; }
+  .timings .seg:nth-child(4) { background: #e8f5e9; }
+  p.timings-total { margin: 0 0 16px; font-size: 12px; color: #555; }
+  p.timings-total code { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #111; }
   details.state { background: #fff; border: 1px solid #ddd; padding: 12px; }
   details.state summary { cursor: pointer; font-size: 13px; color: #555; }
   details.state pre {
@@ -168,9 +204,30 @@ type Row = {
   currentRel?: string | null;
 };
 
+function deviceLabel(d: DeviceReport | null): string {
+  return d?.id ?? "(none yet)";
+}
+
+function fmtMs(ms: number): string {
+  if (ms < 0.5) return "<1ms";
+  if (ms < 10) return `${ms.toFixed(1)}ms`;
+  return `${Math.round(ms)}ms`;
+}
+
 export default function Dashboard(props: DashboardProps) {
-  const { t, now, committed, current, pngBase64 } = props;
+  const { t, tRequested, parseError, now, committed, current, timings, pngBase64 } = props;
   const tCommit = committed?.t ?? null;
+  // Clamp fired iff `?t=` was supplied, parsed, and got snapped forward.
+  const clamped = tRequested !== null && Temporal.ZonedDateTime.compare(tRequested, t) !== 0;
+  // Timing segments for the proportional bar. Each segment's flex-grow is
+  // its duration in ms (with a small floor so near-zero steps remain
+  // clickable/visible). Order matches pipeline execution.
+  const segs = [
+    { label: "run", ms: timings.run },
+    { label: "deriveHtml", ms: timings.deriveHtml },
+    { label: "identityFor", ms: timings.identityFor },
+    { label: "rasterize", ms: timings.rasterize },
+  ];
 
   const currentExpires = t.add(current.result.validity);
   const committedExpires = committed ? committed.t.add(committed.result.validity) : null;
@@ -207,6 +264,11 @@ export default function Dashboard(props: DashboardProps) {
       committed: committed ? committed.identity : null,
       current: current.identity,
     },
+    {
+      label: "device",
+      committed: committed ? deviceLabel(committed.device) : null,
+      current: deviceLabel(current.device),
+    },
   ];
   return (
     <html>
@@ -227,6 +289,18 @@ export default function Dashboard(props: DashboardProps) {
           />
           <button type="submit">scrub</button>
         </form>
+        {parseError && (
+          <p class="notice">
+            could not parse <code>?t=</code> — falling back to default.{" "}
+            <span class="rel">({parseError})</span>
+          </p>
+        )}
+        {clamped && tRequested && (
+          <p class="notice">
+            forward-only: requested <code>{toDatetimeLocal(tRequested)}</code>{" "}
+            is before the Current Result's commit — clamped to <code>{fmtTime(t)}</code>.
+          </p>
+        )}
         <div class="steps">
           <span>step:</span>
           {STEPS.map((s) => <a key={s.label} href={stepHref(t, s.by)}>{s.label}</a>)}
@@ -237,6 +311,27 @@ export default function Dashboard(props: DashboardProps) {
           )}
           <a class="reset" href="/">reset</a>
         </div>
+        <div class="timings" title="per-step wall-clock for the scrub pipeline">
+          {segs.map((s) => (
+            // flex: grow shrink basis. basis=max-content guarantees the
+            // label always fits without truncation; grow proportional to ms
+            // distributes any extra space so the bar still reads as a
+            // duration histogram.
+            <div
+              key={s.label}
+              class="seg"
+              style={`flex: ${Math.max(s.ms, 0.1)} 0 max-content;`}
+            >
+              {s.label} {fmtMs(s.ms)}
+            </div>
+          ))}
+        </div>
+        <p class="timings-total">
+          re-render: <code>{fmtMs(timings.total)}</code> (sum of steps:{" "}
+          <code>
+            {fmtMs(timings.run + timings.deriveHtml + timings.identityFor + timings.rasterize)}
+          </code>)
+        </p>
         <div class="image-frame">
           <img src={`data:image/png;base64,${pngBase64}`} alt="Plugin output" />
         </div>

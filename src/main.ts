@@ -12,6 +12,7 @@ import {
 } from "./config.ts";
 import { createConductor } from "./conductor/conductor.ts";
 import ErrorView from "./conductor/error-view.tsx";
+import { createDashboard } from "./dashboard/dashboard.ts";
 import { deriveHtml } from "./render/derive.ts";
 import { identityFor } from "./render/identity.ts";
 import { createCdpRasterize } from "./render/cdp-rasterize.ts";
@@ -57,15 +58,24 @@ async function main() {
     now,
   });
 
-  // 6. Parent app: access log + error handler, then compose the sub-apps.
+  // 6. Dashboard: peer sub-app that reads Current state and drives Plugin
+  // scrubs via the Conductor's small `scrub` + `committedState` surface.
+  const dashboard = createDashboard({
+    scrub: conductor.scrub,
+    committedState: conductor.committedState,
+    now,
+  });
+
+  // 7. Parent app: access log + error handler, then compose the sub-apps.
   const app = new Hono()
     .use(logger())
     .onError((err, c) => {
       console.error("[handler]", err);
       return c.json({ error: "internal" }, 500);
     })
-    .route("/", conductor)
-    .route("/", cdp.app);
+    .route("/", conductor.app)
+    .route("/", cdp.app)
+    .route("/", dashboard);
 
   console.log(`trmnl-byos-deno on :${PORT}`);
   await Deno.serve({ port: PORT, hostname: "0.0.0.0" }, app.fetch).finished;
