@@ -28,10 +28,8 @@ export type ConductorDeps = {
 };
 
 // `createConductor` returns a Hono directly. The orchestration logic
-// (trigger / reportDevice / getCurrentImage) lives entirely inside the
-// factory closure — its only external surface is HTTP. Nothing outside
-// this module needs to invoke the orchestration programmatically; the
-// routes are the seam.
+// lives entirely inside the factory closure — its only external surface
+// is HTTP.
 export function createConductor(deps: ConductorDeps): Hono {
   // deno-lint-ignore no-explicit-any
   type CurrentResult = { ctx: RunContext; result: Result<any> };
@@ -41,20 +39,12 @@ export function createConductor(deps: ConductorDeps): Hono {
   let currentImage: CurrentImage | null = null;
   let latestDevice: DeviceReport | null = null;
 
-  async function trigger(input: {
+  // Pipeline up to identity, with error-view fallback. No state mutation —
+  // callers decide whether to update Current Result / Current Image.
+  async function runAndDerive(input: {
     t: Temporal.ZonedDateTime;
     intent: "poll" | "scrub" | "prerender";
-  }): Promise<{ png: Uint8Array; identity: string; expiresAt: Temporal.ZonedDateTime }> {
-    if (currentResult && currentImage) {
-      const currentExpiry = currentResult.ctx.t.add(currentResult.result.validity);
-      if (Temporal.ZonedDateTime.compare(input.t, currentExpiry) < 0) {
-        return {
-          png: currentImage.png,
-          identity: currentImage.identity,
-          expiresAt: currentExpiry,
-        };
-      }
-    }
+  }) {
     const ctx: RunContext = {
       t: input.t,
       intent: input.intent,
@@ -74,6 +64,26 @@ export function createConductor(deps: ConductorDeps): Hono {
     }
     const html = await deps.renderer.deriveHtml(result);
     const identity = await deps.identityFor(html);
+    return { ctx, result, html, identity };
+  }
+
+  // Poll path: validity-window reuse, identity-gated rasterize, and
+  // state mutation. Only called from /api/display.
+  async function trigger(input: {
+    t: Temporal.ZonedDateTime;
+    intent: "poll";
+  }): Promise<{ png: Uint8Array; identity: string; expiresAt: Temporal.ZonedDateTime }> {
+    if (currentResult && currentImage) {
+      const currentExpiry = currentResult.ctx.t.add(currentResult.result.validity);
+      if (Temporal.ZonedDateTime.compare(input.t, currentExpiry) < 0) {
+        return {
+          png: currentImage.png,
+          identity: currentImage.identity,
+          expiresAt: currentExpiry,
+        };
+      }
+    }
+    const { ctx, result, html, identity } = await runAndDerive(input);
     currentResult = { ctx, result };
     if (currentImage?.identity !== identity) {
       const png = await deps.renderer.rasterize(html, result.hints);
@@ -82,7 +92,7 @@ export function createConductor(deps: ConductorDeps): Hono {
     return {
       png: currentImage.png,
       identity: currentImage.identity,
-      expiresAt: input.t.add(result.validity),
+      expiresAt: ctx.t.add(result.validity),
     };
   }
 
@@ -127,6 +137,22 @@ export function createConductor(deps: ConductorDeps): Hono {
       const png = currentImage?.identity === id ? currentImage.png : undefined;
       if (png === undefined) return c.body(null, 404);
       return c.body(png as unknown as ArrayBuffer, 200, { "content-type": "image/png" });
+    })
+    // Dev-iteration: live HTML at t=now via scrub. ADR-0005: no CDP cost.
+    // Does not touch Current Result or Current Image.
+    .get("/preview", async (c) => {
+      const { html } = await runAndDerive({ t: deps.now(), intent: "scrub" });
+      return c.html(html, 200, { "cache-control": "no-store" });
+    })
+    // Dev-iteration: live PNG at t=now via scrub. Full pipeline. Does not
+    // touch Current Result or Current Image.
+    .get("/preview/png", async (c) => {
+      const { html, result } = await runAndDerive({ t: deps.now(), intent: "scrub" });
+      const png = await deps.renderer.rasterize(html, result.hints);
+      return c.body(png as unknown as ArrayBuffer, 200, {
+        "content-type": "image/png",
+        "cache-control": "no-store",
+      });
     })
     .use("/assets/*", serveStatic({ root: deps.pluginAssetsDir }));
 }

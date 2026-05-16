@@ -289,6 +289,80 @@ Deno.test("GET /images/:identity/png returns 404 for an unknown identity", async
   assertEquals(res.status, 404);
 });
 
+// ─── dev-iteration preview routes ──────────────────────────────────────────
+
+Deno.test("GET /preview returns the live HTML at t=now and does not touch Current state", async () => {
+  const c = clock();
+  const run = spy((ctx: RunContext) => ({
+    state: { intent: ctx.intent },
+    validity: fiveMin,
+    view: (s: { intent: string }) => `<p>${s.intent}</p>`,
+  }));
+  const rasterize = spy(() => Promise.resolve(new Uint8Array([0xaa])));
+
+  const conductor = createConductor({
+    ...defaults({ now: c.now }),
+    plugin: { run },
+    renderer: {
+      deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
+      rasterize,
+    },
+    identityFor: (html) => `id-${html}`,
+  });
+
+  // Prime Current state with a poll, then scrub via /preview. Current state
+  // must not advance — a subsequent /api/display inside the original
+  // validity window still serves the poll's image.
+  const firstPoll = await (await conductor.request("/api/display")).json();
+
+  const preview = await conductor.request("/preview");
+  assertEquals(preview.status, 200);
+  assertEquals(preview.headers.get("content-type")?.startsWith("text/html"), true);
+  assertEquals(await preview.text(), "<p>scrub</p>");
+
+  const secondPoll = await (await conductor.request("/api/display")).json();
+  assertEquals(secondPoll.filename, firstPoll.filename);
+  assertSpyCalls(rasterize, 1); // poll triggered one rasterize; /preview never did
+});
+
+Deno.test("GET /preview/png returns the rasterized PNG and does not touch Current state", async () => {
+  const c = clock();
+  const previewPng = new Uint8Array([0xbb]);
+  const pollPng = new Uint8Array([0xcc]);
+  const pngs = [pollPng, previewPng];
+  let p = 0;
+  const rasterize = spy(() => Promise.resolve(pngs[p++]));
+
+  const conductor = createConductor({
+    ...defaults({ now: c.now }),
+    plugin: {
+      run: (ctx: RunContext) => ({
+        state: { intent: ctx.intent },
+        validity: fiveMin,
+        view: (s: { intent: string }) => `<p>${s.intent}</p>`,
+      }),
+    },
+    renderer: {
+      deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
+      rasterize,
+    },
+    identityFor: (html) => `id-${html}`,
+  });
+
+  const firstPoll = await (await conductor.request("/api/display")).json();
+  // After the poll, Current Image is `pollPng` with identity `id-<p>poll</p>`.
+
+  const preview = await conductor.request("/preview/png");
+  assertEquals(preview.status, 200);
+  assertEquals(preview.headers.get("content-type"), "image/png");
+  assertEquals(new Uint8Array(await preview.arrayBuffer()), previewPng);
+  assertSpyCalls(rasterize, 2); // poll + preview/png both rasterized
+
+  // Current state untouched: /api/display still serves the poll's image.
+  const secondPoll = await (await conductor.request("/api/display")).json();
+  assertEquals(secondPoll.filename, firstPoll.filename);
+});
+
 Deno.test("POST /api/log returns 204 and invokes onDeviceLog with the id header + body", async () => {
   const onDeviceLog = spy((_id: string, _body: string) => {});
   const conductor = createConductor({
