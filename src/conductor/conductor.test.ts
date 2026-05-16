@@ -33,7 +33,6 @@ Deno.test("trigger returns the rasterized PNG for the Plugin's Result", async ()
   const out = await conductor.trigger({
     t: at("2026-05-16T10:00"),
     intent: "poll",
-    device: null,
   });
 
   assertEquals(out.png, expectedPng);
@@ -58,16 +57,14 @@ Deno.test("trigger inside the validity window reuses Current Image without re-in
   });
 
   const t0 = at("2026-05-16T10:00");
-  const first = await conductor.trigger({ t: t0, intent: "poll", device: null });
+  const first = await conductor.trigger({ t: t0, intent: "poll" });
   const second = await conductor.trigger({
     t: t0.add({ minutes: 1 }),
     intent: "poll",
-    device: null,
   });
   const third = await conductor.trigger({
     t: t0.add({ minutes: 4 }),
     intent: "poll",
-    device: null,
   });
 
   assertSpyCalls(run, 1);
@@ -98,7 +95,7 @@ Deno.test("when plugin.run throws, trigger falls back to the error view with its
   });
 
   const t0 = at("2026-05-16T10:00");
-  const out = await conductor.trigger({ t: t0, intent: "poll", device: null });
+  const out = await conductor.trigger({ t: t0, intent: "poll" });
 
   assertSpyCalls(errorView, 1);
   assertEquals(errorView.calls[0].args[0], boom);
@@ -109,7 +106,6 @@ Deno.test("when plugin.run throws, trigger falls back to the error view with its
   const second = await conductor.trigger({
     t: t0.add({ seconds: 20 }),
     intent: "poll",
-    device: null,
   });
   assertSpyCalls(run, 1);
   assertSpyCalls(errorView, 1);
@@ -139,11 +135,10 @@ Deno.test("trigger after expiry rasterizes and replaces Current Image when ident
   });
 
   const t0 = at("2026-05-16T10:00");
-  const first = await conductor.trigger({ t: t0, intent: "poll", device: null });
+  const first = await conductor.trigger({ t: t0, intent: "poll" });
   const second = await conductor.trigger({
     t: t0.add({ minutes: 6 }),
     intent: "poll",
-    device: null,
   });
 
   assertSpyCalls(run, 2);
@@ -174,11 +169,10 @@ Deno.test("trigger after expiry skips rasterize and keeps Current Image when ide
   });
 
   const t0 = at("2026-05-16T10:00");
-  const first = await conductor.trigger({ t: t0, intent: "poll", device: null });
+  const first = await conductor.trigger({ t: t0, intent: "poll" });
   const second = await conductor.trigger({
     t: t0.add({ minutes: 6 }),
     intent: "poll",
-    device: null,
   });
 
   assertSpyCalls(run, 2);

@@ -2,17 +2,11 @@ import { Hono } from "hono";
 import { serveStatic } from "hono/deno";
 import type { Conductor } from "../conductor/conductor.ts";
 import type { HtmlShelf } from "../render/html-shelf.ts";
-import type { DeviceReport } from "../plugin/plugin.ts";
+import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "./request.ts";
-
-export type DeviceReportHolder = {
-  get(): DeviceReport | null;
-  updateFromHeaders(headers: Headers): void;
-};
 
 export type ConductorAppDeps = {
   conductor: Conductor;
-  deviceHolder: DeviceReportHolder;
   htmlShelf: HtmlShelf;
   friendlyId: string;
   pluginAssetsDir: string;
@@ -34,13 +28,10 @@ export function createConductorApp(deps: ConductorAppDeps): Hono {
   });
 
   app.get("/api/display", async (c) => {
-    deps.deviceHolder.updateFromHeaders(c.req.raw.headers);
+    const report = parseDeviceHeaders(c.req.raw.headers, deps.now);
+    if (report) deps.conductor.reportDevice(report);
     const now = deps.now();
-    const out = await deps.conductor.trigger({
-      t: now,
-      intent: "poll",
-      device: deps.deviceHolder.get(),
-    });
+    const out = await deps.conductor.trigger({ t: now, intent: "poll" });
     const secondsUntilExpiry = Math.max(
       1,
       Math.ceil(out.expiresAt.since(now, { largestUnit: "seconds" }).total({ unit: "seconds" })),

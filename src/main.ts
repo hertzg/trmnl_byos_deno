@@ -8,7 +8,6 @@ import {
   PLUGIN_SEED_DIR,
   PORT,
 } from "./config.ts";
-import { createDeviceReportHolder } from "./device.ts";
 import { createConductor } from "./conductor/conductor.ts";
 import ErrorView from "./conductor/error-view.tsx";
 import { deriveHtml } from "./render/derive.ts";
@@ -28,7 +27,6 @@ async function main() {
   const plugin = await loadPlugin(PLUGIN_DIR);
   console.log(`[plugin] loaded from ${PLUGIN_DIR}`);
 
-  const deviceHolder = createDeviceReportHolder();
   const htmlShelf = createHtmlShelf();
 
   const fetchPngFromUrl = createRasterize({
@@ -69,7 +67,6 @@ async function main() {
     "/",
     createConductorApp({
       conductor,
-      deviceHolder,
       htmlShelf,
       friendlyId: FRIENDLY_ID,
       pluginAssetsDir: join(PLUGIN_DIR, "assets"),

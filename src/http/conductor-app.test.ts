@@ -2,7 +2,6 @@ import { assertEquals, assertGreaterOrEqual, assertLessOrEqual } from "@std/asse
 import { spy } from "@std/testing/mock";
 import { createConductorApp } from "./conductor-app.ts";
 import type { Conductor, TriggerOutput } from "../conductor/conductor.ts";
-import { createDeviceReportHolder } from "../device.ts";
 import type { HtmlShelf } from "../render/html-shelf.ts";
 
 const T0 = Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]");
@@ -17,21 +16,16 @@ function buildApp(
     friendlyId?: string;
   } = {},
 ) {
-  const realHolder = createDeviceReportHolder();
-  const holder = {
-    get: realHolder.get,
-    updateFromHeaders: (h: Headers) => realHolder.updateFromHeaders(h, () => T0),
-  };
-
   const out = overrides.triggerOutput ??
     { png: new Uint8Array(), identity: "x", expiresAt: T0 };
+  const conductor: Conductor = overrides.conductor ?? {
+    trigger: () => Promise.resolve(out),
+    getCurrentImage: (id) => (id === out.identity ? out.png : undefined),
+    reportDevice: () => {},
+  };
 
   const app = createConductorApp({
-    conductor: overrides.conductor ?? {
-      trigger: () => Promise.resolve(out),
-      getCurrentImage: (id) => (id === out.identity ? out.png : undefined),
-    },
-    deviceHolder: holder,
+    conductor,
     friendlyId: overrides.friendlyId ?? "ID",
     pluginAssetsDir: "/tmp",
     htmlShelf: overrides.htmlShelf ?? {
@@ -43,7 +37,7 @@ function buildApp(
     now: overrides.now ?? (() => T0),
   });
 
-  return { app, holder };
+  return { app, conductor };
 }
 
 Deno.test("GET /api/setup returns BYOS setup JSON with friendlyId", async () => {
@@ -57,15 +51,17 @@ Deno.test("GET /api/setup returns BYOS setup JSON with friendlyId", async () => 
   assertEquals(body.friendly_id, "MY-DEVICE");
 });
 
-Deno.test("GET /api/display triggers a poll, captures the device headers, and returns image_url / filename / refresh_rate", async () => {
+Deno.test("GET /api/display triggers a poll, forwards parsed DeviceReport to the Conductor, and returns image_url / filename / refresh_rate", async () => {
   const png = new Uint8Array([0x89, 0x50]);
   const expiresAt = T0.add({ minutes: 5 });
   const trigger = spy(() => Promise.resolve({ png, identity: "deadbeefcafef00d", expiresAt }));
+  const reportDevice = spy((_r: unknown) => {});
 
-  const { app, holder } = buildApp({
+  const { app } = buildApp({
     conductor: {
       trigger,
       getCurrentImage: (id) => (id === "deadbeefcafef00d" ? png : undefined),
+      reportDevice,
     },
   });
 
@@ -78,7 +74,30 @@ Deno.test("GET /api/display triggers a poll, captures the device headers, and re
   assertEquals(body.filename, "image-deadbeefcafef00d");
   assertGreaterOrEqual(body.refresh_rate, 299);
   assertLessOrEqual(body.refresh_rate, 300);
-  assertEquals(holder.get()?.id, "AA:BB:CC");
+
+  assertEquals(reportDevice.calls.length, 1);
+  const report = reportDevice.calls[0].args[0] as { id: string };
+  assertEquals(report.id, "AA:BB:CC");
+});
+
+Deno.test("GET /api/display does not call reportDevice when the request has no ID header", async () => {
+  const reportDevice = spy((_r: unknown) => {});
+  const { app } = buildApp({
+    conductor: {
+      trigger: () =>
+        Promise.resolve({
+          png: new Uint8Array(),
+          identity: "x",
+          expiresAt: T0.add({ minutes: 5 }),
+        }),
+      getCurrentImage: () => undefined,
+      reportDevice,
+    },
+  });
+
+  await app.request("/api/display");
+
+  assertEquals(reportDevice.calls.length, 0);
 });
 
 Deno.test("GET /images/:identity/png serves the Current Image PNG when identity matches", async () => {

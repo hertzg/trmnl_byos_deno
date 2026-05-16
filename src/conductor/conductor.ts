@@ -1,4 +1,4 @@
-import type { Plugin, Result, RunContext } from "../plugin/plugin.ts";
+import type { DeviceReport, Plugin, Result, RunContext } from "../plugin/plugin.ts";
 
 // The Conductor is opaque to the Plugin's state shape — `any` here is
 // the orchestrator's "I don't know S, and I shouldn't have to" boundary.
@@ -18,6 +18,16 @@ export type ConductorDeps = {
   errorValidity: Temporal.Duration;
 };
 
+// What the trigger caller supplies — only the values that genuinely vary
+// per call. `device` is intentionally absent: the Conductor owns the
+// latest DeviceReport itself (fed via `reportDevice`) and reads it at
+// trigger time. RunContext is constructed internally before forwarding
+// to Plugin.run.
+export type TriggerInput = {
+  t: Temporal.ZonedDateTime;
+  intent: "poll" | "scrub" | "prerender";
+};
+
 export type TriggerOutput = {
   png: Uint8Array;
   identity: string;
@@ -25,8 +35,9 @@ export type TriggerOutput = {
 };
 
 export type Conductor = {
-  trigger(ctx: RunContext): Promise<TriggerOutput>;
+  trigger(input: TriggerInput): Promise<TriggerOutput>;
   getCurrentImage(identity: string): Uint8Array | undefined;
+  reportDevice(report: DeviceReport): void;
 };
 
 export function createConductor(deps: ConductorDeps): Conductor {
@@ -36,15 +47,19 @@ export function createConductor(deps: ConductorDeps): Conductor {
 
   let currentResult: CurrentResult | null = null;
   let currentImage: CurrentImage | null = null;
+  let latestDevice: DeviceReport | null = null;
 
   return {
     getCurrentImage(identity) {
       return currentImage?.identity === identity ? currentImage.png : undefined;
     },
-    async trigger(ctx) {
+    reportDevice(report) {
+      latestDevice = report;
+    },
+    async trigger(input) {
       if (currentResult && currentImage) {
         const currentExpiry = currentResult.ctx.t.add(currentResult.result.validity);
-        if (Temporal.ZonedDateTime.compare(ctx.t, currentExpiry) < 0) {
+        if (Temporal.ZonedDateTime.compare(input.t, currentExpiry) < 0) {
           return {
             png: currentImage.png,
             identity: currentImage.identity,
@@ -52,6 +67,11 @@ export function createConductor(deps: ConductorDeps): Conductor {
           };
         }
       }
+      const ctx: RunContext = {
+        t: input.t,
+        intent: input.intent,
+        device: latestDevice,
+      };
       // deno-lint-ignore no-explicit-any
       let result: Result<any>;
       try {
@@ -74,7 +94,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
       return {
         png: currentImage.png,
         identity: currentImage.identity,
-        expiresAt: ctx.t.add(result.validity),
+        expiresAt: input.t.add(result.validity),
       };
     },
   };

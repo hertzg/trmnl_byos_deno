@@ -3,29 +3,12 @@
 //
 //   ID, Battery-Voltage, RSSI, FW-Version, Model, Width, Height, ...
 //
-// The Conductor (ADR-0003) builds a fresh RunContext for every trigger and
-// includes the latest DeviceReport in `ctx.device`. This file owns parsing
-// the headers into the DeviceReport shape (declared in src/plugin/plugin.ts)
-// and the closure-bound holder that the HTTP layer updates from the request
-// headers on each poll.
+// The Conductor (ADR-0003) owns the latest DeviceReport itself and stamps
+// it into the RunContext on every trigger. The HTTP layer's /api/display
+// handler calls `parseDeviceHeaders(req.raw.headers)` and, when it gets a
+// non-null report, hands it to `conductor.reportDevice(report)`.
 
 import type { DeviceReport } from "./plugin/plugin.ts";
-
-export type DeviceReportHolder = {
-  get(): DeviceReport | null;
-  updateFromHeaders(headers: Headers, now?: () => Temporal.ZonedDateTime): void;
-};
-
-export function createDeviceReportHolder(): DeviceReportHolder {
-  let state: DeviceReport | null = null;
-  return {
-    get: () => state,
-    updateFromHeaders(headers, now = () => Temporal.Now.zonedDateTimeISO()) {
-      const parsed = parseDeviceHeaders(headers, now);
-      if (parsed) state = parsed;
-    },
-  };
-}
 
 // Linear Li-ion approximation: 4.2 V → 100 %, 3.3 V → 0 %, clamped. Reasonable
 // for an at-a-glance indicator; the discharge curve is non-linear in reality
@@ -53,7 +36,7 @@ function readNumber(headers: Headers, name: string): number | null {
 }
 
 // Returns `null` when the request didn't carry the `ID` header — without it
-// we have no Device identity to attach the report to, so the holder treats
+// we have no Device identity to attach the report to, so the caller treats
 // the request as not-a-Device-poll and keeps its previous state.
 export function parseDeviceHeaders(
   headers: Headers,
