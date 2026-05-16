@@ -16,7 +16,7 @@ import { createCdpRasterize } from "./render/cdp-rasterize.ts";
 import { createRasterize } from "./render/rasterize.ts";
 import { loadPlugin, seedPluginDir } from "./plugin/loader.ts";
 import { Hono } from "hono";
-import { logger } from "hono/logger";
+import { requestId, type RequestIdVariables } from "hono/request-id";
 
 async function main() {
   if (PLUGIN_SEED_DIR) {
@@ -43,13 +43,27 @@ async function main() {
     now: () => Temporal.Now.zonedDateTimeISO(),
   });
 
-  const app = new Hono();
+  const app = new Hono<{ Variables: RequestIdVariables }>();
 
-  app.use(logger());
+  // requestId() must run first so the access logger and onError can both
+  // read c.get("requestId"). It also sets the X-Request-Id response header
+  // for client-side correlation.
+  app.use("*", requestId());
+  app.use("*", async (c, next) => {
+    const t0 = Date.now();
+    await next();
+    const id = c.get("requestId");
+    console.log(
+      `[${id}] ${c.req.method} ${new URL(c.req.url).pathname} → ${c.res.status} ${
+        Date.now() - t0
+      }ms`,
+    );
+  });
 
   app.onError((err, c) => {
-    console.error("[handler]", err);
-    return c.json({ error: "internal" }, 500);
+    const id = c.get("requestId");
+    console.error(`[${id}] [handler]`, err);
+    return c.json({ error: "internal", requestId: id }, 500);
   });
 
   app
