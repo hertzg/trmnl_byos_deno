@@ -14,6 +14,8 @@ export type ConductorDeps = {
   plugin: Plugin<any>;
   renderer: RendererDep;
   identityFor: (html: string) => string;
+  errorView: (err: Error) => unknown;
+  errorValidity: Temporal.Duration;
 };
 
 export type TriggerOutput = {
@@ -44,7 +46,18 @@ export function createConductor(deps: ConductorDeps): Conductor {
       ) {
         return { png: currentImage.png, identity: currentImage.identity };
       }
-      const result = await deps.plugin.run(ctx);
+      // deno-lint-ignore no-explicit-any
+      let result: Result<any>;
+      try {
+        result = await deps.plugin.run(ctx);
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        result = {
+          state: error,
+          validity: deps.errorValidity,
+          view: deps.errorView,
+        };
+      }
       const html = await deps.renderer.deriveHtml(result);
       const identity = deps.identityFor(html);
       currentResult = { ctx, result };
