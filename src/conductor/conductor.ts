@@ -13,7 +13,7 @@ export type RendererDep = {
 export type ConductorDeps = {
   plugin: Plugin<any>;
   renderer: RendererDep;
-  identityFor: (html: string) => string;
+  identityFor: (html: string) => string | Promise<string>;
   errorView: (err: Error) => unknown;
   errorValidity: Temporal.Duration;
 };
@@ -59,7 +59,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
         };
       }
       const html = await deps.renderer.deriveHtml(result);
-      const identity = deps.identityFor(html);
+      const identity = await deps.identityFor(html);
       currentResult = { ctx, result };
       if (currentImage?.identity !== identity) {
         const png = await deps.renderer.rasterize(html, result.hints);
