@@ -29,7 +29,7 @@ Deno.test("rasterize shelves html under a generated id, hands CDP /preview/:id o
   assertEquals(png, expectedPng);
   assertEquals(htmlSeenViaPreview, "<p>render me</p>");
   assertSpyCalls(fetchPngFromUrl, 1);
-  assertEquals(urlFetched?.startsWith("http://internal:8080/preview/"), true);
+  assertEquals(urlFetched?.startsWith("http://internal:8080/__internal/render/"), true);
 });
 
 Deno.test("rasterize removes the shelf entry once the PNG is back so the id 404s afterwards", async () => {
@@ -74,7 +74,7 @@ Deno.test("preview route 404s for an unknown id", async () => {
     fetchPngFromUrl: () => Promise.resolve(new Uint8Array()),
   });
 
-  const res = await bridge.app.request("/preview/never-shelved");
+  const res = await bridge.app.request("/__internal/render/never-shelved");
   await res.body?.cancel();
 
   assertEquals(res.status, 404);

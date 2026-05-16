@@ -26,6 +26,12 @@ export type CdpRasterizeDeps = {
 export function createCdpRasterize(deps: CdpRasterizeDeps): CdpRasterize {
   const shelf = new Map<string, string>();
 
+  // The route lives under an explicit `__internal` prefix so it can never
+  // collide with the application's `/preview` (live HTML at t=now) and
+  // `/preview/png` (live PNG at t=now) dev-iteration routes. The path is
+  // chosen and used in exactly one place; only CDP ever fetches it.
+  const RENDER_PATH = "/__internal/render";
+
   const rasterize = async (
     html: string,
     _hints?: Record<string, unknown>,
@@ -33,13 +39,13 @@ export function createCdpRasterize(deps: CdpRasterizeDeps): CdpRasterize {
     const id = crypto.randomUUID();
     shelf.set(id, html);
     try {
-      return await deps.fetchPngFromUrl(`${deps.origin}/preview/${id}`);
+      return await deps.fetchPngFromUrl(`${deps.origin}${RENDER_PATH}/${id}`);
     } finally {
       shelf.delete(id);
     }
   };
 
-  const app = new Hono().get("/preview/:id", (c) => {
+  const app = new Hono().get(`${RENDER_PATH}/:id`, (c) => {
     const html = shelf.get(c.req.param("id"));
     if (html === undefined) return c.body(null, 404);
     return c.html(html, 200, { "cache-control": "no-store" });
