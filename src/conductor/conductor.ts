@@ -27,30 +27,12 @@ export type ConductorDeps = {
   now: () => Temporal.ZonedDateTime;
 };
 
-// What the trigger caller supplies — only the values that genuinely vary
-// per call. `device` is intentionally absent: the Conductor owns the
-// latest DeviceReport itself (fed via `reportDevice`) and reads it at
-// trigger time. RunContext is constructed internally before forwarding
-// to Plugin.run.
-export type TriggerInput = {
-  t: Temporal.ZonedDateTime;
-  intent: "poll" | "scrub" | "prerender";
-};
-
-export type TriggerOutput = {
-  png: Uint8Array;
-  identity: string;
-  expiresAt: Temporal.ZonedDateTime;
-};
-
-export type Conductor = {
-  trigger(input: TriggerInput): Promise<TriggerOutput>;
-  getCurrentImage(identity: string): Uint8Array | undefined;
-  reportDevice(report: DeviceReport): void;
-  app: Hono;
-};
-
-export function createConductor(deps: ConductorDeps): Conductor {
+// `createConductor` returns a Hono directly. The orchestration logic
+// (trigger / reportDevice / getCurrentImage) lives entirely inside the
+// factory closure — its only external surface is HTTP. Nothing outside
+// this module needs to invoke the orchestration programmatically; the
+// routes are the seam.
+export function createConductor(deps: ConductorDeps): Hono {
   // deno-lint-ignore no-explicit-any
   type CurrentResult = { ctx: RunContext; result: Result<any> };
   type CurrentImage = { png: Uint8Array; identity: string };
@@ -59,71 +41,65 @@ export function createConductor(deps: ConductorDeps): Conductor {
   let currentImage: CurrentImage | null = null;
   let latestDevice: DeviceReport | null = null;
 
-  const conductor: Omit<Conductor, "app"> = {
-    getCurrentImage(identity) {
-      return currentImage?.identity === identity ? currentImage.png : undefined;
-    },
-    reportDevice(report) {
-      latestDevice = report;
-    },
-    async trigger(input) {
-      if (currentResult && currentImage) {
-        const currentExpiry = currentResult.ctx.t.add(currentResult.result.validity);
-        if (Temporal.ZonedDateTime.compare(input.t, currentExpiry) < 0) {
-          return {
-            png: currentImage.png,
-            identity: currentImage.identity,
-            expiresAt: currentExpiry,
-          };
-        }
-      }
-      const ctx: RunContext = {
-        t: input.t,
-        intent: input.intent,
-        device: latestDevice,
-      };
-      // deno-lint-ignore no-explicit-any
-      let result: Result<any>;
-      try {
-        result = await deps.plugin.run(ctx);
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error(String(err));
-        result = {
-          state: error,
-          validity: deps.errorValidity,
-          view: deps.errorView,
+  async function trigger(input: {
+    t: Temporal.ZonedDateTime;
+    intent: "poll" | "scrub" | "prerender";
+  }): Promise<{ png: Uint8Array; identity: string; expiresAt: Temporal.ZonedDateTime }> {
+    if (currentResult && currentImage) {
+      const currentExpiry = currentResult.ctx.t.add(currentResult.result.validity);
+      if (Temporal.ZonedDateTime.compare(input.t, currentExpiry) < 0) {
+        return {
+          png: currentImage.png,
+          identity: currentImage.identity,
+          expiresAt: currentExpiry,
         };
       }
-      const html = await deps.renderer.deriveHtml(result);
-      const identity = await deps.identityFor(html);
-      currentResult = { ctx, result };
-      if (currentImage?.identity !== identity) {
-        const png = await deps.renderer.rasterize(html, result.hints);
-        currentImage = { png, identity };
-      }
-      return {
-        png: currentImage.png,
-        identity: currentImage.identity,
-        expiresAt: input.t.add(result.validity),
+    }
+    const ctx: RunContext = {
+      t: input.t,
+      intent: input.intent,
+      device: latestDevice,
+    };
+    // deno-lint-ignore no-explicit-any
+    let result: Result<any>;
+    try {
+      result = await deps.plugin.run(ctx);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      result = {
+        state: error,
+        validity: deps.errorValidity,
+        view: deps.errorView,
       };
-    },
-  };
+    }
+    const html = await deps.renderer.deriveHtml(result);
+    const identity = await deps.identityFor(html);
+    currentResult = { ctx, result };
+    if (currentImage?.identity !== identity) {
+      const png = await deps.renderer.rasterize(html, result.hints);
+      currentImage = { png, identity };
+    }
+    return {
+      png: currentImage.png,
+      identity: currentImage.identity,
+      expiresAt: input.t.add(result.validity),
+    };
+  }
 
-  const app = new Hono()
-    .get("/api/setup", (c) => {
-      return c.json({
+  return new Hono()
+    .get("/api/setup", (c) =>
+      c.json({
         status: 200,
         api_key: "byos",
         friendly_id: deps.friendlyId,
         image_url: `${publicOrigin(c)}/images/setup/png`,
         message: "Welcome",
-      });
-    })
+      }))
     .get("/api/display", async (c) => {
       const report = parseDeviceHeaders(c.req.raw.headers, deps.now);
-      if (report) conductor.reportDevice(report);
+      if (report) latestDevice = report;
       const now = deps.now();
-      const out = await conductor.trigger({ t: now, intent: "poll" });
+      const out = await trigger({ t: now, intent: "poll" });
       const secondsUntilExpiry = Math.max(
         1,
         Math.ceil(out.expiresAt.since(now, { largestUnit: "seconds" }).total({ unit: "seconds" })),
@@ -147,11 +123,10 @@ export function createConductor(deps: ConductorDeps): Conductor {
       return c.body(null, 204);
     })
     .get("/images/:identity/png", (c) => {
-      const png = conductor.getCurrentImage(c.req.param("identity"));
+      const id = c.req.param("identity");
+      const png = currentImage?.identity === id ? currentImage.png : undefined;
       if (png === undefined) return c.body(null, 404);
       return c.body(png as unknown as ArrayBuffer, 200, { "content-type": "image/png" });
     })
     .use("/assets/*", serveStatic({ root: deps.pluginAssetsDir }));
-
-  return { ...conductor, app };
 }

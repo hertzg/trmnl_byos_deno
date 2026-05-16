@@ -58,7 +58,7 @@ async function main() {
   });
 
   app
-    .route("/", conductor.app)
+    .route("/", conductor)
     .route("/", cdp.app);
 
   console.log(`trmnl-byos-deno on :${PORT}`);

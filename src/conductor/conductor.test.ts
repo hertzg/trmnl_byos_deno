@@ -7,7 +7,22 @@ const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`)
 const T0 = at("2026-05-16T10:00");
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
 
-function defaults(): Pick<
+// `clock()` returns a mutable `now()` thunk + a setter so tests can advance
+// time between requests (the validity-window and identity-skip tests need
+// successive /api/display calls to land at different `t` values).
+function clock(initial: Temporal.ZonedDateTime = T0) {
+  let now = initial;
+  return {
+    now: () => now,
+    advance(by: Temporal.DurationLike) {
+      now = now.add(by);
+    },
+  };
+}
+
+function defaults(
+  overrides: Partial<ConductorDeps> = {},
+): Pick<
   ConductorDeps,
   "errorView" | "errorValidity" | "friendlyId" | "pluginAssetsDir" | "now"
 > {
@@ -17,182 +32,172 @@ function defaults(): Pick<
     friendlyId: "ID",
     pluginAssetsDir: "/tmp",
     now: () => T0,
+    ...overrides,
   };
 }
 
-// ─── core orchestration ────────────────────────────────────────────────────
+// ─── orchestration via HTTP ────────────────────────────────────────────────
 
-Deno.test("trigger returns the rasterized PNG for the Plugin's Result", async () => {
-  const expectedPng = new Uint8Array([1, 2, 3]);
+Deno.test("first poll calls run + deriveHtml + rasterize and the resulting PNG is served by /images/:identity/png", async () => {
+  const png = new Uint8Array([1, 2, 3]);
   const run = spy(() => ({
     state: { msg: "hi" },
     validity: fiveMin,
     view: (s: { msg: string }) => `<p>${s.msg}</p>`,
   }));
-  const rasterize = spy(() => Promise.resolve(expectedPng));
+  const deriveHtml = spy((r: Result<{ msg: string }>) => String(r.view(r.state)));
+  const rasterize = spy(() => Promise.resolve(png));
 
   const conductor = createConductor({
     ...defaults(),
     plugin: { run },
-    renderer: {
-      deriveHtml: (r: Result<{ msg: string }>) => String(r.view(r.state)),
-      rasterize,
-    },
+    renderer: { deriveHtml, rasterize },
     identityFor: () => "id",
   });
 
-  const out = await conductor.trigger({ t: T0, intent: "poll" });
+  const display = await conductor.request("/api/display");
+  const body = await display.json();
+  const identity = body.filename.replace(/^image-/, "");
+  const imageRes = await conductor.request(`/images/${identity}/png`);
 
-  assertEquals(out.png, expectedPng);
+  assertEquals(identity, "id");
   assertSpyCalls(run, 1);
+  assertSpyCalls(deriveHtml, 1);
   assertSpyCalls(rasterize, 1);
+  assertEquals(new Uint8Array(await imageRes.arrayBuffer()), png);
 });
 
-Deno.test("trigger inside the validity window reuses Current Image without re-invoking collaborators", async () => {
+Deno.test("polls inside the validity window reuse the Current Image without re-invoking the Plugin or rasterize", async () => {
+  const c = clock();
   const run = spy(() => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }));
   const deriveHtml = spy((r: Result<unknown>) => String(r.view(r.state)));
   const rasterize = spy(() => Promise.resolve(new Uint8Array([7])));
 
   const conductor = createConductor({
-    ...defaults(),
+    ...defaults({ now: c.now }),
     plugin: { run },
     renderer: { deriveHtml, rasterize },
     identityFor: (html) => html,
   });
 
-  const first = await conductor.trigger({ t: T0, intent: "poll" });
-  const second = await conductor.trigger({ t: T0.add({ minutes: 1 }), intent: "poll" });
-  const third = await conductor.trigger({ t: T0.add({ minutes: 4 }), intent: "poll" });
+  await (await conductor.request("/api/display")).body?.cancel();
+  c.advance({ minutes: 1 });
+  await (await conductor.request("/api/display")).body?.cancel();
+  c.advance({ minutes: 3 });
+  await (await conductor.request("/api/display")).body?.cancel();
 
   assertSpyCalls(run, 1);
   assertSpyCalls(deriveHtml, 1);
   assertSpyCalls(rasterize, 1);
-  assertEquals(second.png, first.png);
-  assertEquals(third.png, first.png);
-  assertEquals(second.identity, first.identity);
 });
 
-Deno.test("when plugin.run throws, trigger falls back to the error view with its configured validity", async () => {
-  const errorPng = new Uint8Array([0xee]);
-  const boom = new Error("boom");
-
-  const run = spy(() => {
-    throw boom;
-  });
-  const errorView = spy((_err: Error) => "<p>error</p>");
-  const deriveHtml = spy((r: Result<unknown>) => String(r.view(r.state)));
-  const rasterize = spy(() => Promise.resolve(errorPng));
-
-  const conductor = createConductor({
-    ...defaults(),
-    plugin: { run },
-    renderer: { deriveHtml, rasterize },
-    identityFor: (html) => `id-${html}`,
-    errorView,
-  });
-
-  const out = await conductor.trigger({ t: T0, intent: "poll" });
-
-  assertSpyCalls(errorView, 1);
-  assertEquals(errorView.calls[0].args[0], boom);
-  assertEquals(out.png, errorPng);
-  assertEquals(out.identity, "id-<p>error</p>");
-
-  const second = await conductor.trigger({ t: T0.add({ seconds: 20 }), intent: "poll" });
-  assertSpyCalls(run, 1);
-  assertSpyCalls(errorView, 1);
-  assertSpyCalls(rasterize, 1);
-  assertEquals(second.png, errorPng);
-});
-
-Deno.test("trigger after expiry rasterizes and replaces Current Image when identity differs", async () => {
+Deno.test("poll after expiry rasterizes a fresh Current Image when the derived HTML's identity differs", async () => {
+  const c = clock();
   const pngs = [new Uint8Array([1]), new Uint8Array([2])];
   const run = spy(() => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }));
   const htmls = ["a", "b"];
-  let derive = 0;
-  const deriveHtml = spy(() => htmls[derive++]);
-  let raster = 0;
-  const rasterize = spy(() => Promise.resolve(pngs[raster++]));
+  let i = 0;
+  const deriveHtml = spy(() => htmls[i++]);
+  let j = 0;
+  const rasterize = spy(() => Promise.resolve(pngs[j++]));
 
   const conductor = createConductor({
-    ...defaults(),
+    ...defaults({ now: c.now }),
     plugin: { run },
     renderer: { deriveHtml, rasterize },
     identityFor: (html) => `id-${html}`,
   });
 
-  const first = await conductor.trigger({ t: T0, intent: "poll" });
-  const second = await conductor.trigger({ t: T0.add({ minutes: 6 }), intent: "poll" });
+  await (await conductor.request("/api/display")).body?.cancel();
+  c.advance({ minutes: 6 });
+  await (await conductor.request("/api/display")).body?.cancel();
 
   assertSpyCalls(run, 2);
   assertSpyCalls(deriveHtml, 2);
   assertSpyCalls(rasterize, 2);
-  assertEquals(first.png, pngs[0]);
-  assertEquals(second.png, pngs[1]);
+
+  // The Current Image is now the second PNG; /images/id-b/png returns it.
+  const res = await conductor.request("/images/id-b/png");
+  assertEquals(new Uint8Array(await res.arrayBuffer()), pngs[1]);
 });
 
-Deno.test("trigger after expiry skips rasterize and keeps Current Image when identity matches", async () => {
+Deno.test("poll after expiry skips rasterize and keeps the Current Image when the derived HTML's identity matches", async () => {
+  const c = clock();
   const expectedPng = new Uint8Array([42]);
   const run = spy(() => ({ state: {}, validity: fiveMin, view: () => "<p>stable</p>" }));
   const deriveHtml = spy((r: Result<unknown>) => String(r.view(r.state)));
   const rasterize = spy(() => Promise.resolve(expectedPng));
 
   const conductor = createConductor({
-    ...defaults(),
+    ...defaults({ now: c.now }),
     plugin: { run },
     renderer: { deriveHtml, rasterize },
     identityFor: () => "stable-identity",
   });
 
-  const first = await conductor.trigger({ t: T0, intent: "poll" });
-  const second = await conductor.trigger({ t: T0.add({ minutes: 6 }), intent: "poll" });
+  await (await conductor.request("/api/display")).body?.cancel();
+  c.advance({ minutes: 6 });
+  await (await conductor.request("/api/display")).body?.cancel();
 
   assertSpyCalls(run, 2);
   assertSpyCalls(deriveHtml, 2);
   assertSpyCalls(rasterize, 1);
-  assertEquals(second.png, first.png);
+
+  const res = await conductor.request("/images/stable-identity/png");
+  assertEquals(new Uint8Array(await res.arrayBuffer()), expectedPng);
 });
 
-// ─── HTTP sub-app surface ──────────────────────────────────────────────────
+Deno.test("when Plugin.run throws, the error view is rendered and reused inside its short validity window", async () => {
+  const c = clock();
+  const errorPng = new Uint8Array([0xee]);
+  const boom = new Error("boom");
 
-function buildHttp(
-  overrides: {
-    png?: Uint8Array;
-    identity?: string;
-    validity?: Temporal.Duration;
-    friendlyId?: string;
-    onDeviceLog?: (id: string, body: string) => void;
-    // deno-lint-ignore no-explicit-any
-    runImpl?: (ctx: RunContext) => Result<any> | Promise<Result<any>>;
-  } = {},
-) {
-  const png = overrides.png ?? new Uint8Array([0xff]);
-  const identity = overrides.identity ?? "deadbeefcafef00d";
-  const validity = overrides.validity ?? fiveMin;
-
-  return createConductor({
-    ...defaults(),
-    friendlyId: overrides.friendlyId ?? "ID",
-    onDeviceLog: overrides.onDeviceLog,
-    plugin: {
-      run: overrides.runImpl ?? (() => ({
-        state: {},
-        validity,
-        view: () => `<p>${identity}</p>`,
-      })),
-    },
-    renderer: {
-      deriveHtml: (r) => String(r.view(r.state)),
-      rasterize: () => Promise.resolve(png),
-    },
-    identityFor: () => identity,
+  const run = spy(() => {
+    throw boom;
   });
-}
+  const errorView = spy((_err: Error) => "error");
+  const deriveHtml = spy((r: Result<unknown>) => String(r.view(r.state)));
+  const rasterize = spy(() => Promise.resolve(errorPng));
 
-Deno.test("HTTP GET /api/setup returns BYOS setup JSON with friendlyId", async () => {
-  const conductor = buildHttp({ friendlyId: "MY-DEVICE" });
+  const conductor = createConductor({
+    ...defaults({ now: c.now }),
+    plugin: { run },
+    renderer: { deriveHtml, rasterize },
+    identityFor: (html) => `id-${html}`,
+    errorView,
+  });
 
-  const res = await conductor.app.request("/api/setup");
+  const first = await (await conductor.request("/api/display")).json();
+  c.advance({ seconds: 20 });
+  const second = await (await conductor.request("/api/display")).json();
+
+  // The error result's validity (30s) governs reuse: 20s < 30s so the
+  // second call short-circuits — no further run/errorView/rasterize.
+  assertSpyCalls(run, 1);
+  assertSpyCalls(errorView, 1);
+  assertSpyCalls(rasterize, 1);
+  assertEquals(errorView.calls[0].args[0], boom);
+  assertEquals(second.filename, first.filename);
+
+  const imgUrl = new URL(first.image_url);
+  const img = await conductor.request(imgUrl.pathname);
+  assertEquals(new Uint8Array(await img.arrayBuffer()), errorPng);
+});
+
+// ─── BYOS surface ──────────────────────────────────────────────────────────
+
+Deno.test("GET /api/setup returns BYOS setup JSON with friendlyId", async () => {
+  const conductor = createConductor({
+    ...defaults({ friendlyId: "MY-DEVICE" }),
+    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "" }) },
+    renderer: {
+      deriveHtml: () => "",
+      rasterize: () => Promise.resolve(new Uint8Array()),
+    },
+    identityFor: () => "x",
+  });
+
+  const res = await conductor.request("/api/setup");
   const body = await res.json();
 
   assertEquals(res.status, 200);
@@ -200,14 +205,18 @@ Deno.test("HTTP GET /api/setup returns BYOS setup JSON with friendlyId", async (
   assertEquals(body.friendly_id, "MY-DEVICE");
 });
 
-Deno.test("HTTP GET /api/display returns image_url / filename / refresh_rate derived from the trigger output", async () => {
-  const conductor = buildHttp({
-    png: new Uint8Array([0x89, 0x50]),
-    identity: "deadbeefcafef00d",
-    validity: fiveMin,
+Deno.test("GET /api/display returns image_url / filename / refresh_rate derived from the trigger output", async () => {
+  const conductor = createConductor({
+    ...defaults(),
+    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+    renderer: {
+      deriveHtml: () => "<p>x</p>",
+      rasterize: () => Promise.resolve(new Uint8Array([0x89])),
+    },
+    identityFor: () => "deadbeefcafef00d",
   });
 
-  const res = await conductor.app.request("/api/display", { headers: { id: "AA:BB:CC" } });
+  const res = await conductor.request("/api/display", { headers: { id: "AA:BB:CC" } });
   const body = await res.json();
 
   assertEquals(res.status, 200);
@@ -218,61 +227,78 @@ Deno.test("HTTP GET /api/display returns image_url / filename / refresh_rate der
   assertLessOrEqual(body.refresh_rate, 300);
 });
 
-Deno.test("HTTP GET /api/display forwards a parsed DeviceReport into the next Plugin.run via ctx.device", async () => {
-  const runSpy = spy((ctx: RunContext) => ({
+Deno.test("GET /api/display forwards a parsed DeviceReport into the next Plugin.run via ctx.device", async () => {
+  const run = spy((ctx: RunContext) => ({
     state: { seenId: ctx.device?.id ?? null },
     validity: fiveMin,
     view: () => "<p>x</p>",
   }));
-  const conductor = buildHttp({ runImpl: runSpy });
+  const conductor = createConductor({
+    ...defaults(),
+    plugin: { run },
+    renderer: {
+      deriveHtml: () => "<p>x</p>",
+      rasterize: () => Promise.resolve(new Uint8Array()),
+    },
+    identityFor: () => "x",
+  });
 
-  await conductor.app.request("/api/display", { headers: { id: "AA:BB:CC" } });
+  await (await conductor.request("/api/display", { headers: { id: "AA:BB:CC" } })).body?.cancel();
 
-  assertEquals(runSpy.calls.length, 1);
-  assertEquals(runSpy.calls[0].args[0].device?.id, "AA:BB:CC");
+  assertEquals(run.calls.length, 1);
+  assertEquals(run.calls[0].args[0].device?.id, "AA:BB:CC");
 });
 
-Deno.test("HTTP GET /api/display leaves ctx.device null when the request has no ID header", async () => {
-  const runSpy = spy((_ctx: RunContext) => ({
+Deno.test("GET /api/display leaves ctx.device null when the request has no ID header", async () => {
+  const run = spy((_ctx: RunContext) => ({
     state: {},
     validity: fiveMin,
     view: () => "<p>x</p>",
   }));
-  const conductor = buildHttp({ runImpl: runSpy });
+  const conductor = createConductor({
+    ...defaults(),
+    plugin: { run },
+    renderer: {
+      deriveHtml: () => "<p>x</p>",
+      rasterize: () => Promise.resolve(new Uint8Array()),
+    },
+    identityFor: () => "x",
+  });
 
-  await conductor.app.request("/api/display");
+  await (await conductor.request("/api/display")).body?.cancel();
 
-  assertEquals(runSpy.calls.length, 1);
-  assertEquals(runSpy.calls[0].args[0].device, null);
+  assertEquals(run.calls.length, 1);
+  assertEquals(run.calls[0].args[0].device, null);
 });
 
-Deno.test("HTTP GET /images/:identity/png serves the Current Image PNG when identity matches", async () => {
-  const png = new Uint8Array([1, 2, 3, 4]);
-  const conductor = buildHttp({ png, identity: "deadbeef00000000" });
+Deno.test("GET /images/:identity/png returns 404 for an unknown identity", async () => {
+  const conductor = createConductor({
+    ...defaults(),
+    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+    renderer: {
+      deriveHtml: () => "<p>x</p>",
+      rasterize: () => Promise.resolve(new Uint8Array()),
+    },
+    identityFor: () => "knownid000000000",
+  });
 
-  await conductor.app.request("/api/display");
-  const res = await conductor.app.request("/images/deadbeef00000000/png");
-
-  assertEquals(res.status, 200);
-  assertEquals(res.headers.get("content-type"), "image/png");
-  assertEquals(new Uint8Array(await res.arrayBuffer()), png);
-});
-
-Deno.test("HTTP GET /images/:identity/png returns 404 for an unknown identity", async () => {
-  const conductor = buildHttp({ identity: "knownid000000000" });
-
-  await conductor.app.request("/api/display");
-  const res = await conductor.app.request("/images/somethingelse/png");
+  await (await conductor.request("/api/display")).body?.cancel();
+  const res = await conductor.request("/images/somethingelse/png");
   await res.body?.cancel();
 
   assertEquals(res.status, 404);
 });
 
-Deno.test("HTTP POST /api/log returns 204 and invokes onDeviceLog with the id header + body", async () => {
+Deno.test("POST /api/log returns 204 and invokes onDeviceLog with the id header + body", async () => {
   const onDeviceLog = spy((_id: string, _body: string) => {});
-  const conductor = buildHttp({ onDeviceLog });
+  const conductor = createConductor({
+    ...defaults({ onDeviceLog }),
+    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "" }) },
+    renderer: { deriveHtml: () => "", rasterize: () => Promise.resolve(new Uint8Array()) },
+    identityFor: () => "x",
+  });
 
-  const res = await conductor.app.request("/api/log", {
+  const res = await conductor.request("/api/log", {
     method: "POST",
     headers: { id: "AA:BB:CC" },
     body: "hello",
