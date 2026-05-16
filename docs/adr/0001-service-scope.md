@@ -32,7 +32,7 @@ project.
 
 - The **Plugin** contract can be small and prescriptive without supporting a long tail of existing
   Plugins.
-- Code uses single-Device assumptions where they simplify (one Current Sample, one device-zone, one
+- Code uses single-Device assumptions where they simplify (one Current Result, one device-zone, one
   panel profile).
 - ADRs describe the _intended_ design, not a backwards-compatible evolution path.
 - Anyone forking inherits the same posture: free to break things in their fork.

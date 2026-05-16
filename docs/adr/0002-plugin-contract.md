@@ -1,4 +1,4 @@
-# 0002 — Plugin contract: `snapshot(t)` + `present(sample)`
+# 0002 — Plugin contract: `run(ctx) → Result`
 
 **Status:** Accepted
 
@@ -6,44 +6,78 @@
 
 We need a **Plugin** contract that:
 
-- Makes "what would the Plugin show at time `t`?" a well-defined question (so the dashboard can
-  scrub time, not just preview "now").
-- Exposes structured public state for composition (so a Super-**Plugin** can route on data, not just
-  delegate rendering).
-- Supports cleaner caching than "hash the rendered HTML" (which has false-different failures on
-  whitespace and false-same failures on mutable external assets).
+- Makes "what would the Plugin show for this context?" a well-defined question. The context's `t`
+  may be wall-clock now (a Device poll), arbitrary (a dashboard scrub), or near-future (a Conductor
+  prerender warm-up). One question, three callers.
+- Exposes structured public data so a Super-**Plugin** can compose other Plugins as plain code —
+  inspect their Results for routing decisions, weave their views into its own.
+- Supports cleaner caching than "hash the rendered HTML" alone (which has false-different failures
+  on whitespace and false-same failures on mutable external assets).
 - Doesn't bake in single-Device assumptions, lifecycle ceremony, or Server-injected dependencies
   that constrain Plugin author choice.
-- Separates the Plugin's two natural concerns: **what is true** (data side) and **how should that be
-  represented as an image** (rendering specification side).
+- Stays as small as possible: one function-of-context that does the Plugin's job.
+
+A previous shape split this surface into `snapshot(t) → Sample` (data) and `present(sample) →
+Presentation` (rendering spec). That separation was always called as a pair, did not pay for itself
+on the leaf-Plugin side (99% of `present` returned a static view), and made Super-Plugin
+composition heavier than it needed to be. The current decision collapses the two into one method.
 
 ## Decision
 
-The Plugin's architectural surface is two methods that are always called as a pair:
+The Plugin's architectural surface is a single method:
 
 ```ts
-type Sample<S> = { state: S; validity: Temporal.Duration };
-type Presentation<S> = {
+type RunContext = {
+  t: Temporal.ZonedDateTime;
+  intent: "poll" | "scrub" | "prerender" /* extensible, non-breaking */;
+  device: DeviceReport; // heartbeat-derived telemetry; shape evolves
+  // open-shape: more fields may be added non-breakingly over time
+};
+
+type Result<S> = {
+  state: S;
+  validity: Temporal.Duration;
+  hints?: Hints;
   view: (state: S) => JSX.Element;
-  // future hint fields: dither?, viewport?, filters?, ...
 };
 
 type Plugin<S> = {
-  snapshot(t: Temporal.ZonedDateTime): Sample<S> | Promise<Sample<S>>;
-  present(sample: Sample<S>): Presentation<S>;
+  run(ctx: RunContext): Result<S> | Promise<Result<S>>;
 };
 ```
 
-- `snapshot(t)` is the **data side**. Returns a **Sample** — the Plugin's public state at moment
-  `t`, plus the duration that state stands for. Commitment: the Sample returned for `t` is the right
-  answer for `[t, t + validity)`.
-- `present(sample)` is the **rendering-spec side**. Returns a **Presentation** — the view component
-  the Renderer should invoke with `sample.state`, plus any rasterization hints. The Server always
-  calls `present` immediately after `snapshot`; the two are paired.
+`run(ctx)` returns a `Result` carrying:
 
-The Server invokes the resulting Presentation by constructing
-`<presentation.view {...sample.state} />`, rendering it to HTML, and feeding that into the render
-pipeline (ADR-0003).
+- `state` — the Plugin's public data shape at the requested moment, given the supplied context.
+- `validity` — the duration that Result stands for. Commitment: the Result is the right answer for
+  `[ctx.t, ctx.t + validity)`.
+- `hints` (optional) — rasterization hints the Renderer may consult.
+- `view` — the JSX component the Renderer invokes with `state`.
+
+### Why `view` rides in the Result
+
+A briefly-entertained shape had `Plugin = { run, view }` with `view` as static config. Two reasons
+to put `view` on the Result instead:
+
+1. View and state are type-locked (`view: (state: S) => JSXElement`). Storing them together is
+   structurally honest; storing them apart forces every caller to pair them by convention.
+2. It makes Super-Plugin composition mechanical. A delegating Super-Plugin can pass a sub-Plugin's
+   full Result through with no wrapper code (`run: (ctx) => sub.run(ctx)`). With `view` as separate
+   config the Super-Plugin needs factory-scope sub-Plugin references and a static `view` that
+   closes over them — significantly more boilerplate for the routing case.
+
+The cost is one extra line in the typical leaf Plugin's `run` return (`view: MyView`). That's a
+small fixed cost for a meaningful composition gain.
+
+### `RunContext` is always passed and open-shaped
+
+`run` always receives a `RunContext` (never just `t`). Plugins that only care about `t` destructure
+`({ t })`; everything else they ignore. The bag is documented as open: fields may be added
+non-breakingly because every Plugin already receives the full record. Adding a field is
+non-breaking; removing one is.
+
+The initial fields are `t`, `intent`, and `device`. `intent` resolves the previously-open question
+of whether a Plugin should know it's being asked for a real poll vs. a scrub — yes, via this field.
 
 ### Module shape
 
@@ -53,7 +87,7 @@ Server's single loaded config:
 ```ts
 export default function (config: unknown): Plugin<MyState> {
   // use whatever you need from config; factory closure holds internal state
-  return { snapshot, present };
+  return { run };
 }
 ```
 
@@ -62,87 +96,69 @@ detail) and passes it to the factory once. The config is typed `unknown` at the 
 the Plugin asserts whatever shape it expects. Plugins that don't need config ignore the argument.
 
 **Importing a Plugin module is side-effect-free** — only the factory call activates anything. The
-config blob is the only thing the Server hands the Plugin; there is no `services` object of helpers,
-no device-state accessors, no render primitives (see ADR-0006).
+config blob is the only thing the Server hands the Plugin; there is no `services` object of
+helpers, no device-state accessors, no render primitives (see ADR-0006).
 
 ### Value objects on the boundary
 
-- `t: Temporal.ZonedDateTime` — zone-aware. The Server is configured with the Device's zone and
-  passes it through.
-- `validity: Temporal.Duration` — unit-explicit; arithmetic-safe (`t.add(validity)`).
+- `RunContext.t: Temporal.ZonedDateTime` — zone-aware. The Server is configured with the Device's
+  zone and passes it through.
+- `Result.validity: Temporal.Duration` — unit-explicit; arithmetic-safe
+  (`ctx.t.add(result.validity)`).
 
 `Date` is not used at the contract boundary.
 
 ### Composition
 
-A Super-Plugin imports other Plugins and composes them as plain code. Its own `snapshot` calls
-sub-Plugin `snapshot`s (inspecting their Samples for routing decisions on data), and its own
-`present` invokes sub-Plugin `present`s and weaves the resulting views into its own JSX:
+A Super-Plugin imports other Plugins and composes them as plain code. Its `run(ctx)` calls
+sub-Plugin `run`s, inspects their Results for routing decisions, and returns its own Result. Three
+common shapes:
 
-```ts
-import createBvg from "./bvg/main.ts";
-import createPhoto from "./photo/main.ts";
+```tsx
+// 1. Pure pass-through — sub's data + sub's view rides through unchanged.
+run: (ctx) => sub.run(ctx);
 
-export default function (config: unknown) {
-  const bvg = createBvg(config?.bvg);
-  const photo = createPhoto(config?.photo);
+// 2. Routing — pick a sub based on ctx (or sub data), delegate.
+run: async (ctx) => {
+  const sub = ctx.t.hour >= 7 && ctx.t.hour < 9 ? bvg : photo;
+  return await sub.run(ctx);
+};
 
+// 3. Wrapping — sub's data and sub's view, but wrap the rendered output in an outer shell.
+run: async (ctx) => {
+  const inner = await chosen.run(ctx);
   return {
-    snapshot(t) {
-      const isCommute = t.hour >= 7 && t.hour < 9;
-      if (isCommute) {
-        const s = bvg.snapshot(t);
-        if (s.state.entries.length) {
-          return { state: { mode: "bvg", inner: s.state }, validity: s.validity };
-        }
-      }
-      const s = photo.snapshot(t);
-      return { state: { mode: "photo", inner: s.state }, validity: s.validity };
-    },
-    present(sample) {
-      const sub = sample.state.mode === "bvg" ? bvg : photo;
-      const subSample = { state: sample.state.inner, validity: sample.validity };
-      const subPresentation = sub.present(subSample);
-      return {
-        view: (state) => <subPresentation.view {...state.inner} />,
-      };
-    },
+    state: inner.state,
+    validity: inner.validity,
+    hints: inner.hints,
+    view: (s) => <Frame><inner.view {...s} /></Frame>,
   };
-}
+};
 ```
 
-The Server still sees exactly one Plugin (the Super-Plugin) and is unaware of nesting. Composition
-is plain function composition; no Server-side machinery participates.
+The Server (and Conductor) see exactly one Plugin (the Super-Plugin) and are unaware of nesting.
+Composition is plain function composition; no Server-side machinery participates.
 
 Authors who anticipate being composed can split their module (`data.ts` for pure data accessors,
 `render.tsx` for view components) so a Super-Plugin can use either half independently. This is a
-convention; the contract only requires the two methods above.
-
-### Why `present` returns a Presentation, not JSX directly
-
-A `present(sample) → JSXElement` shape would conflate "the renderer's job" with "the Plugin's job."
-Returning a Presentation cleanly separates them:
-
-- The Plugin says: "here is the view component the renderer should invoke, plus any hints I'd like
-  respected."
-- The Server / Renderer says: "I'll invoke your view with the sample's state, derive HTML, and
-  decide what to do based on my own pipeline."
-
-It also leaves the Presentation type extensible: future rasterization hints (dither, viewport,
-filters) land as additional optional fields without changing the method shape.
+convention; the contract only requires `run`.
 
 ## Consequences
 
-- **Two-surface Plugin: data + presentation.** Both are independently inspectable by composers.
-- **The dashboard can scrub time coherently.** `snapshot(t) + present(sample)` is well-defined for
-  any `t`.
-- **`view` purity is the precondition for the Server's caching** (ADR-0004). The contract does not
-  enforce it; impure views still produce correct output, they just defeat the Image cache and force
-  the expensive raster step every call. `docs/plugin-authoring.md` walks authors through the traps.
-- **Multi-mode displays are a Plugin authoring concern.** Composition uses the same interface at
-  every nesting level.
-- **Plugin authors must define a top-level view component.** A function from state to JSX, named and
+- **One-function Plugin contract.** Simpler to teach, simpler to compose, fewer pairing rules.
+- **The dashboard can scrub time coherently.** Conductor calls `run({ t, intent: "scrub", … })`;
+  the Plugin computes its Result for that `t` without contaminating Current state.
+- **The Conductor can prerender warm-ups** (ADR-0007) by calling
+  `run({ t: near-future-t, intent: "prerender", … })` ahead of the next Device poll.
+- **View purity is the precondition for the Conductor's caching** (ADR-0004). The contract does
+  not enforce it; impure views still produce correct output, they just defeat the Image cache and
+  force the expensive rasterize step every call. `docs/plugin-authoring.md` walks authors through
+  the traps.
+- **Multi-mode displays are a Plugin authoring concern.** Composition uses the same one-function
+  interface at every nesting level.
+- **Plugin authors define a top-level view component.** A function from state to JSX, named and
   module-scoped — slightly more discipline than "return JSX inline from a render method," and the
   right discipline for downstream reusability.
-- **Migration is breaking.** No backwards compatibility with `template` / `setup` / `onDisplay`. The
-  single-user posture (ADR-0001) makes this acceptable.
+- **Migration is breaking.** No backwards compatibility with `template` / `setup` / `onDisplay`,
+  nor with the interim `snapshot` / `present` shape. The single-user posture (ADR-0001) makes this
+  acceptable.

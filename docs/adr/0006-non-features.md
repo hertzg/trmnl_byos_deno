@@ -21,18 +21,6 @@ No `?width=&height=&dpr=&bitDepth=&dither=` query overrides. Stage-2 rendering p
 the device-profile registry; the **Plugin** does not control them and the Device doesn't either.
 Adding new panels happens in the registry, not in URL parameters.
 
-### `DisplayKind = "preview" | "device"` flag in the contract
-
-A previous shape passed a `kind` flag into the template so it could branch on cosmetic differences
-(e.g. show "(preview)" when called from the dashboard). With `snapshot(t)` + `present(sample)`,
-there is no caller-intent in the contract. A Plugin cannot distinguish a Device poll from a
-dashboard scrub. Honoring `t` correctly is enough; rendering should not depend on _who_ is asking.
-
-Scoped rejection: the specific `kind` flag is out. The more general "should a future Plugin ever
-know whether it's being asked for a real poll vs. a scrub" remains genuinely open (see `CONTEXT.md`
-"Open questions"). What's rejected today is bolting that distinction into the contract
-prophylactically.
-
 ### A `services` bag of Server-side helpers
 
 Earlier shapes injected a `services` object into Plugin setup with helpers like `renderJsx(jsx)` or
@@ -57,8 +45,8 @@ elaborate as the author wants.
 ## Consequences
 
 - The hot-path routes stay simple. No query-parameter parsing, no validation surface.
-- The Plugin contract is uniform across consumers. Same `snapshot(t)` call for Device, dashboard,
-  future tools.
+- The Plugin contract is uniform across consumers. Same `run(ctx)` call for Device, dashboard, and
+  prerender warm-ups; `ctx.intent` carries the caller-kind distinction.
 - Future opt-ins are explicit additions when concrete pressure arrives — not retrofits to undo
   today's defaults.
 - The "small contract" property of ADR-0002 is preserved by this record of what was kept out.

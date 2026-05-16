@@ -31,7 +31,7 @@ wired to its dependencies so tests can construct an app with stubs.
 | `GET /api/display`          | Device (each poll)  | Returns `image_url`, `filename` (Image identity), `refresh_rate`.                                                                                                          |
 | `POST /api/log`             | Device              | Receives firmware logs.                                                                                                                                                    |
 | `GET /images/:identity/png` | Device              | The PNG bytes for an **Image**. Cached by the Device against `filename`.                                                                                                   |
-| `GET /`                     | Browser             | Dashboard. Calls `plugin.snapshot(t)` + `plugin.present(sample)` for the scrubbed `t` and runs the Presentation through the render pipeline; previews the resulting Image. |
+| `GET /`                     | Browser             | Dashboard. Hands the Conductor a `{ t, intent: "scrub", device }` trigger and previews the resulting Image. Does not touch the Current Result or Current Image.            |
 | `GET /preview`              | Browser             | Live HTML of the current Plugin output for dev iteration. No CDP cost.                                                                                                     |
 | `GET /preview/png`          | Browser             | Live PNG of the current Plugin output for dev iteration. Full pipeline.                                                                                                    |
 | `GET /preview/:id`          | Renderer (internal) | HTML fetch-back during rasterization. Not reachable by the Device.                                                                                                         |
@@ -40,9 +40,9 @@ wired to its dependencies so tests can construct an app with stubs.
 ### The dashboard at `/`
 
 A single page with one interactive parameter: `t`. Forward-only scrubber; default `t` is the
-**Current Sample**'s commit moment. If no Current Sample exists yet, the dashboard calls
-`snapshot(now)` + `present(sample)` itself and treats the result as the Current Sample —
-substituting for the first Device poll.
+**Current Result**'s commit moment. If no Current Result exists yet, the dashboard issues a scrub
+trigger at `now` via the Conductor and treats the resulting Image as the preview — substituting
+for the first Device poll without becoming the Current Result.
 
 The dashboard is also a Plugin debugging surface. A Plugin whose `view` reads wall-clock looks
 identical at every scrub position; a Plugin that computes `validity` against wall-clock has wrong
@@ -63,8 +63,8 @@ makes them visible.
 - Reading the route table reveals what each consumer touches without commentary.
 - Adding a new consumer (status/metrics endpoint, etc.) means picking a new prefix, not threading
   into an existing one.
-- The dashboard and Device share `snapshot(t)` semantics — both are Plugin consumers at different
-  `t` values.
+- The dashboard and Device share `Plugin.run(ctx)` semantics — both are Conductor triggers at
+  different `t` values, distinguished by `ctx.intent` (`"scrub"` vs `"poll"`).
 - The dashboard at `/` adds a small attack surface (any LAN client can scrub Plugin state).
   Single-user posture (ADR-0001) accepts this; networks with untrusted clients should put a reverse
   proxy in front.

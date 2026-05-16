@@ -5,11 +5,12 @@ Each ADR captures a single decision with its context and consequences.
 | #                               | Title                                               | Status   |
 | ------------------------------- | --------------------------------------------------- | -------- |
 | [0001](0001-service-scope.md)   | Service scope and intent                            | Accepted |
-| [0002](0002-plugin-contract.md) | Plugin contract: `snapshot(t)` + `present(sample)`  | Accepted |
-| [0003](0003-render-pipeline.md) | Render pipeline, Current Sample, and Current Image  | Accepted |
-| [0004](0004-caching.md)         | Two-layer caching: state hash + Image identity      | Accepted |
+| [0002](0002-plugin-contract.md) | Plugin contract: `run(ctx) → Result`                | Accepted |
+| [0003](0003-render-pipeline.md) | Render pipeline, Current Result, and Current Image  | Accepted |
+| [0004](0004-caching.md)         | Avoiding redundant work: validity, identity, Image  | Accepted |
 | [0005](0005-http-layer.md)      | HTTP layer: Hono, routing, and the dashboard at `/` | Accepted |
 | [0006](0006-non-features.md)    | Explicit non-features                               | Accepted |
+| [0007](0007-prerender-scheduling.md) | Prerender warm-up ahead of Device wake         | Accepted |
 
 ## Format
 

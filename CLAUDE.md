@@ -5,22 +5,21 @@ general-purpose product. Before doing substantive work in this repository, read:
 
 - [docs/vision.md](docs/vision.md) — what this project is and isn't. Read this first; it explains
   why decisions look the way they do.
-- [CONTEXT.md](CONTEXT.md) — domain vocabulary (Device, Server, Plugin, Sample, Presentation, Image,
-  Current Sample, Current Image, Renderer) and how the terms relate.
+- [CONTEXT.md](CONTEXT.md) — domain vocabulary (Device, Server, Plugin, RunContext, Result,
+  Conductor, Renderer, Image, Current Result, Current Image) and how the terms relate.
 - [docs/adr/](docs/adr/) — architectural decisions in their current target form. Clean-slate; old
   ADRs are superseded.
-- [docs/migration.md](docs/migration.md) — what's moving from the older `template`/`onDisplay` shape
-  to the **Plugin**/`snapshot`/`present` model.
+- [docs/migration.md](docs/migration.md) — what's moving from the older `template`/`onDisplay`
+  shape to the **Plugin**/`run`/`Result` model.
 - [docs/plugin-authoring.md](docs/plugin-authoring.md) — practical guide for writing a Plugin
-  (factory pattern, two mental modes for `snapshot`, common traps, worked example, composition
-  layout).
+  (factory pattern, two mental modes for `run`, common traps, worked example, composition layout).
 
 ## House rules
 
 - The user owns and runs the only Device. Breaking changes are fine; there is no other operator to
   support.
-- The Plugin contract is `snapshot(t) → Sample` + `present(sample) → Presentation`. `snapshot` and
-  `present` are always paired. Importing a Plugin module never activates anything; the
+- The Plugin contract is `run(ctx: RunContext) → Result`. The Result carries `state`, `validity`,
+  optional `hints`, and `view`. Importing a Plugin module never activates anything; the
   default-exported factory does.
 - `Temporal.ZonedDateTime` for moments, `Temporal.Duration` for `validity`. Not `Date`.
 - Composition of multiple display modes lives inside a Super-Plugin, never in the Server.
