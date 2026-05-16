@@ -576,7 +576,7 @@ Deno.test("GET /?t=<future> scrubs the Plugin at the supplied t", async () => {
   assertEquals(run.calls[0].args[0].t.toString(), tFuture.toString());
 });
 
-Deno.test("GET /?t=<past> is clamped forward to max(t_current, now)", async () => {
+Deno.test("GET /?t passes the requested t through unchanged — past, present, or future", async () => {
   const c = clock();
   const run = spy((_ctx: RunContext) => ({
     state: {},
@@ -593,18 +593,31 @@ Deno.test("GET /?t=<past> is clamped forward to max(t_current, now)", async () =
     identityFor: () => "id",
   });
 
-  // Poll at T0, then advance wall clock 2 min. t_min = max(T0, T0+2m) = T0+2m.
+  // Commit at T0. Advance wall clock so commit is in the past.
   await (await conductor.request("/api/display")).body?.cancel();
-  c.advance({ minutes: 2 });
-  const tMin = c.now();
+  c.advance({ minutes: 5 });
 
-  // Ask for t in the past (before t_min). Should clamp to t_min.
+  // ?t before commit — no clamp. Plugin.run is pure; running it at an
+  // arbitrary past `t` is a legitimate debug query.
   await (await conductor.request("/?t=2026-05-16T09:00")).body?.cancel();
-  assertEquals(run.calls.at(-1)?.args[0].t.toString(), tMin.toString());
+  assertEquals(
+    run.calls.at(-1)?.args[0].t.toString(),
+    at("2026-05-16T09:00").toString(),
+  );
 
-  // Ask for t before T0 (before t_current). Should also clamp to t_min (now).
-  await (await conductor.request("/?t=2026-05-16T09:30")).body?.cancel();
-  assertEquals(run.calls.at(-1)?.args[0].t.toString(), tMin.toString());
+  // ?t between commit and now — passes through.
+  await (await conductor.request("/?t=2026-05-16T10:02")).body?.cancel();
+  assertEquals(
+    run.calls.at(-1)?.args[0].t.toString(),
+    at("2026-05-16T10:02").toString(),
+  );
+
+  // ?t in the future — passes through.
+  await (await conductor.request("/?t=2026-05-16T15:00")).body?.cancel();
+  assertEquals(
+    run.calls.at(-1)?.args[0].t.toString(),
+    at("2026-05-16T15:00").toString(),
+  );
 });
 
 Deno.test("GET / renders the rendered Image, the scrubber, and Result metadata", async () => {
@@ -697,6 +710,43 @@ Deno.test("GET / emits forward step links whose ?t= is t + offset in datetime-lo
     html.includes("?t=2026-05-16T11%3A00") || html.includes("?t=2026-05-16T11:00"),
     true,
   );
+});
+
+Deno.test("GET / surfaces both committed and current identities when a Current Result exists", async () => {
+  const c = clock();
+  // The Plugin returns a state whose serialized form changes with t. The
+  // identityFor stub mirrors that, so committed identity != current identity
+  // after scrubbing forward.
+  const run = (ctx: RunContext) => ({
+    state: { at: ctx.t.toString() },
+    validity: fiveMin,
+    view: (s: { at: string }) => `<p>${s.at}</p>`,
+  });
+  const conductor = createConductor({
+    ...defaults({ now: c.now }),
+    plugin: { run },
+    renderer: {
+      deriveHtml: (r: Result<{ at: string }>) => String(r.view(r.state)),
+      rasterize: () => Promise.resolve(new Uint8Array([0])),
+    },
+    identityFor: (html) => `id-${html.length}-${html.slice(-10, -4)}`,
+  });
+
+  // Poll commits identity X at T0.
+  const poll = await (await conductor.request("/api/display")).json();
+  const committedIdentity = poll.filename.replace(/^image-/, "");
+
+  // Scrub to T0+1h — Plugin's state.at changes, so identity changes.
+  await (await conductor.request("/?t=2026-05-16T11:00")).body?.cancel();
+
+  // Page must show both identities. (Visit dashboard at a non-trivial t so
+  // the committed and current columns differ.)
+  const html = await (await conductor.request("/?t=2026-05-16T11:00")).text();
+  assertEquals(html.includes(committedIdentity), true, "committed identity missing");
+  assertEquals(html.includes("11:00"), true, "current t missing in metadata");
+  // Column headers present.
+  assertEquals(html.includes("committed"), true);
+  assertEquals(html.includes("current"), true);
 });
 
 Deno.test("GET /assets/:file serves files from pluginAssetsDir without the /assets prefix duplicating in the path", async () => {

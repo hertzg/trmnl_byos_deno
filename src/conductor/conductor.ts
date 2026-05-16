@@ -188,30 +188,32 @@ export function createConductor(deps: ConductorDeps): Hono {
     // Current Result or Current Image.
     .get("/", async (c) => {
       const now = deps.now();
-      // Forward-only scrubber: never run the Plugin at a moment earlier than
-      // the Current Result's commit or the wall clock. If wall clock has
-      // advanced past the Current Result, `now` wins.
-      const tMin = currentResult && Temporal.ZonedDateTime.compare(currentResult.ctx.t, now) > 0
-        ? currentResult.ctx.t
-        : now;
       // Datetime-local form value: "YYYY-MM-DDTHH:MM" (no timezone). Interpret
       // in the server's timezone — that's the timezone the page renders in,
       // so it's the user's mental model of "what time t means".
+      // No clamping: Plugin.run is a pure function of ctx, so running it at
+      // any `t` (past, present, future) is safe. A Plugin that mishandles
+      // past `t` (e.g. tries to fetch live data anchored to it) shows that
+      // bug on the dashboard — which is exactly what the dashboard is for.
       const tParam = c.req.query("t");
-      const tRequested = tParam !== undefined
+      const t = tParam !== undefined
         ? Temporal.PlainDateTime.from(tParam).toZonedDateTime(now.timeZoneId)
-        : tMin;
-      const t = Temporal.ZonedDateTime.compare(tRequested, tMin) < 0 ? tMin : tRequested;
+        : currentResult?.ctx.t ?? now;
       const { result, html, identity } = await runAndDerive({ t, intent: "scrub" });
       const out = await rasterizeWithFallback(result, html, identity);
+      const committed = currentResult && currentImage
+        ? {
+          t: currentResult.ctx.t,
+          result: currentResult.result,
+          identity: currentImage.identity,
+        }
+        : null;
       const page = renderToString(
         Dashboard({
           t,
-          tMin,
-          tCommit: currentResult?.ctx.t ?? null,
           now,
-          result: out.result,
-          identity: out.identity,
+          committed,
+          current: { result: out.result, identity: out.identity },
           pngBase64: encodeBase64(out.png),
         }) as Parameters<typeof renderToString>[0],
       );

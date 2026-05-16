@@ -1,10 +1,11 @@
 /** @jsxImportSource hono/jsx */
 
 // Dashboard at /. ADR-0005: a Plugin-debugging surface, not just a preview.
-// The forward-only `t` scrubber lets the operator drive the Conductor at
-// arbitrary moments and watch how the Plugin responds. The metadata block
-// and the rendered state make two silent Plugin bugs visible
-// (docs/plugin-authoring.md):
+// The `t` scrubber drives the Conductor at arbitrary moments (past, present,
+// future — Plugin.run is a pure function of ctx) and renders what the Plugin
+// produced, side-by-side with what the Device is currently being served. The
+// committed-vs-current diff and the rendered state make two silent Plugin
+// bugs visible (docs/plugin-authoring.md):
 //   - a view that reads wall-clock looks identical at every scrub position
 //     even though `state` is identical
 //   - a Plugin that computes `validity` against wall-clock has an `expiresAt`
@@ -14,11 +15,12 @@ import type { Result } from "../plugin/plugin.ts";
 
 export type DashboardProps = {
   t: Temporal.ZonedDateTime;
-  tMin: Temporal.ZonedDateTime;
-  tCommit: Temporal.ZonedDateTime | null;
   now: Temporal.ZonedDateTime;
-  result: Result<unknown>;
-  identity: string;
+  // What the Device is currently being served by /api/display. Null until
+  // the first poll has populated Current Result + Current Image.
+  committed: { t: Temporal.ZonedDateTime; result: Result<unknown>; identity: string } | null;
+  // What the dashboard's scrub at `t` produced. Always present.
+  current: { result: Result<unknown>; identity: string };
   pngBase64: string;
 };
 
@@ -127,16 +129,25 @@ const css = `
     display: inline-block; margin-bottom: 16px;
   }
   .image-frame img { display: block; max-width: 100%; image-rendering: pixelated; }
-  dl.meta {
-    display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px;
-    font-size: 13px; background: #fff; border: 1px solid #ddd; padding: 12px;
-    margin-bottom: 16px;
+  table.meta {
+    border-collapse: collapse; width: 100%; font-size: 13px;
+    background: #fff; border: 1px solid #ddd; margin-bottom: 16px;
   }
-  dl.meta dt { color: #555; }
-  dl.meta dd { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-  dl.meta .rel { color: #888; font-family: inherit; font-size: 12px; }
-  dl.meta .muted { color: #888; font-family: inherit; }
-  p.tz { margin: 8px 0 16px; font-size: 12px; color: #888; }
+  table.meta th, table.meta td { padding: 6px 12px; text-align: left; vertical-align: top; }
+  table.meta thead th {
+    background: #fafafa; border-bottom: 1px solid #ddd;
+    font-size: 12px; color: #555; font-weight: 500; text-transform: lowercase;
+  }
+  table.meta tbody th {
+    width: max-content; color: #555; font-weight: normal; white-space: nowrap;
+    border-right: 1px solid #eee;
+  }
+  table.meta tbody td { font-family: ui-monospace, "SF Mono", Menlo, monospace; width: 50%; }
+  table.meta tbody td.diff { background: #fffbe6; }
+  table.meta .rel { color: #888; font-family: inherit; font-size: 12px; }
+  table.meta .muted { color: #888; font-family: inherit; font-style: italic; }
+  p.head { margin: 8px 0 16px; font-size: 12px; color: #555; }
+  p.head code { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #111; }
   details.state { background: #fff; border: 1px solid #ddd; padding: 12px; }
   details.state summary { cursor: pointer; font-size: 13px; color: #555; }
   details.state pre {
@@ -145,14 +156,58 @@ const css = `
   }
 `;
 
+function viewName(r: Result<unknown>): string {
+  return r.view.name || "(anonymous)";
+}
+
+type Row = {
+  label: string;
+  committed: string | null; // null → no Current Result yet
+  committedRel?: string | null;
+  current: string;
+  currentRel?: string | null;
+};
+
 export default function Dashboard(props: DashboardProps) {
-  const { t, tMin, tCommit, now, result, identity, pngBase64 } = props;
-  const viewName = result.view.name || "(anonymous)";
-  const expiresAt = t.add(result.validity);
-  // Show t_min only when it differs from `now` — i.e. when a Current Result's
-  // commit is in the future (rare; mostly prerender-warm-up territory). When
-  // t_min === now the row is redundant with the `now` row.
-  const showTMin = Temporal.ZonedDateTime.compare(tMin, now) !== 0;
+  const { t, now, committed, current, pngBase64 } = props;
+  const tCommit = committed?.t ?? null;
+
+  const currentExpires = t.add(current.result.validity);
+  const committedExpires = committed ? committed.t.add(committed.result.validity) : null;
+
+  const rows: Row[] = [
+    {
+      label: "t",
+      committed: committed ? fmtTime(committed.t) : null,
+      committedRel: committed ? fmtDelta(committed.t, now) : null,
+      current: fmtTime(t),
+      currentRel: fmtDelta(t, now),
+    },
+    {
+      label: "validity",
+      committed: committed ? fmtDuration(committed.result.validity) : null,
+      current: fmtDuration(current.result.validity),
+    },
+    {
+      label: "expires",
+      committed: committedExpires ? fmtTime(committedExpires) : null,
+      committedRel: committed
+        ? `+${fmtDuration(committed.result.validity)} past committed t`
+        : null,
+      current: fmtTime(currentExpires),
+      currentRel: `+${fmtDuration(current.result.validity)} past chosen t`,
+    },
+    {
+      label: "view",
+      committed: committed ? viewName(committed.result) : null,
+      current: viewName(current.result),
+    },
+    {
+      label: "identity",
+      committed: committed ? committed.identity : null,
+      current: current.identity,
+    },
+  ];
   return (
     <html>
       <head>
@@ -161,7 +216,7 @@ export default function Dashboard(props: DashboardProps) {
         <style dangerouslySetInnerHTML={{ __html: css }} />
       </head>
       <body>
-        <h1>dashboard — scrub forward through Plugin time</h1>
+        <h1>dashboard — scrub Plugin time</h1>
         <form method="get" action="/">
           <label for="t">t</label>
           <input
@@ -169,7 +224,6 @@ export default function Dashboard(props: DashboardProps) {
             id="t"
             name="t"
             value={toDatetimeLocal(t)}
-            min={toDatetimeLocal(tMin)}
           />
           <button type="submit">scrub</button>
         </form>
@@ -186,47 +240,56 @@ export default function Dashboard(props: DashboardProps) {
         <div class="image-frame">
           <img src={`data:image/png;base64,${pngBase64}`} alt="Plugin output" />
         </div>
-        <dl class="meta">
-          <dt>chosen t</dt>
-          <dd>
-            {fmtTime(t)} <span class="rel">({fmtDelta(t, now)})</span>
-          </dd>
-          <dt>now</dt>
-          <dd>{fmtTime(now)}</dd>
-          <dt>current commit</dt>
-          <dd>
-            {tCommit
-              ? (
-                <>
-                  {fmtTime(tCommit)} <span class="rel">({fmtDelta(tCommit, now)})</span>
-                </>
-              )
-              : <span class="muted">(no Current Result yet)</span>}
-          </dd>
-          {showTMin && (
-            <>
-              <dt>t_min</dt>
-              <dd>
-                {fmtTime(tMin)} <span class="rel">({fmtDelta(tMin, now)})</span>
-              </dd>
-            </>
-          )}
-          <dt>validity</dt>
-          <dd>{fmtDuration(result.validity)}</dd>
-          <dt>expires</dt>
-          <dd>
-            {fmtTime(expiresAt)}{" "}
-            <span class="rel">(+{fmtDuration(result.validity)} past chosen t)</span>
-          </dd>
-          <dt>view</dt>
-          <dd>{viewName}</dd>
-          <dt>identity</dt>
-          <dd>{identity}</dd>
-        </dl>
-        <p class="tz">timezone: {now.timeZoneId}</p>
+        <p class="head">
+          now: <code>{fmtTime(now)}</code> · timezone: <code>{now.timeZoneId}</code>
+        </p>
+        <table class="meta">
+          <thead>
+            <tr>
+              <th></th>
+              <th>committed (Device sees this)</th>
+              <th>current (chosen t)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const differs = row.committed !== null && row.committed !== row.current;
+              const cls = differs ? "diff" : undefined;
+              return (
+                <tr key={row.label}>
+                  <th scope="row">{row.label}</th>
+                  <td class={cls}>
+                    {row.committed === null
+                      ? <span class="muted">(no Current Result yet)</span>
+                      : (
+                        <>
+                          {row.committed}
+                          {row.committedRel && (
+                            <>
+                              {" "}
+                              <span class="rel">({row.committedRel})</span>
+                            </>
+                          )}
+                        </>
+                      )}
+                  </td>
+                  <td class={cls}>
+                    {row.current}
+                    {row.currentRel && (
+                      <>
+                        {" "}
+                        <span class="rel">({row.currentRel})</span>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
         <details class="state" open>
-          <summary>Result.state (JSON)</summary>
-          <pre>{stateJson(result.state)}</pre>
+          <summary>current Result.state (JSON)</summary>
+          <pre>{stateJson(current.result.state)}</pre>
         </details>
       </body>
     </html>
