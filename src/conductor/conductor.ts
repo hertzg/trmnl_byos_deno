@@ -21,10 +21,12 @@ export type ConductorDeps = {
 export type TriggerOutput = {
   png: Uint8Array;
   identity: string;
+  expiresAt: Temporal.ZonedDateTime;
 };
 
 export type Conductor = {
   trigger(ctx: RunContext): Promise<TriggerOutput>;
+  getCurrentImage(identity: string): Uint8Array | undefined;
 };
 
 export function createConductor(deps: ConductorDeps): Conductor {
@@ -36,15 +38,19 @@ export function createConductor(deps: ConductorDeps): Conductor {
   let currentImage: CurrentImage | null = null;
 
   return {
+    getCurrentImage(identity) {
+      return currentImage?.identity === identity ? currentImage.png : undefined;
+    },
     async trigger(ctx) {
-      if (
-        currentResult && currentImage &&
-        Temporal.ZonedDateTime.compare(
-          ctx.t,
-          currentResult.ctx.t.add(currentResult.result.validity),
-        ) < 0
-      ) {
-        return { png: currentImage.png, identity: currentImage.identity };
+      if (currentResult && currentImage) {
+        const currentExpiry = currentResult.ctx.t.add(currentResult.result.validity);
+        if (Temporal.ZonedDateTime.compare(ctx.t, currentExpiry) < 0) {
+          return {
+            png: currentImage.png,
+            identity: currentImage.identity,
+            expiresAt: currentExpiry,
+          };
+        }
       }
       // deno-lint-ignore no-explicit-any
       let result: Result<any>;
@@ -65,7 +71,11 @@ export function createConductor(deps: ConductorDeps): Conductor {
         const png = await deps.renderer.rasterize(html, result.hints);
         currentImage = { png, identity };
       }
-      return { png: currentImage.png, identity: currentImage.identity };
+      return {
+        png: currentImage.png,
+        identity: currentImage.identity,
+        expiresAt: ctx.t.add(result.validity),
+      };
     },
   };
 }
