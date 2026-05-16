@@ -148,9 +148,9 @@ export async function setup(_config: SetupConfig): Promise<Registration> {
 Same return shape — the difference is _when_ the data fetch happens. The renderer hashes nothing;
 each render mints a fresh job id, and unchanged frames simply hit the validity-window cache.
 
-See [ADR-0006](docs/adr/0006-frame-coordinator.md) for the frame coordinator's contract
-(single-flight, validity-driven, two-stage error fallback) and
-[ADR-0007](docs/adr/0007-preview-url-namespace.md) for the unified `/preview/*` URL namespace.
+Note: this README and the surrounding section describe the pre-migration shape. The current target
+architecture is in [`CONTEXT.md`](CONTEXT.md) and [`docs/adr/`](docs/adr/); the code will be revised
+when the migration lands.
 
 The bundled template is at [templates/example/](templates/example/). To ship your own, point
 `TEMPLATE_DIR` at it (or replace `./templates/example`); a `main.ts` exporting `setup` and any
