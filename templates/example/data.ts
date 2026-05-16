@@ -7,7 +7,7 @@ import { ROUTES } from "./bvg/routes.ts";
 export type FrameData = {
   board: Board;
   fetchedAt: Date;
-  device: DeviceReport;
+  device: DeviceReport | null;
   nextRefreshAt: Date;
 };
 

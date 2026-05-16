@@ -9,20 +9,20 @@
 // and the closure-bound holder that the HTTP layer updates from the request
 // headers on each poll.
 
-import { type DeviceReport, EMPTY_DEVICE_REPORT } from "./plugin/plugin.ts";
+import type { DeviceReport } from "./plugin/plugin.ts";
 
 export type DeviceReportHolder = {
-  get(): DeviceReport;
+  get(): DeviceReport | null;
   updateFromHeaders(headers: Headers, now?: () => Temporal.ZonedDateTime): void;
 };
 
 export function createDeviceReportHolder(): DeviceReportHolder {
-  let state: DeviceReport = EMPTY_DEVICE_REPORT;
+  let state: DeviceReport | null = null;
   return {
     get: () => state,
     updateFromHeaders(headers, now = () => Temporal.Now.zonedDateTimeISO()) {
-      const parsed = parseDeviceHeaders(headers);
-      state = { ...state, ...parsed, lastSeenAt: now() };
+      const parsed = parseDeviceHeaders(headers, now);
+      if (parsed) state = parsed;
     },
   };
 }
@@ -52,12 +52,18 @@ function readNumber(headers: Headers, name: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// Returns `null` when the request didn't carry the `ID` header — without it
+// we have no Device identity to attach the report to, so the holder treats
+// the request as not-a-Device-poll and keeps its previous state.
 export function parseDeviceHeaders(
   headers: Headers,
-): Omit<Partial<DeviceReport>, "lastSeenAt"> {
+  now: () => Temporal.ZonedDateTime = () => Temporal.Now.zonedDateTimeISO(),
+): DeviceReport | null {
+  const id = readHeader(headers, "ID");
+  if (!id) return null;
   const batteryVoltage = readNumber(headers, "Battery-Voltage");
   return {
-    id: readHeader(headers, "ID"),
+    id,
     batteryVoltage,
     batteryPercent: voltageToPercent(batteryVoltage),
     rssi: readNumber(headers, "RSSI"),
@@ -66,5 +72,6 @@ export function parseDeviceHeaders(
     width: readNumber(headers, "Width"),
     height: readNumber(headers, "Height"),
     refreshRate: readNumber(headers, "Refresh-Rate"),
+    lastSeenAt: now(),
   };
 }

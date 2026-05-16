@@ -2,7 +2,7 @@ import { assertEquals, assertGreaterOrEqual, assertLessOrEqual } from "@std/asse
 import { spy } from "@std/testing/mock";
 import { createConductorApp } from "./conductor-app.ts";
 import type { Conductor, TriggerOutput } from "../conductor/conductor.ts";
-import { type DeviceReport, EMPTY_DEVICE_REPORT } from "../plugin/plugin.ts";
+import { createDeviceReportHolder } from "../device.ts";
 import type { HtmlShelf } from "../render/html-shelf.ts";
 
 const T0 = Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]");
@@ -17,33 +17,28 @@ function buildApp(
     friendlyId?: string;
   } = {},
 ) {
-  let last: DeviceReport = EMPTY_DEVICE_REPORT;
+  const realHolder = createDeviceReportHolder();
   const holder = {
-    get: () => last,
-    updateFromHeaders: (h: Headers) => {
-      last = { ...EMPTY_DEVICE_REPORT, id: h.get("id") };
-    },
+    get: realHolder.get,
+    updateFromHeaders: (h: Headers) => realHolder.updateFromHeaders(h, () => T0),
   };
 
   const out = overrides.triggerOutput ??
     { png: new Uint8Array(), identity: "x", expiresAt: T0 };
-  const conductor = overrides.conductor ?? {
-    trigger: () => Promise.resolve(out),
-    getCurrentImage: (id) => (id === out.identity ? out.png : undefined),
-  };
-
-  const noopShelf: HtmlShelf = {
-    shelve: () => "id",
-    fetch: () => undefined,
-    remove: () => {},
-  };
 
   const app = createConductorApp({
-    conductor,
+    conductor: overrides.conductor ?? {
+      trigger: () => Promise.resolve(out),
+      getCurrentImage: (id) => (id === out.identity ? out.png : undefined),
+    },
     deviceHolder: holder,
     friendlyId: overrides.friendlyId ?? "ID",
     pluginAssetsDir: "/tmp",
-    htmlShelf: overrides.htmlShelf ?? noopShelf,
+    htmlShelf: overrides.htmlShelf ?? {
+      shelve: () => "id",
+      fetch: () => undefined,
+      remove: () => {},
+    },
     onDeviceLog: overrides.onDeviceLog,
     now: overrides.now ?? (() => T0),
   });
@@ -83,7 +78,7 @@ Deno.test("GET /api/display triggers a poll, captures the device headers, and re
   assertEquals(body.filename, "image-deadbeefcafef00d");
   assertGreaterOrEqual(body.refresh_rate, 299);
   assertLessOrEqual(body.refresh_rate, 300);
-  assertEquals(holder.get().id, "AA:BB:CC");
+  assertEquals(holder.get()?.id, "AA:BB:CC");
 });
 
 Deno.test("GET /images/:identity/png serves the Current Image PNG when identity matches", async () => {

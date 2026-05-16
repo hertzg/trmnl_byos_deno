@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
 import { createConductor } from "./conductor.ts";
-import { EMPTY_DEVICE_REPORT, type Result } from "../plugin/plugin.ts";
+import type { Result } from "../plugin/plugin.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
@@ -33,7 +33,7 @@ Deno.test("trigger returns the rasterized PNG for the Plugin's Result", async ()
   const out = await conductor.trigger({
     t: at("2026-05-16T10:00"),
     intent: "poll",
-    device: EMPTY_DEVICE_REPORT,
+    device: null,
   });
 
   assertEquals(out.png, expectedPng);
@@ -58,16 +58,16 @@ Deno.test("trigger inside the validity window reuses Current Image without re-in
   });
 
   const t0 = at("2026-05-16T10:00");
-  const first = await conductor.trigger({ t: t0, intent: "poll", device: EMPTY_DEVICE_REPORT });
+  const first = await conductor.trigger({ t: t0, intent: "poll", device: null });
   const second = await conductor.trigger({
     t: t0.add({ minutes: 1 }),
     intent: "poll",
-    device: EMPTY_DEVICE_REPORT,
+    device: null,
   });
   const third = await conductor.trigger({
     t: t0.add({ minutes: 4 }),
     intent: "poll",
-    device: EMPTY_DEVICE_REPORT,
+    device: null,
   });
 
   assertSpyCalls(run, 1);
@@ -98,7 +98,7 @@ Deno.test("when plugin.run throws, trigger falls back to the error view with its
   });
 
   const t0 = at("2026-05-16T10:00");
-  const out = await conductor.trigger({ t: t0, intent: "poll", device: EMPTY_DEVICE_REPORT });
+  const out = await conductor.trigger({ t: t0, intent: "poll", device: null });
 
   assertSpyCalls(errorView, 1);
   assertEquals(errorView.calls[0].args[0], boom);
@@ -109,7 +109,7 @@ Deno.test("when plugin.run throws, trigger falls back to the error view with its
   const second = await conductor.trigger({
     t: t0.add({ seconds: 20 }),
     intent: "poll",
-    device: EMPTY_DEVICE_REPORT,
+    device: null,
   });
   assertSpyCalls(run, 1);
   assertSpyCalls(errorView, 1);
@@ -139,11 +139,11 @@ Deno.test("trigger after expiry rasterizes and replaces Current Image when ident
   });
 
   const t0 = at("2026-05-16T10:00");
-  const first = await conductor.trigger({ t: t0, intent: "poll", device: EMPTY_DEVICE_REPORT });
+  const first = await conductor.trigger({ t: t0, intent: "poll", device: null });
   const second = await conductor.trigger({
     t: t0.add({ minutes: 6 }),
     intent: "poll",
-    device: EMPTY_DEVICE_REPORT,
+    device: null,
   });
 
   assertSpyCalls(run, 2);
@@ -174,11 +174,11 @@ Deno.test("trigger after expiry skips rasterize and keeps Current Image when ide
   });
 
   const t0 = at("2026-05-16T10:00");
-  const first = await conductor.trigger({ t: t0, intent: "poll", device: EMPTY_DEVICE_REPORT });
+  const first = await conductor.trigger({ t: t0, intent: "poll", device: null });
   const second = await conductor.trigger({
     t: t0.add({ minutes: 6 }),
     intent: "poll",
-    device: EMPTY_DEVICE_REPORT,
+    device: null,
   });
 
   assertSpyCalls(run, 2);

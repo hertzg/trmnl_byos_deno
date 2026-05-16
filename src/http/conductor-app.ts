@@ -6,7 +6,7 @@ import type { DeviceReport } from "../plugin/plugin.ts";
 import { publicOrigin } from "./request.ts";
 
 export type DeviceReportHolder = {
-  get(): DeviceReport;
+  get(): DeviceReport | null;
   updateFromHeaders(headers: Headers): void;
 };
 

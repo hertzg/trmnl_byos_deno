@@ -1,10 +1,14 @@
-// Heartbeat-derived telemetry from the Device. The holder in src/device.ts
-// parses headers into this shape on every /api/display poll; RunContext.device
-// is whatever the holder has at the moment Conductor.trigger fires.
-// Fields are nullable because they may not have been reported yet, or the
-// header may have been missing on a given poll.
+// Heartbeat-derived telemetry from a real Device poll. The holder in
+// src/device.ts parses headers into this shape on every /api/display poll;
+// RunContext.device is whatever the holder has at the moment
+// Conductor.trigger fires (or `null` if no poll has arrived yet).
+//
+// `id` and `lastSeenAt` are non-nullable because they are guaranteed whenever
+// we have a report at all (the BYOS firmware always sends `ID`; the holder
+// stamps `lastSeenAt` on accept). The other fields stay nullable because the
+// firmware may genuinely omit those headers.
 export type DeviceReport = {
-  id: string | null;
+  id: string;
   batteryVoltage: number | null;
   batteryPercent: number | null;
   rssi: number | null;
@@ -13,28 +17,16 @@ export type DeviceReport = {
   width: number | null;
   height: number | null;
   refreshRate: number | null;
-  lastSeenAt: Temporal.ZonedDateTime | null;
-};
-
-// Sentinel "no Device has reported yet" report. Useful for tests and for the
-// holder's initial state.
-export const EMPTY_DEVICE_REPORT: DeviceReport = {
-  id: null,
-  batteryVoltage: null,
-  batteryPercent: null,
-  rssi: null,
-  fwVersion: null,
-  model: null,
-  width: null,
-  height: null,
-  refreshRate: null,
-  lastSeenAt: null,
+  lastSeenAt: Temporal.ZonedDateTime;
 };
 
 export type RunContext = {
   t: Temporal.ZonedDateTime;
   intent: "poll" | "scrub" | "prerender";
-  device: DeviceReport;
+  // `null` before any Device poll has arrived. Once present, the report is
+  // a real Device's report — `id` and `lastSeenAt` are always populated;
+  // the rest stay nullable because the firmware may genuinely omit headers.
+  device: DeviceReport | null;
 };
 
 export type Result<S> = {
