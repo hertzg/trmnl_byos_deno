@@ -7,56 +7,48 @@ import type { HtmlShelf } from "../render/html-shelf.ts";
 
 const T0 = Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]");
 
-function stubConductor(out: TriggerOutput): Conductor {
-  return {
-    trigger: () => Promise.resolve(out),
-    getCurrentImage: (id) => (id === out.identity ? out.png : undefined),
-  };
-}
-
-function deviceHolder() {
-  let last: DeviceReport = EMPTY_DEVICE_REPORT;
-  return {
-    get: () => last,
-    updateFromHeaders: (h: Headers) => {
-      last = { ...EMPTY_DEVICE_REPORT, id: h.get("id") };
-    },
-  };
-}
-
-const noopShelf: HtmlShelf = {
-  shelve: () => "id",
-  fetch: () => undefined,
-  remove: () => {},
-};
-
 function buildApp(
   overrides: {
+    triggerOutput?: TriggerOutput;
     conductor?: Conductor;
     htmlShelf?: HtmlShelf;
-    holder?: ReturnType<typeof deviceHolder>;
     onDeviceLog?: (id: string, body: string) => void;
     now?: () => Temporal.ZonedDateTime;
     friendlyId?: string;
   } = {},
 ) {
-  const holder = overrides.holder ?? deviceHolder();
-  return {
-    holder,
-    app: createConductorApp({
-      conductor: overrides.conductor ?? stubConductor({
-        png: new Uint8Array(),
-        identity: "x",
-        expiresAt: T0,
-      }),
-      deviceHolder: holder,
-      friendlyId: overrides.friendlyId ?? "ID",
-      pluginAssetsDir: "/tmp",
-      htmlShelf: overrides.htmlShelf ?? noopShelf,
-      onDeviceLog: overrides.onDeviceLog,
-      now: overrides.now ?? (() => T0),
-    }),
+  let last: DeviceReport = EMPTY_DEVICE_REPORT;
+  const holder = {
+    get: () => last,
+    updateFromHeaders: (h: Headers) => {
+      last = { ...EMPTY_DEVICE_REPORT, id: h.get("id") };
+    },
   };
+
+  const out = overrides.triggerOutput ??
+    { png: new Uint8Array(), identity: "x", expiresAt: T0 };
+  const conductor = overrides.conductor ?? {
+    trigger: () => Promise.resolve(out),
+    getCurrentImage: (id) => (id === out.identity ? out.png : undefined),
+  };
+
+  const noopShelf: HtmlShelf = {
+    shelve: () => "id",
+    fetch: () => undefined,
+    remove: () => {},
+  };
+
+  const app = createConductorApp({
+    conductor,
+    deviceHolder: holder,
+    friendlyId: overrides.friendlyId ?? "ID",
+    pluginAssetsDir: "/tmp",
+    htmlShelf: overrides.htmlShelf ?? noopShelf,
+    onDeviceLog: overrides.onDeviceLog,
+    now: overrides.now ?? (() => T0),
+  });
+
+  return { app, holder };
 }
 
 Deno.test("GET /api/setup returns BYOS setup JSON with friendlyId", async () => {
@@ -97,11 +89,7 @@ Deno.test("GET /api/display triggers a poll, captures the device headers, and re
 Deno.test("GET /images/:identity/png serves the Current Image PNG when identity matches", async () => {
   const png = new Uint8Array([1, 2, 3, 4]);
   const { app } = buildApp({
-    conductor: stubConductor({
-      png,
-      identity: "deadbeef00000000",
-      expiresAt: T0.add({ minutes: 5 }),
-    }),
+    triggerOutput: { png, identity: "deadbeef00000000", expiresAt: T0.add({ minutes: 5 }) },
   });
 
   await app.request("/api/display");
@@ -114,11 +102,11 @@ Deno.test("GET /images/:identity/png serves the Current Image PNG when identity 
 
 Deno.test("GET /images/:identity/png returns 404 for an unknown identity", async () => {
   const { app } = buildApp({
-    conductor: stubConductor({
+    triggerOutput: {
       png: new Uint8Array([9]),
       identity: "knownid000000000",
       expiresAt: T0.add({ minutes: 5 }),
-    }),
+    },
   });
 
   await app.request("/api/display");
