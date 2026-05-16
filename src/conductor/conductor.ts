@@ -4,18 +4,18 @@ import type { DeviceReport, Plugin, Result, RunContext } from "../plugin/plugin.
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 
-// The Conductor is opaque to the Plugin's state shape — `any` here is
-// the orchestrator's "I don't know S, and I shouldn't have to" boundary.
-// Plugin authors keep full type safety inside their own `run` and `view`.
+// The Conductor is opaque to the Plugin's state shape. `Result<unknown>` /
+// `Plugin<unknown>` work here because `Result.view` is declared as a method
+// in the contract (see src/plugin/plugin.ts), which makes the type
+// bivariant in `S` — a Plugin author's `Plugin<MyState>` flows in cleanly,
+// keeping full type safety inside `run` and `view`.
 export type RendererDep = {
-  // deno-lint-ignore no-explicit-any
-  deriveHtml(result: Result<any>): string | Promise<string>;
+  deriveHtml(result: Result<unknown>): string | Promise<string>;
   rasterize(html: string, hints?: Record<string, unknown>): Promise<Uint8Array>;
 };
 
 export type ConductorDeps = {
-  // deno-lint-ignore no-explicit-any
-  plugin: Plugin<any>;
+  plugin: Plugin<unknown>;
   renderer: RendererDep;
   identityFor: (html: string) => string | Promise<string>;
   errorView: (err: Error) => unknown;
@@ -31,8 +31,7 @@ export type ConductorDeps = {
 // lives entirely inside the factory closure — its only external surface
 // is HTTP.
 export function createConductor(deps: ConductorDeps): Hono {
-  // deno-lint-ignore no-explicit-any
-  type CurrentResult = { ctx: RunContext; result: Result<any> };
+  type CurrentResult = { ctx: RunContext; result: Result<unknown> };
   type CurrentImage = { png: Uint8Array; identity: string };
 
   let currentResult: CurrentResult | null = null;
@@ -50,8 +49,7 @@ export function createConductor(deps: ConductorDeps): Hono {
       intent: input.intent,
       device: latestDevice,
     };
-    // deno-lint-ignore no-explicit-any
-    let result: Result<any>;
+    let result: Result<unknown>;
     try {
       result = await deps.plugin.run(ctx);
     } catch (err) {

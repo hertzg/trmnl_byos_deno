@@ -33,7 +33,13 @@ export type Result<S> = {
   state: S;
   validity: Temporal.Duration;
   hints?: Record<string, unknown>;
-  view: (state: S) => unknown;
+  // Declared as a method (not an arrow property) so the type is bivariant
+  // in S. This lets the orchestrator type its receive-side as
+  // `Result<unknown>` without forcing every Plugin's `Result<MyState>` to
+  // be a strict subtype. Authors still write arrow-function values
+  // (`view: (s) => <Card data={s} />`) — method syntax is purely about
+  // the type's variance, not the value's shape.
+  view(state: S): unknown;
 };
 
 export type Plugin<S> = {

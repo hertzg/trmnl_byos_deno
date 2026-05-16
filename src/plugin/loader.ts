@@ -33,8 +33,7 @@ async function copyDirContents(src: string, dst: string): Promise<void> {
 export async function loadPlugin(
   dir: string,
   config?: unknown,
-  // deno-lint-ignore no-explicit-any
-): Promise<Plugin<any>> {
+): Promise<Plugin<unknown>> {
   const mainPath = join(dir, "main.ts");
   try {
     await Deno.stat(mainPath);
