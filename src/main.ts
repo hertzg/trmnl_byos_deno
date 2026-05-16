@@ -15,7 +15,6 @@ import { identityFor } from "./render/identity.ts";
 import { createCdpRasterize } from "./render/cdp-rasterize.ts";
 import { createRasterize } from "./render/rasterize.ts";
 import { loadPlugin, seedPluginDir } from "./plugin/loader.ts";
-import { createConductorApp } from "./http/conductor-app.ts";
 import { Hono } from "hono";
 
 async function main() {
@@ -37,6 +36,10 @@ async function main() {
     identityFor,
     errorView: (err) => ErrorView(err),
     errorValidity: Temporal.Duration.from({ seconds: 30 }),
+    friendlyId: FRIENDLY_ID,
+    pluginAssetsDir: join(PLUGIN_DIR, "assets"),
+    onDeviceLog: (id, body) => console.log(`[device-log] ${id.toUpperCase()}: ${body}`),
+    now: () => Temporal.Now.zonedDateTimeISO(),
   });
 
   const app = new Hono();
@@ -55,16 +58,7 @@ async function main() {
   });
 
   app
-    .route(
-      "/",
-      createConductorApp({
-        conductor,
-        friendlyId: FRIENDLY_ID,
-        pluginAssetsDir: join(PLUGIN_DIR, "assets"),
-        onDeviceLog: (id, body) => console.log(`[device-log] ${id.toUpperCase()}: ${body}`),
-        now: () => Temporal.Now.zonedDateTimeISO(),
-      }),
-    )
+    .route("/", conductor.app)
     .route("/", cdp.app);
 
   console.log(`trmnl-byos-deno on :${PORT}`);
