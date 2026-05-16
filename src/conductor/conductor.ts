@@ -1,8 +1,11 @@
 import { Hono } from "hono";
 import { serveStatic } from "hono/deno";
+import { renderToString } from "hono/jsx/dom/server";
+import { encodeBase64 } from "@std/encoding/base64";
 import type { DeviceReport, Plugin, Result, RunContext } from "../plugin/plugin.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
+import Dashboard from "./dashboard.tsx";
 
 // The Conductor is opaque to the Plugin's state shape. `Result<unknown>` /
 // `Plugin<unknown>` work here because `Result.view` is declared as a method
@@ -179,6 +182,40 @@ export function createConductor(deps: ConductorDeps): Hono {
       const png = currentImage?.identity === id ? currentImage.png : undefined;
       if (png === undefined) return c.body(null, 404);
       return c.body(png as unknown as ArrayBuffer, 200, { "content-type": "image/png" });
+    })
+    // Dashboard at /. ADR-0005: hands the Conductor a `{ t, intent: "scrub",
+    // device }` trigger and previews the resulting Image. Does not touch
+    // Current Result or Current Image.
+    .get("/", async (c) => {
+      const now = deps.now();
+      // Forward-only scrubber: never run the Plugin at a moment earlier than
+      // the Current Result's commit or the wall clock. If wall clock has
+      // advanced past the Current Result, `now` wins.
+      const tMin = currentResult && Temporal.ZonedDateTime.compare(currentResult.ctx.t, now) > 0
+        ? currentResult.ctx.t
+        : now;
+      // Datetime-local form value: "YYYY-MM-DDTHH:MM" (no timezone). Interpret
+      // in the server's timezone — that's the timezone the page renders in,
+      // so it's the user's mental model of "what time t means".
+      const tParam = c.req.query("t");
+      const tRequested = tParam !== undefined
+        ? Temporal.PlainDateTime.from(tParam).toZonedDateTime(now.timeZoneId)
+        : tMin;
+      const t = Temporal.ZonedDateTime.compare(tRequested, tMin) < 0 ? tMin : tRequested;
+      const { result, html, identity } = await runAndDerive({ t, intent: "scrub" });
+      const out = await rasterizeWithFallback(result, html, identity);
+      const page = renderToString(
+        Dashboard({
+          t,
+          tMin,
+          tCommit: currentResult?.ctx.t ?? null,
+          now,
+          result: out.result,
+          identity: out.identity,
+          pngBase64: encodeBase64(out.png),
+        }) as Parameters<typeof renderToString>[0],
+      );
+      return c.html("<!DOCTYPE html>" + page, 200, { "cache-control": "no-store" });
     })
     // Dev-iteration: live HTML at t=now via scrub. ADR-0005: no CDP cost.
     // Does not touch Current Result or Current Image.

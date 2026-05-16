@@ -437,6 +437,268 @@ Deno.test("GET /preview/png returns the rasterized PNG and does not touch Curren
   assertEquals(secondPoll.filename, firstPoll.filename);
 });
 
+// ─── dashboard at / ────────────────────────────────────────────────────────
+
+Deno.test("GET / returns 200 with an HTML dashboard page", async () => {
+  const conductor = createConductor({
+    ...defaults(),
+    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+    renderer: {
+      deriveHtml: () => "<p>x</p>",
+      rasterize: () => Promise.resolve(new Uint8Array([0x89])),
+    },
+    identityFor: () => "x",
+  });
+
+  const res = await conductor.request("/");
+
+  assertEquals(res.status, 200);
+  assertEquals(res.headers.get("content-type")?.startsWith("text/html"), true);
+  await res.body?.cancel();
+});
+
+Deno.test("GET / runs the Plugin with intent=scrub and does not mutate Current Result/Image", async () => {
+  const c = clock();
+  const run = spy((ctx: RunContext) => ({
+    state: { intent: ctx.intent },
+    validity: fiveMin,
+    view: (s: { intent: string }) => `<p>${s.intent}</p>`,
+  }));
+  const rasterize = spy(() => Promise.resolve(new Uint8Array([0xaa])));
+
+  const conductor = createConductor({
+    ...defaults({ now: c.now }),
+    plugin: { run },
+    renderer: {
+      deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
+      rasterize,
+    },
+    identityFor: (html) => `id-${html}`,
+  });
+
+  // Prime Current state with a real poll.
+  const firstPoll = await (await conductor.request("/api/display")).json();
+  assertSpyCalls(rasterize, 1);
+
+  // Dashboard scrubs.
+  await (await conductor.request("/")).body?.cancel();
+
+  // The dashboard's run was a scrub.
+  assertEquals(run.calls.at(-1)?.args[0].intent, "scrub");
+
+  // Inside the original validity window, /api/display still serves the
+  // poll's image — Current state untouched.
+  c.advance({ minutes: 1 });
+  const secondPoll = await (await conductor.request("/api/display")).json();
+  assertEquals(secondPoll.filename, firstPoll.filename);
+});
+
+Deno.test("GET / defaults t to the Current Result's commit moment when one exists", async () => {
+  const c = clock();
+  const run = spy((_ctx: RunContext) => ({
+    state: {},
+    validity: fiveMin,
+    view: () => "<p>x</p>",
+  }));
+
+  const conductor = createConductor({
+    ...defaults({ now: c.now }),
+    plugin: { run },
+    renderer: {
+      deriveHtml: () => "<p>x</p>",
+      rasterize: () => Promise.resolve(new Uint8Array([0x01])),
+    },
+    identityFor: () => "id",
+  });
+
+  // Poll at T0 → Current Result committed at T0. (No wall-clock advance, so
+  // the forward-only clamp t_min = max(T0, now=T0) = T0 doesn't fight the
+  // default. When wall-clock advances past commit, the clamp wins — see the
+  // "clamped forward" test below.)
+  await (await conductor.request("/api/display")).body?.cancel();
+  await (await conductor.request("/")).body?.cancel();
+
+  const scrubCall = run.calls.at(-1)!;
+  assertEquals(scrubCall.args[0].intent, "scrub");
+  assertEquals(scrubCall.args[0].t.toString(), T0.toString());
+});
+
+Deno.test("GET / defaults t to now when no Current Result exists", async () => {
+  const c = clock();
+  const run = spy((_ctx: RunContext) => ({
+    state: {},
+    validity: fiveMin,
+    view: () => "<p>x</p>",
+  }));
+
+  const conductor = createConductor({
+    ...defaults({ now: c.now }),
+    plugin: { run },
+    renderer: {
+      deriveHtml: () => "<p>x</p>",
+      rasterize: () => Promise.resolve(new Uint8Array([0x01])),
+    },
+    identityFor: () => "id",
+  });
+
+  await (await conductor.request("/")).body?.cancel();
+
+  // No prior poll, so default t is now.
+  assertEquals(run.calls.length, 1);
+  assertEquals(run.calls[0].args[0].intent, "scrub");
+  assertEquals(run.calls[0].args[0].t.toString(), T0.toString());
+});
+
+Deno.test("GET /?t=<future> scrubs the Plugin at the supplied t", async () => {
+  const run = spy((_ctx: RunContext) => ({
+    state: {},
+    validity: fiveMin,
+    view: () => "<p>x</p>",
+  }));
+
+  const conductor = createConductor({
+    ...defaults(),
+    plugin: { run },
+    renderer: {
+      deriveHtml: () => "<p>x</p>",
+      rasterize: () => Promise.resolve(new Uint8Array([0x01])),
+    },
+    identityFor: () => "id",
+  });
+
+  // Datetime-local input format: YYYY-MM-DDTHH:MM (no timezone). The server
+  // interprets it in its own timezone (deps.now().timeZoneId, Europe/Berlin).
+  const tFuture = T0.add({ minutes: 30 }); // 2026-05-16T10:30[Europe/Berlin]
+  await (await conductor.request("/?t=2026-05-16T10:30")).body?.cancel();
+
+  assertEquals(run.calls.length, 1);
+  assertEquals(run.calls[0].args[0].intent, "scrub");
+  assertEquals(run.calls[0].args[0].t.toString(), tFuture.toString());
+});
+
+Deno.test("GET /?t=<past> is clamped forward to max(t_current, now)", async () => {
+  const c = clock();
+  const run = spy((_ctx: RunContext) => ({
+    state: {},
+    validity: fiveMin,
+    view: () => "<p>x</p>",
+  }));
+  const conductor = createConductor({
+    ...defaults({ now: c.now }),
+    plugin: { run },
+    renderer: {
+      deriveHtml: () => "<p>x</p>",
+      rasterize: () => Promise.resolve(new Uint8Array([0x01])),
+    },
+    identityFor: () => "id",
+  });
+
+  // Poll at T0, then advance wall clock 2 min. t_min = max(T0, T0+2m) = T0+2m.
+  await (await conductor.request("/api/display")).body?.cancel();
+  c.advance({ minutes: 2 });
+  const tMin = c.now();
+
+  // Ask for t in the past (before t_min). Should clamp to t_min.
+  await (await conductor.request("/?t=2026-05-16T09:00")).body?.cancel();
+  assertEquals(run.calls.at(-1)?.args[0].t.toString(), tMin.toString());
+
+  // Ask for t before T0 (before t_current). Should also clamp to t_min (now).
+  await (await conductor.request("/?t=2026-05-16T09:30")).body?.cancel();
+  assertEquals(run.calls.at(-1)?.args[0].t.toString(), tMin.toString());
+});
+
+Deno.test("GET / renders the rendered Image, the scrubber, and Result metadata", async () => {
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // PNG magic prefix
+  const conductor = createConductor({
+    ...defaults(),
+    plugin: {
+      run: () => ({
+        state: { msg: "hello" },
+        validity: Temporal.Duration.from({ minutes: 7 }),
+        view: function MyPluginView(s: { msg: string }) {
+          return `<p>${s.msg}</p>`;
+        },
+      }),
+    },
+    renderer: {
+      deriveHtml: (r: Result<{ msg: string }>) => String(r.view(r.state)),
+      rasterize: () => Promise.resolve(png),
+    },
+    identityFor: () => "dashid",
+  });
+
+  const res = await conductor.request("/");
+  const html = await res.text();
+
+  // Image: inline as data URL so the page is one round trip.
+  const b64 = "iVBORw=="; // base64 of [0x89, 0x50, 0x4e, 0x47]
+  assertEquals(html.includes(`data:image/png;base64,${b64}`), true, "PNG data URL missing");
+
+  // Forward-only scrubber.
+  assertEquals(html.includes('name="t"'), true, "scrubber input missing");
+  assertEquals(html.includes('type="datetime-local"'), true, "datetime-local input missing");
+
+  // Result metadata, human-formatted (not raw ZonedDateTime / PT-duration).
+  assertEquals(html.includes("7m"), true, "validity duration missing");
+  assertEquals(html.includes("MyPluginView"), true, "view identity missing");
+  assertEquals(html.includes("dashid"), true, "image identity missing");
+  // Chosen t (shown to user as the input's value attribute, in datetime-local
+  // format YYYY-MM-DDTHH:MM).
+  assertEquals(html.includes("2026-05-16T10:00"), true, "chosen t missing");
+});
+
+Deno.test("GET / renders the Plugin's Result.state as JSON for debugging", async () => {
+  const conductor = createConductor({
+    ...defaults(),
+    plugin: {
+      run: () => ({
+        state: { departures: [{ line: "U7", at: "10:05" }], count: 1 },
+        validity: fiveMin,
+        view: () => "<p>x</p>",
+      }),
+    },
+    renderer: {
+      deriveHtml: () => "<p>x</p>",
+      rasterize: () => Promise.resolve(new Uint8Array([0])),
+    },
+    identityFor: () => "id",
+  });
+
+  // JSX HTML-escapes quotes inside text nodes; decode to check the JSON the
+  // browser ultimately renders to the operator.
+  const decoded = (await (await conductor.request("/")).text()).replaceAll("&quot;", '"');
+
+  assertEquals(decoded.includes('"line"'), true, "state JSON key missing");
+  assertEquals(decoded.includes('"U7"'), true, "state JSON value missing");
+  assertEquals(decoded.includes('"count": 1'), true, "state JSON pretty-printed");
+});
+
+Deno.test("GET / emits forward step links whose ?t= is t + offset in datetime-local form", async () => {
+  const c = clock(at("2026-05-16T10:00")); // T0
+  const conductor = createConductor({
+    ...defaults({ now: c.now }),
+    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+    renderer: {
+      deriveHtml: () => "<p>x</p>",
+      rasterize: () => Promise.resolve(new Uint8Array([0])),
+    },
+    identityFor: () => "id",
+  });
+
+  const html = await (await conductor.request("/")).text();
+
+  // From T0=10:00, the +5m link should jump to 10:05.
+  assertEquals(
+    html.includes("?t=2026-05-16T10%3A05") || html.includes("?t=2026-05-16T10:05"),
+    true,
+  );
+  // +1h → 11:00.
+  assertEquals(
+    html.includes("?t=2026-05-16T11%3A00") || html.includes("?t=2026-05-16T11:00"),
+    true,
+  );
+});
+
 Deno.test("GET /assets/:file serves files from pluginAssetsDir without the /assets prefix duplicating in the path", async () => {
   const assetsDir = await Deno.makeTempDir({ prefix: "conductor-assets-test-" });
   await Deno.writeTextFile(`${assetsDir}/style.css`, ".x { color: red; }");
