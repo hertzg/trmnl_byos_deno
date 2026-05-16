@@ -30,7 +30,7 @@ The Plugin's architectural surface is a single method:
 type RunContext = {
   t: Temporal.ZonedDateTime;
   intent: "poll" | "scrub" | "prerender" /* extensible, non-breaking */;
-  device: DeviceReport; // heartbeat-derived telemetry; shape evolves
+  device: DeviceReport | null; // null before any Device has polled; non-null otherwise
   // open-shape: more fields may be added non-breakingly over time
 };
 
@@ -38,7 +38,13 @@ type Result<S> = {
   state: S;
   validity: Temporal.Duration;
   hints?: Hints;
-  view: (state: S) => JSX.Element;
+  // Declared as a method (not an arrow property) so the type is bivariant
+  // in S — the orchestrator can type its receive-side as `Result<unknown>`
+  // without forcing every Plugin's `Result<MyState>` to be a strict
+  // subtype. Authors still write arrow-function values
+  // (`view: (s) => <Card data={s} />`); method syntax is purely about
+  // the type's variance.
+  view(state: S): unknown;
 };
 
 type Plugin<S> = {

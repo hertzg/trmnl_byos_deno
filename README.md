@@ -21,8 +21,11 @@ Implements the BYOS endpoints (`/api/setup`, `/api/display`, `/api/log`) plus th
 
 - `/images/:identity/png` — Device-facing image bytes, served from the Conductor's Current Image
   when its identity matches
-- `/preview/:id` — internal HTML fetch-back used by CDP during rasterization (not reachable by the
-  Device)
+- `/preview` — live HTML preview of the current Plugin output at `t = now` (dev iteration, no CDP
+  cost)
+- `/preview/png` — live PNG preview at `t = now` (dev iteration, full pipeline)
+- `/__internal/render/:id` — internal HTML fetch-back used by CDP during rasterization (not
+  reachable by the Device; owned by the rasterizer's own Hono sub-app)
 - `/assets/*` — static files from the active Plugin's `assets/` directory
 
 Output is a 4-bit grayscale PNG (color-type=0, packed 2 px/byte — exactly what TRMNL X firmware
@@ -54,8 +57,10 @@ cp .env.example .env
 deno task dev
 ```
 
-The Device path is `/api/display` → follow the `image_url` it returns. `/preview` and `/preview/png`
-(live HTML / live PNG at `t = now`) and the dashboard at `/` will land in follow-up slices.
+The Device path is `/api/display` → follow the `image_url` it returns. For dev iteration on a
+Plugin's view, open `http://localhost:3000/preview` for live HTML or `/preview/png` for the live
+rasterized PNG at `t = now`. The dashboard at `/` (forward-only `t` scrubber for diagnosing
+wall-clock-in-view / wall-clock-in-validity bugs) will land in a follow-up slice.
 
 **macOS / Colima users**: the default Colima mount (9p) does not propagate inotify events into the
 VM, so `deno --watch` will not reload on edits. Switch Colima to `virtiofs`:

@@ -4,9 +4,9 @@
 //   ID, Battery-Voltage, RSSI, FW-Version, Model, Width, Height, ...
 //
 // The Conductor (ADR-0003) owns the latest DeviceReport itself and stamps
-// it into the RunContext on every trigger. The HTTP layer's /api/display
-// handler calls `parseDeviceHeaders(req.raw.headers)` and, when it gets a
-// non-null report, hands it to `conductor.reportDevice(report)`.
+// it into the RunContext on every trigger. The Conductor's /api/display
+// route handler calls `parseDeviceHeaders(req.raw.headers)` and, when it
+// gets a non-null report, updates its internal `latestDevice` directly.
 
 import type { DeviceReport } from "./plugin/plugin.ts";
 

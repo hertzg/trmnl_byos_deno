@@ -38,8 +38,22 @@ export function createConductor(deps: ConductorDeps): Hono {
   let currentImage: CurrentImage | null = null;
   let latestDevice: DeviceReport | null = null;
 
-  // Pipeline up to identity, with error-view fallback. No state mutation —
-  // callers decide whether to update Current Result / Current Image.
+  // Wrap an error in the Server-supplied error view as a Result. Per
+  // ADR-0003, any failure inside the pipeline (plugin.run, deriveHtml, or
+  // rasterize) falls back to this shape with the configured short validity.
+  function errorResult(err: unknown): Result<unknown> {
+    const error = err instanceof Error ? err : new Error(String(err));
+    return {
+      state: error,
+      validity: deps.errorValidity,
+      view: deps.errorView,
+    };
+  }
+
+  // Pipeline up to identity, with error-view fallback for plugin.run +
+  // deriveHtml + identityFor. No state mutation — callers decide whether
+  // to update Current Result / Current Image. Rasterize is separate
+  // (handled by the rasterize-with-fallback in callers below).
   async function runAndDerive(input: {
     t: Temporal.ZonedDateTime;
     intent: "poll" | "scrub" | "prerender";
@@ -50,19 +64,40 @@ export function createConductor(deps: ConductorDeps): Hono {
       device: latestDevice,
     };
     let result: Result<unknown>;
+    let html: string;
+    let identity: string;
     try {
       result = await deps.plugin.run(ctx);
+      html = await deps.renderer.deriveHtml(result);
+      identity = await deps.identityFor(html);
     } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      result = {
-        state: error,
-        validity: deps.errorValidity,
-        view: deps.errorView,
-      };
+      result = errorResult(err);
+      html = await deps.renderer.deriveHtml(result);
+      identity = await deps.identityFor(html);
     }
-    const html = await deps.renderer.deriveHtml(result);
-    const identity = await deps.identityFor(html);
     return { ctx, result, html, identity };
+  }
+
+  // Rasterize with one retry through the error view on failure. If the
+  // error view itself fails to rasterize, the exception propagates (better
+  // a 500 than an infinite loop). Returns the (possibly-replaced) result/
+  // html/identity alongside the PNG so callers can update Current state
+  // with the actual rendered Result.
+  async function rasterizeWithFallback(
+    result: Result<unknown>,
+    html: string,
+    identity: string,
+  ): Promise<{ result: Result<unknown>; html: string; identity: string; png: Uint8Array }> {
+    try {
+      const png = await deps.renderer.rasterize(html, result.hints);
+      return { result, html, identity, png };
+    } catch (err) {
+      const fallback = errorResult(err);
+      const fallbackHtml = await deps.renderer.deriveHtml(fallback);
+      const fallbackIdentity = await deps.identityFor(fallbackHtml);
+      const png = await deps.renderer.rasterize(fallbackHtml, fallback.hints);
+      return { result: fallback, html: fallbackHtml, identity: fallbackIdentity, png };
+    }
   }
 
   // Poll path: validity-window reuse, identity-gated rasterize, and
@@ -81,12 +116,16 @@ export function createConductor(deps: ConductorDeps): Hono {
         };
       }
     }
-    const { ctx, result, html, identity } = await runAndDerive(input);
-    currentResult = { ctx, result };
+    let { ctx, result, html, identity } = await runAndDerive(input);
     if (currentImage?.identity !== identity) {
-      const png = await deps.renderer.rasterize(html, result.hints);
-      currentImage = { png, identity };
+      const out = await rasterizeWithFallback(result, html, identity);
+      // rasterize-with-fallback may have swapped to the error result; honor it.
+      result = out.result;
+      html = out.html;
+      identity = out.identity;
+      currentImage = { png: out.png, identity };
     }
+    currentResult = { ctx, result };
     return {
       png: currentImage.png,
       identity: currentImage.identity,
@@ -96,6 +135,11 @@ export function createConductor(deps: ConductorDeps): Hono {
 
   return new Hono()
     .get("/api/setup", (c) =>
+      // `image_url` is part of the BYOS setup payload. There's no frame
+      // to point at yet — the Device proceeds to /api/display next, which
+      // returns the real image URL. This URL 404s if the Device fetches
+      // it; firmware recovers via the next /api/display poll. Kept here
+      // because BYOS firmware expects the field to be present.
       c.json({
         status: 200,
         api_key: "byos",
@@ -142,12 +186,16 @@ export function createConductor(deps: ConductorDeps): Hono {
       const { html } = await runAndDerive({ t: deps.now(), intent: "scrub" });
       return c.html(html, 200, { "cache-control": "no-store" });
     })
-    // Dev-iteration: live PNG at t=now via scrub. Full pipeline. Does not
-    // touch Current Result or Current Image.
+    // Dev-iteration: live PNG at t=now via scrub. Full pipeline including
+    // the rasterize-with-fallback. Does not touch Current Result or Current
+    // Image.
     .get("/preview/png", async (c) => {
-      const { html, result } = await runAndDerive({ t: deps.now(), intent: "scrub" });
-      const png = await deps.renderer.rasterize(html, result.hints);
-      return c.body(png as unknown as ArrayBuffer, 200, {
+      const { result, html, identity } = await runAndDerive({
+        t: deps.now(),
+        intent: "scrub",
+      });
+      const out = await rasterizeWithFallback(result, html, identity);
+      return c.body(out.png as unknown as ArrayBuffer, 200, {
         "content-type": "image/png",
         "cache-control": "no-store",
       });

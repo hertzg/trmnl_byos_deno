@@ -184,6 +184,80 @@ Deno.test("when Plugin.run throws, the error view is rendered and reused inside 
   assertEquals(new Uint8Array(await img.arrayBuffer()), errorPng);
 });
 
+Deno.test("when deriveHtml throws on the Plugin's Result, the error view is rendered instead", async () => {
+  const errorPng = new Uint8Array([0xee]);
+  const boom = new Error("derive boom");
+
+  const run = spy(() => ({
+    state: { ok: true },
+    validity: fiveMin,
+    view: () => "<p>real</p>",
+  }));
+  const errorView = spy((_err: Error) => "error");
+  // First call (Plugin's Result) throws; second call (error Result) succeeds.
+  let calls = 0;
+  const deriveHtml = spy((r: Result<unknown>) => {
+    calls++;
+    if (calls === 1) throw boom;
+    return String(r.view(r.state));
+  });
+  const rasterize = spy(() => Promise.resolve(errorPng));
+
+  const conductor = createConductor({
+    ...defaults(),
+    plugin: { run },
+    renderer: { deriveHtml, rasterize },
+    identityFor: (html) => `id-${html}`,
+    errorView,
+  });
+
+  const res = await (await conductor.request("/api/display")).json();
+
+  assertSpyCalls(run, 1);
+  assertSpyCalls(deriveHtml, 2); // once for Plugin (threw), once for error view
+  assertSpyCalls(errorView, 1);
+  assertSpyCalls(rasterize, 1);
+  assertEquals(errorView.calls[0].args[0], boom);
+  assertEquals(res.filename, "image-id-error");
+});
+
+Deno.test("when rasterize throws on the Plugin's HTML, the error view is rendered and rasterized instead", async () => {
+  const errorPng = new Uint8Array([0xee]);
+  const boom = new Error("rasterize boom");
+
+  const run = spy(() => ({
+    state: { ok: true },
+    validity: fiveMin,
+    view: () => "<p>real</p>",
+  }));
+  const errorView = spy((_err: Error) => "error");
+  const deriveHtml = spy((r: Result<unknown>) => String(r.view(r.state)));
+  // First call (Plugin's HTML) throws; second call (error view's HTML) succeeds.
+  let calls = 0;
+  const rasterize = spy(() => {
+    calls++;
+    if (calls === 1) return Promise.reject(boom);
+    return Promise.resolve(errorPng);
+  });
+
+  const conductor = createConductor({
+    ...defaults(),
+    plugin: { run },
+    renderer: { deriveHtml, rasterize },
+    identityFor: (html) => `id-${html}`,
+    errorView,
+  });
+
+  const res = await (await conductor.request("/api/display")).json();
+
+  assertSpyCalls(run, 1);
+  assertSpyCalls(deriveHtml, 2); // once for Plugin, once for error view
+  assertSpyCalls(errorView, 1);
+  assertSpyCalls(rasterize, 2); // once for Plugin (threw), once for error view
+  assertEquals(errorView.calls[0].args[0], boom);
+  assertEquals(res.filename, "image-id-error");
+});
+
 // ─── BYOS surface ──────────────────────────────────────────────────────────
 
 Deno.test("GET /api/setup returns BYOS setup JSON with friendlyId", async () => {
