@@ -1,7 +1,7 @@
 import { join } from "@std/path";
 import type { Bundle } from "./bundle.ts";
 import { loadPlugin } from "./loader.ts";
-import type { Plugin, RunContext } from "./plugin.ts";
+import type { RunContext } from "./plugin.ts";
 
 // The PluginManager owns the Plugin's lifecycle: it loads the Plugin module
 // once at construction, reads its `assets/` directory recursively into memory
@@ -21,7 +21,7 @@ export type PluginManager = {
 export async function createPluginManager(
   deps: PluginManagerDeps,
 ): Promise<PluginManager> {
-  const plugin: Plugin<unknown> = await loadPlugin(deps.pluginDir);
+  const plugin = await loadPlugin(deps.pluginDir);
   const assetsDir = join(deps.pluginDir, "assets");
   const assets = await readAssetsDir(assetsDir);
 
