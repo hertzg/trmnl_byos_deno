@@ -174,11 +174,14 @@ Deno.test("a PluginManager loaded from disk drives /api/display end-to-end throu
     renderer: {
       identity: (b: Bundle) => Promise.resolve("id-" + String(b.result.view(b.result.state))),
       rasterize: () => Promise.resolve(new Uint8Array()),
+      // The Conductor doesn't touch origin/close on the /api/display path,
+      // but the Renderer type requires them.
+      origin: () => "http://127.0.0.1:0",
+      close: () => Promise.resolve(),
     },
     errorView: (_err: Error) => "",
     errorValidity: Temporal.Duration.from({ seconds: 30 }),
     friendlyId: "SMOKE",
-    pluginAssetsDir: join(dir, "assets"),
     now: () => T0,
   });
 
@@ -214,33 +217,36 @@ Deno.test("a PluginManager wired through the real Renderer surfaces a filename d
   // Real Renderer; the CDP-backed fetchPngFromUrl is stubbed because
   // /api/display doesn't take the rasterize path in this slice (pixels
   // come from /preview/png on the Dashboard sub-app, which doesn't run
-  // here).
+  // here). The Renderer owns a loopback HTTP server, so we close it in
+  // a try/finally to keep the test process tidy.
   const renderer = createRenderer({
-    internalOrigin: "http://internal:3000",
     fetchPngFromUrl: () => Promise.resolve(new Uint8Array()),
   });
 
-  const conductor = createConductor({
-    pluginManager,
-    renderer,
-    errorView: (_err: Error) => "",
-    errorValidity: Temporal.Duration.from({ seconds: 30 }),
-    friendlyId: "SMOKE",
-    pluginAssetsDir: join(dir, "assets"),
-    now: () => T0,
-  });
+  try {
+    const conductor = createConductor({
+      pluginManager,
+      renderer,
+      errorView: (_err: Error) => "",
+      errorValidity: Temporal.Duration.from({ seconds: 30 }),
+      friendlyId: "SMOKE",
+      now: () => T0,
+    });
 
-  const res = await conductor.app.request("/api/display");
-  const body = await res.json();
+    const res = await conductor.app.request("/api/display");
+    const body = await res.json();
 
-  assertEquals(res.status, 200);
-  assertEquals(body.status, 0);
-  // Reproduce the Bundle the PluginManager would build for an
-  // intent=poll call and assert the filename matches its hashBundle.
-  const expected = await pluginManager.run({ t: T0, intent: "poll", device: null });
-  const expectedHash = await hashBundle(expected satisfies Bundle);
-  assertEquals(body.filename, `image-${expectedHash}`);
-  // 16-char lowercase hex per ADR-0004.
-  assertEquals(/^image-[0-9a-f]{16}$/.test(body.filename), true);
-  assertEquals(body.refresh_rate, 60);
+    assertEquals(res.status, 200);
+    assertEquals(body.status, 0);
+    // Reproduce the Bundle the PluginManager would build for an
+    // intent=poll call and assert the filename matches its hashBundle.
+    const expected = await pluginManager.run({ t: T0, intent: "poll", device: null });
+    const expectedHash = await hashBundle(expected satisfies Bundle);
+    assertEquals(body.filename, `image-${expectedHash}`);
+    // 16-char lowercase hex per ADR-0004.
+    assertEquals(/^image-[0-9a-f]{16}$/.test(body.filename), true);
+    assertEquals(body.refresh_rate, 60);
+  } finally {
+    await renderer.close();
+  }
 });

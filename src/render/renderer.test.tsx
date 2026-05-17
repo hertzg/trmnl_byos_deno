@@ -31,7 +31,7 @@ function defaults(overrides: Partial<RendererDeps> = {}): RendererDeps {
 // ─── identity ──────────────────────────────────────────────────────────────
 
 Deno.test("Renderer.identity delegates to hashBundle and returns its hash", async () => {
-  const renderer = await createRenderer(defaults());
+  const renderer = createRenderer(defaults());
   try {
     const bundle = bundleWith(
       { greeting: "hi" },
@@ -47,7 +47,7 @@ Deno.test("Renderer.identity delegates to hashBundle and returns its hash", asyn
 });
 
 Deno.test("Renderer.identity is deterministic for equivalent bundles", async () => {
-  const renderer = await createRenderer(defaults());
+  const renderer = createRenderer(defaults());
   try {
     const a = bundleWith({ x: 1 }, (s) => <p>{String((s as { x: number }).x)}</p>);
     const b = bundleWith({ x: 1 }, (s) => <p>{String((s as { x: number }).x)}</p>);
@@ -61,7 +61,7 @@ Deno.test("Renderer.identity is deterministic for equivalent bundles", async () 
 // ─── loopback origin ───────────────────────────────────────────────────────
 
 Deno.test("Renderer.origin returns a loopback http URL with an assigned port", async () => {
-  const renderer = await createRenderer(defaults());
+  const renderer = createRenderer(defaults());
   try {
     // 127.0.0.1 keeps the loopback un-reachable from any other interface.
     // The port is the OS-assigned ephemeral port we got from listen({port:0}).
@@ -72,7 +72,7 @@ Deno.test("Renderer.origin returns a loopback http URL with an assigned port", a
 });
 
 Deno.test("Renderer.origin is stable across calls for the same instance", async () => {
-  const renderer = await createRenderer(defaults());
+  const renderer = createRenderer(defaults());
   try {
     assertEquals(renderer.origin(), renderer.origin());
   } finally {
@@ -81,8 +81,8 @@ Deno.test("Renderer.origin is stable across calls for the same instance", async 
 });
 
 Deno.test("Two Renderer instances pick distinct ports (each takes its own ephemeral port)", async () => {
-  const a = await createRenderer(defaults());
-  const b = await createRenderer(defaults());
+  const a = createRenderer(defaults());
+  const b = createRenderer(defaults());
   try {
     assertNotEquals(a.origin(), b.origin());
   } finally {
@@ -99,7 +99,7 @@ Deno.test("loopback origin serves the mounted Bundle's HTML at /index.html durin
     seenHtml = await (await fetch(url)).text();
     return new Uint8Array([0x01]);
   });
-  const renderer = await createRenderer(defaults({ fetchPngFromUrl }));
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
   try {
     await renderer.rasterize(bundleWith(
       { msg: "ahoy" },
@@ -124,7 +124,7 @@ Deno.test("loopback origin serves the mounted Bundle's assets at their /assets/<
     );
     return new Uint8Array([0x01]);
   });
-  const renderer = await createRenderer(defaults({ fetchPngFromUrl }));
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
   try {
     await renderer.rasterize(bundleWith(
       {},
@@ -149,7 +149,7 @@ Deno.test("loopback origin returns 404 for asset paths not declared by the mount
     await r.body?.cancel();
     return new Uint8Array([0x01]);
   });
-  const renderer = await createRenderer(defaults({ fetchPngFromUrl }));
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
   try {
     await renderer.rasterize(bundleWith({}, () => <p>x</p>));
     assertEquals(status, 404);
@@ -163,7 +163,7 @@ Deno.test("loopback origin returns 404 for asset paths not declared by the mount
 Deno.test("Renderer.rasterize returns the PNG bytes from the injected fetcher", async () => {
   const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // PNG magic prefix
   const fetchPngFromUrl = spy((_url: string) => Promise.resolve(png));
-  const renderer = await createRenderer(defaults({ fetchPngFromUrl }));
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
   try {
     const out = await renderer.rasterize(bundleWith({}, () => <p>x</p>));
 
@@ -176,7 +176,7 @@ Deno.test("Renderer.rasterize returns the PNG bytes from the injected fetcher", 
 
 Deno.test("Renderer.rasterize hands the fetcher a URL on the loopback origin (not an outward server)", async () => {
   const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
-  const renderer = await createRenderer(defaults({ fetchPngFromUrl }));
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
   try {
     await renderer.rasterize(bundleWith({}, () => <p>x</p>));
 
@@ -198,7 +198,7 @@ Deno.test("sequential rasterize calls each see only their own Bundle's HTML", as
     seen.push(await (await fetch(url)).text());
     return new Uint8Array([0x01]);
   };
-  const renderer = await createRenderer(defaults({ fetchPngFromUrl }));
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
   try {
     await renderer.rasterize(bundleWith({}, () => <p>first</p>));
     await renderer.rasterize(bundleWith({}, () => <p>second</p>));
@@ -221,7 +221,7 @@ Deno.test("concurrent rasterize calls serialize so each one's loopback fetch ret
     seen.push(await (await fetch(url)).text());
     return new Uint8Array([0x01]);
   };
-  const renderer = await createRenderer(defaults({ fetchPngFromUrl }));
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
   try {
     const first = renderer.rasterize(bundleWith({}, () => <p>first</p>));
     const second = renderer.rasterize(bundleWith({}, () => <p>second</p>));

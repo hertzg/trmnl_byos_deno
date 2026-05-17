@@ -55,7 +55,7 @@ export type RendererDeps = {
 // the conventional choice so the URL reads as a real document.
 const INDEX_PATH = "/index.html";
 
-export async function createRenderer(deps: RendererDeps): Promise<Renderer> {
+export function createRenderer(deps: RendererDeps): Renderer {
   // The Bundle currently being rasterized. `null` between calls. Read by
   // the loopback handlers; written by `rasterize` under the lock.
   let mounted: Bundle | null = null;
