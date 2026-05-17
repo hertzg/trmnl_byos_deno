@@ -1,7 +1,8 @@
 import { assertEquals, assertStrictEquals } from "@std/assert";
 import { join } from "@std/path";
 import { createConductor } from "../conductor/conductor.ts";
-import type { Result, RunContext } from "./plugin.ts";
+import type { RunContext } from "./plugin.ts";
+import type { Bundle } from "./bundle.ts";
 import { createPluginManager } from "./plugin-manager.ts";
 
 const T0 = Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]");
@@ -168,8 +169,10 @@ Deno.test("a PluginManager loaded from disk drives /api/display end-to-end throu
   const pluginManager = await createPluginManager({ pluginDir: dir });
   const conductor = createConductor({
     pluginManager,
-    deriveHtml: (r: Result<unknown>) => String(r.view(r.state)),
-    identityFor: (html: string) => "id-" + html,
+    renderer: {
+      identity: (b: Bundle) => Promise.resolve("id-" + String(b.result.view(b.result.state))),
+      rasterize: () => Promise.resolve(new Uint8Array()),
+    },
     errorView: (_err: Error) => "",
     errorValidity: Temporal.Duration.from({ seconds: 30 }),
     friendlyId: "SMOKE",

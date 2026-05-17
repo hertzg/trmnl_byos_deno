@@ -1,22 +1,36 @@
 import { assertEquals, assertGreaterOrEqual, assertLessOrEqual } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
 import { type ConductorDeps, createConductor } from "./conductor.ts";
-import type { Plugin, Result, RunContext } from "../plugin/plugin.ts";
+import type { Plugin, RunContext } from "../plugin/plugin.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
+import type { Renderer } from "../render/renderer.ts";
+import type { Bundle } from "../plugin/bundle.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
 
-// Wrap a Plugin in a stub PluginManager so existing tests keep speaking
+// Wrap a Plugin in a stub PluginManager so test bodies keep speaking
 // "Plugin run returns ..." while the Conductor consumes a Bundle. The asset
-// map is empty: this slice's Conductor behaviour does not consult it.
+// map is empty: nothing under test here consults it.
 function managerFor(plugin: Plugin<unknown>): PluginManager {
   return {
     async run(ctx) {
       const result = await plugin.run(ctx);
       return { result, assets: {} };
     },
+  };
+}
+
+// A fake Renderer whose `identity` derives a deterministic, inspectable
+// string from the Bundle's rendered view output — tests can then assert on
+// `out.identity` without re-implementing hashBundle. `rasterize` is unused
+// by `derive()` itself (Slot/Image path lives outside this slice).
+function fakeRenderer(overrides: Partial<Renderer> = {}): Renderer {
+  return {
+    identity: (b: Bundle) => Promise.resolve(`id-${String(b.result.view(b.result.state))}`),
+    rasterize: () => Promise.resolve(new Uint8Array()),
+    ...overrides,
   };
 }
 
@@ -38,30 +52,31 @@ function defaults(
 
 // ─── derive() ──────────────────────────────────────────────────────────────
 
-Deno.test("derive runs Plugin + deriveHtml + identityFor and surfaces all three on the result", async () => {
+Deno.test("derive runs Plugin + Renderer.identity and surfaces the Bundle on the result", async () => {
   const run = spy((ctx: RunContext) => ({
     state: { intent: ctx.intent },
     validity: fiveMin,
     view: (s: { intent: string }) => `<p>${s.intent}</p>`,
   }));
-  const deriveHtml = spy((r: Result<{ intent: string }>) => String(r.view(r.state)));
-  const identityFor = spy((html: string) => `id-${html}`);
+  const identity = spy((b: Bundle) =>
+    Promise.resolve(`id-${String(b.result.view(b.result.state))}`)
+  );
 
   const conductor = createConductor({
     ...defaults(),
     pluginManager: managerFor({ run }),
-    deriveHtml,
-    identityFor,
+    renderer: fakeRenderer({ identity }),
   });
 
   const out = await conductor.derive(T0);
 
-  assertEquals(out.html, "<p>scrub</p>");
   assertEquals(out.identity, "id-<p>scrub</p>");
+  assertEquals(out.bundle.assets, {});
   assertEquals(out.error, null);
   assertSpyCalls(run, 1);
-  assertSpyCalls(deriveHtml, 1);
-  assertSpyCalls(identityFor, 1);
+  assertSpyCalls(identity, 1);
+  // The Bundle handed to Renderer.identity carries the Plugin's Result.
+  assertEquals(identity.calls[0].args[0].result.state, { intent: "scrub" });
 });
 
 Deno.test("derive defaults intent to scrub and forwards the caller's intent when supplied", async () => {
@@ -74,8 +89,7 @@ Deno.test("derive defaults intent to scrub and forwards the caller's intent when
   const conductor = createConductor({
     ...defaults(),
     pluginManager: managerFor({ run }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "id",
+    renderer: fakeRenderer(),
   });
 
   await conductor.derive(T0);
@@ -95,20 +109,21 @@ Deno.test("derive falls back to the error view when Plugin.run throws", async ()
         throw boom;
       },
     }),
-    deriveHtml: (r: Result<unknown>) => String(r.view(r.state)),
-    identityFor: (html) => `id-${html}`,
+    renderer: fakeRenderer(),
   });
 
   const out = await conductor.derive(T0);
 
   assertEquals(out.error, boom);
-  assertEquals(out.html, "ERR");
   assertEquals(out.identity, "id-ERR");
   assertSpyCalls(errorView, 1);
+  // The error Bundle is still a Bundle: the Renderer saw the error view's
+  // Result in its assets-empty form.
+  assertEquals(out.bundle.result.state, boom);
 });
 
-Deno.test("derive falls back to the error view when deriveHtml throws", async () => {
-  const boom = new Error("derive boom");
+Deno.test("derive falls back to the error view when Renderer.identity throws", async () => {
+  const boom = new Error("identity boom");
   const errorView = spy((_err: Error) => "ERR");
   let calls = 0;
   const conductor = createConductor({
@@ -116,18 +131,18 @@ Deno.test("derive falls back to the error view when deriveHtml throws", async ()
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "<p>real</p>" }),
     }),
-    deriveHtml: (r: Result<unknown>) => {
-      calls++;
-      if (calls === 1) throw boom;
-      return String(r.view(r.state));
-    },
-    identityFor: (html) => `id-${html}`,
+    renderer: fakeRenderer({
+      identity: (b) => {
+        calls++;
+        if (calls === 1) return Promise.reject(boom);
+        return Promise.resolve(`id-${String(b.result.view(b.result.state))}`);
+      },
+    }),
   });
 
   const out = await conductor.derive(T0);
 
   assertEquals(out.error, boom);
-  assertEquals(out.html, "ERR");
   assertEquals(out.identity, "id-ERR");
 });
 
@@ -139,8 +154,7 @@ Deno.test("GET /api/setup returns BYOS setup JSON with friendlyId and image_url 
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
     }),
-    deriveHtml: () => "",
-    identityFor: () => "x",
+    renderer: fakeRenderer(),
   });
 
   const res = await conductor.app.request("/api/setup");
@@ -158,8 +172,7 @@ Deno.test("GET /api/display returns image_url=/preview/png, filename from identi
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
     }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "deadbeefcafef00d",
+    renderer: fakeRenderer({ identity: () => Promise.resolve("deadbeefcafef00d") }),
   });
 
   const res = await conductor.app.request("/api/display", { headers: { id: "AA:BB:CC" } });
@@ -182,8 +195,7 @@ Deno.test("GET /api/display runs the Plugin with intent=poll", async () => {
   const conductor = createConductor({
     ...defaults(),
     pluginManager: managerFor({ run }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "x",
+    renderer: fakeRenderer(),
   });
 
   await (await conductor.app.request("/api/display")).body?.cancel();
@@ -201,8 +213,7 @@ Deno.test("GET /api/display forwards the latest parsed DeviceReport into the nex
   const conductor = createConductor({
     ...defaults(),
     pluginManager: managerFor({ run }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "x",
+    renderer: fakeRenderer(),
   });
 
   await (await conductor.app.request("/api/display", { headers: { id: "AA:BB:CC" } })).body
@@ -225,8 +236,7 @@ Deno.test("GET /api/display leaves ctx.device null when no Device has polled yet
   const conductor = createConductor({
     ...defaults(),
     pluginManager: managerFor({ run }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "x",
+    renderer: fakeRenderer(),
   });
 
   await (await conductor.app.request("/api/display")).body?.cancel();
@@ -243,8 +253,7 @@ Deno.test("GET /api/display falls back to the error view filename when the Plugi
         throw new Error("boom");
       },
     }),
-    deriveHtml: (r: Result<unknown>) => String(r.view(r.state)),
-    identityFor: (html) => `id-${html}`,
+    renderer: fakeRenderer(),
     errorView: (_err: Error) => "ERR",
   });
 
@@ -269,8 +278,7 @@ Deno.test("GET /assets/:file serves files from pluginAssetsDir without the /asse
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
     }),
-    deriveHtml: () => "",
-    identityFor: () => "x",
+    renderer: fakeRenderer(),
   });
 
   const res = await conductor.app.request("/assets/style.css");
@@ -288,8 +296,7 @@ Deno.test("POST /api/log returns 204 and invokes onDeviceLog with the id header 
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
     }),
-    deriveHtml: () => "",
-    identityFor: () => "x",
+    renderer: fakeRenderer(),
   });
 
   const res = await conductor.app.request("/api/log", {

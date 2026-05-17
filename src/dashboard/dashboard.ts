@@ -98,7 +98,15 @@ export function createDashboard(deps: DashboardDeps): Hono {
     .get("/preview", async (c) => {
       const { t: tRequested } = parseT(c.req.query("t"), deps.now);
       const intent = (c.req.query("intent") ?? "scrub") as RunContext["intent"];
-      const { html, error } = await deps.derive(tRequested ?? deps.now(), intent);
+      const { bundle, error } = await deps.derive(tRequested ?? deps.now(), intent);
+      // Derive HTML inline from the Bundle's Result. The Renderer encapsulates
+      // its own derivation; Dashboard's /preview is interim (slice #51 swaps
+      // CDP onto a loopback origin and this route goes away), so the
+      // duplicated renderToString line is the lesser evil compared to widening
+      // the Renderer's public surface with a `htmlFor(bundle)` method.
+      const html = renderToString(
+        bundle.result.view(bundle.result.state) as Parameters<typeof renderToString>[0],
+      );
       return c.html(html, error ? 500 : 200, { "cache-control": "no-store" });
     })
     // Live PNG of /preview, via CDP. The Device fetches this on every poll

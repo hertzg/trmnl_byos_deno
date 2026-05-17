@@ -1,9 +1,9 @@
 /** @jsxImportSource hono/jsx */
 
 // View used by the Conductor's error fallback path (ADR-0003). When
-// Plugin.run / deriveHtml / rasterize throws, the Conductor wraps the
-// Error in a Result whose `view` is this component and whose `validity`
-// is the Conductor's configured `errorValidity` (~30 s).
+// Plugin.run / Renderer.identity throws, the Conductor wraps the Error in
+// a Result whose `view` is this component and whose `validity` is the
+// Conductor's configured `errorValidity` (~30 s).
 
 const css = `
   html, body { margin: 0; padding: 0; background: #fff; color: #000; }

@@ -1,4 +1,4 @@
-import type { DitherMode } from "./dither.ts";
+import type { DitherMode } from "./_internal/dither.ts";
 
 // A device profile bundles every render parameter that varies by panel: the panel's
 // physical pixel dimensions, the dithered output's bit depth, and the dither algorithm

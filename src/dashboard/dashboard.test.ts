@@ -3,8 +3,10 @@ import { assertSpyCalls, spy } from "@std/testing/mock";
 import { Hono } from "hono";
 import { type ConductorDeps, createConductor } from "../conductor/conductor.ts";
 import { createDashboard, type DashboardDeps } from "./dashboard.ts";
-import type { Plugin, Result, RunContext } from "../plugin/plugin.ts";
+import type { Plugin, RunContext } from "../plugin/plugin.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
+import type { Renderer } from "../render/renderer.ts";
+import type { Bundle } from "../plugin/bundle.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
@@ -38,6 +40,18 @@ function conductorDefaults(
   };
 }
 
+// Default Renderer for dashboard tests: identity derives a deterministic
+// `id-<view-output>` so tests can assert on `filename`/`identity` without
+// re-implementing hashBundle. `rasterize` is unused on the dashboard's
+// /preview/png path — pixels come from `fetchPngFromUrl` for this slice.
+function defaultRenderer(overrides: Partial<Renderer> = {}): Renderer {
+  return {
+    identity: (b: Bundle) => Promise.resolve("id-" + String(b.result.view(b.result.state))),
+    rasterize: () => Promise.resolve(new Uint8Array()),
+    ...overrides,
+  };
+}
+
 // Compose the Conductor's HTTP sub-app and the Dashboard the same way main.ts
 // does. Tests that exercise both /api/* and /preview* go through this wiring
 // so they see the same composition the production server does.
@@ -47,6 +61,7 @@ function wire(
 ) {
   const conductor = createConductor({
     ...conductorDefaults(conductorDeps),
+    renderer: defaultRenderer(),
     ...conductorDeps,
   } as ConductorDeps);
   const dashboard = createDashboard({
@@ -66,8 +81,6 @@ Deno.test("GET / returns 200 with an HTML dashboard page", async () => {
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
     }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "x",
   });
 
   const res = await app.request("/");
@@ -84,11 +97,7 @@ Deno.test("GET / runs the Plugin with intent=scrub", async () => {
     view: (s: { intent: string }) => `<p>${s.intent}</p>`,
   }));
 
-  const app = wire({
-    pluginManager: managerFor({ run }),
-    deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
-    identityFor: (html) => `id-${html}`,
-  });
+  const app = wire({ pluginManager: managerFor({ run }) });
 
   await (await app.request("/")).body?.cancel();
 
@@ -102,11 +111,7 @@ Deno.test("GET / defaults t to now when no ?t= is supplied", async () => {
     view: () => "<p>x</p>",
   }));
 
-  const app = wire({
-    pluginManager: managerFor({ run }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "id",
-  });
+  const app = wire({ pluginManager: managerFor({ run }) });
 
   await (await app.request("/")).body?.cancel();
 
@@ -121,11 +126,7 @@ Deno.test("GET /?t=<future> scrubs the Plugin at the supplied t", async () => {
     view: () => "<p>x</p>",
   }));
 
-  const app = wire({
-    pluginManager: managerFor({ run }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "id",
-  });
+  const app = wire({ pluginManager: managerFor({ run }) });
 
   const tFuture = T0.add({ minutes: 30 });
   await (await app.request("/?t=2026-05-16T10:30")).body?.cancel();
@@ -139,11 +140,7 @@ Deno.test("GET /?t=<garbage> shows a parse-error notice and falls back to defaul
     validity: fiveMin,
     view: () => "<p>x</p>",
   }));
-  const app = wire({
-    pluginManager: managerFor({ run }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "id",
-  });
+  const app = wire({ pluginManager: managerFor({ run }) });
 
   const res = await app.request("/?t=not-a-date");
 
@@ -159,15 +156,14 @@ Deno.test("GET / renders pipeline timings: per-step bar + total re-render", asyn
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
     }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "id",
   });
 
   const html = await (await app.request("/")).text();
 
   assertEquals(html.includes(">run</div>"), true, "run row missing");
-  assertEquals(html.includes(">deriveHtml</div>"), true, "deriveHtml row missing");
-  assertEquals(html.includes(">identityFor</div>"), true, "identityFor row missing");
+  // The collapsed Renderer surface times a single `identity` step (HTML
+  // derivation is encapsulated inside it).
+  assertEquals(html.includes(">identity</div>"), true, "identity row missing");
   assertEquals(html.includes(">rasterize</div>"), true, "rasterize row missing");
   assertEquals(html.includes("re-render:"), true, "total re-render line missing");
 });
@@ -181,8 +177,6 @@ Deno.test("GET / surfaces ctx.device in the metadata table once a Device has pol
         view: () => "<p>x</p>",
       }),
     }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "id",
   });
 
   await (await app.request("/api/display", { headers: { id: "AA:BB:CC" } })).body?.cancel();
@@ -206,8 +200,7 @@ Deno.test("GET / renders the rendered Image, the scrubber, and Result metadata",
           },
         }),
       }),
-      deriveHtml: (r: Result<{ msg: string }>) => String(r.view(r.state)),
-      identityFor: () => "dashid",
+      renderer: defaultRenderer({ identity: () => Promise.resolve("dashid") }),
     },
     { fetchPngFromUrl: () => Promise.resolve(png) },
   );
@@ -233,8 +226,6 @@ Deno.test("GET / renders the Plugin's Result.state as JSON for debugging", async
         view: () => "<p>x</p>",
       }),
     }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "id",
   });
 
   const decoded = (await (await app.request("/")).text()).replaceAll("&quot;", '"');
@@ -251,8 +242,6 @@ Deno.test("GET / degrades gracefully when fetchPngFromUrl throws (e.g. CDP down)
       pluginManager: managerFor({
         run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
       }),
-      deriveHtml: () => "<p>x</p>",
-      identityFor: () => "id",
     },
     { fetchPngFromUrl },
   );
@@ -278,8 +267,6 @@ Deno.test("GET / fetches the inlined PNG via fetchPngFromUrl pointed at the inte
       pluginManager: managerFor({
         run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
       }),
-      deriveHtml: () => "<p>x</p>",
-      identityFor: () => "id",
     },
     { fetchPngFromUrl },
   );
@@ -302,11 +289,7 @@ Deno.test("GET /preview returns the live HTML at t=now and intent=scrub by defau
     view: (s: { intent: string }) => `<p>${s.intent}</p>`,
   }));
 
-  const app = wire({
-    pluginManager: managerFor({ run }),
-    deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
-    identityFor: (html) => `id-${html}`,
-  });
+  const app = wire({ pluginManager: managerFor({ run }) });
 
   const preview = await app.request("/preview");
   assertEquals(preview.status, 200);
@@ -323,11 +306,7 @@ Deno.test("GET /preview honors ?t= and ?intent= so /preview/png can forward them
     view: () => "<p>x</p>",
   }));
 
-  const app = wire({
-    pluginManager: managerFor({ run }),
-    deriveHtml: () => "<p>x</p>",
-    identityFor: () => "id",
-  });
+  const app = wire({ pluginManager: managerFor({ run }) });
 
   await (await app.request("/preview?t=2026-05-16T11:00&intent=poll")).body?.cancel();
 
@@ -344,8 +323,6 @@ Deno.test("GET /preview returns status 500 with the error view HTML when the Plu
         throw boom;
       },
     }),
-    deriveHtml: (r: Result<unknown>) => String(r.view(r.state)),
-    identityFor: () => "id",
     errorView: (err: Error) => `<html><body>ERR: ${err.message}</body></html>`,
   });
 
@@ -368,8 +345,6 @@ Deno.test("GET /preview/png returns the bytes fetchPngFromUrl resolved with", as
       pluginManager: managerFor({
         run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
       }),
-      deriveHtml: () => "<p>x</p>",
-      identityFor: () => "id",
     },
     { fetchPngFromUrl },
   );
@@ -389,8 +364,6 @@ Deno.test("GET /preview/png hands CDP the internalOrigin /preview URL", async ()
       pluginManager: managerFor({
         run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
       }),
-      deriveHtml: () => "<p>x</p>",
-      identityFor: () => "id",
     },
     { fetchPngFromUrl },
   );
@@ -408,8 +381,6 @@ Deno.test("GET /preview/png?t=...&intent=... forwards the query through to /prev
       pluginManager: managerFor({
         run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
       }),
-      deriveHtml: () => "<p>x</p>",
-      identityFor: () => "id",
     },
     { fetchPngFromUrl },
   );

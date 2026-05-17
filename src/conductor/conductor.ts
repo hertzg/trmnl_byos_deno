@@ -1,27 +1,27 @@
 import { Hono } from "hono";
 import { serveStatic } from "hono/deno";
 import type { DeviceReport, Result, RunContext } from "../plugin/plugin.ts";
+import type { Bundle } from "../plugin/bundle.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
+import type { Renderer } from "../render/renderer.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 import { timed } from "../render/timings.ts";
 
-// The Conductor is opaque to the Plugin's state shape. Going through the
-// PluginManager (which produces a Bundle) means the Conductor never touches
-// the raw Plugin module; once we wire Slot + Renderer in subsequent slices,
-// the Bundle's `assets` map flows alongside `result` without further plumbing.
+// The Conductor is opaque to the Plugin's state shape. The PluginManager
+// produces a Bundle (`{ result, assets }`) that the Renderer consumes for
+// identity (and, in later slices, rasterize). The Conductor itself never
+// touches the raw Plugin module — `pluginManager.run(ctx)` is the only seam.
 
 export type ConductorDeps = {
+  // Loaded once at boot; reused across calls. Captures the Plugin module +
+  // its on-disk assets folder. See src/plugin/plugin-manager.ts.
   pluginManager: PluginManager;
-  // The pure HTML-derivation half of the Renderer. Rasterize lives on the
-  // dashboard side now — the Conductor no longer turns HTML into PNGs; the
-  // Device fetches `/preview/png`, which screenshots `/preview` live.
-  deriveHtml(result: Result<unknown>): string | Promise<string>;
-  // Hash of the HTML used as the Image's stable identity, exposed to the
-  // Device via the `filename` field on `/api/display`. The firmware skips an
-  // e-ink refresh when the filename matches its last frame, so the identity
-  // is the only handle we have on cross-poll dedupe.
-  identityFor: (html: string) => string | Promise<string>;
+  // The Renderer owns Bundle → identity (and, when the slot path lands,
+  // Bundle → Image). Conductor only calls `renderer.identity(bundle)` here;
+  // the Device-facing pixels still come from /preview/png on the Dashboard
+  // sub-app for this slice.
+  renderer: Renderer;
   errorView: (err: Error) => unknown;
   errorValidity: Temporal.Duration;
   // BYOS surface — these flow through the Conductor's own Hono sub-app.
@@ -31,16 +31,18 @@ export type ConductorDeps = {
   now: () => Temporal.ZonedDateTime;
 };
 
-// `derive()` output: pipeline up to HTML and identity. The Conductor has no
-// rasterize step anymore — peers that want pixels screenshot `/preview` via
-// the dashboard's `fetchPngFromUrl`. `device` is the DeviceReport the Plugin
-// actually saw on `ctx.device` (latest report at the time of the call, or
-// null if no Device has polled yet). `error` is non-null when the Plugin /
-// deriveHtml / identityFor threw and the result/html/identity reflect the
+// `derive()` output: pipeline up to Bundle and identity. The Conductor has
+// no rasterize step anymore — peers that want pixels screenshot /preview
+// via the dashboard's `fetchPngFromUrl`. `device` is the DeviceReport the
+// Plugin actually saw on `ctx.device` (latest report at the time of the
+// call, or null if no Device has polled yet). `error` is non-null when the
+// Plugin or Renderer.identity threw and the bundle/identity reflect the
 // error-view fallback.
 export type DeriveResult = {
   result: Result<unknown>;
-  html: string;
+  // The Bundle the Renderer saw. PluginManager owns this — its `assets`
+  // map carries the Plugin's on-disk asset bytes loaded once at boot.
+  bundle: Bundle;
   identity: string;
   device: DeviceReport | null;
   error: Error | null;
@@ -50,8 +52,8 @@ export type Conductor = {
   // Hono sub-app for the BYOS surface (/api/setup, /api/display, /api/log)
   // and Plugin assets (/assets/*).
   app: Hono;
-  // Run Plugin + deriveHtml + identityFor at an arbitrary `t`. Used by
-  // `/preview` (HTML for CDP to screenshot) and the dashboard.
+  // Run Plugin + Renderer.identity at an arbitrary `t`. Used by /preview
+  // (whose HTML CDP screenshots) and the dashboard.
   derive(
     t: Temporal.ZonedDateTime,
     intent?: RunContext["intent"],
@@ -64,7 +66,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
   let latestDevice: DeviceReport | null = null;
 
   // Wrap an error in the Server-supplied error view as a Result. Any failure
-  // inside `derive` (plugin.run, deriveHtml, identityFor) falls back to this
+  // inside `derive` (plugin.run, Renderer.identity) falls back to this
   // shape with the configured short validity.
   function errorResult(err: unknown): Result<unknown> {
     const error = err instanceof Error ? err : new Error(String(err));
@@ -88,36 +90,32 @@ export function createConductor(deps: ConductorDeps): Conductor {
       device: latestDevice,
     };
     let result: Result<unknown>;
-    let html: string;
+    let bundle: Bundle;
     let identity: string;
     let error: Error | null = null;
     try {
-      // PluginManager returns a Bundle (`{ result, assets }`); the rest of
-      // the derive flow only needs `result` for now. Slot + Renderer will
-      // consume the full Bundle in slices #50 / #52.
-      const bundle = await timed("pipeline.run", () => deps.pluginManager.run(ctx));
+      // PluginManager returns a Bundle (`{ result, assets }`); the Renderer
+      // consumes the full Bundle for identity. Slot + Renderer.rasterize
+      // will consume the Bundle's `assets` in subsequent slices.
+      bundle = await timed("pipeline.run", () => deps.pluginManager.run(ctx));
       result = bundle.result;
-      html = await timed(
-        "pipeline.deriveHtml",
-        () => Promise.resolve(deps.deriveHtml(result)),
-      );
       identity = await timed(
-        "pipeline.identityFor",
-        () => Promise.resolve(deps.identityFor(html)),
+        "pipeline.identity",
+        () => Promise.resolve(deps.renderer.identity(bundle)),
       );
     } catch (err) {
       error = err instanceof Error ? err : new Error(String(err));
       result = errorResult(err);
-      html = await timed(
-        "pipeline.deriveHtml",
-        () => Promise.resolve(deps.deriveHtml(result)),
-      );
+      // For the error path the asset map is irrelevant — the error view
+      // renders its own self-contained HTML — so we hand the Renderer the
+      // error Result with an empty `assets` map.
+      bundle = { result, assets: {} };
       identity = await timed(
-        "pipeline.identityFor",
-        () => Promise.resolve(deps.identityFor(html)),
+        "pipeline.identity",
+        () => Promise.resolve(deps.renderer.identity(bundle)),
       );
     }
-    return { result, html, identity, device: ctx.device, error };
+    return { result, bundle, identity, device: ctx.device, error };
   }
 
   async function derive(

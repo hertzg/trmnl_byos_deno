@@ -13,9 +13,7 @@ import {
 import { createConductor } from "./conductor/conductor.ts";
 import ErrorView from "./conductor/error-view.tsx";
 import { createDashboard } from "./dashboard/dashboard.ts";
-import { deriveHtml } from "./render/derive.ts";
-import { identityFor } from "./render/identity.ts";
-import { createRasterize } from "./render/rasterize.ts";
+import { createFetchPngFromUrl, createRenderer } from "./render/renderer.ts";
 import { seedPluginDir } from "./plugin/loader.ts";
 import { createPluginManager } from "./plugin/plugin-manager.ts";
 
@@ -37,17 +35,26 @@ async function main() {
   const onDeviceLog = (id: string, body: string) =>
     console.log(`[device-log] ${id.toUpperCase()}: ${body}`);
 
-  // 3. CDP-backed url → png. The Device fetches /preview/png on every poll;
-  // /preview/png hands CDP a /preview URL and returns the screenshot.
-  const fetchPngFromUrl = createRasterize({ cdpUrl: CDP_URL, ...ACTIVE_PROFILE });
+  // 3. CDP-backed url → png. Built once and threaded into both the Renderer
+  // (so Renderer.rasterize can resolve a Bundle to PNG bytes via CDP) and
+  // the Dashboard (whose /preview/png scrub path passes through the same
+  // fetcher with the caller's ?t=/?intent= query). Slice #54 collapses the
+  // dashboard side onto Renderer.rasterize directly.
+  const fetchPngFromUrl = createFetchPngFromUrl({ cdpUrl: CDP_URL, ...ACTIVE_PROFILE });
+
+  const renderer = createRenderer({
+    internalOrigin: INTERNAL_URL_ORIGIN,
+    fetchPngFromUrl,
+  });
 
   // 4. Conductor owns the BYOS surface (/api/setup, /api/display, /api/log)
-  // and the Plugin assets dir. No rasterize step lives here anymore — the
-  // Device-facing pixels come from /preview/png on the Dashboard sub-app.
+  // and the Plugin assets dir. PluginManager produces a Bundle each run;
+  // the Conductor asks the Renderer for the Bundle's identity on every
+  // /api/display poll. The Device-facing pixels still come from /preview/png
+  // on the Dashboard sub-app for this slice.
   const conductor = createConductor({
     pluginManager,
-    deriveHtml,
-    identityFor,
+    renderer,
     errorView,
     errorValidity,
     friendlyId: FRIENDLY_ID,
