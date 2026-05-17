@@ -1,23 +1,74 @@
-import type { Plugin, RunContext } from "../../src/plugin/plugin.ts";
-import { boardValidForSeconds } from "./bvg/board_assembler.ts";
-import { type FrameData, loadAll } from "./data.ts";
-import DefaultTemplate from "./root.tsx";
+import type { Plugin, Result, RunContext } from "../../src/plugin/plugin.ts";
+import { type Board, boardValidForSeconds, createBoardAssembler } from "./bvg/board_assembler.ts";
+import { ROUTES } from "./bvg/routes.ts";
+import DefaultTemplate, { type FrameData } from "./root.tsx";
 
-function View(state: FrameData) {
-  return DefaultTemplate(state);
+// Dev-only "fake now" override. Set BVG_FAKE_NOW to an ISO timestamp (e.g.
+// 2026-05-12T08:30:00+02:00) to pin the background refresh to that instant —
+// useful for previewing the layout at different times of day without waiting.
+// BVG's /journeys is still live, so the simulated time must be within the
+// feed's real horizon (~ next 7 days) to return useful candidates. The
+// dashboard scrubber (?t=) overrides this for scrub runs by going through the
+// scrub branch in `run`, which anchors the fetch at the scrub's `ctx.t`.
+function resolveBackgroundNow(): Date {
+  const raw = Deno.env.get("BVG_FAKE_NOW");
+  if (!raw) return new Date();
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    console.warn(`[bvg] ignoring invalid BVG_FAKE_NOW=${raw}`);
+    return new Date();
+  }
+  return parsed;
 }
 
+// `ctx.t` is `Temporal.ZonedDateTime`; the board pipeline (board_assembler,
+// classifier, validity calc) is Date-based. Convert at the seam.
+function tToDate(t: Temporal.ZonedDateTime): Date {
+  return new Date(t.toInstant().epochMilliseconds);
+}
+
+const BACKGROUND_REFRESH_MS = 30_000;
+
 export default function (): Plugin<FrameData> {
+  // ─── World-knowledge layer ────────────────────────────────────────────
+  // One assembler instance, kept in the factory closure so its internal
+  // caches (lastSuccessfulFetchAt, observed travel times) survive across
+  // runs. See bvg/board_assembler.ts for what those caches do.
+  const assembler = createBoardAssembler();
+
+  // Latest assembled board, refreshed on a wall-clock timer (NOT inside
+  // `run`). Poll and prerender paths read this; scrub does a one-off fresh
+  // fetch anchored at `ctx.t` so dashboard scrubbing actually time-travels
+  // the board, not just the static chrome.
+  let board: Board | null = null;
+  const refreshBackground = async () => {
+    try {
+      board = await assembler.assembleBoard(ROUTES, resolveBackgroundNow());
+    } catch (err) {
+      console.warn("[bvg] background refresh failed:", err);
+    }
+  };
+  refreshBackground();
+  setInterval(refreshBackground, BACKGROUND_REFRESH_MS);
+
+  // ─── Render layer ─────────────────────────────────────────────────────
   return {
-    async run(ctx: RunContext) {
-      const data = await loadAll();
-      const validSeconds = Math.max(1, boardValidForSeconds(data.board, data.fetchedAt));
-      const validity = Temporal.Duration.from({ seconds: validSeconds });
-      const nextRefreshAt = new Date(ctx.t.add(validity).toInstant().epochMilliseconds);
+    async run(ctx: RunContext): Promise<Result<FrameData>> {
+      const here = ctx.intent === "scrub"
+        // Scrub: time-travel by fetching BVG at the chosen t. The dashboard
+        // scrubber is the only consumer with intent=scrub.
+        ? await assembler.assembleBoard(ROUTES, tToDate(ctx.t))
+        // Poll / prerender: serve the timer-refreshed board. If the timer
+        // hasn't fired yet (very first poll), block on a synchronous fetch
+        // — any failure propagates to the Conductor's error-view fallback.
+        : board ??
+          (board = await assembler.assembleBoard(ROUTES, resolveBackgroundNow()));
+
+      const validSeconds = Math.max(1, boardValidForSeconds(here, tToDate(ctx.t)));
       return {
-        state: { ...data, device: ctx.device, nextRefreshAt },
-        validity,
-        view: View,
+        state: { board: here, device: ctx.device },
+        validity: Temporal.Duration.from({ seconds: validSeconds }),
+        view: DefaultTemplate,
       };
     },
   };
