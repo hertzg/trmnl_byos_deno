@@ -2,8 +2,9 @@ import { assertEquals } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
 import { Hono } from "hono";
 import { type ConductorDeps, createConductor } from "../conductor/conductor.ts";
-import { createDashboard, type DashboardDeps } from "./dashboard.ts";
-import type { Plugin, RunContext } from "../plugin/plugin.ts";
+import { createDashboard } from "./dashboard.ts";
+import { createSlot } from "../slot/slot.ts";
+import type { Plugin } from "../plugin/plugin.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
 import type { Bundle } from "../plugin/bundle.ts";
@@ -12,8 +13,6 @@ const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`)
 const T0 = at("2026-05-16T10:00");
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
 
-// Wrap a Plugin in a stub PluginManager so test bodies keep speaking
-// "Plugin run returns ..." while the Conductor consumes a Bundle.
 function managerFor(plugin: Plugin<unknown>): PluginManager {
   return {
     async run(ctx) {
@@ -23,25 +22,6 @@ function managerFor(plugin: Plugin<unknown>): PluginManager {
   };
 }
 
-function conductorDefaults(
-  overrides: Partial<ConductorDeps> = {},
-): Pick<
-  ConductorDeps,
-  "errorView" | "errorValidity" | "friendlyId" | "now"
-> {
-  return {
-    errorView: (_err: Error) => "",
-    errorValidity: Temporal.Duration.from({ seconds: 30 }),
-    friendlyId: "ID",
-    now: () => T0,
-    ...overrides,
-  };
-}
-
-// Default Renderer for dashboard tests: identity derives a deterministic
-// `id-<view-output>` so tests can assert on `filename`/`identity` without
-// re-implementing hashBundle. `rasterize` returns a small PNG-magic prefix
-// so /preview/png and the inline / image have bytes that look like a PNG.
 function defaultRenderer(overrides: Partial<Renderer> = {}): Renderer {
   return {
     identity: (b: Bundle) => Promise.resolve("id-" + String(b.result.view(b.result.state))),
@@ -52,32 +32,45 @@ function defaultRenderer(overrides: Partial<Renderer> = {}): Renderer {
   };
 }
 
-// Compose the Conductor's HTTP sub-app and the Dashboard the same way
-// main.ts does. Tests that exercise both /api/* and /preview* go through
-// this wiring so they see the same composition the production server does.
-function wire(
-  conductorDeps: Partial<ConductorDeps>,
-  dashboardOverrides: Partial<DashboardDeps> = {},
-) {
+function conductorDefaults(
+  now: () => Temporal.ZonedDateTime,
+  overrides: Partial<ConductorDeps> = {},
+): Pick<ConductorDeps, "errorView" | "errorValidity" | "friendlyId" | "now" | "slot"> {
+  return {
+    errorView: (_err: Error) => "",
+    errorValidity: Temporal.Duration.from({ seconds: 30 }),
+    friendlyId: "ID",
+    now,
+    slot: createSlot({ now }),
+    ...overrides,
+  };
+}
+
+// Compose the Conductor's HTTP sub-app and the Dashboard the way main.ts
+// does. Both sub-apps share the same Slot so a Conductor refill is
+// observable from the Dashboard's in-process read.
+function wire(conductorDeps: Partial<ConductorDeps>) {
+  const now = conductorDeps.now ?? (() => T0);
+  const slot = conductorDeps.slot ?? createSlot({ now });
   const renderer = conductorDeps.renderer ?? defaultRenderer();
   const conductor = createConductor({
-    ...conductorDefaults(conductorDeps),
-    renderer,
+    ...conductorDefaults(now),
     ...conductorDeps,
+    renderer,
+    slot,
   } as ConductorDeps);
   const dashboard = createDashboard({
-    derive: conductor.derive,
-    renderer,
-    now: conductorDeps.now ?? conductorDefaults().now,
-    ...dashboardOverrides,
+    slot,
+    conductorApp: conductor.app,
+    now,
   });
-  return new Hono().route("/", conductor.app).route("/", dashboard);
+  return { app: new Hono().route("/", conductor.app).route("/", dashboard), slot };
 }
 
 // ─── dashboard at / ────────────────────────────────────────────────────────
 
 Deno.test("GET / returns 200 with an HTML dashboard page", async () => {
-  const app = wire({
+  const { app } = wire({
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
     }),
@@ -90,205 +83,71 @@ Deno.test("GET / returns 200 with an HTML dashboard page", async () => {
   await res.body?.cancel();
 });
 
-Deno.test("GET / runs the Plugin with intent=scrub", async () => {
-  const run = spy((ctx: RunContext) => ({
-    state: { intent: ctx.intent },
-    validity: fiveMin,
-    view: (s: { intent: string }) => `<p>${s.intent}</p>`,
-  }));
-
-  const app = wire({ pluginManager: managerFor({ run }) });
+Deno.test("GET / triggers a refill via /api/display when the Slot is empty", async () => {
+  // First request: Slot empty, Dashboard pulls /api/display in-process,
+  // Conductor runs Plugin once. Second request: Slot still valid, Plugin
+  // not called again. The spy reflects exactly one Plugin run total.
+  const run = spy(() => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }));
+  const { app } = wire({ pluginManager: managerFor({ run }) });
 
   await (await app.request("/")).body?.cancel();
-
-  assertEquals(run.calls.at(-1)?.args[0].intent, "scrub");
-});
-
-Deno.test("GET / defaults t to now when no ?t= is supplied", async () => {
-  const run = spy((_ctx: RunContext) => ({
-    state: {},
-    validity: fiveMin,
-    view: () => "<p>x</p>",
-  }));
-
-  const app = wire({ pluginManager: managerFor({ run }) });
-
   await (await app.request("/")).body?.cancel();
 
-  assertEquals(run.calls.length, 1);
-  assertEquals(run.calls[0].args[0].t.toString(), T0.toString());
+  assertSpyCalls(run, 1);
 });
 
-Deno.test("GET /?t=<future> scrubs the Plugin at the supplied t", async () => {
-  const run = spy((_ctx: RunContext) => ({
-    state: {},
-    validity: fiveMin,
-    view: () => "<p>x</p>",
-  }));
+Deno.test("GET / embeds <img src=/image/<identity>.png> referencing the Slot's current identity", async () => {
+  const { app } = wire({
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: defaultRenderer({ identity: () => Promise.resolve("dashid-aaa") }),
+  });
 
-  const app = wire({ pluginManager: managerFor({ run }) });
+  const html = await (await app.request("/")).text();
 
-  const tFuture = T0.add({ minutes: 30 });
-  await (await app.request("/?t=2026-05-16T10:30")).body?.cancel();
-
-  assertEquals(run.calls.at(-1)?.args[0].t.toString(), tFuture.toString());
+  assertEquals(html.includes('src="/image/dashid-aaa.png"'), true, "image src missing");
 });
 
-Deno.test("GET /?t=<garbage> shows a parse-error notice and falls back to default", async () => {
-  const run = spy((_ctx: RunContext) => ({
-    state: {},
-    validity: fiveMin,
-    view: () => "<p>x</p>",
-  }));
-  const app = wire({ pluginManager: managerFor({ run }) });
-
-  const res = await app.request("/?t=not-a-date");
-
-  assertEquals(res.status, 200, "should not 500 on bad input");
-  const html = await res.text();
-  assertEquals(html.toLowerCase().includes("could not parse"), true);
-  assertEquals(run.calls.length, 1);
-  assertEquals(run.calls[0].args[0].t.toString(), T0.toString());
-});
-
-Deno.test("GET / renders pipeline timings: per-step bar + total re-render", async () => {
-  const app = wire({
+Deno.test("GET / surfaces a notice when the Slot stays empty (e.g. refill produced no entry)", async () => {
+  // Force the Slot to stay empty by handing the Dashboard a slot that
+  // intercepts put() — simulating a degenerate refill. The Dashboard must
+  // not crash; it surfaces a notice instead.
+  const now = () => T0;
+  const realSlot = createSlot({ now });
+  const droppingSlot = { ...realSlot, put: () => {} };
+  const { app } = wire({
+    slot: droppingSlot,
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
     }),
   });
 
-  const html = await (await app.request("/")).text();
-
-  assertEquals(html.includes(">run</div>"), true, "run row missing");
-  // The collapsed Renderer surface times a single `identity` step (HTML
-  // derivation is encapsulated inside it).
-  assertEquals(html.includes(">identity</div>"), true, "identity row missing");
-  assertEquals(html.includes(">rasterize</div>"), true, "rasterize row missing");
-  assertEquals(html.includes("re-render:"), true, "total re-render line missing");
-});
-
-Deno.test("GET / surfaces ctx.device in the metadata table once a Device has polled", async () => {
-  const app = wire({
-    pluginManager: managerFor({
-      run: (ctx: RunContext) => ({
-        state: { seen: ctx.device?.id ?? null },
-        validity: fiveMin,
-        view: () => "<p>x</p>",
-      }),
-    }),
-  });
-
-  await (await app.request("/api/display", { headers: { id: "AA:BB:CC" } })).body?.cancel();
-
-  const html = await (await app.request("/")).text();
-
-  assertEquals(html.includes("device"), true, "device row missing");
-  assertEquals(html.includes("AA:BB:CC"), true, "device id missing");
-});
-
-Deno.test("GET / renders the rendered Image, the scrubber, and Result metadata", async () => {
-  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // PNG magic prefix
-  const renderer = defaultRenderer({
-    identity: () => Promise.resolve("dashid"),
-    rasterize: () => Promise.resolve(png),
-  });
-  const app = wire(
-    {
-      pluginManager: managerFor({
-        run: () => ({
-          state: { msg: "hello" },
-          validity: Temporal.Duration.from({ minutes: 7 }),
-          view: function MyPluginView(s: { msg: string }) {
-            return `<p>${s.msg}</p>`;
-          },
-        }),
-      }),
-      renderer,
-    },
-  );
-
-  const html = await (await app.request("/")).text();
-
-  const b64 = "iVBORw==";
-  assertEquals(html.includes(`data:image/png;base64,${b64}`), true, "PNG data URL missing");
-  assertEquals(html.includes('name="t"'), true, "scrubber input missing");
-  assertEquals(html.includes('type="datetime-local"'), true, "datetime-local input missing");
-  assertEquals(html.includes("7m"), true, "validity duration missing");
-  assertEquals(html.includes("MyPluginView"), true, "view identity missing");
-  assertEquals(html.includes("dashid"), true, "image identity missing");
-  assertEquals(html.includes("2026-05-16T10:00"), true, "chosen t missing");
-});
-
-Deno.test("GET / renders the Plugin's Result.state as JSON for debugging", async () => {
-  const app = wire({
-    pluginManager: managerFor({
-      run: () => ({
-        state: { departures: [{ line: "U7", at: "10:05" }], count: 1 },
-        validity: fiveMin,
-        view: () => "<p>x</p>",
-      }),
-    }),
-  });
-
-  const decoded = (await (await app.request("/")).text()).replaceAll("&quot;", '"');
-
-  assertEquals(decoded.includes('"line"'), true, "state JSON key missing");
-  assertEquals(decoded.includes('"U7"'), true, "state JSON value missing");
-  assertEquals(decoded.includes('"count": 1'), true, "state JSON pretty-printed");
-});
-
-Deno.test("GET / degrades gracefully when renderer.rasterize throws (e.g. CDP down)", async () => {
-  const renderer = defaultRenderer({
-    rasterize: () => Promise.reject(new Error("CDP /json/version 502")),
-  });
-  const app = wire(
-    {
-      pluginManager: managerFor({
-        run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
-      }),
-      renderer,
-    },
-  );
-
   const res = await app.request("/");
 
-  // Page still renders — scrubber, Result metadata, timings all stay
-  // useful for debugging while CDP is down.
   assertEquals(res.status, 200);
   const html = await res.text();
-  assertEquals(html.includes("rasterize failed"), true, "missing degraded notice");
-  assertEquals(html.includes("CDP /json/version 502"), true, "missing error detail");
-  // The inline <img> is omitted when there's no PNG.
-  assertEquals(html.includes("data:image/png;base64,"), false, "should not embed empty image");
-  // Metadata still present.
-  assertEquals(html.includes("identity"), true, "metadata table missing");
+  assertEquals(html.includes("Slot is empty"), true, "missing empty-slot notice");
+  assertEquals(html.includes("data:image/png"), false, "should not embed an image");
 });
 
-Deno.test("GET / inlines the PNG that renderer.rasterize returns for the scrubbed Bundle", async () => {
-  const rasterize = spy((_b: Bundle) => Promise.resolve(new Uint8Array([0x99])));
-  const renderer = defaultRenderer({ rasterize });
-  const run = spy((ctx: RunContext) => ({
-    state: { at: ctx.t.toString() },
-    validity: fiveMin,
-    view: (s: { at: string }) => `<p>${s.at}</p>`,
-  }));
-  const app = wire({ pluginManager: managerFor({ run }), renderer });
+// ─── /preview/png removed ──────────────────────────────────────────────────
 
-  await (await app.request("/?t=2026-05-16T11:00")).body?.cancel();
+Deno.test("GET /preview/png returns 404 — the render path is /image/<id>.png on the Conductor", async () => {
+  const { app } = wire({
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+  });
 
-  assertSpyCalls(rasterize, 1);
-  // The Bundle handed to rasterize is the same Bundle the Plugin produced
-  // for the scrubbed `t` — its rendered view encodes "T11:00".
-  const bundle = rasterize.calls[0].args[0];
-  const html = String(bundle.result.view(bundle.result.state));
-  assertEquals(html.includes("11:00"), true, `expected 11:00 in ${html}`);
+  const res = await app.request("/preview/png");
+  await res.body?.cancel();
+
+  assertEquals(res.status, 404);
 });
 
-// ─── /preview ──────────────────────────────────────────────────────────────
-
-Deno.test("GET /preview returns 404 — the HTML CDP screenshots is served only by Renderer's loopback origin", async () => {
-  const app = wire({
+Deno.test("GET /preview returns 404 — no public HTML route", async () => {
+  const { app } = wire({
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
     }),
@@ -298,60 +157,4 @@ Deno.test("GET /preview returns 404 — the HTML CDP screenshots is served only 
   await res.body?.cancel();
 
   assertEquals(res.status, 404);
-});
-
-// ─── /preview/png ──────────────────────────────────────────────────────────
-
-Deno.test("GET /preview/png returns the bytes renderer.rasterize resolved with", async () => {
-  const png = new Uint8Array([0xbb]);
-  const renderer = defaultRenderer({ rasterize: () => Promise.resolve(png) });
-  const app = wire(
-    {
-      pluginManager: managerFor({
-        run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
-      }),
-      renderer,
-    },
-  );
-
-  const res = await app.request("/preview/png");
-
-  assertEquals(res.status, 200);
-  assertEquals(res.headers.get("content-type"), "image/png");
-  assertEquals(res.headers.get("cache-control"), "no-store");
-  assertEquals(new Uint8Array(await res.arrayBuffer()), png);
-});
-
-Deno.test("GET /preview/png calls renderer.rasterize with the Bundle Conductor.derive produced", async () => {
-  const rasterize = spy((_b: Bundle) => Promise.resolve(new Uint8Array([0x01])));
-  const renderer = defaultRenderer({ rasterize });
-  const app = wire(
-    {
-      pluginManager: managerFor({
-        run: () => ({ state: { who: "device" }, validity: fiveMin, view: () => "<p>poll</p>" }),
-      }),
-      renderer,
-    },
-  );
-
-  await (await app.request("/preview/png")).body?.cancel();
-
-  assertSpyCalls(rasterize, 1);
-  const bundle = rasterize.calls[0].args[0];
-  assertEquals(bundle.result.state, { who: "device" });
-});
-
-Deno.test("GET /preview/png?t=...&intent=... scrubs the Plugin at the requested moment", async () => {
-  const run = spy((ctx: RunContext) => ({
-    state: { intent: ctx.intent, at: ctx.t.toString() },
-    validity: fiveMin,
-    view: () => "<p>x</p>",
-  }));
-  const app = wire({ pluginManager: managerFor({ run }) });
-
-  await (await app.request("/preview/png?t=2026-05-16T11:00&intent=poll")).body?.cancel();
-
-  const call = run.calls.at(-1)!;
-  assertEquals(call.args[0].intent, "poll");
-  assertEquals(call.args[0].t.toString(), at("2026-05-16T11:00").toString());
 });

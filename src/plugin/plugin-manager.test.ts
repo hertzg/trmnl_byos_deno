@@ -1,13 +1,12 @@
 import { assertEquals, assertStrictEquals } from "@std/assert";
 import { join } from "@std/path";
-import { Hono } from "hono";
 import { createConductor } from "../conductor/conductor.ts";
-import { createDashboard } from "../dashboard/dashboard.ts";
 import type { RunContext } from "./plugin.ts";
 import type { Bundle } from "./bundle.ts";
 import { createPluginManager } from "./plugin-manager.ts";
 import { createRenderer } from "../render/renderer.ts";
 import { hashBundle } from "../hash.ts";
+import { createSlot } from "../slot/slot.ts";
 
 const T0 = Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]");
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
@@ -171,6 +170,7 @@ Deno.test("a PluginManager loaded from disk drives /api/display end-to-end throu
   });
 
   const pluginManager = await createPluginManager({ pluginDir: dir });
+  const now = () => T0;
   const conductor = createConductor({
     pluginManager,
     renderer: {
@@ -181,10 +181,11 @@ Deno.test("a PluginManager loaded from disk drives /api/display end-to-end throu
       origin: () => "http://127.0.0.1:0",
       close: () => Promise.resolve(),
     },
+    slot: createSlot({ now }),
     errorView: (_err: Error) => "",
     errorValidity: Temporal.Duration.from({ seconds: 30 }),
     friendlyId: "SMOKE",
-    now: () => T0,
+    now,
   });
 
   const res = await conductor.app.request("/api/display");
@@ -226,13 +227,15 @@ Deno.test("a PluginManager wired through the real Renderer surfaces a filename d
   });
 
   try {
+    const now = () => T0;
     const conductor = createConductor({
       pluginManager,
       renderer,
+      slot: createSlot({ now }),
       errorView: (_err: Error) => "",
       errorValidity: Temporal.Duration.from({ seconds: 30 }),
       friendlyId: "SMOKE",
-      now: () => T0,
+      now,
     });
 
     const res = await conductor.app.request("/api/display");
@@ -253,13 +256,13 @@ Deno.test("a PluginManager wired through the real Renderer surfaces a filename d
   }
 });
 
-Deno.test("end-to-end: /preview/png drives PluginManager → Renderer.rasterize through the production wiring and CDP fetches the loopback origin", async () => {
-  // The full /preview/png path: Dashboard → conductor.derive → PluginManager.run
-  // → Bundle → renderer.rasterize. The real Renderer mounts the Bundle on
-  // its loopback origin and hands its URL to fetchPngFromUrl. Our stub
-  // fetchPngFromUrl plays CDP: it really fetches the URL it's handed, asserts
-  // the HTML matches the Plugin's view output, and returns PNG-shaped bytes.
-  // If CDP could fetch this origin, it would get the right HTML.
+Deno.test("end-to-end: /api/display → /image/<id>.png drives PluginManager → Renderer.rasterize through the production wiring and CDP fetches the loopback origin", async () => {
+  // Full Device flow: Device polls /api/display → Conductor runs Plugin,
+  // computes identity, starts eager rasterize, lands triple in the Slot →
+  // Device follows up with /image/<identity>.png → Slot awaits the eager
+  // rasterize and returns PNG bytes. Our stub fetchPngFromUrl plays CDP:
+  // it really fetches the URL it's handed (proving Renderer's loopback
+  // serves the Bundle's HTML + assets) and returns PNG-shaped bytes.
   const dir = await writePluginDir({
     "main.ts": `
       export default {
@@ -294,26 +297,33 @@ Deno.test("end-to-end: /preview/png drives PluginManager → Renderer.rasterize 
   });
 
   try {
+    const now = () => T0;
     const conductor = createConductor({
       pluginManager,
       renderer,
+      slot: createSlot({ now }),
       errorView: (_err: Error) => "",
       errorValidity: Temporal.Duration.from({ seconds: 30 }),
       friendlyId: "SMOKE",
-      now: () => T0,
+      now,
     });
-    const dashboard = createDashboard({
-      derive: conductor.derive,
-      renderer,
-      now: () => T0,
-    });
-    const app = new Hono().route("/", conductor.app).route("/", dashboard);
 
-    const res = await app.request("/preview/png");
+    // Step 1: Device polls /api/display. Conductor refills the Slot
+    // (Plugin → identity → eager rasterize → put). The response carries
+    // the identity-keyed image URL.
+    const displayRes = await conductor.app.request("/api/display");
+    const display = await displayRes.json();
+    assertEquals(display.status, 0);
+    const path = new URL(display.image_url).pathname; // /image/<id>.png
+    assertEquals(/^\/image\/[0-9a-f]{16}\.png$/.test(path), true, `bad image_url: ${path}`);
 
-    assertEquals(res.status, 200);
-    assertEquals(res.headers.get("content-type"), "image/png");
-    assertEquals(new Uint8Array(await res.arrayBuffer()), png);
+    // Step 2: Device follows up with /image/<identity>.png. Conductor
+    // serves the Slot's bytes — the eager rasterize started in Step 1.
+    const imgRes = await conductor.app.request(path);
+    assertEquals(imgRes.status, 200);
+    assertEquals(imgRes.headers.get("content-type"), "image/png");
+    assertEquals(new Uint8Array(await imgRes.arrayBuffer()), png);
+
     // CDP-shaped fetcher saw a URL on the Renderer's loopback origin, not
     // the outward server.
     assertEquals(seen.url?.startsWith(renderer.origin() + "/"), true);

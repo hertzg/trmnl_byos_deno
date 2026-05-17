@@ -14,6 +14,7 @@ import { createDashboard } from "./dashboard/dashboard.ts";
 import { createFetchPngFromUrl, createRenderer } from "./render/renderer.ts";
 import { seedPluginDir } from "./plugin/loader.ts";
 import { createPluginManager } from "./plugin/plugin-manager.ts";
+import { createSlot } from "./slot/slot.ts";
 
 async function main() {
   // 1. Seed the Plugin directory if requested, then construct the
@@ -41,14 +42,20 @@ async function main() {
   });
   console.log(`[renderer] loopback origin ${renderer.origin()}`);
 
-  // 4. Conductor owns the BYOS surface (/api/setup, /api/display, /api/log).
-  // PluginManager produces a Bundle each run; the Conductor asks the
-  // Renderer for the Bundle's identity on every /api/display poll. The
-  // Device-facing pixels still come from /preview/png on the Dashboard
-  // sub-app for this slice (slice #52 introduces the Slot + /image/<id>).
+  // 4. Single-Image cache (ADR-0004). One slot, shared by Conductor (who
+  // pushes new `{ bundle, identity, image }` triples) and Dashboard (who
+  // reads `display()` to know the current identity).
+  const slot = createSlot({ now });
+
+  // 5. Conductor owns the BYOS surface (/api/setup, /api/display,
+  // /api/log) and the identity-keyed render output (/image/<id>.png). On
+  // each /api/display poll it orchestrates Plugin → identity → start
+  // rasterize → Slot.put, or returns the cached identity if the Slot is
+  // still valid (ADR-0004's three tiers).
   const conductor = createConductor({
     pluginManager,
     renderer,
+    slot,
     errorView,
     errorValidity,
     friendlyId: FRIENDLY_ID,
@@ -56,16 +63,16 @@ async function main() {
     now,
   });
 
-  // 5. Dashboard hosts / and /preview/png. /preview/png derives a Bundle
-  // via conductor.derive and hands it to renderer.rasterize — CDP fetches
-  // Renderer's loopback origin for the HTML, never this outward server.
+  // 6. Dashboard at /. Reads the Slot in-process to show the current
+  // Image; triggers a refill via `conductor.app.request("/api/display")`
+  // when the Slot is empty so there is exactly one render path.
   const dashboard = createDashboard({
-    derive: conductor.derive,
-    renderer,
+    slot,
+    conductorApp: conductor.app,
     now,
   });
 
-  // 6. Parent app: access log + error handler, then compose the sub-apps.
+  // 7. Parent app: access log + error handler, then compose the sub-apps.
   const app = new Hono()
     .use(logger())
     .onError((err, c) => {

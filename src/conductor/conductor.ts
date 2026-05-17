@@ -1,26 +1,51 @@
 import { Hono } from "hono";
-import type { DeviceReport, Result, RunContext } from "../plugin/plugin.ts";
+import type { DeviceReport, RunContext } from "../plugin/plugin.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
+import type { Slot, SlotDisplay } from "../slot/slot.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
-import { timed } from "../render/timings.ts";
 
-// The Conductor is opaque to the Plugin's state shape. The PluginManager
-// produces a Bundle (`{ result, assets }`) that the Renderer consumes for
-// identity (and, in later slices, rasterize). The Conductor itself never
-// touches the raw Plugin module — `pluginManager.run(ctx)` is the only seam.
+// The Conductor is the BYOS-facing facade. It owns the orchestration loop
+// from Device poll (`/api/display`) through Plugin run → Renderer.identity
+// → eager Renderer.rasterize → Slot.put, and serves the resulting PNG bytes
+// at `/image/<identity>.png`. The Plugin's state shape is opaque to the
+// Conductor — `pluginManager.run(ctx)` returns a Bundle whose details the
+// Conductor doesn't inspect.
+//
+// Three tiers of laziness govern each /api/display poll (ADR-0004):
+//
+//   Tier 1 — Slot still valid: return cached identity; no Plugin run.
+//   Tier 2 — Slot expired, identity unchanged: (reserved, not implemented).
+//   Tier 3 — Slot expired or empty: run Plugin, compute identity, start
+//            rasterize, put into Slot, return new identity.
+//
+// On any throw inside steps 2–3, the loop re-enters with an error Bundle
+// built from `errorView` + `errorValidity` (~30 s). The error Bundle flows
+// through the Slot exactly like a real Bundle — no second cache path.
+//
+// Concurrent /api/display calls share a single in-flight refill (single-
+// flight) so a cache miss runs the Plugin at most once.
 
 export type ConductorDeps = {
   // Loaded once at boot; reused across calls. Captures the Plugin module +
   // its on-disk assets folder. See src/plugin/plugin-manager.ts.
   pluginManager: PluginManager;
-  // The Renderer owns Bundle → identity (and, when the slot path lands,
-  // Bundle → Image). Conductor only calls `renderer.identity(bundle)` here;
-  // the Device-facing pixels still come from /preview/png on the Dashboard
-  // sub-app for this slice.
+  // The Renderer owns Bundle → identity and Bundle → Image. The Conductor
+  // calls `identity(bundle)` to derive the Slot's cache key + Device's
+  // filename, and starts `rasterize(bundle)` (not awaited) so the eager
+  // PNG promise is in flight by the time the Device follows up with
+  // `/image/<identity>.png`.
   renderer: Renderer;
+  // Single-Image cache (ADR-0004). The Conductor pushes
+  // `{ bundle, identity, image, cachedAt }` triples in via `slot.put`; the
+  // Slot answers `display()` / `image(id)` for the orchestration loop and
+  // the /image/<id>.png handler respectively.
+  slot: Slot;
+  // Server-supplied error view + validity. When Plugin.run or
+  // Renderer.identity throws, the Conductor wraps the Error in a Result
+  // using these and re-enters the orchestration loop.
   errorView: (err: Error) => unknown;
   errorValidity: Temporal.Duration;
   // BYOS surface — these flow through the Conductor's own Hono sub-app.
@@ -29,45 +54,22 @@ export type ConductorDeps = {
   now: () => Temporal.ZonedDateTime;
 };
 
-// `derive()` output: pipeline up to Bundle and identity. The Conductor has
-// no rasterize step anymore — peers that want pixels screenshot /preview
-// via the dashboard's `fetchPngFromUrl`. `device` is the DeviceReport the
-// Plugin actually saw on `ctx.device` (latest report at the time of the
-// call, or null if no Device has polled yet). `error` is non-null when the
-// Plugin or Renderer.identity threw and the bundle/identity reflect the
-// error-view fallback.
-export type DeriveResult = {
-  result: Result<unknown>;
-  // The Bundle the Renderer saw. PluginManager owns this — its `assets`
-  // map carries the Plugin's on-disk asset bytes loaded once at boot.
-  bundle: Bundle;
-  identity: string;
-  device: DeviceReport | null;
-  error: Error | null;
-};
-
 export type Conductor = {
-  // Hono sub-app for the BYOS surface (/api/setup, /api/display, /api/log).
-  // No /assets/* route — Plugin assets travel through Bundle into Renderer's
-  // loopback origin (ADR-0003, ADR-0005, slice #51).
+  // Hono sub-app for the BYOS surface (`/api/setup`, `/api/display`,
+  // `/api/log`) plus the identity-keyed render output (`/image/:id.png`).
+  // No public `/assets/*` route — Plugin assets travel inside Bundles to
+  // Renderer's internal loopback origin only (ADR-0003 / ADR-0005).
   app: Hono;
-  // Run Plugin + Renderer.identity at an arbitrary `t`. Used by /preview
-  // (whose HTML CDP screenshots) and the dashboard.
-  derive(
-    t: Temporal.ZonedDateTime,
-    intent?: RunContext["intent"],
-  ): Promise<DeriveResult>;
 };
 
 // The orchestration logic lives entirely inside the factory closure;
-// peers reach it via the small `derive` surface.
+// peers reach it through the Conductor's HTTP surface.
 export function createConductor(deps: ConductorDeps): Conductor {
   let latestDevice: DeviceReport | null = null;
 
-  // Wrap an error in the Server-supplied error view as a Result. Any failure
-  // inside `derive` (plugin.run, Renderer.identity) falls back to this
-  // shape with the configured short validity.
-  function errorResult(err: unknown): Result<unknown> {
+  // Wrap an Error in the Server-supplied error view as a Result. Used by
+  // the orchestration loop's catch arm.
+  function errorResult(err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
     return {
       state: error,
@@ -76,93 +78,94 @@ export function createConductor(deps: ConductorDeps): Conductor {
     };
   }
 
-  // Each pipeline step is wrapped in `timed()` so callers that open a
-  // `withTimings()` context around the call get per-step wall-clock for
-  // free. Outside such a context `timed()` is a pass-through.
-  async function runAndDerive(input: {
-    t: Temporal.ZonedDateTime;
-    intent: RunContext["intent"];
-  }): Promise<DeriveResult> {
-    const ctx: RunContext = {
-      t: input.t,
-      intent: input.intent,
-      device: latestDevice,
-    };
-    let result: Result<unknown>;
+  // Run Plugin → identity → start rasterize → push into Slot. On throw
+  // anywhere in Plugin.run / Renderer.identity, build an error Bundle and
+  // push that instead. After `refillSlot` resolves, `slot.display()` is
+  // guaranteed non-null.
+  async function refillSlot(ctx: RunContext): Promise<void> {
     let bundle: Bundle;
     let identity: string;
-    let error: Error | null = null;
+    let image: Promise<Uint8Array>;
     try {
-      // PluginManager returns a Bundle (`{ result, assets }`); the Renderer
-      // consumes the full Bundle for identity. Slot + Renderer.rasterize
-      // will consume the Bundle's `assets` in subsequent slices.
-      bundle = await timed("pipeline.run", () => deps.pluginManager.run(ctx));
-      result = bundle.result;
-      identity = await timed(
-        "pipeline.identity",
-        () => Promise.resolve(deps.renderer.identity(bundle)),
-      );
+      bundle = await deps.pluginManager.run(ctx);
+      identity = await deps.renderer.identity(bundle);
+      image = deps.renderer.rasterize(bundle);
     } catch (err) {
-      error = err instanceof Error ? err : new Error(String(err));
-      result = errorResult(err);
-      // For the error path the asset map is irrelevant — the error view
-      // renders its own self-contained HTML — so we hand the Renderer the
-      // error Result with an empty `assets` map.
-      bundle = { result, assets: {} };
-      identity = await timed(
-        "pipeline.identity",
-        () => Promise.resolve(deps.renderer.identity(bundle)),
-      );
+      // Error path: re-enter the same loop with a fabricated error Bundle.
+      // The error Bundle's `view` is the Server-supplied error view; its
+      // `validity` is the Conductor's `errorValidity` (~30 s). Assets are
+      // empty — the error view renders self-contained HTML.
+      bundle = { result: errorResult(err), assets: {} };
+      identity = await deps.renderer.identity(bundle);
+      image = deps.renderer.rasterize(bundle);
     }
-    return { result, bundle, identity, device: ctx.device, error };
+    deps.slot.put({
+      bundle,
+      identity,
+      image,
+      cachedAt: deps.now(),
+    });
   }
 
-  async function derive(
-    t: Temporal.ZonedDateTime,
-    intent: RunContext["intent"] = "scrub",
-  ): Promise<DeriveResult> {
-    return await runAndDerive({ t, intent });
+  // Compute or look up the current display metadata. Tier 1: Slot still
+  // valid → return its `display()` directly. Tier 3 (and Tier 2, not yet
+  // implemented): refill the Slot, then return its `display()`.
+  async function ensureDisplay(intent: RunContext["intent"]): Promise<SlotDisplay> {
+    const cached = deps.slot.display();
+    if (cached !== null) return cached;
+    const ctx: RunContext = { t: deps.now(), intent, device: latestDevice };
+    await refillSlot(ctx);
+    const display = deps.slot.display();
+    if (display === null) {
+      throw new Error("Slot empty after refill — bundle validity must be > 0");
+    }
+    return display;
   }
 
   const app = new Hono()
     .get("/api/setup", (c) =>
-      // `image_url` is part of the BYOS setup payload. The Device proceeds
-      // to /api/display next, which returns the same URL. Kept here because
-      // the BYOS firmware expects the field to be present.
+      // `image_url` here is a placeholder — the BYOS firmware proceeds to
+      // /api/display immediately after setup, which returns the real
+      // identity-keyed URL. We hand back the same shape (/image/<id>.png)
+      // pointing at `setup` so the field is syntactically a render URL.
       c.json({
         status: 200,
         api_key: "byos",
         friendly_id: deps.friendlyId,
-        image_url: `${publicOrigin(c)}/preview/png`,
+        image_url: `${publicOrigin(c)}/image/setup.png`,
         message: "Welcome",
       }))
     .get("/api/display", async (c) => {
-      // Record the Device's heartbeat so the next Plugin run (the one CDP
-      // triggers via /preview when the Device fetches image_url) sees it on
-      // ctx.device.
       const report = parseDeviceHeaders(c.req.raw.headers, deps.now);
       if (report) latestDevice = report;
-      // Run the Plugin once here just to compute (refresh_rate, filename).
-      // The actual pixels come from a separate /preview/png fetch the Device
-      // makes next — that fetch runs the Plugin a second time via CDP. Two
-      // runs per Device cycle is the cost of dropping the cache; for
-      // typical refresh rates (minutes), it's fine.
-      const now = deps.now();
-      const { result, identity } = await runAndDerive({ t: now, intent: "poll" });
+      const display = await ensureDisplay("poll");
       const refreshRate = Math.max(
         1,
-        Math.ceil(result.validity.total({ unit: "seconds" })),
+        Math.ceil(display.refreshIn.total({ unit: "seconds" })),
       );
       return c.json({
         status: 0,
-        image_url: `${publicOrigin(c)}/preview/png`,
-        filename: `image-${identity}`,
+        image_url: `${publicOrigin(c)}/image/${display.identity}.png`,
+        filename: `image-${display.identity}`,
         refresh_rate: refreshRate,
         reset_firmware: false,
         update_firmware: false,
         firmware_url: "",
         special_function: "none",
         maximum_compatibility: true,
+      });
+    })
+    .get("/image/:id{.+\\.png}", async (c) => {
+      // `:id{.+\\.png}` matches "<identity>.png"; strip the extension to
+      // get the Slot key. Identity mismatch (or empty / expired Slot)
+      // returns 404 — the Device's next /api/display corrects.
+      const param = c.req.param("id");
+      const id = param.replace(/\.png$/, "");
+      const bytes = await deps.slot.image(id);
+      if (bytes === null) return c.notFound();
+      return c.body(bytes as unknown as ArrayBuffer, 200, {
+        "content-type": "image/png",
+        "cache-control": "no-store",
       });
     })
     .post("/api/log", async (c) => {
@@ -172,5 +175,5 @@ export function createConductor(deps: ConductorDeps): Conductor {
       return c.body(null, 204);
     });
 
-  return { app, derive };
+  return { app };
 }
