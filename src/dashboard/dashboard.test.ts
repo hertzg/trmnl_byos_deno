@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { type ConductorDeps, createConductor } from "../conductor/conductor.ts";
 import { createDashboard } from "./dashboard.ts";
 import { createSlot } from "../slot/slot.ts";
-import type { Plugin } from "../plugin/plugin.ts";
+import type { Plugin, RunContext } from "../plugin/plugin.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
 import type { Bundle } from "../plugin/bundle.ts";
@@ -269,6 +269,113 @@ Deno.test("GET /dashboard/preview.png?t=... runs PluginManager + Renderer.raster
   assertEquals(res.status, 200);
   assertEquals(res.headers.get("content-type"), "image/png");
   assertEquals(new Uint8Array(await res.arrayBuffer()), scrubPng);
+});
+
+Deno.test("GET /dashboard/preview.png parses ?t= into ctx.t and runs Plugin with intent=\"scrub\", device=null", async () => {
+  // The scrub form posts a fully-zoned ISO string; the Dashboard parses it
+  // with Temporal.ZonedDateTime.from and threads it onto the RunContext.
+  // intent is "scrub" (so Plugins can differentiate dashboard previews
+  // from real Device polls) and device is null (Dashboard has no access
+  // to the Conductor's private latestDevice — the scrub is not a Device
+  // interaction).
+  const seen: { ctxes: RunContext[] } = { ctxes: [] };
+  const { app } = wire({
+    pluginManager: {
+      run(ctx) {
+        seen.ctxes.push(ctx);
+        return Promise.resolve({
+          result: { state: {}, validity: fiveMin, view: () => "" },
+          assets: {},
+        });
+      },
+    },
+  });
+
+  await (await app.request(
+    "/dashboard/preview.png?t=2026-05-16T12:30:00%2B02:00[Europe/Berlin]",
+  )).arrayBuffer();
+
+  assertEquals(seen.ctxes.length, 1);
+  const ctx = seen.ctxes[0];
+  assertEquals(ctx.intent, "scrub");
+  assertEquals(ctx.device, null);
+  assertEquals(ctx.t.toString(), "2026-05-16T12:30:00+02:00[Europe/Berlin]");
+});
+
+Deno.test("GET /dashboard/preview.png falls back to now() when ?t is missing or unparseable", async () => {
+  // Robustness: the form always supplies `t`, but the route guards against
+  // missing or malformed values so a typo in the URL doesn't 500.
+  const seen: { ts: Temporal.ZonedDateTime[] } = { ts: [] };
+  const { app } = wire({
+    pluginManager: {
+      run(ctx) {
+        seen.ts.push(ctx.t);
+        return Promise.resolve({
+          result: { state: {}, validity: fiveMin, view: () => "" },
+          assets: {},
+        });
+      },
+    },
+  });
+
+  await (await app.request("/dashboard/preview.png")).arrayBuffer();
+  await (await app.request("/dashboard/preview.png?t=not-a-date")).arrayBuffer();
+
+  assertEquals(seen.ts.length, 2);
+  // Both fall back to T0 (the wire helper's clock).
+  assertEquals(seen.ts[0].toString(), T0.toString());
+  assertEquals(seen.ts[1].toString(), T0.toString());
+});
+
+Deno.test("GET /dashboard/preview.png does NOT mutate the Slot or write to Telemetry", async () => {
+  // ADR-0003: scrub bypasses the Slot and does not record to Telemetry.
+  // Spy on slot.put / slot.clear / telemetry.record and assert each stays
+  // at zero calls across a scrub. The Slot's pre-scrub identity must
+  // survive untouched, even though the scrub Bundle would normally hash
+  // to a different identity.
+  const now = () => T0;
+  const slot = createSlot({ now });
+  const telemetry = createTelemetry();
+  const slotPut = spy(slot, "put");
+  const slotClear = spy(slot, "clear");
+  const telemetryRecord = spy(telemetry, "record");
+  // Prime the Slot with a known entry (via the Conductor's normal path)
+  // so we can prove the scrub leaves it alone.
+  const { app } = wire({
+    slot,
+    telemetry,
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>cached</p>" }),
+    }),
+    renderer: defaultRenderer({ identity: () => Promise.resolve("cached-id") }),
+  });
+  await (await app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+  // Sanity: the Conductor's cold-fill put the entry and recorded the trace.
+  // We snapshot the call counts so the scrub-only delta is unambiguous.
+  const putBefore = slotPut.calls.length;
+  const clearBefore = slotClear.calls.length;
+  const recordBefore = telemetryRecord.calls.length;
+  const identityBefore = slot.display()?.identity;
+
+  const res = await app.request(
+    "/dashboard/preview.png?t=2026-05-16T12:00:00%2B02:00[Europe/Berlin]",
+  );
+  await res.arrayBuffer();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  // The scrub adds zero new put/clear/record calls.
+  assertEquals(slotPut.calls.length, putBefore, "scrub must not call slot.put");
+  assertEquals(slotClear.calls.length, clearBefore, "scrub must not call slot.clear");
+  assertEquals(
+    telemetryRecord.calls.length,
+    recordBefore,
+    "scrub must not call telemetry.record",
+  );
+  // The Slot's identity is unchanged — same Image still cached.
+  assertEquals(slot.display()?.identity, identityBefore);
 });
 
 // ─── /preview/png removed ──────────────────────────────────────────────────
