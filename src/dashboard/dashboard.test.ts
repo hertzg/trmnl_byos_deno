@@ -499,6 +499,47 @@ Deno.test("POST /dashboard/clear invalidates the Slot — subsequent /api/displa
   assertEquals(first.filename === second.filename, false);
 });
 
+// ─── TraceStrip: error message is not duplicated ──────────────────────────
+
+Deno.test("GET /'s trace block does not duplicate the error message (stack already includes it)", async () => {
+  // `error.stack` on a thrown Error begins with `Error: <message>` —
+  // rendering both `message` and the full `stack` repeats the message
+  // verbatim at the top of the <pre>. The trace block must render the
+  // stack (which carries the message at the top) at most once.
+  const message = "unique-error-message-9f8a3c";
+  const { app, telemetry } = wire({
+    pluginManager: managerFor({
+      run: () => {
+        throw new Error(message);
+      },
+    }),
+  });
+
+  await (await app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  // Sanity: telemetry has the error and the stack includes the message.
+  const trace = telemetry.latest();
+  assertEquals(trace?.error?.message, message);
+  assertEquals(trace?.error?.stack?.includes(message), true);
+
+  const html = await (await app.request("/")).text();
+
+  // The error <pre> block is rendered.
+  assertEquals(html.includes(message), true);
+  // ...but the message appears only once inside the error block. Find
+  // the error block's content and count occurrences of the message.
+  const block = /<pre class="error">([\s\S]*?)<\/pre>/.exec(html);
+  assertEquals(block !== null, true, "error block missing from HTML");
+  const occurrences = (block![1].match(new RegExp(message, "g")) ?? []).length;
+  assertEquals(
+    occurrences,
+    1,
+    `error message duplicated in TraceStrip (saw ${occurrences} occurrences)`,
+  );
+});
+
 // ─── /preview/png removed ──────────────────────────────────────────────────
 
 Deno.test("GET /preview/png returns 404 — the render path is /image/<id>.png on the Conductor", async () => {

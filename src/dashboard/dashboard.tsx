@@ -156,10 +156,13 @@ function TraceStrip({ trace }: { trace: RenderTrace | null }) {
       </table>
       {trace.error !== null
         ? (
+          // `Error.stack` already begins with `Error: <message>` on every
+          // engine we run on (V8 / Deno), so rendering both `message` and
+          // `stack` would repeat the message verbatim at the top of the
+          // block. Fall back to `message` only when `stack` is missing
+          // (defensive — shouldn't happen in practice).
           <pre class="error">
-            {trace.error.message}
-            {"\n"}
-            {trace.error.stack ?? ""}
+            {trace.error.stack ?? trace.error.message}
           </pre>
         )
         : null}
