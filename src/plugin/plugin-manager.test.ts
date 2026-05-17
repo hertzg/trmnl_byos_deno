@@ -4,6 +4,8 @@ import { createConductor } from "../conductor/conductor.ts";
 import type { RunContext } from "./plugin.ts";
 import type { Bundle } from "./bundle.ts";
 import { createPluginManager } from "./plugin-manager.ts";
+import { createRenderer } from "../render/renderer.ts";
+import { hashBundle } from "../hash.ts";
 
 const T0 = Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]");
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
@@ -187,4 +189,58 @@ Deno.test("a PluginManager loaded from disk drives /api/display end-to-end throu
   assertEquals(body.status, 0);
   assertEquals(body.filename, "image-id-<p>poll</p>");
   assertEquals(body.refresh_rate, 120);
+});
+
+Deno.test("a PluginManager wired through the real Renderer surfaces a filename derived from hashBundle of the produced Bundle", async () => {
+  // End-to-end smoke (slice #50): the Bundle PluginManager produces flows
+  // into Renderer.identity, which delegates to hashBundle. The /api/display
+  // filename must match the same hash a direct hashBundle call would
+  // compute for the same Bundle (Result + assets).
+  const dir = await writePluginDir({
+    "main.ts": `
+      export default {
+        run(ctx) {
+          return {
+            state: { intent: ctx.intent, anchor: "smoke" },
+            validity: Temporal.Duration.from({ seconds: 60 }),
+            view: (s) => "<p>" + s.intent + ":" + s.anchor + "</p>",
+          };
+        },
+      };
+    `,
+  });
+  const pluginManager = await createPluginManager({ pluginDir: dir });
+
+  // Real Renderer; the CDP-backed fetchPngFromUrl is stubbed because
+  // /api/display doesn't take the rasterize path in this slice (pixels
+  // come from /preview/png on the Dashboard sub-app, which doesn't run
+  // here).
+  const renderer = createRenderer({
+    internalOrigin: "http://internal:3000",
+    fetchPngFromUrl: () => Promise.resolve(new Uint8Array()),
+  });
+
+  const conductor = createConductor({
+    pluginManager,
+    renderer,
+    errorView: (_err: Error) => "",
+    errorValidity: Temporal.Duration.from({ seconds: 30 }),
+    friendlyId: "SMOKE",
+    pluginAssetsDir: join(dir, "assets"),
+    now: () => T0,
+  });
+
+  const res = await conductor.app.request("/api/display");
+  const body = await res.json();
+
+  assertEquals(res.status, 200);
+  assertEquals(body.status, 0);
+  // Reproduce the Bundle the PluginManager would build for an
+  // intent=poll call and assert the filename matches its hashBundle.
+  const expected = await pluginManager.run({ t: T0, intent: "poll", device: null });
+  const expectedHash = await hashBundle(expected satisfies Bundle);
+  assertEquals(body.filename, `image-${expectedHash}`);
+  // 16-char lowercase hex per ADR-0004.
+  assertEquals(/^image-[0-9a-f]{16}$/.test(body.filename), true);
+  assertEquals(body.refresh_rate, 60);
 });

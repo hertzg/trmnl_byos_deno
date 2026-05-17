@@ -32,7 +32,10 @@ function defaults(overrides: Partial<RendererDeps> = {}): RendererDeps {
 
 Deno.test("Renderer.identity delegates to hashBundle and returns its hash", async () => {
   const renderer = createRenderer(defaults());
-  const bundle = bundleWith({ greeting: "hi" }, (s) => <p>{(s as { greeting: string }).greeting}</p>);
+  const bundle = bundleWith(
+    { greeting: "hi" },
+    (s) => <p>{(s as { greeting: string }).greeting}</p>,
+  );
 
   const id = await renderer.identity(bundle);
 
