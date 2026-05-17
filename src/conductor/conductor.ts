@@ -32,25 +32,32 @@ export type ConductorDeps = {
 // For peers that want the live HTML for inspection without paying CDP cost.
 // `device` is the DeviceReport the Plugin actually saw on `ctx.device`
 // (latest report at the time of the call, or null if no Device has polled
-// yet).
+// yet). `error` is non-null when the Plugin / deriveHtml / identityFor
+// threw and the result/html/identity reflect the error-view fallback —
+// peers that want to surface the failure (e.g. /preview as a 500) read
+// this; peers that just want to show *something* (e.g. the dashboard)
+// can ignore it.
 export type DeriveResult = {
   result: Result<unknown>;
   html: string;
   identity: string;
   device: DeviceReport | null;
+  error: Error | null;
 };
 
 // `render()` output: full pipeline (derive + rasterize). Post error-
 // fallback — if any pipeline step threw, the swapped-in error Result/
-// identity/png is what flows out. Per-step wall-clock is not part of
-// this shape; peers that want it open a `withTimings()` context around
-// the call and read the bucket — the Conductor and the Renderer both
-// record into it via `src/render/timings.ts`.
+// identity/png is what flows out, and `error` carries the original
+// failure for peers that want to surface it. Per-step wall-clock is
+// not part of this shape; peers that want it open a `withTimings()`
+// context around the call and read the bucket — the Conductor and the
+// Renderer both record into it via `src/render/timings.ts`.
 export type RenderResult = {
   result: Result<unknown>;
   identity: string;
   png: Uint8Array;
   device: DeviceReport | null;
+  error: Error | null;
 };
 
 // `committedState()` output: what the Device is currently being served
@@ -127,6 +134,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
     let result: Result<unknown>;
     let html: string;
     let identity: string;
+    let error: Error | null = null;
     try {
       result = await timed("pipeline.run", () => Promise.resolve(deps.plugin.run(ctx)));
       html = await timed(
@@ -138,6 +146,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
         () => Promise.resolve(deps.identityFor(html)),
       );
     } catch (err) {
+      error = err instanceof Error ? err : new Error(String(err));
       result = errorResult(err);
       html = await timed(
         "pipeline.deriveHtml",
@@ -148,7 +157,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
         () => Promise.resolve(deps.identityFor(html)),
       );
     }
-    return { ctx, result, html, identity };
+    return { ctx, result, html, identity, error };
   }
 
   // Rasterize with one retry through the error view on failure. If the
@@ -160,14 +169,23 @@ export function createConductor(deps: ConductorDeps): Conductor {
     result: Result<unknown>,
     html: string,
     identity: string,
-  ): Promise<{ result: Result<unknown>; html: string; identity: string; png: Uint8Array }> {
+  ): Promise<
+    {
+      result: Result<unknown>;
+      html: string;
+      identity: string;
+      png: Uint8Array;
+      error: Error | null;
+    }
+  > {
     try {
       const png = await timed(
         "pipeline.rasterize",
         () => deps.renderer.rasterize(html, result.hints),
       );
-      return { result, html, identity, png };
+      return { result, html, identity, png, error: null };
     } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
       const fallback = errorResult(err);
       const fallbackHtml = await timed(
         "pipeline.deriveHtml",
@@ -181,7 +199,13 @@ export function createConductor(deps: ConductorDeps): Conductor {
         "pipeline.rasterize",
         () => deps.renderer.rasterize(fallbackHtml, fallback.hints),
       );
-      return { result: fallback, html: fallbackHtml, identity: fallbackIdentity, png };
+      return {
+        result: fallback,
+        html: fallbackHtml,
+        identity: fallbackIdentity,
+        png,
+        error,
+      };
     }
   }
 
@@ -225,20 +249,21 @@ export function createConductor(deps: ConductorDeps): Conductor {
   // up). The poll path is the only consumer that benefits from the
   // identity-match short-circuit.
   async function render(t: Temporal.ZonedDateTime): Promise<RenderResult> {
-    const { ctx, result, html, identity } = await runAndDerive({ t, intent: "scrub" });
-    const out = await rasterizeWithFallback(result, html, identity);
+    const derived = await runAndDerive({ t, intent: "scrub" });
+    const out = await rasterizeWithFallback(derived.result, derived.html, derived.identity);
     return {
       result: out.result,
       identity: out.identity,
       png: out.png,
-      device: ctx.device,
+      device: derived.ctx.device,
+      error: derived.error ?? out.error,
     };
   }
 
   // Pipeline up to HTML. No rasterize cost.
   async function derive(t: Temporal.ZonedDateTime): Promise<DeriveResult> {
-    const { ctx, result, html, identity } = await runAndDerive({ t, intent: "scrub" });
-    return { result, html, identity, device: ctx.device };
+    const { ctx, result, html, identity, error } = await runAndDerive({ t, intent: "scrub" });
+    return { result, html, identity, device: ctx.device, error };
   }
 
   function committedState(): CommittedState {

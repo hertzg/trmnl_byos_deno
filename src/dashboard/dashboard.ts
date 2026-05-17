@@ -77,9 +77,12 @@ export function createDashboard(deps: DashboardDeps): Hono {
     })
     // Dev-iteration: live HTML at t=now. ADR-0005: no CDP cost
     // (no rasterize). Does not touch Current Result or Current Image.
+    // When the pipeline caught an error and swapped in the error view,
+    // surface it as a 500 so dev iteration tools (browser, curl) see the
+    // failure — the body is still the error-view HTML.
     .get("/preview", async (c) => {
-      const { html } = await deps.derive(deps.now());
-      return c.html(html, 200, { "cache-control": "no-store" });
+      const { html, error } = await deps.derive(deps.now());
+      return c.html(html, error ? 500 : 200, { "cache-control": "no-store" });
     })
     // Dev-iteration: live PNG at t=now via the full pipeline. Does not
     // touch Current Result or Current Image.
