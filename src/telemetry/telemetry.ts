@@ -21,10 +21,13 @@ export type Telemetry = {
 };
 
 export function createTelemetry(): Telemetry {
+  let stored: RenderTrace | null = null;
   return {
-    record(_trace) {},
+    record(trace) {
+      stored = trace;
+    },
     latest() {
-      return null;
+      return stored;
     },
   };
 }
