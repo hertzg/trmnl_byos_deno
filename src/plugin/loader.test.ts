@@ -2,7 +2,7 @@ import { assertEquals, assertRejects } from "@std/assert";
 import { join } from "@std/path";
 import { createConductor } from "../conductor/conductor.ts";
 import type { Result } from "./plugin.ts";
-import { loadPlugin } from "./loader.ts";
+import { isPlugin, loadPlugin } from "./loader.ts";
 
 async function writeFixture(content: string): Promise<string> {
   const dir = await Deno.makeTempDir({ prefix: "plugin-loader-test-" });
@@ -82,6 +82,21 @@ Deno.test("loadPlugin throws a clear error when the default export has no run me
     Error,
     "run method",
   );
+});
+
+Deno.test("isPlugin narrows when the value has a callable run method", () => {
+  // The predicate is what lets loadPlugin return Plugin<unknown> without
+  // an `as` cast — it has to accept the Plugin-object shape and reject
+  // every common non-Plugin value (null, primitives, the legacy factory
+  // function, objects missing run).
+  assertEquals(isPlugin({ run: () => ({}) }), true);
+  assertEquals(isPlugin(null), false);
+  assertEquals(isPlugin(undefined), false);
+  assertEquals(isPlugin(42), false);
+  assertEquals(isPlugin("plugin"), false);
+  assertEquals(isPlugin(() => ({ run: () => ({}) })), false);
+  assertEquals(isPlugin({ notRun: 1 }), false);
+  assertEquals(isPlugin({ run: "not a function" }), false);
 });
 
 Deno.test("a Plugin loaded via loadPlugin drives /api/display end-to-end", async () => {

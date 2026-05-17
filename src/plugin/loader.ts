@@ -30,6 +30,20 @@ async function copyDirContents(src: string, dst: string): Promise<void> {
   }
 }
 
+// Type predicate that lets loadPlugin return Plugin<unknown> without an `as`
+// cast: once isPlugin returns true, TypeScript narrows the value to the
+// Plugin shape. Kept exported so it can be tested directly — the loader's
+// error-message guards still live in loadPlugin because they need the
+// mainPath for context.
+export function isPlugin(value: unknown): value is Plugin<unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "run" in value &&
+    typeof (value as { run: unknown }).run === "function"
+  );
+}
+
 export async function loadPlugin(dir: string): Promise<Plugin<unknown>> {
   const mainPath = join(dir, "main.ts");
   try {
@@ -45,11 +59,11 @@ export async function loadPlugin(dir: string): Promise<Plugin<unknown>> {
       `Plugin at ${mainPath} must have a default export (a Plugin object with a run method)`,
     );
   }
-  if (typeof mod.default.run !== "function") {
+  if (!isPlugin(mod.default)) {
     throw new Error(
       `Plugin at ${mainPath} default export must be a Plugin object with a run method`,
     );
   }
 
-  return mod.default as Plugin<unknown>;
+  return mod.default;
 }
