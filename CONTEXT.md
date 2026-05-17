@@ -3,30 +3,30 @@
 An opinionated, personal back end for a single TRMNL e-ink **Device**, written by and for an
 engineer comfortable in code — not a general-purpose product. The repository name reflects the wire
 protocol it happens to speak (TRMNL's "bring your own server"), not its scope. The **Server**
-orchestrates one **Plugin** and serves an **Image** whenever the **Device** polls. The **Plugin**
-contract is small enough that **Plugins** compose as plain code — a Super-**Plugin** can import
-others and route between them with no **Server**-side machinery. Intent: the **Device** is
-inconspicuous decor most of the time, becoming informative only when the **Plugin** has
-time-relevant data.
+orchestrates one **Plugin** and serves one **Image** at a time. The **Plugin** contract is small
+enough that **Plugins** compose as plain code — a Super-**Plugin** can import others and route
+between them with no **Server**-side machinery. Intent: the **Device** is inconspicuous decor most
+of the time, becoming informative only when the **Plugin** has time-relevant data.
 
 ## Language
 
 **Device**: The TRMNL e-ink display. Exactly one in this system; pulls from the **Server** on its
 own clock. _Avoid_: client, panel, board.
 
-**Server**: The Deno process that hosts the HTTP layer and wires the **Conductor**, **Renderer**,
-and the loaded **Plugin** together. Receives Device polls; hands them to the Conductor; returns the
-Conductor's Image to the Device. _Avoid_: service, backend.
+**Server**: The Deno process that hosts the HTTP layer and wires the **Conductor**,
+**PluginManager**, **Renderer**, **Slot**, **Telemetry**, and the loaded **Plugin** together.
+_Avoid_: service, backend.
 
-**Plugin**: A user-authored module exposing one method: `run(ctx) → Result`. The Result carries the
-Plugin's data, the duration that data stands for, optional rasterization hints, and the view
-component that turns the data into JSX. _Avoid_: template, app.
+**Plugin**: A user-authored module exposing one method: `run(ctx) → Result`. The Result carries
+the Plugin's data, the duration that data stands for, optional rasterization hints, and the view
+component that turns the data into JSX. Asset bytes live in `pluginDir/assets/` and are referenced
+from view by their `/assets/...` URL path. _Avoid_: template, app.
 
 **RunContext**: The single argument to `run`. Always contains `t: Temporal.ZonedDateTime`, an
-`intent` (`"poll"` for the Device's `/api/display` call, `"scrub"` for a dashboard or `/preview`
-fetch; `"prerender"` is reserved but unused since ADR-0007 was withdrawn), and a `device` (latest
-heartbeat-derived telemetry). Open-shaped — more fields may be added non-breakingly over time;
-Plugins read what they need and ignore the rest. _Avoid_: bag, params, options.
+`intent` (`"poll"` for the Device's `/api/display` call, `"scrub"` for a dashboard preview), and a
+`device` (latest heartbeat-derived telemetry). Open-shaped — more fields may be added
+non-breakingly over time; Plugins read what they need and ignore the rest. _Avoid_: bag, params,
+options.
 
 **Result**: What `run(ctx)` returns — `{ state, validity, hints?, view }`. `state` is the Plugin's
 public data shape; `validity` is the duration that data stands for; `hints` are optional
@@ -35,143 +35,181 @@ the Renderer invokes with `state`. `view` rides in the Result (not as static Plu
 view and state are type-locked and because it makes Super-Plugin composition mechanical. _Avoid_:
 sample, snapshot, presentation, output.
 
-**Conductor**: Hosts the BYOS surface (`/api/setup`, `/api/display`, `/api/log`, `/assets/*`) and
-exposes a single `derive(t, intent?)` for peers that want to run the Plugin and turn its Result into
-HTML + identity. Holds no rendered-PNG cache (ADR-0004); the only mutable state it carries between
-requests is `latestDevice`, the most-recent DeviceReport parsed off a poll. _Avoid_: pipeline,
-manager, orchestrator (the role description, not the name).
+**Bundle**: What the **PluginManager** produces per call: `{ result, assets }`. `result` is what
+the Plugin's `run` returned; `assets` is a `Record<urlPath, Uint8Array>` of every file in the
+Plugin's `assets/` directory, keyed by the URL path the view references (e.g. `/assets/foo.svg`). A
+Bundle is the unit of "everything the Renderer needs to produce one Image." _Avoid_: package,
+payload.
 
-**Renderer**: An internal Server concept split across two functions, both stateless.
-`deriveHtml(result)` invokes `result.view(result.state)` and runs `renderToString` to produce an
-HTML string — owned by the Conductor. `fetchPngFromUrl(url)` talks to a CDP sidecar to screenshot
-the URL at the active panel's geometry, applies dither, and returns PNG bytes — owned by the
-dashboard's `/preview/png` handler. The CDP sidecar is one implementation detail of
-`fetchPngFromUrl`. _Avoid_: CDP, sidecar, headless-browser — those are how this Renderer happens to
-do its job.
+**PluginManager**: The thin module that owns the Plugin's lifecycle. It loads the Plugin module
+once, reads its `assets/` directory into memory once, and exposes one method: `run(ctx) → Bundle`,
+which calls `plugin.run(ctx)` and attaches the asset map. PluginManager does not derive HTML, does
+not catch errors, does not interact with the Renderer. _Avoid_: loader, host.
 
-**Image**: The PNG bytes the Server hands to the Device. The Server never holds a rendered Image in
-memory across requests — `/preview/png` produces fresh bytes on every call. The Image carries an
-identity (a hash of the HTML that produced its source render) that the Device caches against via the
-`filename` field on `/api/display`. _Avoid_: frame, picture, output.
+**Renderer**: The deep module that owns everything from Bundle to Image. Public surface:
+`identity(bundle) → string` (derives HTML internally, returns the Bundle's identity hash) and
+`rasterize(bundle) → Uint8Array` (derives HTML internally, spins an internal HTTP server that
+serves the Bundle's assets to a CDP sidecar, screenshots, dithers, returns PNG bytes). How
+screenshotting works — CDP, the internal server, the dither pass — is encapsulated and not part of
+the public surface. _Avoid_: CDP, sidecar, headless-browser.
+
+**Slot**: The single-Image cache. Holds at most one entry: `{ bundle, identity, image, cachedAt }`,
+where `image` is a `Promise<Uint8Array>` of PNG bytes (kicked off eagerly when the entry lands).
+Four operations: `put(entry)` swaps the entry; `display() → { identity, refreshIn } | null`
+returns metadata if the entry's `validity` hasn't elapsed; `image(id) → bytes | null` returns
+bytes if `id` matches the entry's identity; `clear()` invalidates. Slot has no Renderer or
+PluginManager dep — it stores what callers push in. _Avoid_: cache (the unqualified word).
+
+**Conductor**: The facade for the **Device** path. Hosts the BYOS surface (`/api/setup`,
+`/api/display`, `/api/log`) and the `/image/<identity>.png` route. Owns `latestDevice` (the last
+parsed DeviceReport) and orchestrates each cycle: parse Device headers → call PluginManager → call
+Renderer.identity → start Renderer.rasterize → push the trio into the Slot → return identity. On a
+caught throw anywhere in that loop, the same loop re-runs with a fabricated error Bundle. _Avoid_:
+pipeline, manager.
+
+**Dashboard**: The debug/observe add-on. Three routes: `GET /` (admin page showing current Image
++ trace + a scrub form), `GET /dashboard/preview.png?t=...` (transient preview render at arbitrary
+`t`, bypasses the Slot), `POST /dashboard/clear` (invalidates the Slot). Dashboard reads Telemetry
+to render the trace, reads the Slot's `display()` to know the current Image identity, and uses
+the same `/image/<identity>.png` URL the Device uses for the live preview. _Avoid_: admin, UI.
+
+**Telemetry**: The singleton that holds the most-recent render trace — durations of plugin-run,
+identity, and rasterize; the resulting identity; the error if one occurred. Conductor records;
+Dashboard reads. One entry; replaced each render. _Avoid_: metrics, log.
+
+**Image**: The PNG bytes the Server hands to the Device. The Slot caches one Image at a time,
+keyed by `identity` (a hash of the Bundle's rendered HTML + asset bytes). The Device's
+firmware-side filename cache matches against the identity returned in `/api/display`'s `filename`
+field. _Avoid_: frame, picture, output.
 
 ## Relationships
 
 - One Server orchestrates exactly one Plugin and serves exactly one Device.
-- The Plugin runs on two triggers: a Device poll (intent `"poll"`, asks about now — through
-  `/api/display`) and a `/preview` fetch (intent `"scrub"`, asks about whatever `t` the caller
-  supplied — through CDP for the Device-facing PNG and direct from the browser for the dashboard).
+- PluginManager produces Bundles. Conductor calls Renderer to compute identity and start
+  rasterization. The triple `(bundle, identity, image-promise)` lands in the Slot together.
+- The Slot's entry is valid for `bundle.result.validity`. After it expires, the next request
+  triggers a fresh render.
+- Conductor's orchestration loop catches throws from Plugin or Renderer; on catch it builds an
+  error Bundle and re-runs the same loop. The error Bundle goes through the Slot like any other.
 - The Device initiates every Device-driven interaction; the Server never pushes.
 - The Image is the only artifact crossing the Server/Device boundary; the Device is unaware of
-  Result, Plugin, view, or Conductor.
-- A Plugin owns its own internal state (caches, timers, fetched data); the Conductor does not govern
-  it.
+  Result, Bundle, Plugin, view, Conductor, or Renderer.
+- A Plugin owns its own internal state (caches, timers, fetched data); the Conductor does not
+  govern it.
 - `RunContext.t` is a `Temporal.ZonedDateTime`; `Result.validity` is a `Temporal.Duration`.
-- **Image identity** is derived from the HTML the Plugin's view produces. The Conductor returns it
-  as `filename` from `/api/display`; the Device's firmware compares it against the previous poll's
-  filename and skips both the download and the e-ink refresh when it matches. The hash function and
-  length are encapsulated; see ADR-0004.
+- **Image identity** is `hash(html + assets)`. The hash and its truncation are encapsulated inside
+  Renderer (see ADR-0004). Conductor returns it as `filename` on `/api/display`; the Device's
+  firmware compares against the previous poll's filename and skips both the download and the
+  e-ink refresh when it matches.
 - Multi-mode composition (e.g. BVG mornings, photo otherwise) lives inside a Super-Plugin that
   imports other Plugins as plain code — never in the Server or the Conductor.
 
 ## Lifecycle (Device poll)
 
-Two HTTP hops per cycle. The first computes metadata; the second produces the pixels.
+One render per cycle, possibly zero if the Slot's `validity` hasn't elapsed. Three tiers of
+laziness inside the Conductor's `/api/display` handler:
+
+1. **Validity tier.** Slot's entry is still valid → return its identity; no Plugin run, no
+   rasterize.
+2. **Identity tier.** Slot expired → run Plugin, compute new identity. If it matches the old
+   identity, refresh `cachedAt` only; no rasterize. (Not yet implemented; reserved for when the
+   cost matters.)
+3. **Render tier.** Identity differs (or Slot empty) → start rasterize, put `(bundle, identity,
+   image-promise)` into the Slot, return new identity.
 
 ```mermaid
 sequenceDiagram
     participant Device
     participant Conductor
-    participant Plugin
-    participant Dashboard as Dashboard /preview/png
-    participant CDP
-    participant Preview as Dashboard /preview
+    participant Slot
+    participant PluginManager
+    participant Renderer
 
     Device->>Conductor: GET /api/display
-    Conductor->>Plugin: run({ t: now, intent: "poll" })
-    Plugin-->>Conductor: Result
-    Note over Conductor: identity = hash(deriveHtml(result))
-    Conductor-->>Device: { image_url: "/preview/png", filename, refresh_rate }
 
-    alt filename matches szPrevFile
+    alt Slot valid (Tier 1)
+        Conductor->>Slot: display()
+        Slot-->>Conductor: { identity, refreshIn }
+    else Slot expired or empty
+        Conductor->>PluginManager: run(ctx)
+        PluginManager-->>Conductor: Bundle
+        Conductor->>Renderer: identity(bundle)
+        Renderer-->>Conductor: identity
+        Conductor->>Renderer: rasterize(bundle) (promise)
+        Conductor->>Slot: put({ bundle, identity, image })
+        Conductor->>Slot: display()
+        Slot-->>Conductor: { identity, refreshIn }
+    end
+
+    Conductor-->>Device: { image_url: /image/<identity>.png, filename, refresh_rate }
+
+    alt filename matches Device's last
         Note over Device: skip fetch and repaint
     else
-        Device->>Dashboard: GET /preview/png
-        Dashboard->>CDP: screenshot internalOrigin + /preview
-        CDP->>Preview: GET /preview
-        Preview->>Plugin: run({ t: now, intent: "scrub" })
-        Plugin-->>Preview: Result
-        Preview-->>CDP: HTML
-        CDP-->>Dashboard: PNG bytes
-        Dashboard-->>Device: PNG bytes
+        Device->>Conductor: GET /image/<identity>.png
+        Conductor->>Slot: image(identity)
+        Slot-->>Conductor: PNG bytes (awaits the eager rasterize)
+        Conductor-->>Device: PNG bytes
         Note over Device: repaint panel
     end
 
     Note over Device: sleep refresh_rate
 ```
 
-The Plugin runs twice per Device cycle. There is no server-side render cache (ADR-0004) — every
-Device fetch produces fresh pixels. The Device-side `filename` cache is the only dedupe that fires,
-and it fires on the Device, not the Server.
+For a dashboard scrub at arbitrary `t`, Dashboard calls PluginManager + Renderer directly,
+bypassing the Slot. The scrub render is transient — it doesn't populate the Slot, doesn't write
+Telemetry, doesn't affect what the Device sees.
 
-For a dashboard scrub the dashboard handler calls `derive(t, "scrub")` to get Result metadata and
-fetches the PNG via the same CDP hop pointed at `/preview?t=...`. The Server holds no "what the
-dashboard last saw" state.
+## Plugin packaging
 
-## Static assets and styling
+A Plugin is a folder on disk:
 
-**Current behavior:** The Server serves `/assets/*` from the Plugin's `assets/` directory on disk.
-Both the dashboard `<img>` preview and the CDP-screenshotted `/preview` resolve asset URLs through
-this prefix. Asset bytes are read live per request and are _not_ included in **Image** identity, so
-an asset change takes effect on the next render but does not by itself cause the Device's filename
-cache to invalidate.
+- `main.ts` — default-exports a `{ run }` object satisfying the Plugin contract.
+- `assets/` — any files referenced from `view` HTML. PluginManager reads the directory recursively
+  at load time and exposes each file at `/assets/<path-relative-to-assets-dir>` inside every
+  Bundle. Renderer's internal HTTP server serves these to CDP during screenshot.
 
-**Known gaps (deferred):**
-
-- A Plugin is currently a folder by convention; the convention isn't part of the **Plugin**
-  contract.
-- Asset changes don't bust the Device's filename cache because identity is HTML-only.
-- Composition (a Super-Plugin pulling in sub-Plugins) has no defined asset story — nested folders,
-  merged asset maps, render-time bundling, and fully-inline (data URIs) are all candidates.
-
-The right shape needs pressure from a concrete Super-Plugin to expose real trade-offs. Until then,
-current behavior stands; see the corresponding entry under **Open questions**.
+Asset changes take effect on Plugin reload. The Bundle's asset bytes contribute to identity, so
+an asset edit invalidates the Device's filename cache on the next poll.
 
 ## Example dialogue
 
-> **Dev:** "What happens when the dashboard opens but no Device has polled yet?" **Domain expert:**
-> "The dashboard's request calls `derive(now, 'scrub')`. The Plugin runs with `ctx.device = null`.
-> Nothing is pinned anywhere; the next Device poll runs the Plugin again."
+> **Dev:** "What happens when the dashboard opens but no Device has polled yet?"
+> **Domain expert:** "Dashboard calls PluginManager + Renderer directly with `t = now`, gets a
+> Bundle, rasterizes it transiently, and shows the PNG. The Slot is untouched. The next Device
+> poll runs the Plugin again into the Slot."
 
-> **Dev:** "If I scrub forward, does the Device see anything different?" **Domain expert:** "No.
-> Scrub is just `Plugin.run({ t, intent: 'scrub', device })` rendered to a one-off PNG for the
-> dashboard. The Server holds no rendered-PNG state, so there's nothing to disturb."
+> **Dev:** "If I scrub forward, does the Device see anything different?"
+> **Domain expert:** "No. Scrub is a transient render that doesn't touch the Slot. The Server
+> holds no state about what the dashboard last saw."
 
-> **Dev:** "How does a Super-Plugin show BVG at commute, photo otherwise?" **Domain expert:** "It's
-> a Plugin whose factory imports both sub-Plugins. Its `run(ctx)` calls one or both sub-`run`s,
-> picks the one to use, and returns a Result whose `state` carries which sub was picked plus that
-> sub's inner state, and whose `view` invokes the chosen sub's view. The Server and Conductor see
-> exactly one Plugin."
+> **Dev:** "How does a Super-Plugin show BVG at commute, photo otherwise?"
+> **Domain expert:** "It's a Plugin whose module sets up both sub-Plugins and exports a `run` that
+> dispatches between them based on `ctx.t`. Its Result's `view` invokes the chosen sub's view.
+> The Server and Conductor see exactly one Plugin."
 
 ## Flagged ambiguities
 
 - "template" in the codebase = **Plugin** (rename pending).
-- "snapshot" / "present" / "Sample" / "Presentation" are gone from the target vocabulary — collapsed
-  into `run` and `Result`. The codebase still uses the old names; rename pending.
-- The content-hash filename (ADR-0004) is the **Image** identity at the wire.
+- "snapshot" / "present" / "Sample" / "Presentation" are gone from the target vocabulary —
+  collapsed into `run` and `Result`. The codebase may still use the old names; rename pending.
+- "Conductor" was used previously to cover both the Device facade and the broader orchestration;
+  it now means strictly the Device facade. The orchestration is split across PluginManager,
+  Renderer, Slot, and Telemetry.
 
 ## Open questions
 
 - **`RunContext.device` contents** — exactly which heartbeat-derived fields populate it (battery,
-  RSSI, last-seen timestamp, full DeviceReport, …). The RunContext shape is open; this is the open
-  question about what fills one of its fields.
-- **Future Results** — pre-committing for `t > now` beyond the prerender warm-up of the immediate
-  next poll. No use case today.
+  RSSI, last-seen timestamp, full DeviceReport, …). The RunContext shape is open; this is the
+  open question about what fills one of its fields.
+- **Future Results** — pre-committing for `t > now`. No use case today.
 - **Multi-device** — contract written without single-device assumptions; extends naturally if
   needed.
 - **Result hint fields** — exact field names alongside `view` will land as concrete needs appear
   (dither, viewport, filters, etc.).
-- **Plugin packaging and asset handling** — whether a Plugin is fundamentally a TS module or a
-  folder convention, how assets reach the Renderer (inline data URIs, URL-served, or render-time
-  bundle), whether asset contents contribute to **Image** identity, and how a Super-Plugin
-  aggregates sub-Plugin assets without URL collisions. Linked sub-questions, all deferred until a
-  concrete Super-Plugin drives the trade-offs. See "Static assets and styling".
+- **Composition asset story** — how a Super-Plugin aggregates sub-Plugin assets without URL
+  collisions. Nested folders, merged asset maps, render-time inlining are all candidates.
+  Deferred until a concrete Super-Plugin drives the trade-offs.
+- **Identity tier (Tier 2) implementation** — the design reserves an optimization where an
+  expired Slot whose freshly-computed identity matches the previous one skips rasterize. Not
+  built until the rasterize cost is shown to matter in practice.
