@@ -3,6 +3,7 @@ import { serveStatic } from "hono/deno";
 import type { DeviceReport, Plugin, Result, RunContext } from "../plugin/plugin.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
+import { withTimings } from "../render/timings.ts";
 
 // The Conductor is opaque to the Plugin's state shape. `Result<unknown>` /
 // `Plugin<unknown>` work here because `Result.view` is declared as a method
@@ -32,11 +33,20 @@ export type ConductorDeps = {
 // error-fallback retries (e.g. if rasterize threw, the subsequent retry
 // against the error view's HTML adds to `deriveHtml` / `identityFor` /
 // `rasterize`). `total` is the wall-clock for the whole scrub call.
+//
+// `rasterizeSubSteps` is populated by whatever the renderer instruments
+// via `src/render/timings.ts` (CDP connect / navigate / screenshot,
+// dither decode / kernel / encode, etc.). The dashboard renders these
+// as a second proportional bar so the operator can see what dominates
+// the (typically expensive) rasterize step. Empty when the renderer's
+// implementation doesn't call `timed()` — the type accepts that and
+// the dashboard hides the breakdown row.
 export type ScrubTimings = {
   run: number;
   deriveHtml: number;
   identityFor: number;
   rasterize: number;
+  rasterizeSubSteps: Record<string, number>;
   total: number;
 };
 
@@ -203,6 +213,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
       deriveHtml: 0,
       identityFor: 0,
       rasterize: 0,
+      rasterizeSubSteps: {},
       total: 0,
     };
     const ctx: RunContext = { t, intent: "scrub", device: latestDevice };
@@ -215,6 +226,19 @@ export function createConductor(deps: ConductorDeps): Conductor {
       const identity = await deps.identityFor(html);
       timings.identityFor += performance.now() - tI;
       return { html, identity };
+    }
+
+    // Rasterize-with-collector. Sub-step timings flow up through
+    // AsyncLocalStorage (see src/render/timings.ts); accumulate into
+    // rasterizeSubSteps in case error-fallback fires and we rasterize twice.
+    async function rasterizeTimed(r: Result<unknown>, h: string): Promise<Uint8Array> {
+      const tRas = performance.now();
+      const out = await withTimings(() => deps.renderer.rasterize(h, r.hints));
+      timings.rasterize += performance.now() - tRas;
+      for (const [k, v] of Object.entries(out.timings)) {
+        timings.rasterizeSubSteps[k] = (timings.rasterizeSubSteps[k] ?? 0) + v;
+      }
+      return out.value;
     }
 
     let result: Result<unknown>;
@@ -232,15 +256,11 @@ export function createConductor(deps: ConductorDeps): Conductor {
 
     let png: Uint8Array;
     try {
-      const tRas = performance.now();
-      png = await deps.renderer.rasterize(html, result.hints);
-      timings.rasterize += performance.now() - tRas;
+      png = await rasterizeTimed(result, html);
     } catch (err) {
       result = errorResult(err);
       ({ html, identity } = await derive(result));
-      const tRas = performance.now();
-      png = await deps.renderer.rasterize(html, result.hints);
-      timings.rasterize += performance.now() - tRas;
+      png = await rasterizeTimed(result, html);
     }
 
     timings.total = performance.now() - t0;

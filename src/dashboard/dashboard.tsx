@@ -168,20 +168,28 @@ const css = `
     background: #fffbe6; border: 1px solid #f0c040; color: #663d00;
   }
   p.notice code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-  .timings {
-    display: flex; width: 100%; margin-bottom: 8px; height: 28px;
-    border: 1px solid #ddd; background: #fff; font-size: 12px;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  .timings-block {
+    background: #fff; border: 1px solid #ddd; padding: 10px 12px;
+    margin-bottom: 8px;
+    font: 12px ui-monospace, "SF Mono", Menlo, monospace;
   }
-  .timings .seg {
-    display: flex; align-items: center; padding: 0 8px;
-    border-right: 1px solid #ddd; white-space: nowrap;
+  .timings-block .title {
+    font-size: 11px; color: #888; text-transform: lowercase;
+    margin-bottom: 6px; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
   }
-  .timings .seg:last-child { border-right: none; }
-  .timings .seg:nth-child(1) { background: #e3f2fd; }
-  .timings .seg:nth-child(2) { background: #f3e5f5; }
-  .timings .seg:nth-child(3) { background: #fff3e0; }
-  .timings .seg:nth-child(4) { background: #e8f5e9; }
+  .timings-grid {
+    display: grid; grid-template-columns: max-content 1fr max-content;
+    gap: 2px 12px; align-items: center;
+  }
+  .timings-grid .row-label { color: #555; }
+  .timings-grid .row-bar {
+    height: 12px; background: #f0f0f0; min-width: 100px;
+  }
+  .timings-grid .row-bar > div {
+    height: 100%; background: #64b5f6;
+  }
+  .timings-grid .row-bar.max > div { background: #1976d2; }
+  .timings-grid .row-ms { color: #555; text-align: right; }
   p.timings-total { margin: 0 0 16px; font-size: 12px; color: #555; }
   p.timings-total code { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #111; }
   details.state { background: #fff; border: 1px solid #ddd; padding: 12px; }
@@ -212,6 +220,34 @@ function fmtMs(ms: number): string {
   if (ms < 0.5) return "<1ms";
   if (ms < 10) return `${ms.toFixed(1)}ms`;
   return `${Math.round(ms)}ms`;
+}
+
+type TimingEntry = { label: string; ms: number };
+
+// One row per step. Bar width is the step's share of the section's max
+// (so each block is internally readable regardless of which steps live
+// in it). The longest bar in the section gets a darker fill to make the
+// dominant cost obvious at a glance.
+function TimingsBlock(props: { title: string; entries: TimingEntry[] }) {
+  const max = Math.max(0.001, ...props.entries.map((e) => e.ms));
+  return (
+    <div class="timings-block">
+      <div class="title">{props.title}</div>
+      <div class="timings-grid">
+        {props.entries.map((e) => {
+          const pct = (e.ms / max) * 100;
+          const isMax = e.ms === max;
+          return [
+            <div key={`${e.label}-l`} class="row-label">{e.label}</div>,
+            <div key={`${e.label}-b`} class={`row-bar${isMax ? " max" : ""}`}>
+              <div style={`width: ${pct}%;`} />
+            </div>,
+            <div key={`${e.label}-m`} class="row-ms">{fmtMs(e.ms)}</div>,
+          ];
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard(props: DashboardProps) {
@@ -311,21 +347,16 @@ export default function Dashboard(props: DashboardProps) {
           )}
           <a class="reset" href="/">reset</a>
         </div>
-        <div class="timings" title="per-step wall-clock for the scrub pipeline">
-          {segs.map((s) => (
-            // flex: grow shrink basis. basis=max-content guarantees the
-            // label always fits without truncation; grow proportional to ms
-            // distributes any extra space so the bar still reads as a
-            // duration histogram.
-            <div
-              key={s.label}
-              class="seg"
-              style={`flex: ${Math.max(s.ms, 0.1)} 0 max-content;`}
-            >
-              {s.label} {fmtMs(s.ms)}
-            </div>
-          ))}
-        </div>
+        <TimingsBlock title="pipeline" entries={segs} />
+        {Object.keys(timings.rasterizeSubSteps).length > 0 && (
+          <TimingsBlock
+            title="rasterize sub-steps"
+            entries={Object.entries(timings.rasterizeSubSteps).map(([label, ms]) => ({
+              label,
+              ms,
+            }))}
+          />
+        )}
         <p class="timings-total">
           re-render: <code>{fmtMs(timings.total)}</code> (sum of steps:{" "}
           <code>

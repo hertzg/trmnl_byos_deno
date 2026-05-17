@@ -1,4 +1,5 @@
 import { connect } from "@astral/astral";
+import { timed } from "./timings.ts";
 
 type Cdp = ReturnType<
   Awaited<
@@ -29,13 +30,15 @@ export interface RenderOptions {
 
 // Resolves a CDP HTTP base (e.g. http://browser:9222) to its per-process WebSocket endpoint.
 export async function resolveCdpEndpoint(cdpUrl: string | URL): Promise<string> {
-  const r = await fetch(new URL("/json/version", cdpUrl));
-  if (!r.ok) throw new Error(`CDP /json/version ${r.status}`);
-  const { webSocketDebuggerUrl } = await r.json();
-  if (!webSocketDebuggerUrl) {
-    throw new Error("CDP /json/version missing webSocketDebuggerUrl");
-  }
-  return webSocketDebuggerUrl;
+  return await timed("cdp.endpoint", async () => {
+    const r = await fetch(new URL("/json/version", cdpUrl));
+    if (!r.ok) throw new Error(`CDP /json/version ${r.status}`);
+    const { webSocketDebuggerUrl } = await r.json();
+    if (!webSocketDebuggerUrl) {
+      throw new Error("CDP /json/version missing webSocketDebuggerUrl");
+    }
+    return webSocketDebuggerUrl;
+  });
 }
 
 // Navigates the headless browser to `url` (typically our own server's render endpoint),
@@ -45,29 +48,39 @@ export async function resolveCdpEndpoint(cdpUrl: string | URL): Promise<string> 
 export async function renderUrl(opts: RenderOptions): Promise<Uint8Array> {
   const { endpoint, url, deviceWidth, deviceHeight, deviceScaleFactor } = opts;
 
-  const browser = await connect({ endpoint });
+  const browser = await timed("cdp.connect", () => connect({ endpoint }));
   try {
-    const page = await browser.newPage();
+    const page = await timed("cdp.newPage", () => browser.newPage());
     // setViewportSize hardcodes deviceScaleFactor=0; go direct to set our DPR.
-    await page.unsafelyGetCelestialBindings().Emulation.setDeviceMetricsOverride({
-      width: deviceWidth,
-      height: deviceHeight,
-      deviceScaleFactor: deviceScaleFactor,
-      mobile: false,
-    });
     const cdp = page.unsafelyGetCelestialBindings();
-    await cdp.Page.setLifecycleEventsEnabled({ enabled: true });
+    await timed("cdp.setMetrics", () =>
+      cdp.Emulation.setDeviceMetricsOverride({
+        width: deviceWidth,
+        height: deviceHeight,
+        deviceScaleFactor: deviceScaleFactor,
+        mobile: false,
+      }));
+    await timed("cdp.lifecycleEnable", () => cdp.Page.setLifecycleEventsEnabled({ enabled: true }));
 
     // Listeners must be wired before goto so we don't miss early events.
+    // Each phase is timed separately so the dashboard shows the actual
+    // navigation cost vs. pure lifecycle-event wait time:
+    //   - cdp.goto: the page.goto call itself
+    //   - cdp.fcp: residual wait for firstContentfulPaint after goto returned
+    //     (0ms if the event already fired during goto)
+    //   - cdp.networkIdle: residual wait for networkIdle — Chrome's spec
+    //     defines this as "0 in-flight requests for 500ms", so this is
+    //     where the ~500ms quiet-period floor will show up.
+    // Sequential awaits give the same total wall-clock as Promise.all
+    // because networkIdle can only fire after FCP.
     const fcp = waitForLifecycleEvent(cdp, "firstContentfulPaint");
     const networkIdle = waitForLifecycleEvent(cdp, "networkIdle");
-
-    await page.goto(url);
-    await Promise.all([fcp, networkIdle]);
-
-    return await page.screenshot({ format: "png" });
+    await timed("cdp.goto", () => page.goto(url));
+    await timed("cdp.fcp", () => fcp);
+    await timed("cdp.networkIdle", () => networkIdle);
+    return await timed("cdp.screenshot", () => page.screenshot({ format: "png" }));
   } finally {
     // Disconnects the WS; the remote browser process keeps running.
-    await browser.close();
+    await timed("cdp.close", () => browser.close());
   }
 }

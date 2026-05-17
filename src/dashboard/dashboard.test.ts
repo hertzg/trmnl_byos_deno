@@ -308,11 +308,11 @@ Deno.test("GET / renders pipeline timings: per-step bar + total re-render", asyn
 
   const html = await (await app.request("/")).text();
 
-  // Each pipeline step appears as a labeled segment in the timings strip.
-  assertEquals(html.includes("run "), true, "run segment missing");
-  assertEquals(html.includes("deriveHtml "), true, "deriveHtml segment missing");
-  assertEquals(html.includes("identityFor "), true, "identityFor segment missing");
-  assertEquals(html.includes("rasterize "), true, "rasterize segment missing");
+  // Each pipeline step appears as a label in the timings grid.
+  assertEquals(html.includes(">run</div>"), true, "run row missing");
+  assertEquals(html.includes(">deriveHtml</div>"), true, "deriveHtml row missing");
+  assertEquals(html.includes(">identityFor</div>"), true, "identityFor row missing");
+  assertEquals(html.includes(">rasterize</div>"), true, "rasterize row missing");
   // Overall total line.
   assertEquals(html.includes("re-render:"), true, "total re-render line missing");
 });
