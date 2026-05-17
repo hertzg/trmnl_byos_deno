@@ -109,21 +109,16 @@ Deno.test("GET / embeds <img src=/image/<identity>.png> referencing the Slot's c
   assertEquals(html.includes('src="/image/dashid-aaa.png"'), true, "image src missing");
 });
 
-Deno.test("GET / surfaces a notice when the Slot stays empty (e.g. refill produced no entry)", async () => {
-  // Force the Slot to stay empty by handing the Dashboard a slot that
-  // intercepts put() — simulating a degenerate refill. The Dashboard must
-  // not crash; it surfaces a notice instead.
+Deno.test("GET / surfaces a notice when the Slot stays empty (no Conductor wiring)", async () => {
+  // Construct the Dashboard against an empty Slot whose refill hook is a
+  // no-op. The page must still render — surfacing the empty state through
+  // a notice instead of trying to embed a broken /image URL.
   const now = () => T0;
-  const realSlot = createSlot({ now });
-  const droppingSlot = { ...realSlot, put: () => {} };
-  const { app } = wire({
-    slot: droppingSlot,
-    pluginManager: managerFor({
-      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
-    }),
-  });
+  const slot = createSlot({ now });
+  const noopApp = new Hono().get("/api/display", (c) => c.body(null, 204));
+  const dashboard = createDashboard({ slot, conductorApp: noopApp, now });
 
-  const res = await app.request("/");
+  const res = await dashboard.request("/");
 
   assertEquals(res.status, 200);
   const html = await res.text();
