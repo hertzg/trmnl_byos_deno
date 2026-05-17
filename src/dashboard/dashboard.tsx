@@ -2,12 +2,12 @@
 
 import type { RenderTrace } from "../telemetry/telemetry.ts";
 
-// Dashboard at /. Slice #52 trimmed this down to the minimum the
-// orchestration story needs: a heading, the current Image (or a notice
-// when the Slot is empty / refill failed), the current Slot identity and
-// remaining validity, and a placeholder scrub form whose action goes
-// nowhere until slice #54 restores it. Slice #53 added the trace strip
-// at the bottom, populated from `telemetry.latest()`.
+// Dashboard at /. The admin/debug page: a heading, the current Image
+// (or a notice when the Slot is empty / refill failed), the current Slot
+// identity and remaining validity, an enabled scrub form that GETs
+// /dashboard/preview.png?t=..., a clear-cache button that POSTs to
+// /dashboard/clear, and a trace strip at the bottom populated from
+// `telemetry.latest()`.
 
 export type DashboardProps = {
   now: Temporal.ZonedDateTime;
@@ -54,8 +54,12 @@ function fmtDurationMs(d: Temporal.Duration): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
-function toDatetimeLocal(t: Temporal.ZonedDateTime): string {
-  return t.toPlainDateTime().toString({ smallestUnit: "minute" });
+// The scrub form sends the seeded value back as `?t=...`, so the value
+// must be a string `Temporal.ZonedDateTime.from` accepts. The full
+// ZonedDateTime ISO string (with offset + bracketed time-zone id) round-
+// trips losslessly; `datetime-local` would drop the zone and parse wrong.
+function toScrubInputValue(t: Temporal.ZonedDateTime): string {
+  return t.toString({ smallestUnit: "second" });
 }
 
 const css = `
@@ -69,8 +73,9 @@ const css = `
   h1 { margin: 0 0 16px; font-size: 20px; letter-spacing: -0.01em; }
   form { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
   form label { font-size: 13px; color: #555; }
-  form input[type="datetime-local"] {
+  form input[type="text"], form input[type="datetime-local"] {
     font: inherit; padding: 6px 8px; border: 1px solid #bbb; background: #fff;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
   }
   form button { font: inherit; padding: 6px 12px; border: 1px solid #111; background: #111; color: #fff; cursor: pointer; }
   .image-frame {
@@ -96,10 +101,6 @@ const css = `
     background: #fffbe6; border: 1px solid #f0c040; color: #663d00;
   }
   p.notice code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-  p.deferred {
-    margin: 0 0 16px; padding: 8px 12px; font-size: 12px; color: #555;
-    background: #f0f0f0; border: 1px solid #ddd;
-  }
   section.trace { margin-top: 24px; }
   section.trace h2 {
     font-size: 14px; font-weight: 600; margin: 0 0 8px;
@@ -180,20 +181,19 @@ export default function Dashboard(props: DashboardProps) {
         <p class="head">
           now: <code>{fmtTime(now)}</code> · timezone: <code>{now.timeZoneId}</code>
         </p>
-        <p class="deferred">
-          scrub at arbitrary <code>t</code>{" "}
-          is deferred to a later slice; the form below is a placeholder.
-        </p>
-        <form method="get" action="/">
+        <form method="get" action="/dashboard/preview.png">
           <label for="t">t</label>
           <input
-            type="datetime-local"
+            type="text"
             id="t"
             name="t"
-            value={toDatetimeLocal(now)}
-            disabled
+            value={toScrubInputValue(now)}
+            size={48}
           />
-          <button type="submit" disabled>scrub</button>
+          <button type="submit">scrub</button>
+        </form>
+        <form method="post" action="/dashboard/clear">
+          <button type="submit">clear cache</button>
         </form>
         {identity !== null
           ? (

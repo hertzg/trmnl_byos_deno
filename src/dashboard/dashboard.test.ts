@@ -378,6 +378,76 @@ Deno.test("GET /dashboard/preview.png does NOT mutate the Slot or write to Telem
   assertEquals(slot.display()?.identity, identityBefore);
 });
 
+// ─── GET / — enabled scrub form + clear button ────────────────────────────
+
+Deno.test("GET / renders an enabled scrub form that posts to /dashboard/preview.png", async () => {
+  // The form's action is /dashboard/preview.png (GET, so the browser can
+  // embed the result as an <img> or open it directly). The `t` input is
+  // editable (not `disabled`) and seeded with the current `now()` so the
+  // operator can tweak from a sensible default.
+  const { app } = wire({});
+
+  const html = await (await app.request("/")).text();
+
+  // Form action points at the scrub route.
+  assertEquals(
+    /<form[^>]*action="\/dashboard\/preview\.png"/.test(html),
+    true,
+    "scrub form must post to /dashboard/preview.png",
+  );
+  // The `t` input is editable.
+  assertEquals(
+    /<input[^>]*name="t"[^>]*disabled/.test(html),
+    false,
+    "scrub input must not be disabled",
+  );
+  // The submit button is editable.
+  assertEquals(
+    /<button[^>]*type="submit"[^>]*disabled/.test(html),
+    false,
+    "scrub button must not be disabled",
+  );
+  // No deferred-scrub placeholder copy on the page.
+  assertEquals(
+    /deferred to a later slice/.test(html),
+    false,
+    "deferred-placeholder copy should be gone",
+  );
+});
+
+Deno.test("GET /'s scrub input is seeded with a Temporal.ZonedDateTime.from-parseable now() so round-trip works", async () => {
+  // The form value goes back as `?t=...` on submit and the route parses
+  // with `Temporal.ZonedDateTime.from`. If we seeded a `datetime-local`
+  // string we'd lose the zone and fall back to now() on submit — which
+  // means the form looks like a no-op. Lock in the full-zoned shape.
+  const { app } = wire({});
+
+  const html = await (await app.request("/")).text();
+
+  const match = /<input[^>]*name="t"[^>]*value="([^"]+)"/.exec(html);
+  assertEquals(match !== null, true, "scrub input value attribute missing");
+  const seeded = match![1];
+  // Round-trip: the seeded value must parse, and must round-trip to
+  // the same ZonedDateTime the helper would emit for T0.
+  const parsed = Temporal.ZonedDateTime.from(seeded);
+  assertEquals(parsed.toString(), T0.toString());
+});
+
+Deno.test("GET / renders a clear-cache form that POSTs to /dashboard/clear", async () => {
+  // The clear button is its own form (POST, no body) so the browser turns
+  // it into a real state-changing request — not a navigation that GETs.
+  const { app } = wire({});
+
+  const html = await (await app.request("/")).text();
+
+  assertEquals(
+    /<form[^>]*method="post"[^>]*action="\/dashboard\/clear"/i.test(html) ||
+      /<form[^>]*action="\/dashboard\/clear"[^>]*method="post"/i.test(html),
+    true,
+    "clear button must be a POST form to /dashboard/clear",
+  );
+});
+
 // ─── POST /dashboard/clear — invalidate Slot ──────────────────────────────
 
 Deno.test("POST /dashboard/clear calls slot.clear() and redirects 303 to /", async () => {
