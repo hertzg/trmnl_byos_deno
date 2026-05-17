@@ -3,7 +3,7 @@ import { serveStatic } from "hono/deno";
 import type { DeviceReport, Plugin, Result, RunContext } from "../plugin/plugin.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
-import { withTimings } from "../render/timings.ts";
+import { timed } from "../render/timings.ts";
 
 // The Conductor is opaque to the Plugin's state shape. `Result<unknown>` /
 // `Plugin<unknown>` work here because `Result.view` is declared as a method
@@ -28,40 +28,19 @@ export type ConductorDeps = {
   now: () => Temporal.ZonedDateTime;
 };
 
-// Per-step wall-clock durations from a scrub, in milliseconds. Each field
-// is the cumulative time spent in that step across the run — including any
-// error-fallback retries (e.g. if rasterize threw, the subsequent retry
-// against the error view's HTML adds to `deriveHtml` / `identityFor` /
-// `rasterize`). `total` is the wall-clock for the whole scrub call.
-//
-// `rasterizeSubSteps` is populated by whatever the renderer instruments
-// via `src/render/timings.ts` (CDP connect / navigate / screenshot,
-// dither decode / kernel / encode, etc.). The dashboard renders these
-// as a second proportional bar so the operator can see what dominates
-// the (typically expensive) rasterize step. Empty when the renderer's
-// implementation doesn't call `timed()` — the type accepts that and
-// the dashboard hides the breakdown row.
-export type ScrubTimings = {
-  run: number;
-  deriveHtml: number;
-  identityFor: number;
-  rasterize: number;
-  rasterizeSubSteps: Record<string, number>;
-  total: number;
-};
-
-// Scrub output: what the dashboard (or any peer that wants to drive
-// the Plugin at an arbitrary `t`) receives. Post error-fallback — if
-// any pipeline step threw, the swapped-in error Result/identity/png
-// is what flows out. `device` is the DeviceReport the Plugin actually
-// saw on its `ctx.device` (latest report at scrub time, or null if no
-// Device has polled yet).
+// Scrub output: the full pipeline at an arbitrary `t`. Post error-fallback —
+// if any pipeline step threw, the swapped-in error Result/identity/png is
+// what flows out. `device` is the DeviceReport the Plugin actually saw on
+// its `ctx.device` (latest report at the time of the call, or null if no
+// Device has polled yet). Per-step wall-clock is not part of this shape;
+// peers that want it open an `withTimings()` context around the call and
+// read the bucket — the Conductor and the Renderer both record into it
+// via `src/render/timings.ts`.
 export type ScrubResult = {
   result: Result<unknown>;
   identity: string;
   png: Uint8Array;
   device: DeviceReport | null;
-  timings: ScrubTimings;
 };
 
 // Committed state: what the Device is currently being served by the
@@ -124,6 +103,11 @@ export function createConductor(deps: ConductorDeps): Conductor {
     };
   }
 
+  // Each pipeline step is wrapped in `timed()` so peers (the dashboard)
+  // can collect per-step wall-clock by opening a `withTimings()` context
+  // around the call. Outside such a context, `timed()` is a pass-through
+  // (the poll path pays nothing).
+
   // Pipeline up to identity, with error-view fallback for plugin.run +
   // deriveHtml + identityFor. No state mutation — callers decide whether
   // to update Current Result / Current Image. Rasterize is separate
@@ -141,13 +125,25 @@ export function createConductor(deps: ConductorDeps): Conductor {
     let html: string;
     let identity: string;
     try {
-      result = await deps.plugin.run(ctx);
-      html = await deps.renderer.deriveHtml(result);
-      identity = await deps.identityFor(html);
+      result = await timed("plugin.run", () => Promise.resolve(deps.plugin.run(ctx)));
+      html = await timed(
+        "renderer.deriveHtml",
+        () => Promise.resolve(deps.renderer.deriveHtml(result)),
+      );
+      identity = await timed(
+        "renderer.identityFor",
+        () => Promise.resolve(deps.identityFor(html)),
+      );
     } catch (err) {
       result = errorResult(err);
-      html = await deps.renderer.deriveHtml(result);
-      identity = await deps.identityFor(html);
+      html = await timed(
+        "renderer.deriveHtml",
+        () => Promise.resolve(deps.renderer.deriveHtml(result)),
+      );
+      identity = await timed(
+        "renderer.identityFor",
+        () => Promise.resolve(deps.identityFor(html)),
+      );
     }
     return { ctx, result, html, identity };
   }
@@ -163,13 +159,25 @@ export function createConductor(deps: ConductorDeps): Conductor {
     identity: string,
   ): Promise<{ result: Result<unknown>; html: string; identity: string; png: Uint8Array }> {
     try {
-      const png = await deps.renderer.rasterize(html, result.hints);
+      const png = await timed(
+        "renderer.rasterize",
+        () => deps.renderer.rasterize(html, result.hints),
+      );
       return { result, html, identity, png };
     } catch (err) {
       const fallback = errorResult(err);
-      const fallbackHtml = await deps.renderer.deriveHtml(fallback);
-      const fallbackIdentity = await deps.identityFor(fallbackHtml);
-      const png = await deps.renderer.rasterize(fallbackHtml, fallback.hints);
+      const fallbackHtml = await timed(
+        "renderer.deriveHtml",
+        () => Promise.resolve(deps.renderer.deriveHtml(fallback)),
+      );
+      const fallbackIdentity = await timed(
+        "renderer.identityFor",
+        () => Promise.resolve(deps.identityFor(fallbackHtml)),
+      );
+      const png = await timed(
+        "renderer.rasterize",
+        () => deps.renderer.rasterize(fallbackHtml, fallback.hints),
+      );
       return { result: fallback, html: fallbackHtml, identity: fallbackIdentity, png };
     }
   }
@@ -207,82 +215,25 @@ export function createConductor(deps: ConductorDeps): Conductor {
     };
   }
 
-  // Scrub the Plugin at an arbitrary `t`. Pure with respect to Current
-  // state; the caller decides how to surface the result.
+  // Scrub trigger: full pipeline at an arbitrary `t`. Pure with respect
+  // to Current state; the caller decides how to surface the result.
   //
   // Deliberately always rasterizes — even when the scrub's identity
   // matches the Current Image's identity. The poll path short-circuits
-  // (it serves the same bytes the Device cached); the dashboard wants
-  // a fresh render so it can expose non-deterministic views (and the
-  // CDP cost is on the operator, not the Device).
-  //
-  // The pipeline is inlined here (rather than reusing runAndDerive +
-  // rasterizeWithFallback) so we can capture per-step wall-clock for
-  // the dashboard's timings strip. Error-fallback retries fold into
-  // the corresponding step's total.
+  // (it serves the same bytes the Device cached); scrub callers want a
+  // fresh render so non-deterministic views show up.
   async function scrub(t: Temporal.ZonedDateTime): Promise<ScrubResult> {
-    const t0 = performance.now();
-    const timings: ScrubTimings = {
-      run: 0,
-      deriveHtml: 0,
-      identityFor: 0,
-      rasterize: 0,
-      rasterizeSubSteps: {},
-      total: 0,
+    const { ctx, result, html, identity } = await runAndDerive({ t, intent: "scrub" });
+    const out = await rasterizeWithFallback(result, html, identity);
+    return {
+      result: out.result,
+      identity: out.identity,
+      png: out.png,
+      device: ctx.device,
     };
-    const ctx: RunContext = { t, intent: "scrub", device: latestDevice };
-
-    async function derive(r: Result<unknown>) {
-      const tD = performance.now();
-      const html = await deps.renderer.deriveHtml(r);
-      timings.deriveHtml += performance.now() - tD;
-      const tI = performance.now();
-      const identity = await deps.identityFor(html);
-      timings.identityFor += performance.now() - tI;
-      return { html, identity };
-    }
-
-    // Rasterize-with-collector. Sub-step timings flow up through
-    // AsyncLocalStorage (see src/render/timings.ts); accumulate into
-    // rasterizeSubSteps in case error-fallback fires and we rasterize twice.
-    async function rasterizeTimed(r: Result<unknown>, h: string): Promise<Uint8Array> {
-      const tRas = performance.now();
-      const out = await withTimings(() => deps.renderer.rasterize(h, r.hints));
-      timings.rasterize += performance.now() - tRas;
-      for (const [k, v] of Object.entries(out.timings)) {
-        timings.rasterizeSubSteps[k] = (timings.rasterizeSubSteps[k] ?? 0) + v;
-      }
-      return out.value;
-    }
-
-    let result: Result<unknown>;
-    let html: string;
-    let identity: string;
-    try {
-      const tR = performance.now();
-      result = await deps.plugin.run(ctx);
-      timings.run = performance.now() - tR;
-      ({ html, identity } = await derive(result));
-    } catch (err) {
-      result = errorResult(err);
-      ({ html, identity } = await derive(result));
-    }
-
-    let png: Uint8Array;
-    try {
-      png = await rasterizeTimed(result, html);
-    } catch (err) {
-      result = errorResult(err);
-      ({ html, identity } = await derive(result));
-      png = await rasterizeTimed(result, html);
-    }
-
-    timings.total = performance.now() - t0;
-    return { result, identity, png, device: ctx.device, timings };
   }
 
-  // HTML-only scrub. No rasterize cost — purpose-built for cheap
-  // dev-iteration surfaces (the dashboard's /preview).
+  // HTML-only scrub trigger. No rasterize cost.
   async function derive(t: Temporal.ZonedDateTime): Promise<DeriveResult> {
     const { ctx, result, html, identity } = await runAndDerive({ t, intent: "scrub" });
     return { result, html, identity, device: ctx.device };

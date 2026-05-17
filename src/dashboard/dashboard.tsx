@@ -11,7 +11,6 @@
 //   - a Plugin that computes `validity` against wall-clock has an `expiresAt`
 //     that doesn't slide with `t`
 
-import type { ScrubTimings } from "../conductor/conductor.ts";
 import type { DeviceReport, Result } from "../plugin/plugin.ts";
 
 export type DashboardProps = {
@@ -33,9 +32,12 @@ export type DashboardProps = {
   } | null;
   // What the dashboard's scrub at `t` produced. Always present.
   current: { result: Result<unknown>; identity: string; device: DeviceReport | null };
-  // Per-step wall-clock for the scrub that produced `current`. Rendered as
-  // a proportional horizontal bar at the top of the page.
-  timings: ScrubTimings;
+  // Flat per-step wall-clock collected via withTimings (from src/render/
+  // timings.ts). Labels follow the convention "<group>.<step>" — the
+  // dashboard splits by group into proportional bars. `totalMs` is the
+  // dashboard handler's own wall-clock for the whole scrub call.
+  timings: Record<string, number>;
+  totalMs: number;
   pngBase64: string;
 };
 
@@ -250,20 +252,30 @@ function TimingsBlock(props: { title: string; entries: TimingEntry[] }) {
   );
 }
 
+// Group the flat timings bucket by the first dot-separated segment of each
+// label. `plugin.run` → "plugin"; `cdp.connect` → "cdp"; bare names fall
+// into "(uncategorised)". Each group renders as its own proportional bar
+// block, so the operator sees pipeline phases side by side without the
+// Conductor needing to know about the visual structure.
+function groupTimings(timings: Record<string, number>): Array<[string, TimingEntry[]]> {
+  const groups = new Map<string, TimingEntry[]>();
+  for (const [label, ms] of Object.entries(timings)) {
+    const dot = label.indexOf(".");
+    const group = dot === -1 ? "(other)" : label.slice(0, dot);
+    const step = dot === -1 ? label : label.slice(dot + 1);
+    const list = groups.get(group) ?? [];
+    list.push({ label: step, ms });
+    groups.set(group, list);
+  }
+  return [...groups.entries()];
+}
+
 export default function Dashboard(props: DashboardProps) {
-  const { t, tRequested, parseError, now, committed, current, timings, pngBase64 } = props;
+  const { t, tRequested, parseError, now, committed, current, timings, totalMs, pngBase64 } = props;
   const tCommit = committed?.t ?? null;
   // Clamp fired iff `?t=` was supplied, parsed, and got snapped forward.
   const clamped = tRequested !== null && Temporal.ZonedDateTime.compare(tRequested, t) !== 0;
-  // Timing segments for the proportional bar. Each segment's flex-grow is
-  // its duration in ms (with a small floor so near-zero steps remain
-  // clickable/visible). Order matches pipeline execution.
-  const segs = [
-    { label: "run", ms: timings.run },
-    { label: "deriveHtml", ms: timings.deriveHtml },
-    { label: "identityFor", ms: timings.identityFor },
-    { label: "rasterize", ms: timings.rasterize },
-  ];
+  const groupedTimings = groupTimings(timings);
 
   const currentExpires = t.add(current.result.validity);
   const committedExpires = committed ? committed.t.add(committed.result.validity) : null;
@@ -347,21 +359,11 @@ export default function Dashboard(props: DashboardProps) {
           )}
           <a class="reset" href="/">reset</a>
         </div>
-        <TimingsBlock title="pipeline" entries={segs} />
-        {Object.keys(timings.rasterizeSubSteps).length > 0 && (
-          <TimingsBlock
-            title="rasterize sub-steps"
-            entries={Object.entries(timings.rasterizeSubSteps).map(([label, ms]) => ({
-              label,
-              ms,
-            }))}
-          />
-        )}
+        {groupedTimings.map(([group, entries]) => (
+          <TimingsBlock key={group} title={group} entries={entries} />
+        ))}
         <p class="timings-total">
-          re-render: <code>{fmtMs(timings.total)}</code> (sum of steps:{" "}
-          <code>
-            {fmtMs(timings.run + timings.deriveHtml + timings.identityFor + timings.rasterize)}
-          </code>)
+          re-render: <code>{fmtMs(totalMs)}</code>
         </p>
         <div class="image-frame">
           <img src={`data:image/png;base64,${pngBase64}`} alt="Plugin output" />

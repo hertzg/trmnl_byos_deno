@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
 import { encodeBase64 } from "@std/encoding/base64";
 import type { CommittedState, DeriveResult, ScrubResult } from "../conductor/conductor.ts";
+import { withTimings } from "../render/timings.ts";
 import Dashboard from "./dashboard.tsx";
 
 export type DashboardDeps = {
@@ -53,7 +54,12 @@ export function createDashboard(deps: DashboardDeps): Hono {
         ? committed.t
         : tRequested;
 
-      const out = await deps.scrub(t);
+      // Wrap the scrub in a timings collector. The Conductor and Renderer
+      // both record per-step wall-clock into the bucket via timed(); we
+      // pass it to the JSX so the dashboard can render the strip.
+      const t0 = performance.now();
+      const { value: out, timings } = await withTimings(() => deps.scrub(t));
+      const totalMs = performance.now() - t0;
       const page = renderToString(
         Dashboard({
           t,
@@ -62,7 +68,8 @@ export function createDashboard(deps: DashboardDeps): Hono {
           now,
           committed,
           current: { result: out.result, identity: out.identity, device: out.device },
-          timings: out.timings,
+          timings,
+          totalMs,
           pngBase64: encodeBase64(out.png),
         }) as Parameters<typeof renderToString>[0],
       );
