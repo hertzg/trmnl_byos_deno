@@ -19,20 +19,35 @@ function renderHtml(bundle: Bundle): string {
   return renderToString(jsx);
 }
 
+// Each asset is serialised as `utf8(key) + 0x00 + bytes + 0x00`, so two
+// assets with identical bytes but different keys hash differently. Keys are
+// processed in sorted order so insertion order doesn't affect the digest.
 function concatHtmlAndAssets(
   html: string,
   assets: Record<string, Uint8Array>,
 ): Uint8Array<ArrayBuffer> {
-  const htmlBytes = new TextEncoder().encode(html);
+  const encoder = new TextEncoder();
+  const htmlBytes = encoder.encode(html);
   const sortedKeys = [...Object.keys(assets)].sort();
+  const keyBytesByKey = new Map<string, Uint8Array>();
+  for (const key of sortedKeys) keyBytesByKey.set(key, encoder.encode(key));
+
   let totalLength = htmlBytes.length;
-  for (const key of sortedKeys) totalLength += assets[key].length;
+  for (const key of sortedKeys) {
+    totalLength += keyBytesByKey.get(key)!.length + 1 + assets[key].length + 1;
+  }
+
   const out = new Uint8Array(new ArrayBuffer(totalLength));
   out.set(htmlBytes, 0);
   let offset = htmlBytes.length;
   for (const key of sortedKeys) {
+    const keyBytes = keyBytesByKey.get(key)!;
+    out.set(keyBytes, offset);
+    offset += keyBytes.length;
+    offset += 1; // 0x00 separator between key and bytes
     out.set(assets[key], offset);
     offset += assets[key].length;
+    offset += 1; // 0x00 terminator between entries
   }
   return out;
 }

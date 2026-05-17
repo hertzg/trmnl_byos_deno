@@ -70,3 +70,12 @@ Deno.test("hashBundle ignores the insertion order of asset keys (sorted internal
 
   assertEquals(await hashBundle(ab), await hashBundle(ba));
 });
+
+Deno.test("hashBundle changes when an asset key is renamed (bytes identical)", async () => {
+  const stateless = { x: 1 };
+  const bytes = new Uint8Array([1, 2, 3]);
+  const atA = bundleWith(stateless, staticView, { "/assets/a": bytes });
+  const atB = bundleWith(stateless, staticView, { "/assets/b": bytes });
+
+  assertNotEquals(await hashBundle(atA), await hashBundle(atB));
+});
