@@ -138,20 +138,27 @@ export function createConductor(deps: ConductorDeps): Conductor {
     // Record the trace once the eager rasterize completes (success or
     // failure). `.finally` runs even if `image` rejects — a CDP outage
     // mid-rasterize still gets a trace entry with the real timings up
-    // to the failure point.
-    image.finally(() => {
-      const trace: RenderTrace = {
-        ranAt,
-        identity,
-        durations: {
-          pluginRun: pluginRunEnd.since(pluginRunStart),
-          identity: identityEnd.since(pluginRunEnd),
-          rasterize: deps.now().since(rasterizeStart),
-        },
-        error: caught,
-      };
-      deps.telemetry.record(trace);
-    });
+    // to the failure point. The trailing `.catch(noop)` is essential:
+    // `.finally` re-throws the upstream rejection on the chain we
+    // create here, and that chain is otherwise dangling. The
+    // underlying `image` promise the Slot stores keeps its rejection;
+    // the /image/<id>.png handler is the only consumer that has to
+    // observe it.
+    image
+      .finally(() => {
+        const trace: RenderTrace = {
+          ranAt,
+          identity,
+          durations: {
+            pluginRun: pluginRunEnd.since(pluginRunStart),
+            identity: identityEnd.since(pluginRunEnd),
+            rasterize: deps.now().since(rasterizeStart),
+          },
+          error: caught,
+        };
+        deps.telemetry.record(trace);
+      })
+      .catch(() => {});
     deps.slot.put({
       bundle,
       identity,

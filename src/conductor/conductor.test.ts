@@ -544,6 +544,72 @@ Deno.test("concurrent /api/display polls share one Plugin run AND produce exactl
   assertSpyCalls(record, 1);
 });
 
+Deno.test("Plugin throw → trace.error is the caught Error with its message + stack; trace.identity is the error Bundle's identity", async () => {
+  // Error-path orchestration still records exactly one trace. The trace
+  // carries the caught Error (so the Dashboard can show the message +
+  // stack) and the identity is whatever Renderer.identity returned for
+  // the fabricated error Bundle.
+  const boom = new Error("plugin boom");
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({
+      telemetry,
+      errorView: (_err: Error) => "<p>ERR</p>",
+    }),
+    pluginManager: managerFor({
+      run: () => {
+        throw boom;
+      },
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+  const trace = record.calls[0].args[0];
+  assertEquals(trace.error, boom);
+  // Error guarantees: the trace carries the message and stack the
+  // Dashboard renders.
+  assertEquals(trace.error?.message, "plugin boom");
+  assertEquals(typeof trace.error?.stack, "string");
+  // Error Bundle's identity (from the fakeRenderer's deterministic
+  // id-<html> formula applied to the error view).
+  assertEquals(trace.identity, "id-<p>ERR</p>");
+});
+
+Deno.test("rasterize rejection still records a trace (the .finally runs even on failure)", async () => {
+  // The eager rasterize promise can reject (CDP outage, dither failure)
+  // after the Conductor has already returned from /api/display. The
+  // trace must still be recorded so the Dashboard can show that the
+  // cycle completed — the trace's `error` stays null in this branch
+  // because the throw happened inside the rasterize promise the
+  // Conductor doesn't await; that failure surfaces at /image/<id>.png,
+  // not in the trace's error field.
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({
+      identity: () => Promise.resolve("rasterize-died"),
+      rasterize: () => Promise.reject(new Error("CDP down")),
+    }),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+  assertEquals(record.calls[0].args[0].identity, "rasterize-died");
+});
+
 Deno.test("Tier 1 cache hit does NOT record a new trace — no new cycle ran", async () => {
   // First poll fills the Slot and records a trace. Subsequent polls
   // within validity hit Tier 1: no Plugin run, no Renderer call, and
