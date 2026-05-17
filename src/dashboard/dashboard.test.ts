@@ -378,6 +378,57 @@ Deno.test("GET /dashboard/preview.png does NOT mutate the Slot or write to Telem
   assertEquals(slot.display()?.identity, identityBefore);
 });
 
+// ─── POST /dashboard/clear — invalidate Slot ──────────────────────────────
+
+Deno.test("POST /dashboard/clear calls slot.clear() and redirects 303 to /", async () => {
+  const now = () => T0;
+  const slot = createSlot({ now });
+  const slotClear = spy(slot, "clear");
+  const { app } = wire({
+    slot,
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+  });
+
+  const res = await app.request("/dashboard/clear", { method: "POST" });
+  await res.body?.cancel();
+
+  assertEquals(res.status, 303);
+  assertEquals(res.headers.get("location"), "/");
+  assertSpyCalls(slotClear, 1);
+});
+
+Deno.test("POST /dashboard/clear invalidates the Slot — subsequent /api/display refills", async () => {
+  // End-to-end: after clear, the next /api/display must run the Plugin
+  // again because the Slot is cold. Identity must change accordingly.
+  let runCount = 0;
+  const { app } = wire({
+    pluginManager: managerFor({
+      run: () => {
+        runCount++;
+        return {
+          state: { n: runCount },
+          validity: fiveMin,
+          view: (s: { n: number }) => `<p>${s.n}</p>`,
+        };
+      },
+    }),
+  });
+
+  // Cold-fill.
+  const first = await (await app.request("/api/display")).json();
+  assertEquals(runCount, 1);
+  // Clear.
+  await (await app.request("/dashboard/clear", { method: "POST" })).body?.cancel();
+  // Next /api/display runs the Plugin again — Slot is empty.
+  const second = await (await app.request("/api/display")).json();
+
+  assertEquals(runCount, 2);
+  // Different `state.n` → different view output → different identity.
+  assertEquals(first.filename === second.filename, false);
+});
+
 // ─── /preview/png removed ──────────────────────────────────────────────────
 
 Deno.test("GET /preview/png returns 404 — the render path is /image/<id>.png on the Conductor", async () => {

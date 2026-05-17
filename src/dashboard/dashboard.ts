@@ -79,6 +79,15 @@ export function createDashboard(deps: DashboardDeps): Hono {
         "content-type": "image/png",
         "cache-control": "no-store",
       });
+    })
+    .post("/dashboard/clear", (c) => {
+      // Invalidate the Slot and bounce back to the dashboard. The page
+      // reload will find `slot.display() === null` and trigger a refill
+      // through the Conductor's /api/display, which lands a fresh Bundle
+      // in the Slot. 303 (See Other) is the right redirect after POST —
+      // turns the browser's next request into a GET.
+      deps.slot.clear();
+      return c.redirect("/", 303);
     });
 }
 
