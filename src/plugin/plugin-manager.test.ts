@@ -59,3 +59,29 @@ Deno.test("a file in assets/ becomes /assets/<name> keyed against its bytes", as
   assertEquals(Object.keys(bundle.assets), ["/assets/foo.svg"]);
   assertEquals(new TextDecoder().decode(bundle.assets["/assets/foo.svg"]), "<svg/>");
 });
+
+Deno.test("a file inside a nested subdirectory keeps its full sub-path", async () => {
+  const dir = await writePluginDir({
+    "main.ts": trivialPluginSource,
+    "assets/style.css": ".x { color: red; }",
+    "assets/icons/bell.svg": "<svg id=bell/>",
+    "assets/icons/transit/bus.svg": "<svg id=bus/>",
+  });
+
+  const manager = await createPluginManager({ pluginDir: dir });
+  const bundle = await manager.run(ctx());
+
+  assertEquals(
+    new Set(Object.keys(bundle.assets)),
+    new Set([
+      "/assets/style.css",
+      "/assets/icons/bell.svg",
+      "/assets/icons/transit/bus.svg",
+    ]),
+  );
+  assertEquals(new TextDecoder().decode(bundle.assets["/assets/icons/bell.svg"]), "<svg id=bell/>");
+  assertEquals(
+    new TextDecoder().decode(bundle.assets["/assets/icons/transit/bus.svg"]),
+    "<svg id=bus/>",
+  );
+});
