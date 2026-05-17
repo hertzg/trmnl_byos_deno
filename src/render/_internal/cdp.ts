@@ -1,5 +1,5 @@
 import { connect } from "@astral/astral";
-import { timed } from "./timings.ts";
+import { timed } from "../timings.ts";
 
 type Cdp = ReturnType<
   Awaited<
