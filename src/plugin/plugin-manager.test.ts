@@ -7,6 +7,7 @@ import { createPluginManager } from "./plugin-manager.ts";
 import { createRenderer } from "../render/renderer.ts";
 import { hashBundle } from "../hash.ts";
 import { createSlot } from "../slot/slot.ts";
+import { createTelemetry } from "../telemetry/telemetry.ts";
 
 const T0 = Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]");
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
@@ -182,6 +183,7 @@ Deno.test("a PluginManager loaded from disk drives /api/display end-to-end throu
       close: () => Promise.resolve(),
     },
     slot: createSlot({ now }),
+    telemetry: createTelemetry(),
     errorView: (_err: Error) => "",
     errorValidity: Temporal.Duration.from({ seconds: 30 }),
     friendlyId: "SMOKE",
@@ -232,6 +234,7 @@ Deno.test("a PluginManager wired through the real Renderer surfaces a filename d
       pluginManager,
       renderer,
       slot: createSlot({ now }),
+      telemetry: createTelemetry(),
       errorView: (_err: Error) => "",
       errorValidity: Temporal.Duration.from({ seconds: 30 }),
       friendlyId: "SMOKE",
@@ -302,6 +305,7 @@ Deno.test("end-to-end: /api/display → /image/<id>.png drives PluginManager →
       pluginManager,
       renderer,
       slot: createSlot({ now }),
+      telemetry: createTelemetry(),
       errorView: (_err: Error) => "",
       errorValidity: Temporal.Duration.from({ seconds: 30 }),
       friendlyId: "SMOKE",

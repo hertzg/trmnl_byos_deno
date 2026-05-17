@@ -6,6 +6,7 @@ import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import { createSlot } from "../slot/slot.ts";
+import { createTelemetry } from "../telemetry/telemetry.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
@@ -42,7 +43,7 @@ function defaults(
   overrides: Partial<ConductorDeps> = {},
 ): Pick<
   ConductorDeps,
-  "errorView" | "errorValidity" | "friendlyId" | "now" | "slot"
+  "errorView" | "errorValidity" | "friendlyId" | "now" | "slot" | "telemetry"
 > {
   const now = overrides.now ?? (() => T0);
   return {
@@ -51,6 +52,7 @@ function defaults(
     friendlyId: "ID",
     now,
     slot: createSlot({ now }),
+    telemetry: createTelemetry(),
     ...overrides,
   };
 }
@@ -395,6 +397,245 @@ Deno.test("Tier 3: once validity has elapsed, the next /api/display runs the Plu
 });
 
 // ─── Tier 1: validity hit reuses the Slot, no Plugin run ───────────────────
+
+// ─── Telemetry: trace recorded once per orchestration cycle ────────────────
+
+Deno.test("Conductor records exactly one trace per successful /api/display cycle (after rasterize resolves)", async () => {
+  // The trace is deferred until the eager rasterize resolves; if it were
+  // recorded at slot.put time, the rasterize duration would be unknown.
+  // Single record per cycle, with the actual rasterize wall-clock baked in.
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({ identity: () => Promise.resolve("trace-id-1") }),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  // Yield so the rasterize .finally callback (which records) gets to run.
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+  const trace = record.calls[0].args[0];
+  assertEquals(trace.identity, "trace-id-1");
+  assertEquals(trace.error, null);
+  // All three duration buckets present.
+  assertEquals(trace.durations.pluginRun instanceof Temporal.Duration, true);
+  assertEquals(trace.durations.identity instanceof Temporal.Duration, true);
+  assertEquals(trace.durations.rasterize instanceof Temporal.Duration, true);
+});
+
+Deno.test("recorded trace's ranAt is the clock value at cycle start (constant clock)", async () => {
+  // With a constant clock, ranAt is exactly that value — the trace is
+  // stamped with whatever `deps.now()` returned at the top of doRefill.
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+  assertEquals(record.calls[0].args[0].ranAt.toString(), T0.toString());
+});
+
+Deno.test("recorded trace's durations reflect elapsed clock around each step", async () => {
+  // Advance the clock by a known delta inside each Renderer call so the
+  // recorded durations are exact. The Plugin's run is synchronous (no
+  // delta inside it; the test asserts the resulting duration is zero or
+  // positive). identity adds 1s; rasterize adds 2s.
+  let clock = T0;
+  const now = () => clock;
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ now, telemetry, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({
+      identity: () => {
+        clock = clock.add(Temporal.Duration.from({ seconds: 1 }));
+        return Promise.resolve("traced");
+      },
+      rasterize: () => {
+        clock = clock.add(Temporal.Duration.from({ seconds: 2 }));
+        return Promise.resolve(new Uint8Array([0x89]));
+      },
+    }),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+  const trace = record.calls[0].args[0];
+  // identity advanced the clock by 1s between sampling pluginRunEnd and
+  // identityEnd. The Conductor reports that as `durations.identity`.
+  assertEquals(trace.durations.identity.total({ unit: "seconds" }), 1);
+  // rasterize advanced the clock by 2s during its synchronous prefix;
+  // the rasterize-finally now() reads the post-advance clock. (The
+  // closure captures clock by reference, so the +2s is visible.)
+  assertEquals(trace.durations.rasterize.total({ unit: "seconds" }), 2);
+  // pluginRun has no synthetic delay → zero seconds.
+  assertEquals(trace.durations.pluginRun.total({ unit: "seconds" }), 0);
+});
+
+Deno.test("telemetry.latest() returns the most recent recorded trace", async () => {
+  // End-to-end: latest() reflects the cycle that just ran.
+  const telemetry = createTelemetry();
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({ identity: () => Promise.resolve("latest-id") }),
+  });
+
+  assertEquals(telemetry.latest(), null);
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const trace = telemetry.latest();
+  assertEquals(trace?.identity, "latest-id");
+});
+
+Deno.test("concurrent /api/display polls share one Plugin run AND produce exactly one trace", async () => {
+  // Single-flight in the Conductor's refill means the trio of polls runs
+  // Plugin + identity + rasterize exactly once. Telemetry must mirror
+  // that: one record, not three.
+  let resolveRun!: (r: { state: unknown; validity: Temporal.Duration; view: () => string }) => void;
+  const pending = new Promise<
+    { state: unknown; validity: Temporal.Duration; view: () => string }
+  >((resolve) => {
+    resolveRun = resolve;
+  });
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({ run: () => pending }),
+    renderer: fakeRenderer({ identity: () => Promise.resolve("flighted") }),
+  });
+
+  const polls = [
+    conductor.app.request("/api/display"),
+    conductor.app.request("/api/display"),
+    conductor.app.request("/api/display"),
+  ];
+  resolveRun({ state: {}, validity: fiveMin, view: () => "<p>x</p>" });
+  await Promise.all(polls.map(async (p) => (await p).body?.cancel()));
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+});
+
+Deno.test("Plugin throw → trace.error is the caught Error with its message + stack; trace.identity is the error Bundle's identity", async () => {
+  // Error-path orchestration still records exactly one trace. The trace
+  // carries the caught Error (so the Dashboard can show the message +
+  // stack) and the identity is whatever Renderer.identity returned for
+  // the fabricated error Bundle.
+  const boom = new Error("plugin boom");
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({
+      telemetry,
+      errorView: (_err: Error) => "<p>ERR</p>",
+    }),
+    pluginManager: managerFor({
+      run: () => {
+        throw boom;
+      },
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+  const trace = record.calls[0].args[0];
+  assertEquals(trace.error, boom);
+  // Error guarantees: the trace carries the message and stack the
+  // Dashboard renders.
+  assertEquals(trace.error?.message, "plugin boom");
+  assertEquals(typeof trace.error?.stack, "string");
+  // Error Bundle's identity (from the fakeRenderer's deterministic
+  // id-<html> formula applied to the error view).
+  assertEquals(trace.identity, "id-<p>ERR</p>");
+});
+
+Deno.test("rasterize rejection still records a trace (the .finally runs even on failure)", async () => {
+  // The eager rasterize promise can reject (CDP outage, dither failure)
+  // after the Conductor has already returned from /api/display. The
+  // trace must still be recorded so the Dashboard can show that the
+  // cycle completed — the trace's `error` stays null in this branch
+  // because the throw happened inside the rasterize promise the
+  // Conductor doesn't await; that failure surfaces at /image/<id>.png,
+  // not in the trace's error field.
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({
+      identity: () => Promise.resolve("rasterize-died"),
+      rasterize: () => Promise.reject(new Error("CDP down")),
+    }),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+  assertEquals(record.calls[0].args[0].identity, "rasterize-died");
+});
+
+Deno.test("Tier 1 cache hit does NOT record a new trace — no new cycle ran", async () => {
+  // First poll fills the Slot and records a trace. Subsequent polls
+  // within validity hit Tier 1: no Plugin run, no Renderer call, and
+  // therefore no new trace.
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({ identity: () => Promise.resolve("stable") }),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  // Single record from the cold-fill cycle; the next two polls hit the
+  // cache and don't enter doRefill at all.
+  assertSpyCalls(record, 1);
+});
 
 Deno.test("Tier 1: repeated /api/display polls within validity reuse the Slot — Plugin not invoked again", async () => {
   // The Slot's `display()` answers non-null while the entry's
