@@ -77,6 +77,136 @@ Deno.test("GET /api/display returns BYOS JSON with image_url=/image/<identity>.p
   assertLessOrEqual(body.refresh_rate, 300);
 });
 
+// ─── /api/setup, /api/log, /assets/* ───────────────────────────────────────
+
+Deno.test("GET /api/setup returns BYOS setup JSON with friendlyId and a placeholder /image/setup.png URL", async () => {
+  // At setup time the Slot is cold and may not have a meaningful identity
+  // yet. We return /image/setup.png as a syntactic placeholder; the
+  // firmware proceeds straight to /api/display, which returns the real
+  // identity-keyed URL on the first poll.
+  const conductor = createConductor({
+    ...defaults({ friendlyId: "MY-DEVICE" }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const res = await conductor.app.request("/api/setup");
+  const body = await res.json();
+
+  assertEquals(res.status, 200);
+  assertEquals(body.status, 200);
+  assertEquals(body.friendly_id, "MY-DEVICE");
+  assertEquals(body.image_url, "http://localhost/image/setup.png");
+});
+
+Deno.test("POST /api/log returns 204 and invokes onDeviceLog with the id header + body", async () => {
+  const onDeviceLog = spy((_id: string, _body: string) => {});
+  const conductor = createConductor({
+    ...defaults({ onDeviceLog }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const res = await conductor.app.request("/api/log", {
+    method: "POST",
+    headers: { id: "AA:BB:CC" },
+    body: "hello",
+  });
+  await res.body?.cancel();
+
+  assertEquals(res.status, 204);
+  assertEquals(onDeviceLog.calls[0].args, ["AA:BB:CC", "hello"]);
+});
+
+Deno.test("GET /assets/<anything> returns 404 — Plugin assets travel inside the Bundle to Renderer's loopback only", async () => {
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const res = await conductor.app.request("/assets/style.css");
+  await res.body?.cancel();
+
+  assertEquals(res.status, 404);
+});
+
+// ─── DeviceReport carry-through ────────────────────────────────────────────
+
+Deno.test("GET /api/display threads the latest parsed DeviceReport into the next Plugin.run via ctx.device", async () => {
+  const seen: { ids: Array<string | null> } = { ids: [] };
+  let clock = T0;
+  const now = () => clock;
+  const conductor = createConductor({
+    ...defaults({ now, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: (ctx) => {
+        seen.ids.push(ctx.device?.id ?? null);
+        return { state: {}, validity: fiveMin, view: () => "<p>x</p>" };
+      },
+    }),
+    renderer: fakeRenderer({
+      identity: (b) =>
+        // Different identity per call so the Slot rolls on every poll
+        // and the next call falls through to Plugin.run again.
+        Promise.resolve(`id-${seen.ids.length}-${String(b.result.view(b.result.state))}`),
+    }),
+  });
+
+  // First poll: header present → latestDevice set; ctx.device.id seen.
+  await (await conductor.app.request("/api/display", { headers: { id: "AA:BB:CC" } })).body
+    ?.cancel();
+  // Roll past validity so the second poll triggers a fresh refill.
+  clock = T0.add(Temporal.Duration.from({ minutes: 5 }));
+  // Second poll: no header. The Conductor remembers latestDevice so
+  // ctx.device.id stays "AA:BB:CC".
+  await (await conductor.app.request("/api/display")).body?.cancel();
+
+  assertEquals(seen.ids, ["AA:BB:CC", "AA:BB:CC"]);
+});
+
+Deno.test("GET /api/display leaves ctx.device null when no Device has polled yet", async () => {
+  const seen: { device: unknown } = { device: undefined };
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({
+      run: (ctx) => {
+        seen.device = ctx.device;
+        return { state: {}, validity: fiveMin, view: () => "<p>x</p>" };
+      },
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+
+  assertEquals(seen.device, null);
+});
+
+Deno.test("GET /api/display passes intent=poll into the Plugin", async () => {
+  const seen: { intents: string[] } = { intents: [] };
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({
+      run: (ctx) => {
+        seen.intents.push(ctx.intent);
+        return { state: {}, validity: fiveMin, view: () => "<p>x</p>" };
+      },
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+
+  assertEquals(seen.intents, ["poll"]);
+});
+
 // ─── Single-flight: concurrent /api/display polls dedupe Plugin runs ──────
 
 Deno.test("concurrent /api/display polls during a cache miss share one Plugin run", async () => {
