@@ -429,6 +429,148 @@ Deno.test("Conductor records exactly one trace per successful /api/display cycle
   assertEquals(trace.durations.rasterize instanceof Temporal.Duration, true);
 });
 
+Deno.test("recorded trace's ranAt is the clock value at cycle start (constant clock)", async () => {
+  // With a constant clock, ranAt is exactly that value — the trace is
+  // stamped with whatever `deps.now()` returned at the top of doRefill.
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+  assertEquals(record.calls[0].args[0].ranAt.toString(), T0.toString());
+});
+
+Deno.test("recorded trace's durations reflect elapsed clock around each step", async () => {
+  // Advance the clock by a known delta inside each Renderer call so the
+  // recorded durations are exact. The Plugin's run is synchronous (no
+  // delta inside it; the test asserts the resulting duration is zero or
+  // positive). identity adds 1s; rasterize adds 2s.
+  let clock = T0;
+  const now = () => clock;
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ now, telemetry, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({
+      identity: () => {
+        clock = clock.add(Temporal.Duration.from({ seconds: 1 }));
+        return Promise.resolve("traced");
+      },
+      rasterize: () => {
+        clock = clock.add(Temporal.Duration.from({ seconds: 2 }));
+        return Promise.resolve(new Uint8Array([0x89]));
+      },
+    }),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+  const trace = record.calls[0].args[0];
+  // identity advanced the clock by 1s between sampling pluginRunEnd and
+  // identityEnd. The Conductor reports that as `durations.identity`.
+  assertEquals(trace.durations.identity.total({ unit: "seconds" }), 1);
+  // rasterize advanced the clock by 2s during its synchronous prefix;
+  // the rasterize-finally now() reads the post-advance clock. (The
+  // closure captures clock by reference, so the +2s is visible.)
+  assertEquals(trace.durations.rasterize.total({ unit: "seconds" }), 2);
+  // pluginRun has no synthetic delay → zero seconds.
+  assertEquals(trace.durations.pluginRun.total({ unit: "seconds" }), 0);
+});
+
+Deno.test("telemetry.latest() returns the most recent recorded trace", async () => {
+  // End-to-end: latest() reflects the cycle that just ran.
+  const telemetry = createTelemetry();
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({ identity: () => Promise.resolve("latest-id") }),
+  });
+
+  assertEquals(telemetry.latest(), null);
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const trace = telemetry.latest();
+  assertEquals(trace?.identity, "latest-id");
+});
+
+Deno.test("concurrent /api/display polls share one Plugin run AND produce exactly one trace", async () => {
+  // Single-flight in the Conductor's refill means the trio of polls runs
+  // Plugin + identity + rasterize exactly once. Telemetry must mirror
+  // that: one record, not three.
+  let resolveRun!: (r: { state: unknown; validity: Temporal.Duration; view: () => string }) => void;
+  const pending = new Promise<
+    { state: unknown; validity: Temporal.Duration; view: () => string }
+  >((resolve) => {
+    resolveRun = resolve;
+  });
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({ run: () => pending }),
+    renderer: fakeRenderer({ identity: () => Promise.resolve("flighted") }),
+  });
+
+  const polls = [
+    conductor.app.request("/api/display"),
+    conductor.app.request("/api/display"),
+    conductor.app.request("/api/display"),
+  ];
+  resolveRun({ state: {}, validity: fiveMin, view: () => "<p>x</p>" });
+  await Promise.all(polls.map(async (p) => (await p).body?.cancel()));
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+});
+
+Deno.test("Tier 1 cache hit does NOT record a new trace — no new cycle ran", async () => {
+  // First poll fills the Slot and records a trace. Subsequent polls
+  // within validity hit Tier 1: no Plugin run, no Renderer call, and
+  // therefore no new trace.
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({ identity: () => Promise.resolve("stable") }),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  // Single record from the cold-fill cycle; the next two polls hit the
+  // cache and don't enter doRefill at all.
+  assertSpyCalls(record, 1);
+});
+
 Deno.test("Tier 1: repeated /api/display polls within validity reuse the Slot — Plugin not invoked again", async () => {
   // The Slot's `display()` answers non-null while the entry's
   // `cachedAt + validity` is still in the future, so the second poll
