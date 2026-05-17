@@ -77,6 +77,62 @@ Deno.test("GET /api/display returns BYOS JSON with image_url=/image/<identity>.p
   assertLessOrEqual(body.refresh_rate, 300);
 });
 
+// ─── /image/<id>.png ───────────────────────────────────────────────────────
+
+Deno.test("GET /image/<id>.png returns the Slot's PNG bytes on identity match", async () => {
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({
+      identity: () => Promise.resolve("matchme"),
+      rasterize: () => Promise.resolve(png),
+    }),
+  });
+
+  // Prime the Slot via a poll first.
+  await (await conductor.app.request("/api/display")).body?.cancel();
+
+  const res = await conductor.app.request("/image/matchme.png");
+  assertEquals(res.status, 200);
+  assertEquals(res.headers.get("content-type"), "image/png");
+  assertEquals(new Uint8Array(await res.arrayBuffer()), png);
+});
+
+Deno.test("GET /image/<id>.png returns 404 when id does not match the Slot's identity", async () => {
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({ identity: () => Promise.resolve("matchme") }),
+  });
+  await (await conductor.app.request("/api/display")).body?.cancel();
+
+  const res = await conductor.app.request("/image/something-else.png");
+  await res.body?.cancel();
+
+  assertEquals(res.status, 404);
+});
+
+Deno.test("GET /image/<id>.png returns 404 when the Slot is empty", async () => {
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  // No /api/display poll yet — Slot is cold.
+  const res = await conductor.app.request("/image/anything.png");
+  await res.body?.cancel();
+
+  assertEquals(res.status, 404);
+});
+
 // ─── Tier 3: expired Slot triggers a fresh render ─────────────────────────
 
 Deno.test("Tier 3: once validity has elapsed, the next /api/display runs the Plugin again and surfaces the new identity", async () => {
