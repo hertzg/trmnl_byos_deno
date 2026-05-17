@@ -27,7 +27,11 @@ export type DashboardProps = {
   // dashboard handler's own wall-clock for the whole scrub call.
   timings: Record<string, number>;
   totalMs: number;
-  pngBase64: string;
+  // Null when the rasterize step failed. The page still renders — Result,
+  // scrubber, and timings are useful debug surfaces without the image —
+  // and `pngError` carries the failure message for an inline notice.
+  pngBase64: string | null;
+  pngError: string | null;
 };
 
 function toDatetimeLocal(t: Temporal.ZonedDateTime): string {
@@ -223,7 +227,7 @@ function groupTimings(timings: Record<string, number>): Array<[string, TimingEnt
 }
 
 export default function Dashboard(props: DashboardProps) {
-  const { t, tRequested, parseError, now, current, timings, totalMs, pngBase64 } = props;
+  const { t, tRequested, parseError, now, current, timings, totalMs, pngBase64, pngError } = props;
   const groupedTimings = groupTimings(timings);
   const currentExpires = t.add(current.result.validity);
 
@@ -263,15 +267,23 @@ export default function Dashboard(props: DashboardProps) {
           {STEPS.map((s) => <a key={s.label} href={stepHref(t, s.by)}>{s.label}</a>)}
           <a class="reset" href="/">reset</a>
         </div>
-        {groupedTimings.map(([group, entries]) => (
-          <TimingsBlock key={group} title={group} entries={entries} />
-        ))}
-        <p class="timings-total">
-          re-render: <code>{fmtMs(totalMs)}</code>
-        </p>
-        <div class="image-frame">
-          <img src={`data:image/png;base64,${pngBase64}`} alt="Plugin output" />
-        </div>
+        {pngBase64
+          ? (
+            <div class="image-frame">
+              <img src={`data:image/png;base64,${pngBase64}`} alt="Plugin output" />
+            </div>
+          )
+          : (
+            <p class="notice">
+              rasterize failed — page below still reflects the Plugin's run.
+              {pngError && (
+                <>
+                  {" "}
+                  <code>{pngError}</code>
+                </>
+              )}
+            </p>
+          )}
         <p class="head">
           now: <code>{fmtTime(now)}</code> · timezone: <code>{now.timeZoneId}</code>
         </p>
@@ -312,6 +324,12 @@ export default function Dashboard(props: DashboardProps) {
           <summary>current Result.state (JSON)</summary>
           <pre>{stateJson(current.result.state)}</pre>
         </details>
+        {groupedTimings.map(([group, entries]) => (
+          <TimingsBlock key={group} title={group} entries={entries} />
+        ))}
+        <p class="timings-total">
+          re-render: <code>{fmtMs(totalMs)}</code>
+        </p>
       </body>
     </html>
   );
