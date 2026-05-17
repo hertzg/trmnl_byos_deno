@@ -20,6 +20,17 @@ export const FRIENDLY_ID = env("FRIENDLY_ID", "TRMNL");
 // usual deployment shape. See ADR-0003 / ADR-0005.
 export const CDP_URL = env("CDP_URL", "http://localhost:9222");
 
+// Hostname the Renderer uses in the URL it hands CDP, and (when not
+// 127.0.0.1) the bind interface for the loopback origin. Default
+// "host.docker.internal" targets the common `deno task dev` workflow
+// (deno on the host, chrome in docker, chrome reaches the host across
+// the docker bridge) so it Just Works without env overrides. Compose
+// mode pins LOOPBACK_HOST=127.0.0.1 in docker-compose.yml because chrome
+// shares the deno container's network namespace and the loopback bind
+// keeps the ephemeral port un-reachable from outside the container.
+// See src/render/renderer.ts for the bind-host security trade-off.
+export const LOOPBACK_HOST = env("LOOPBACK_HOST", "host.docker.internal");
+
 // Absolute path to the user's Plugin directory. The directory must contain a
 // `main.ts` whose default export is a factory returning a Plugin (ADR-0002).
 // Defaults to the bundled example Plugin; bind-mount over this path (or

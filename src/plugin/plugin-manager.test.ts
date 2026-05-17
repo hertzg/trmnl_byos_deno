@@ -225,6 +225,10 @@ Deno.test("a PluginManager wired through the real Renderer surfaces a filename d
   // here). The Renderer owns a loopback HTTP server, so we close it in
   // a try/finally to keep the test process tidy.
   const renderer = createRenderer({
+    // Pin to 127.0.0.1 (default is "host.docker.internal" for the
+    // production deno-task-dev workflow); tests bind on the loopback
+    // interface so they don't expose an open port during the run.
+    loopbackHost: "127.0.0.1",
     fetchPngFromUrl: () => Promise.resolve(new Uint8Array()),
   });
 
@@ -291,6 +295,10 @@ Deno.test("end-to-end: /api/display → /image/<id>.png drives PluginManager →
   };
   const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
   const renderer = createRenderer({
+    // Pin to 127.0.0.1 so the test process can actually reach the loopback
+    // origin via `fetch()`. The production default ("host.docker.internal")
+    // only resolves inside the docker bridge.
+    loopbackHost: "127.0.0.1",
     fetchPngFromUrl: async (url) => {
       seen.url = url;
       seen.html = await (await fetch(url)).text();

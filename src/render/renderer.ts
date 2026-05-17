@@ -19,9 +19,13 @@ import { ditherNative } from "./_internal/dither.ts";
 // In addition to the render methods, the Renderer owns the loopback HTTP
 // server CDP fetches from. Construction spins it up on an OS-assigned
 // ephemeral port (`Deno.serve({port: 0})`); `close()` shuts it down. The
-// loopback is reachable only on 127.0.0.1 — nothing outside the process can
-// hit it. `origin()` exposes its base URL for diagnostics; the URLs handed
-// to CDP point at this origin and never at the outward server.
+// default (`loopbackHost = "host.docker.internal"`) binds the port on
+// 0.0.0.0 so chrome-in-docker can reach it across the docker bridge —
+// LAN-reachable, acceptable under ADR-0001's trusted-single-user-LAN
+// posture. Override with `LOOPBACK_HOST=127.0.0.1` (compose mode) to
+// restore 127.0.0.1-only binding. `origin()` exposes its base URL for
+// diagnostics; the URLs handed to CDP point at this origin and never at
+// the outward server.
 //
 // Concurrency: single-mount-with-lock. `rasterize` calls serialize through a
 // promise chain. While one call is in flight, the loopback serves that
@@ -48,6 +52,18 @@ export type FetchPngFromUrl = (url: string) => Promise<Uint8Array>;
 
 export type RendererDeps = {
   fetchPngFromUrl: FetchPngFromUrl;
+  // Hostname used in the URL handed to CDP (and the bind interface for the
+  // loopback origin). Defaults to "host.docker.internal" — the common
+  // `deno task dev` workflow (deno on the host, chrome in docker, chrome
+  // reaches the host across the docker bridge) Just Works without env
+  // overrides.
+  //
+  // Override to "127.0.0.1" for compose mode, where chrome shares the deno
+  // container's network namespace. Any value other than "127.0.0.1" also
+  // flips the bind to 0.0.0.0 to make the ephemeral port reachable through
+  // the configured host; see the implementation comment in `createRenderer`
+  // for the security trade-off.
+  loopbackHost?: string;
 };
 
 // The path CDP fetches on the loopback origin to get the mounted Bundle's
@@ -90,12 +106,27 @@ export function createRenderer(deps: RendererDeps): Renderer {
   // `Deno.serve` with `port: 0` asks the kernel for an ephemeral port. The
   // returned server exposes `.addr` (the assigned port) and `.shutdown()`
   // (graceful drain on close).
+  //
+  // Default loopbackHost ("host.docker.internal") targets the common
+  // `deno task dev` workflow: deno on the host, chrome in docker, chrome
+  // reaches the host via `host.docker.internal`. Because that hostname
+  // resolves to the host's external IP, the loopback port has to be bound
+  // on 0.0.0.0 instead of 127.0.0.1 — meaning the ephemeral port is
+  // reachable from anywhere on the local network. This is the deliberate
+  // trade-off: we accept LAN exposure of an ephemeral port serving the
+  // current Bundle's HTML/assets under the single-user trusted-LAN posture
+  // documented in ADR-0001. Compose mode overrides to "127.0.0.1" (set in
+  // docker-compose.yml) because chrome shares the deno container's network
+  // namespace there, and the loopback bind keeps the port un-reachable
+  // from anything outside the container.
+  const loopbackHost = deps.loopbackHost ?? "host.docker.internal";
+  const bindHostname = loopbackHost === "127.0.0.1" ? "127.0.0.1" : "0.0.0.0";
   const server = Deno.serve(
-    { port: 0, hostname: "127.0.0.1", onListen: () => {} },
+    { port: 0, hostname: bindHostname, onListen: () => {} },
     app.fetch,
   );
   const addr = server.addr as Deno.NetAddr;
-  const origin = `http://127.0.0.1:${addr.port}`;
+  const origin = `http://${loopbackHost}:${addr.port}`;
 
   return {
     identity(bundle) {

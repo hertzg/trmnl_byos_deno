@@ -4,6 +4,7 @@ import {
   ACTIVE_PROFILE,
   CDP_URL,
   FRIENDLY_ID,
+  LOOPBACK_HOST,
   PLUGIN_DIR,
   PLUGIN_SEED_DIR,
   PORT,
@@ -35,13 +36,21 @@ async function main() {
     console.log(`[device-log] ${id.toUpperCase()}: ${body}`);
 
   // 3. Renderer owns its own loopback HTTP origin (ADR-0003, slice #51).
-  // Construction spins up a Hono sub-app on an OS-assigned ephemeral port
-  // on 127.0.0.1; CDP fetches Bundle HTML + assets from there during
-  // rasterize. The Server's outward HTTP layer never serves Plugin assets.
+  // Construction spins up a Hono sub-app on an OS-assigned ephemeral port;
+  // CDP fetches Bundle HTML + assets from there during rasterize. The
+  // Server's outward HTTP layer never serves Plugin assets. LOOPBACK_HOST
+  // defaults to "host.docker.internal" (deno-task-dev workflow Just Works);
+  // compose mode pins LOOPBACK_HOST=127.0.0.1 in docker-compose.yml so the
+  // ephemeral port stays bound on the loopback interface inside the
+  // container's shared namespace.
   const renderer = createRenderer({
     fetchPngFromUrl: createFetchPngFromUrl({ cdpUrl: CDP_URL, ...ACTIVE_PROFILE }),
+    loopbackHost: LOOPBACK_HOST,
   });
-  console.log(`[renderer] loopback origin ${renderer.origin()}`);
+  const bindNote = LOOPBACK_HOST === "127.0.0.1"
+    ? ""
+    : ` (bound on 0.0.0.0 because LOOPBACK_HOST=${LOOPBACK_HOST})`;
+  console.log(`[renderer] loopback origin ${renderer.origin()}${bindNote}`);
 
   // 4. Single-Image cache (ADR-0004). One slot, shared by Conductor (who
   // pushes new `{ bundle, identity, image }` triples) and Dashboard (who
