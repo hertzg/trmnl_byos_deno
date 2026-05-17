@@ -60,6 +60,22 @@ Deno.test("a file in assets/ becomes /assets/<name> keyed against its bytes", as
   assertEquals(new TextDecoder().decode(bundle.assets["/assets/foo.svg"]), "<svg/>");
 });
 
+Deno.test("binary file bytes survive the round-trip intact", async () => {
+  // Mix every byte value plus a few common PNG-style header markers to catch
+  // anything that goes through a text codec on the way in or out.
+  const bytes = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) bytes[i] = i;
+  const dir = await writePluginDir({
+    "main.ts": trivialPluginSource,
+    "assets/icon.png": bytes,
+  });
+
+  const manager = await createPluginManager({ pluginDir: dir });
+  const bundle = await manager.run(ctx());
+
+  assertEquals(bundle.assets["/assets/icon.png"], bytes);
+});
+
 Deno.test("a file inside a nested subdirectory keeps its full sub-path", async () => {
   const dir = await writePluginDir({
     "main.ts": trivialPluginSource,
