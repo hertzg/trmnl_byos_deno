@@ -30,10 +30,7 @@ async function copyDirContents(src: string, dst: string): Promise<void> {
   }
 }
 
-export async function loadPlugin(
-  dir: string,
-  config?: unknown,
-): Promise<Plugin<unknown>> {
+export async function loadPlugin(dir: string): Promise<Plugin<unknown>> {
   const mainPath = join(dir, "main.ts");
   try {
     await Deno.stat(mainPath);
@@ -43,11 +40,16 @@ export async function loadPlugin(
 
   const url = toFileUrl(mainPath).href;
   const mod = await import(url);
-  if (typeof mod.default !== "function") {
+  if (mod.default === undefined || mod.default === null) {
     throw new Error(
-      `Plugin at ${mainPath} must have a default export (factory function returning a Plugin)`,
+      `Plugin at ${mainPath} must have a default export (a Plugin object with a run method)`,
+    );
+  }
+  if (typeof mod.default.run !== "function") {
+    throw new Error(
+      `Plugin at ${mainPath} default export must be a Plugin object with a run method`,
     );
   }
 
-  return await mod.default(config);
+  return mod.default as Plugin<unknown>;
 }
