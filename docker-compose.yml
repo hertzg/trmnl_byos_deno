@@ -9,6 +9,13 @@
 # `network_mode: service:trmnl-byos-dev` puts chrome on the deno container's
 # loopback so 127.0.0.1 resolves to the deno process. The CDP HTTP port
 # (9222) is reached via the same shared loopback at http://localhost:9222.
+#
+# Local-dev workflow (`deno task dev` on host + chrome in docker): chrome
+# can't reach the host's loopback through the docker bridge. Set
+# `LOOPBACK_HOST=host.docker.internal` (or the docker bridge IP on Linux)
+# so the Renderer hands CDP a URL chrome can resolve and binds the loopback
+# port on 0.0.0.0 instead of 127.0.0.1. Compose mode uses the secure
+# 127.0.0.1 default, so this var is intentionally NOT set below.
 services:
   trmnl-byos-dev:
     build: .

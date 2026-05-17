@@ -54,8 +54,16 @@ docker run --rm -d --name trmnl-chrome -p 127.0.0.1:9222:9222 \
   cloakhq/cloakbrowser cloakserve
 cp .env.example .env
 # CDP_URL=http://127.0.0.1:9222 in .env
+# LOOPBACK_HOST=host.docker.internal in .env  (see note below)
 deno task dev
 ```
+
+The Renderer owns a loopback HTTP origin that CDP fetches the Bundle (HTML + assets) from. In
+docker-compose chrome shares deno's network namespace, so the default `127.0.0.1` works. With deno
+on the host and chrome in docker, chrome can't reach the host's `127.0.0.1:<ephemeral>`, so set
+`LOOPBACK_HOST=host.docker.internal` (Mac/Windows) or the docker bridge IP (Linux). The Renderer
+then hands CDP a URL chrome can resolve and binds the loopback port on `0.0.0.0` so it's reachable
+across the docker bridge.
 
 The Device path is `/api/display` → follow the `image_url` it returns. For dev iteration on a
 Plugin's view, open `http://localhost:3000/preview` for live HTML or `/preview/png` for the live
@@ -75,16 +83,17 @@ of the box.
 
 ## Configuration
 
-| Env                   | Required | Description                                                                                                                                                                                                                                |
-| --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PUBLIC_URL_ORIGIN`   | no       | URL the Device uses to fetch the image. Default uses the request's `Host`/`X-Forwarded-*` headers.                                                                                                                                         |
-| `INTERNAL_URL_ORIGIN` | no       | URL CDP uses to fetch back rendered HTML. Default `http://host.docker.internal:${PORT}`.                                                                                                                                                   |
-| `CDP_URL`             | no       | HTTP base of the CloakBrowser CDP sidecar. Default `http://localhost:9222`.                                                                                                                                                                |
-| `PORT`                | no       | Server port. Default `3000`.                                                                                                                                                                                                               |
-| `DEVICE_ID`           | no       | Active device profile id, looked up in [`src/render/profiles.ts`](src/render/profiles.ts). Determines panel dimensions, dpr, bit depth, and dither mode. Unknown id fails fast at boot with the list of registered ids. Default `trmnl-x`. |
-| `FRIENDLY_ID`         | no       | Returned in `/api/setup`. Default `TRMNL`.                                                                                                                                                                                                 |
-| `PLUGIN_DIR`          | no       | Absolute path to the Plugin directory. Must contain a `main.ts` whose default export is a factory returning a Plugin. Default `./templates/example`.                                                                                       |
-| `PLUGIN_SEED_DIR`     | no       | If `PLUGIN_DIR` is empty on boot, copy this directory into it once. Used in Docker so a bind-mount gets seeded with the bundled example on first run.                                                                                      |
+| Env                   | Required | Description                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PUBLIC_URL_ORIGIN`   | no       | URL the Device uses to fetch the image. Default uses the request's `Host`/`X-Forwarded-*` headers.                                                                                                                                                                                                                                                                |
+| `INTERNAL_URL_ORIGIN` | no       | URL CDP uses to fetch back rendered HTML. Default `http://host.docker.internal:${PORT}`.                                                                                                                                                                                                                                                                          |
+| `CDP_URL`             | no       | HTTP base of the CloakBrowser CDP sidecar. Default `http://localhost:9222`.                                                                                                                                                                                                                                                                                       |
+| `LOOPBACK_HOST`       | no       | Hostname the Renderer hands CDP for its internal loopback origin. Default `127.0.0.1` (secure compose-mode default — chrome shares the deno container's network namespace). Set to `host.docker.internal` for the `deno task dev` + chrome-in-docker workflow; the Renderer then binds the loopback port on `0.0.0.0` so it's reachable across the docker bridge. |
+| `PORT`                | no       | Server port. Default `3000`.                                                                                                                                                                                                                                                                                                                                      |
+| `DEVICE_ID`           | no       | Active device profile id, looked up in [`src/render/profiles.ts`](src/render/profiles.ts). Determines panel dimensions, dpr, bit depth, and dither mode. Unknown id fails fast at boot with the list of registered ids. Default `trmnl-x`.                                                                                                                        |
+| `FRIENDLY_ID`         | no       | Returned in `/api/setup`. Default `TRMNL`.                                                                                                                                                                                                                                                                                                                        |
+| `PLUGIN_DIR`          | no       | Absolute path to the Plugin directory. Must contain a `main.ts` whose default export is a factory returning a Plugin. Default `./templates/example`.                                                                                                                                                                                                              |
+| `PLUGIN_SEED_DIR`     | no       | If `PLUGIN_DIR` is empty on boot, copy this directory into it once. Used in Docker so a bind-mount gets seeded with the bundled example on first run.                                                                                                                                                                                                             |
 
 TRMNL X panel geometry (1872×1404 native, 1040×780 CSS @ DPR 1.8, 4-bit grayscale, Floyd-Steinberg)
 lives as a registry entry in [`src/render/profiles.ts`](src/render/profiles.ts). Adding another
