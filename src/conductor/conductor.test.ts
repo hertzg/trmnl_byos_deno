@@ -77,6 +77,58 @@ Deno.test("GET /api/display returns BYOS JSON with image_url=/image/<identity>.p
   assertLessOrEqual(body.refresh_rate, 300);
 });
 
+// ─── Error fallback: Plugin throw → error Bundle → Slot ────────────────────
+
+Deno.test("Plugin throw → /api/display still answers 200 with the error-view filename and ~30s refresh_rate", async () => {
+  const conductor = createConductor({
+    ...defaults({
+      errorView: (_err: Error) => "<p>ERR</p>",
+      errorValidity: Temporal.Duration.from({ seconds: 30 }),
+    }),
+    pluginManager: managerFor({
+      run: () => {
+        throw new Error("plugin boom");
+      },
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const res = await conductor.app.request("/api/display");
+  const body = await res.json();
+
+  assertEquals(res.status, 200);
+  assertEquals(body.status, 0);
+  // The Slot contains the error Bundle, whose identity was computed from
+  // the error view's HTML.
+  assertEquals(body.filename, "image-id-<p>ERR</p>");
+  // 30s validity → 30 (or 29 due to clock skew) refresh_rate.
+  assertGreaterOrEqual(body.refresh_rate, 29);
+  assertLessOrEqual(body.refresh_rate, 30);
+});
+
+Deno.test("Plugin throw → /image/<id>.png serves the error-view PNG bytes", async () => {
+  const errPng = new Uint8Array([0xff, 0xee]);
+  const conductor = createConductor({
+    ...defaults({ errorView: (_err: Error) => "<p>ERR</p>" }),
+    pluginManager: managerFor({
+      run: () => {
+        throw new Error("plugin boom");
+      },
+    }),
+    renderer: fakeRenderer({ rasterize: () => Promise.resolve(errPng) }),
+  });
+
+  // Prime: the error-path refill lands an error Bundle into the Slot.
+  const display = await (await conductor.app.request("/api/display")).json();
+  const path = new URL(display.image_url).pathname;
+
+  const res = await conductor.app.request(path);
+
+  assertEquals(res.status, 200);
+  assertEquals(res.headers.get("content-type"), "image/png");
+  assertEquals(new Uint8Array(await res.arrayBuffer()), errPng);
+});
+
 // ─── /image/<id>.png ───────────────────────────────────────────────────────
 
 Deno.test("GET /image/<id>.png returns the Slot's PNG bytes on identity match", async () => {
