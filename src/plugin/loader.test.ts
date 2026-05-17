@@ -48,3 +48,36 @@ Deno.test("loadPlugin throws a clear error when the module has no default export
     "default export",
   );
 });
+
+Deno.test("loadPlugin throws a clear error when the default export is a function (legacy factory)", async () => {
+  // Catches the common migration mistake: someone leaves the old
+  // `export default function () { ... }` factory shape after the contract
+  // moved to a Plugin-object default export.
+  const dir = await writeFixture(`
+    export default function () {
+      return {
+        run() {
+          return {
+            state: {},
+            validity: Temporal.Duration.from({ minutes: 1 }),
+            view: () => "",
+          };
+        },
+      };
+    }
+  `);
+  await assertRejects(
+    () => loadPlugin(dir),
+    Error,
+    "Plugin object with a run method",
+  );
+});
+
+Deno.test("loadPlugin throws a clear error when the default export has no run method", async () => {
+  const dir = await writeFixture(`export default { notRun: 1 };`);
+  await assertRejects(
+    () => loadPlugin(dir),
+    Error,
+    "run method",
+  );
+});
