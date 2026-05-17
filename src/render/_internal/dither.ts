@@ -2,7 +2,7 @@ import { decodePNG } from "@img/png";
 import { crc32 } from "@hertzg/crc";
 import { concat } from "@std/bytes";
 import { clamp } from "@std/math";
-import { timed, timedSync } from "./timings.ts";
+import { timed, timedSync } from "../timings.ts";
 
 // Output is grayscale PNG (color type 0). bitDepth must be 1, 2, 4, or 8 per the PNG spec.
 export type DitherMode = "floyd-steinberg" | "atkinson" | "sierra3" | "bayer" | "none";

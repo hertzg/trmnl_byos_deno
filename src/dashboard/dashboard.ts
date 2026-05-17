@@ -3,17 +3,21 @@ import { renderToString } from "hono/jsx/dom/server";
 import { encodeBase64 } from "@std/encoding/base64";
 import type { DeriveResult } from "../conductor/conductor.ts";
 import type { RunContext } from "../plugin/plugin.ts";
+import type { FetchPngFromUrl } from "../render/renderer.ts";
 import { withTimings } from "../render/timings.ts";
 import { timed } from "../render/timings.ts";
 import Dashboard from "./dashboard.tsx";
 
 export type DashboardDeps = {
-  // HTML-only run of the pipeline. Used by /preview (the page CDP screen-
-  // shots) and the dashboard at /, which calls it once per scrub to surface
-  // the Result metadata.
+  // Run Plugin + Renderer.identity at the chosen t and return the Bundle +
+  // identity (see Conductor.derive). Used by /preview (whose HTML CDP
+  // screenshots) and the dashboard at /, which calls it once per scrub to
+  // surface the Result metadata.
   derive: (t: Temporal.ZonedDateTime, intent?: RunContext["intent"]) => Promise<DeriveResult>;
-  // CDP-backed url → png. Used by /preview/png to screenshot /preview live.
-  fetchPngFromUrl: (url: string) => Promise<Uint8Array>;
+  // CDP-backed url → png. Used by /preview/png to screenshot /preview live,
+  // and (until slice #54 switches to renderer.rasterize) by the dashboard's
+  // own preview path with the caller's ?t=/?intent= forwarded through.
+  fetchPngFromUrl: FetchPngFromUrl;
   // The origin CDP should fetch /preview from. Typically the deno service's
   // internal docker hostname; the Device sees a different origin via the
   // /api/display response.
@@ -98,8 +102,16 @@ export function createDashboard(deps: DashboardDeps): Hono {
     .get("/preview", async (c) => {
       const { t: tRequested } = parseT(c.req.query("t"), deps.now);
       const intent = (c.req.query("intent") ?? "scrub") as RunContext["intent"];
-      const { html, error } = await deps.derive(tRequested ?? deps.now(), intent);
-      return c.html(html, error ? 500 : 200, { "cache-control": "no-store" });
+      const { bundle, error } = await deps.derive(tRequested ?? deps.now(), intent);
+      // Derive HTML inline from the Bundle's Result. The Renderer encapsulates
+      // its own derivation; Dashboard's /preview is interim (slice #51 swaps
+      // CDP onto a loopback origin and this route goes away), so the
+      // duplicated renderToString line is the lesser evil compared to widening
+      // the Renderer's public surface with a `htmlFor(bundle)` method.
+      const html = renderToString(
+        bundle.result.view(bundle.result.state) as Parameters<typeof renderToString>[0],
+      );
+      return c.html("<!DOCTYPE html>" + html, error ? 500 : 200, { "cache-control": "no-store" });
     })
     // Live PNG of /preview, via CDP. The Device fetches this on every poll
     // — the JSON returned by /api/display points image_url here.
