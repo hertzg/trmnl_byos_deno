@@ -76,3 +76,32 @@ Deno.test("GET /api/display returns BYOS JSON with image_url=/image/<identity>.p
   assertGreaterOrEqual(body.refresh_rate, 299);
   assertLessOrEqual(body.refresh_rate, 300);
 });
+
+// ─── Tier 1: validity hit reuses the Slot, no Plugin run ───────────────────
+
+Deno.test("Tier 1: repeated /api/display polls within validity reuse the Slot — Plugin not invoked again", async () => {
+  // The Slot's `display()` answers non-null while the entry's
+  // `cachedAt + validity` is still in the future, so the second poll
+  // must short-circuit before Plugin.run.
+  const run = spy(() => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }));
+  const identity = spy(() => Promise.resolve("stable-id"));
+  const rasterize = spy(() => Promise.resolve(new Uint8Array([0x89])));
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({ run }),
+    renderer: fakeRenderer({ identity, rasterize }),
+  });
+
+  const first = await (await conductor.app.request("/api/display")).json();
+  const second = await (await conductor.app.request("/api/display")).json();
+  const third = await (await conductor.app.request("/api/display")).json();
+
+  // Identity is stable across all three polls.
+  assertEquals(first.filename, "image-stable-id");
+  assertEquals(second.filename, "image-stable-id");
+  assertEquals(third.filename, "image-stable-id");
+  // Plugin / Renderer ran exactly once — the Slot answered the rest.
+  assertSpyCalls(run, 1);
+  assertSpyCalls(identity, 1);
+  assertSpyCalls(rasterize, 1);
+});
