@@ -77,6 +77,52 @@ Deno.test("GET /api/display returns BYOS JSON with image_url=/image/<identity>.p
   assertLessOrEqual(body.refresh_rate, 300);
 });
 
+// ─── Single-flight: concurrent /api/display polls dedupe Plugin runs ──────
+
+Deno.test("concurrent /api/display polls during a cache miss share one Plugin run", async () => {
+  // Two simultaneous polls arrive while the Slot is empty. Without
+  // single-flight both would race `refillSlot` and the Plugin would
+  // observe `run` calls equal to the concurrency. The orchestration
+  // dedupes them so only one Plugin run / Renderer.identity / rasterize
+  // executes per refill.
+  let resolveRun!: (r: { state: unknown; validity: Temporal.Duration; view: () => string }) => void;
+  const pending = new Promise<
+    { state: unknown; validity: Temporal.Duration; view: () => string }
+  >((resolve) => {
+    resolveRun = resolve;
+  });
+  const run = spy(() => pending);
+  const identity = spy(() => Promise.resolve("flighted-id"));
+  const rasterize = spy(() => Promise.resolve(new Uint8Array([0xab])));
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({ run }),
+    renderer: fakeRenderer({ identity, rasterize }),
+  });
+
+  // Fire three polls concurrently. They all arrive while the Slot is
+  // empty and Plugin.run is still hanging on the pending promise.
+  const polls = [
+    conductor.app.request("/api/display"),
+    conductor.app.request("/api/display"),
+    conductor.app.request("/api/display"),
+  ];
+
+  // Unblock the Plugin so the orchestration completes.
+  resolveRun({ state: {}, validity: fiveMin, view: () => "<p>x</p>" });
+
+  const bodies = await Promise.all(polls.map(async (p) => (await p).json()));
+
+  // Each poll observed the same final identity from the shared refill.
+  for (const body of bodies) {
+    assertEquals(body.filename, "image-flighted-id");
+  }
+  // Plugin / Renderer fired exactly once across the three concurrent polls.
+  assertSpyCalls(run, 1);
+  assertSpyCalls(identity, 1);
+  assertSpyCalls(rasterize, 1);
+});
+
 // ─── Error fallback: Plugin throw → error Bundle → Slot ────────────────────
 
 Deno.test("Plugin throw → /api/display still answers 200 with the error-view filename and ~30s refresh_rate", async () => {

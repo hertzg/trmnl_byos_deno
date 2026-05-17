@@ -66,6 +66,13 @@ export type Conductor = {
 // peers reach it through the Conductor's HTTP surface.
 export function createConductor(deps: ConductorDeps): Conductor {
   let latestDevice: DeviceReport | null = null;
+  // Single-flight: the in-flight refill (Plugin → identity → start
+  // rasterize → Slot.put). Concurrent callers await the same promise so a
+  // cache miss runs the Plugin exactly once even under burst load (e.g.
+  // the Device's poll racing the Dashboard's in-process refill).
+  // Set inside `refillSlot`, cleared in its `.finally` so the next miss
+  // refills from scratch.
+  let pendingRefill: Promise<void> | null = null;
 
   // Wrap an Error in the Server-supplied error view as a Result. Used by
   // the orchestration loop's catch arm.
@@ -80,9 +87,9 @@ export function createConductor(deps: ConductorDeps): Conductor {
 
   // Run Plugin → identity → start rasterize → push into Slot. On throw
   // anywhere in Plugin.run / Renderer.identity, build an error Bundle and
-  // push that instead. After `refillSlot` resolves, `slot.display()` is
+  // push that instead. After `doRefill` resolves, `slot.display()` is
   // guaranteed non-null.
-  async function refillSlot(ctx: RunContext): Promise<void> {
+  async function doRefill(ctx: RunContext): Promise<void> {
     let bundle: Bundle;
     let identity: string;
     let image: Promise<Uint8Array>;
@@ -107,9 +114,23 @@ export function createConductor(deps: ConductorDeps): Conductor {
     });
   }
 
+  // Single-flight wrapper around doRefill: callers that arrive while a
+  // refill is already in flight await the same promise rather than
+  // kicking a second Plugin run. The pattern is inlined here (not
+  // extracted) because the Conductor has exactly one of these and the
+  // closure is small enough to read in place.
+  function refillSlot(ctx: RunContext): Promise<void> {
+    if (pendingRefill !== null) return pendingRefill;
+    pendingRefill = doRefill(ctx).finally(() => {
+      pendingRefill = null;
+    });
+    return pendingRefill;
+  }
+
   // Compute or look up the current display metadata. Tier 1: Slot still
   // valid → return its `display()` directly. Tier 3 (and Tier 2, not yet
-  // implemented): refill the Slot, then return its `display()`.
+  // implemented): refill the Slot (deduped via `pendingRefill`), then
+  // return its `display()`.
   async function ensureDisplay(intent: RunContext["intent"]): Promise<SlotDisplay> {
     const cached = deps.slot.display();
     if (cached !== null) return cached;
