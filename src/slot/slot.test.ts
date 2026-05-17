@@ -64,3 +64,11 @@ Deno.test("display() returns null after the entry's validity has elapsed", () =>
 
   assertEquals(slot.display(), null);
 });
+
+Deno.test("image(id) returns the bytes when id matches the entry's identity", async () => {
+  const slot = createSlot({ now: fixedNow });
+  const bytes = new Uint8Array([9, 8, 7]);
+  slot.put(makeEntry({ identity: "abc123", image: Promise.resolve(bytes) }));
+
+  assertEquals(await slot.image("abc123"), bytes);
+});

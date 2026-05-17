@@ -43,8 +43,10 @@ export function createSlot(deps: SlotDeps): Slot {
       if (Temporal.ZonedDateTime.compare(now, expiresAt) >= 0) return null;
       return { identity: entry.identity, refreshIn: expiresAt.since(now) };
     },
-    image(_id) {
-      return Promise.resolve(null);
+    async image(id) {
+      if (entry === null) return null;
+      if (entry.identity !== id) return null;
+      return await entry.image;
     },
     clear() {},
   };
