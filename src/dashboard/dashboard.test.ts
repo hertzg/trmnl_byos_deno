@@ -53,15 +53,20 @@ function conductorDefaults(
 
 // Compose the Conductor's HTTP sub-app and the Dashboard the way main.ts
 // does. Both sub-apps share the same Slot + Telemetry so a Conductor
-// refill is observable from the Dashboard's in-process read.
+// refill is observable from the Dashboard's in-process read. The Dashboard
+// also gets the PluginManager + Renderer it needs for the scrub path.
 function wire(conductorDeps: Partial<ConductorDeps>) {
   const now = conductorDeps.now ?? (() => T0);
   const slot = conductorDeps.slot ?? createSlot({ now });
   const telemetry = conductorDeps.telemetry ?? createTelemetry();
   const renderer = conductorDeps.renderer ?? defaultRenderer();
+  const pluginManager = conductorDeps.pluginManager ?? managerFor({
+    run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+  });
   const conductor = createConductor({
     ...conductorDefaults(now),
     ...conductorDeps,
+    pluginManager,
     renderer,
     slot,
     telemetry,
@@ -70,6 +75,8 @@ function wire(conductorDeps: Partial<ConductorDeps>) {
     slot,
     telemetry,
     conductorApp: conductor.app,
+    pluginManager,
+    renderer,
     now,
   });
   return {
@@ -129,7 +136,16 @@ Deno.test("GET / surfaces a notice when the Slot stays empty (no Conductor wirin
   const slot = createSlot({ now });
   const telemetry = createTelemetry();
   const noopApp = new Hono().get("/api/display", (c) => c.body(null, 204));
-  const dashboard = createDashboard({ slot, telemetry, conductorApp: noopApp, now });
+  const dashboard = createDashboard({
+    slot,
+    telemetry,
+    conductorApp: noopApp,
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
+    }),
+    renderer: defaultRenderer(),
+    now,
+  });
 
   const res = await dashboard.request("/");
 
@@ -183,7 +199,16 @@ Deno.test("GET / renders a placeholder trace block when telemetry.latest() is nu
   const slot = createSlot({ now });
   const telemetry = createTelemetry();
   const noopApp = new Hono().get("/api/display", (c) => c.body(null, 204));
-  const dashboard = createDashboard({ slot, telemetry, conductorApp: noopApp, now });
+  const dashboard = createDashboard({
+    slot,
+    telemetry,
+    conductorApp: noopApp,
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
+    }),
+    renderer: defaultRenderer(),
+    now,
+  });
 
   const res = await dashboard.request("/");
 
@@ -222,6 +247,28 @@ Deno.test("GET / renders the trace's error message when the last cycle failed", 
     true,
     "trace block should surface the error message",
   );
+});
+
+// ─── GET /dashboard/preview.png — transient scrub render ──────────────────
+
+Deno.test("GET /dashboard/preview.png?t=... runs PluginManager + Renderer.rasterize and returns the PNG bytes with content-type image/png", async () => {
+  // The scrub path bypasses the Slot: it calls PluginManager.run with a
+  // fresh RunContext using the parsed `t`, then Renderer.rasterize on the
+  // returned Bundle, and streams the bytes back as image/png. Single render
+  // path, no caching.
+  const scrubPng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0xde, 0xad]);
+  const { app } = wire({
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>scrub</p>" }),
+    }),
+    renderer: defaultRenderer({ rasterize: () => Promise.resolve(scrubPng) }),
+  });
+
+  const res = await app.request("/dashboard/preview.png?t=2026-05-16T12:00:00%2B02:00[Europe/Berlin]");
+
+  assertEquals(res.status, 200);
+  assertEquals(res.headers.get("content-type"), "image/png");
+  assertEquals(new Uint8Array(await res.arrayBuffer()), scrubPng);
 });
 
 // ─── /preview/png removed ──────────────────────────────────────────────────
