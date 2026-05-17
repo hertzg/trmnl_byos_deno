@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
 import type { Slot } from "../slot/slot.ts";
+import type { Telemetry } from "../telemetry/telemetry.ts";
 import Dashboard from "./dashboard.tsx";
 
 // Dashboard at /. A Plugin-debugging surface, not a render path of its own.
@@ -19,6 +20,11 @@ export type DashboardDeps = {
   // current identity without forcing a refill; if `display()` returns
   // null the Dashboard triggers a refill via `conductor.app.request(...)`.
   slot: Slot;
+  // Per-cycle render trace, populated by the Conductor. The Dashboard
+  // reads `latest()` to render the trace strip (durations + identity
+  // + error). `null` before any cycle has run — the strip surfaces a
+  // placeholder in that case.
+  telemetry: Telemetry;
   // The Conductor's Hono sub-app. The Dashboard uses
   // `conductor.app.request("/api/display")` in-process to refill an empty
   // Slot — single render path, no shortcut.
@@ -42,6 +48,7 @@ export function createDashboard(deps: DashboardDeps): Hono {
           now,
           identity: display?.identity ?? null,
           refreshIn: display?.refreshIn ?? null,
+          trace: deps.telemetry.latest(),
         }) as Parameters<typeof renderToString>[0],
       );
       return c.html("<!DOCTYPE html>" + page, 200, { "cache-control": "no-store" });

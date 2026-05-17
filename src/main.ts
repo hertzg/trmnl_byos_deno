@@ -72,9 +72,11 @@ async function main() {
 
   // 7. Dashboard at /. Reads the Slot in-process to show the current
   // Image; triggers a refill via `conductor.app.request("/api/display")`
-  // when the Slot is empty so there is exactly one render path.
+  // when the Slot is empty so there is exactly one render path. Reads
+  // `telemetry.latest()` to render the trace strip.
   const dashboard = createDashboard({
     slot,
+    telemetry,
     conductorApp: conductor.app,
     now,
   });

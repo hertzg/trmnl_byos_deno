@@ -1,10 +1,13 @@
 /** @jsxImportSource hono/jsx */
 
+import type { RenderTrace } from "../telemetry/telemetry.ts";
+
 // Dashboard at /. Slice #52 trimmed this down to the minimum the
 // orchestration story needs: a heading, the current Image (or a notice
 // when the Slot is empty / refill failed), the current Slot identity and
 // remaining validity, and a placeholder scrub form whose action goes
-// nowhere until slice #54 restores it.
+// nowhere until slice #54 restores it. Slice #53 added the trace strip
+// at the bottom, populated from `telemetry.latest()`.
 
 export type DashboardProps = {
   now: Temporal.ZonedDateTime;
@@ -13,6 +16,11 @@ export type DashboardProps = {
   // instead of trying to embed a broken /image URL.
   identity: string | null;
   refreshIn: Temporal.Duration | null;
+  // The most-recent render trace from Telemetry, or `null` before any
+  // cycle has run. The strip at the bottom of the page reports
+  // identity, ranAt, the three durations, and the error message when
+  // the cycle failed.
+  trace: RenderTrace | null;
 };
 
 function fmtTime(t: Temporal.ZonedDateTime): string {
@@ -34,6 +42,16 @@ function fmtSeconds(totalSec: number): string {
 
 function fmtDuration(d: Temporal.Duration): string {
   return fmtSeconds(d.total({ unit: "seconds" }));
+}
+
+// The trace strip wants millisecond precision — render times are
+// dominated by rasterize (CDP roundtrip + dither), typically 200–800 ms
+// — and the rest of the page's fmtDuration() rounds to whole seconds.
+function fmtDurationMs(d: Temporal.Duration): string {
+  const ms = d.total({ unit: "milliseconds" });
+  if (ms < 10) return `${ms.toFixed(2)}ms`;
+  if (ms < 1000) return `${ms.toFixed(0)}ms`;
+  return `${(ms / 1000).toFixed(2)}s`;
 }
 
 function toDatetimeLocal(t: Temporal.ZonedDateTime): string {
@@ -82,10 +100,74 @@ const css = `
     margin: 0 0 16px; padding: 8px 12px; font-size: 12px; color: #555;
     background: #f0f0f0; border: 1px solid #ddd;
   }
+  section.trace { margin-top: 24px; }
+  section.trace h2 {
+    font-size: 14px; font-weight: 600; margin: 0 0 8px;
+    color: #333; letter-spacing: 0.02em; text-transform: uppercase;
+  }
+  section.trace .empty {
+    padding: 8px 12px; font-size: 12px; color: #777; font-style: italic;
+    background: #fafafa; border: 1px solid #eee;
+  }
+  section.trace pre.error {
+    margin: 8px 0 0; padding: 8px 12px; font-size: 12px;
+    background: #fff0f0; border: 1px solid #f3b0b0; color: #6b1212;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    white-space: pre-wrap; word-break: break-word;
+  }
 `;
 
+function TraceStrip({ trace }: { trace: RenderTrace | null }) {
+  if (trace === null) {
+    return (
+      <section class="trace">
+        <h2>last render trace</h2>
+        <p class="empty">no cycle has run yet</p>
+      </section>
+    );
+  }
+  return (
+    <section class="trace">
+      <h2>last render trace</h2>
+      <table class="meta">
+        <tbody>
+          <tr>
+            <th scope="row">identity</th>
+            <td>{trace.identity}</td>
+          </tr>
+          <tr>
+            <th scope="row">ran at</th>
+            <td>{fmtTime(trace.ranAt)}</td>
+          </tr>
+          <tr>
+            <th scope="row">plugin run</th>
+            <td>{fmtDurationMs(trace.durations.pluginRun)}</td>
+          </tr>
+          <tr>
+            <th scope="row">identity</th>
+            <td>{fmtDurationMs(trace.durations.identity)}</td>
+          </tr>
+          <tr>
+            <th scope="row">rasterize</th>
+            <td>{fmtDurationMs(trace.durations.rasterize)}</td>
+          </tr>
+        </tbody>
+      </table>
+      {trace.error !== null
+        ? (
+          <pre class="error">
+            {trace.error.message}
+            {"\n"}
+            {trace.error.stack ?? ""}
+          </pre>
+        )
+        : null}
+    </section>
+  );
+}
+
 export default function Dashboard(props: DashboardProps) {
-  const { now, identity, refreshIn } = props;
+  const { now, identity, refreshIn, trace } = props;
   return (
     <html>
       <head>
@@ -138,6 +220,7 @@ export default function Dashboard(props: DashboardProps) {
             </tr>
           </tbody>
         </table>
+        <TraceStrip trace={trace} />
       </body>
     </html>
   );
