@@ -46,3 +46,16 @@ Deno.test("Bundle.assets is empty when the assets directory does not exist", asy
   assertEquals(bundle.result.state, { ok: true });
   assertEquals(bundle.result.validity.total({ unit: "minutes" }), fiveMin.total({ unit: "minutes" }));
 });
+
+Deno.test("a file in assets/ becomes /assets/<name> keyed against its bytes", async () => {
+  const dir = await writePluginDir({
+    "main.ts": trivialPluginSource,
+    "assets/foo.svg": "<svg/>",
+  });
+
+  const manager = await createPluginManager({ pluginDir: dir });
+  const bundle = await manager.run(ctx());
+
+  assertEquals(Object.keys(bundle.assets), ["/assets/foo.svg"]);
+  assertEquals(new TextDecoder().decode(bundle.assets["/assets/foo.svg"]), "<svg/>");
+});

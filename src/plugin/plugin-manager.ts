@@ -33,7 +33,34 @@ export async function createPluginManager(
   };
 }
 
-async function readAssetsDir(_dir: string): Promise<Record<string, Uint8Array>> {
-  // Cycle 1: directory may not exist. Subsequent cycles fill this in.
-  return {};
+// Walks `dir` recursively and returns every file keyed by its public URL path
+// (`/assets/<path-relative-to-dir>`). Reads file bytes raw — binary and text
+// flow through identically. Returns an empty map if `dir` does not exist,
+// because a Plugin without an `assets/` folder is valid (its view simply
+// references no assets).
+async function readAssetsDir(dir: string): Promise<Record<string, Uint8Array>> {
+  const assets: Record<string, Uint8Array> = {};
+  try {
+    await Deno.stat(dir);
+  } catch {
+    return assets;
+  }
+  await collectFiles(dir, "", assets);
+  return assets;
+}
+
+async function collectFiles(
+  root: string,
+  relativePrefix: string,
+  out: Record<string, Uint8Array>,
+): Promise<void> {
+  for await (const entry of Deno.readDir(join(root, relativePrefix))) {
+    const childRelative = relativePrefix === "" ? entry.name : `${relativePrefix}/${entry.name}`;
+    if (entry.isDirectory) {
+      await collectFiles(root, childRelative, out);
+    } else if (entry.isFile) {
+      const bytes = await Deno.readFile(join(root, childRelative));
+      out[`/assets/${childRelative}`] = bytes;
+    }
+  }
 }
