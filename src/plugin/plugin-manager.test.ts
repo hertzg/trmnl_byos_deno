@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertStrictEquals } from "@std/assert";
 import { join } from "@std/path";
 import type { RunContext } from "./plugin.ts";
 import { createPluginManager } from "./plugin-manager.ts";
@@ -58,6 +58,46 @@ Deno.test("a file in assets/ becomes /assets/<name> keyed against its bytes", as
 
   assertEquals(Object.keys(bundle.assets), ["/assets/foo.svg"]);
   assertEquals(new TextDecoder().decode(bundle.assets["/assets/foo.svg"]), "<svg/>");
+});
+
+Deno.test("run threads ctx straight through to plugin.run", async () => {
+  // The Plugin echoes whatever it received back through state.intent, so an
+  // assertion on the bundle's state verifies what the PluginManager passed in.
+  const dir = await writePluginDir({
+    "main.ts": `
+      export default {
+        run(ctx) {
+          return {
+            state: { intent: ctx.intent, deviceId: ctx.device?.id ?? null },
+            validity: Temporal.Duration.from({ minutes: 5 }),
+            view: () => "<p/>",
+          };
+        },
+      };
+    `,
+  });
+
+  const manager = await createPluginManager({ pluginDir: dir });
+  const bundle = await manager.run({ t: T0, intent: "scrub", device: null });
+
+  assertEquals(bundle.result.state, { intent: "scrub", deviceId: null });
+});
+
+Deno.test("every Bundle references the same in-memory asset map", async () => {
+  // Reading the assets folder is a load-time cost; subsequent runs must hand
+  // back the very same Record reference so the Renderer can rely on stable
+  // identity for caching (and so the Plugin has no in-process mechanism to
+  // mutate it).
+  const dir = await writePluginDir({
+    "main.ts": trivialPluginSource,
+    "assets/foo.svg": "<svg/>",
+  });
+
+  const manager = await createPluginManager({ pluginDir: dir });
+  const b1 = await manager.run(ctx());
+  const b2 = await manager.run(ctx());
+
+  assertStrictEquals(b1.assets, b2.assets);
 });
 
 Deno.test("binary file bytes survive the round-trip intact", async () => {
