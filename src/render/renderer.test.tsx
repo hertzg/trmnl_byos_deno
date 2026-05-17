@@ -1,7 +1,7 @@
 /** @jsxImportSource hono/jsx */
 import { assertEquals } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
-import { createRenderer, type FetchPngFromUrl, type RendererDeps } from "./renderer.ts";
+import { createRenderer, type RendererDeps } from "./renderer.ts";
 import { hashBundle } from "../hash.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 
@@ -54,13 +54,13 @@ Deno.test("Renderer.identity is deterministic for equivalent bundles", async () 
 
 Deno.test("Renderer.rasterize returns the PNG bytes from the injected fetcher", async () => {
   const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // PNG magic prefix
-  const fetchPngFromUrl: FetchPngFromUrl = spy((_url: string) => Promise.resolve(png));
+  const fetchPngFromUrl = spy((_url: string) => Promise.resolve(png));
   const renderer = createRenderer(defaults({ fetchPngFromUrl }));
 
   const out = await renderer.rasterize(bundleWith({}, () => <p>x</p>));
 
   assertEquals(out, png);
-  assertSpyCalls(fetchPngFromUrl as ReturnType<typeof spy>, 1);
+  assertSpyCalls(fetchPngFromUrl, 1);
 });
 
 Deno.test("Renderer.rasterize hands the fetcher the internalOrigin /preview URL", async () => {
