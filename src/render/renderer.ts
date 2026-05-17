@@ -49,14 +49,16 @@ export type FetchPngFromUrl = (url: string) => Promise<Uint8Array>;
 export type RendererDeps = {
   fetchPngFromUrl: FetchPngFromUrl;
   // Hostname used in the URL handed to CDP (and the bind interface for the
-  // loopback origin). Defaults to "127.0.0.1" — the secure compose-mode
-  // default, where chrome shares the deno container's network namespace.
+  // loopback origin). Defaults to "host.docker.internal" — the common
+  // `deno task dev` workflow (deno on the host, chrome in docker, chrome
+  // reaches the host across the docker bridge) Just Works without env
+  // overrides.
   //
-  // Override (typically "host.docker.internal") for the `deno task dev`
-  // workflow, where deno runs on the host and chrome runs in docker and has
-  // to reach the host across the docker bridge. Any value other than
-  // "127.0.0.1" also flips the bind to 0.0.0.0; see the implementation
-  // comment in `createRenderer` for the security trade-off.
+  // Override to "127.0.0.1" for compose mode, where chrome shares the deno
+  // container's network namespace. Any value other than "127.0.0.1" also
+  // flips the bind to 0.0.0.0 to make the ephemeral port reachable through
+  // the configured host; see the implementation comment in `createRenderer`
+  // for the security trade-off.
   loopbackHost?: string;
 };
 
@@ -101,14 +103,19 @@ export function createRenderer(deps: RendererDeps): Renderer {
   // returned server exposes `.addr` (the assigned port) and `.shutdown()`
   // (graceful drain on close).
   //
-  // Default loopbackHost ("127.0.0.1") binds on the loopback interface only,
-  // keeping the origin un-reachable from any other host. The override case
-  // (e.g. "host.docker.internal" for deno-on-host + chrome-in-docker) binds
-  // on 0.0.0.0 so the port is reachable via the host's external IP / docker
-  // bridge; this exposes the loopback port to the local network, which is
-  // acceptable under the single-user trusted-LAN posture of ADR-0001 but is
-  // why the secure default stays 127.0.0.1.
-  const loopbackHost = deps.loopbackHost ?? "127.0.0.1";
+  // Default loopbackHost ("host.docker.internal") targets the common
+  // `deno task dev` workflow: deno on the host, chrome in docker, chrome
+  // reaches the host via `host.docker.internal`. Because that hostname
+  // resolves to the host's external IP, the loopback port has to be bound
+  // on 0.0.0.0 instead of 127.0.0.1 — meaning the ephemeral port is
+  // reachable from anywhere on the local network. This is the deliberate
+  // trade-off: we accept LAN exposure of an ephemeral port serving the
+  // current Bundle's HTML/assets under the single-user trusted-LAN posture
+  // documented in ADR-0001. Compose mode overrides to "127.0.0.1" (set in
+  // docker-compose.yml) because chrome shares the deno container's network
+  // namespace there, and the loopback bind keeps the port un-reachable
+  // from anything outside the container.
+  const loopbackHost = deps.loopbackHost ?? "host.docker.internal";
   const bindHostname = loopbackHost === "127.0.0.1" ? "127.0.0.1" : "0.0.0.0";
   const server = Deno.serve(
     { port: 0, hostname: bindHostname, onListen: () => {} },

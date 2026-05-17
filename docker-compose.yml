@@ -4,18 +4,18 @@
 #   PUBLIC_URL_ORIGIN=http://192.168.1.10:3000 docker compose up
 #
 # Networking note (slice #51): the Renderer owns a loopback HTTP origin on
-# 127.0.0.1:<ephemeral> that CDP fetches the Bundle (HTML + assets) from.
-# Chrome therefore has to share the deno container's network namespace —
-# `network_mode: service:trmnl-byos-dev` puts chrome on the deno container's
-# loopback so 127.0.0.1 resolves to the deno process. The CDP HTTP port
-# (9222) is reached via the same shared loopback at http://localhost:9222.
+# <loopback-host>:<ephemeral> that CDP fetches the Bundle (HTML + assets)
+# from. In compose mode chrome shares the deno container's network namespace
+# (`network_mode: service:trmnl-byos-dev`) so 127.0.0.1 resolves to the deno
+# process — and that's exactly the value we pin LOOPBACK_HOST to below, so
+# the Renderer binds the ephemeral port on the loopback interface only and
+# nothing outside the container can reach it. The CDP HTTP port (9222) is
+# reached via the same shared loopback at http://localhost:9222.
 #
-# Local-dev workflow (`deno task dev` on host + chrome in docker): chrome
-# can't reach the host's loopback through the docker bridge. Set
-# `LOOPBACK_HOST=host.docker.internal` (or the docker bridge IP on Linux)
-# so the Renderer hands CDP a URL chrome can resolve and binds the loopback
-# port on 0.0.0.0 instead of 127.0.0.1. Compose mode uses the secure
-# 127.0.0.1 default, so this var is intentionally NOT set below.
+# Why the explicit pin: the production default is "host.docker.internal" so
+# the `deno task dev` workflow (deno on the host, chrome in docker) Just
+# Works without env overrides. Compose mode is the opposite case and opts
+# out by setting LOOPBACK_HOST=127.0.0.1 in the environment block.
 services:
   trmnl-byos-dev:
     build: .
@@ -34,6 +34,11 @@ services:
       PUBLIC_URL_ORIGIN: "${PUBLIC_URL_ORIGIN:-http://127.0.0.1:3000}"
       # CDP shares this container's network namespace, so localhost reaches it.
       CDP_URL: "http://localhost:9222"
+      # Compose-mode pin: see the networking note at the top of this file.
+      # Production default is "host.docker.internal" for the deno-task-dev
+      # workflow; here we keep the ephemeral loopback port bound on the
+      # container's loopback interface only.
+      LOOPBACK_HOST: "127.0.0.1"
       FRIENDLY_ID: "DEV"
       DEVICE_ID: "trmnl-x"
       TZ: "${TZ:-Etc/UTC}"

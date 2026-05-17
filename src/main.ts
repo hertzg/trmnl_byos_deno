@@ -39,8 +39,10 @@ async function main() {
   // Construction spins up a Hono sub-app on an OS-assigned ephemeral port;
   // CDP fetches Bundle HTML + assets from there during rasterize. The
   // Server's outward HTTP layer never serves Plugin assets. LOOPBACK_HOST
-  // (default 127.0.0.1) lets the deno-on-host + chrome-in-docker workflow
-  // override the host so chrome can reach the loopback across namespaces.
+  // defaults to "host.docker.internal" (deno-task-dev workflow Just Works);
+  // compose mode pins LOOPBACK_HOST=127.0.0.1 in docker-compose.yml so the
+  // ephemeral port stays bound on the loopback interface inside the
+  // container's shared namespace.
   const renderer = createRenderer({
     fetchPngFromUrl: createFetchPngFromUrl({ cdpUrl: CDP_URL, ...ACTIVE_PROFILE }),
     loopbackHost: LOOPBACK_HOST,

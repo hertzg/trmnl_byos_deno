@@ -21,9 +21,16 @@ function bundleWith(
 // Default deps. `fetchPngFromUrl` returns one byte; tests that care about
 // bytes inject their own. Tests that don't care just use the default and
 // `close()` the renderer in a `try/finally`.
+//
+// `loopbackHost` is pinned to "127.0.0.1" so the test process can actually
+// reach the loopback origin via `fetch()`. The production default is
+// "host.docker.internal" (the `deno task dev` workflow), which only
+// resolves inside the docker bridge — the loopback-host tests below
+// exercise both defaults explicitly through dedicated cases.
 function defaults(overrides: Partial<RendererDeps> = {}): RendererDeps {
   return {
     fetchPngFromUrl: () => Promise.resolve(new Uint8Array([0x01])),
+    loopbackHost: "127.0.0.1",
     ...overrides,
   };
 }
@@ -63,7 +70,7 @@ Deno.test("Renderer.identity is deterministic for equivalent bundles", async () 
 Deno.test("Renderer.origin returns a loopback http URL with an assigned port", async () => {
   const renderer = createRenderer(defaults());
   try {
-    // 127.0.0.1 keeps the loopback un-reachable from any other interface.
+    // The test harness pins `loopbackHost: "127.0.0.1"` (see `defaults()`).
     // The port is the OS-assigned ephemeral port we got from listen({port:0}).
     assertMatch(renderer.origin(), /^http:\/\/127\.0\.0\.1:\d+$/);
   } finally {
@@ -189,35 +196,41 @@ Deno.test("Renderer.rasterize hands the fetcher a URL on the loopback origin (no
 
 // ─── loopback host configurability ─────────────────────────────────────────
 
-Deno.test("default loopbackHost: URL handed to CDP is on http://127.0.0.1:<port> (secure compose-mode default)", async () => {
-  const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
-  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
+Deno.test("default loopbackHost: URL handed to CDP is on http://host.docker.internal:<port> (deno-task-dev default; binds 0.0.0.0)", async () => {
+  // The `deno task dev` workflow is the common path: deno runs on the host
+  // and chrome runs in docker, reaching the host via `host.docker.internal`.
+  // The default Just Works for that workflow; compose mode opts in to
+  // `LOOPBACK_HOST=127.0.0.1` via docker-compose.yml. This test deliberately
+  // constructs the renderer WITHOUT going through `defaults()` so it sees
+  // the production default for `loopbackHost`; we never `rasterize()` here
+  // because `host.docker.internal` doesn't resolve in the test process — we
+  // only assert on `origin()` and the URL the renderer would hand CDP.
+  const renderer = createRenderer({
+    fetchPngFromUrl: () => Promise.resolve(new Uint8Array([0x01])),
+  });
   try {
-    await renderer.rasterize(bundleWith({}, () => <p>x</p>));
-
-    const url = fetchPngFromUrl.calls[0].args[0];
-    assertMatch(url, /^http:\/\/127\.0\.0\.1:\d+\//);
+    assertMatch(renderer.origin(), /^http:\/\/host\.docker\.internal:\d+$/);
   } finally {
     await renderer.close();
   }
 });
 
-Deno.test("loopbackHost override: URL handed to CDP uses the configured host (deno-on-host + chrome-in-docker)", async () => {
-  // The `deno task dev` workflow runs deno on the host and chrome in docker;
-  // chrome reaches the host via `host.docker.internal`. The Renderer must
-  // hand CDP a URL with that hostname, not 127.0.0.1.
+Deno.test("loopbackHost override to 127.0.0.1: URL handed to CDP stays on the loopback interface (compose-mode override)", async () => {
+  // Compose mode pins LOOPBACK_HOST=127.0.0.1 in docker-compose.yml because
+  // chrome shares the deno container's network namespace and 127.0.0.1
+  // resolves to the deno process — and binding the ephemeral port on the
+  // loopback interface only keeps it un-reachable from outside the container.
   const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
   const renderer = createRenderer(defaults({
     fetchPngFromUrl,
-    loopbackHost: "host.docker.internal",
+    loopbackHost: "127.0.0.1",
   }));
   try {
     await renderer.rasterize(bundleWith({}, () => <p>x</p>));
 
     const url = fetchPngFromUrl.calls[0].args[0];
-    assertMatch(url, /^http:\/\/host\.docker\.internal:\d+\//);
-    // origin() exposes the same host for diagnostics.
-    assertMatch(renderer.origin(), /^http:\/\/host\.docker\.internal:\d+$/);
+    assertMatch(url, /^http:\/\/127\.0\.0\.1:\d+\//);
+    assertMatch(renderer.origin(), /^http:\/\/127\.0\.0\.1:\d+$/);
   } finally {
     await renderer.close();
   }
