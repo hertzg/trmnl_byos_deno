@@ -58,8 +58,9 @@ async function main() {
     now,
   });
 
-  // 6. Dashboard: peer sub-app that reads Current state and drives Plugin
-  // scrubs via the Conductor's small `scrub` + `committedState` surface.
+  // 6. Dashboard: peer sub-app that reads Current state and drives the
+  // Plugin via the Conductor's small `derive` + `render` + `committedState`
+  // surface.
   const dashboard = createDashboard({
     derive: conductor.derive,
     render: conductor.render,

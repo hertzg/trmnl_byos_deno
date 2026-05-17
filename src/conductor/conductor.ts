@@ -28,14 +28,24 @@ export type ConductorDeps = {
   now: () => Temporal.ZonedDateTime;
 };
 
-// Full-pipeline output at an arbitrary `t`. Post error-fallback — if any
-// pipeline step threw, the swapped-in error Result/identity/png is what
-// flows out. `device` is the DeviceReport the Plugin actually saw on its
-// `ctx.device` (latest report at the time of the call, or null if no
-// Device has polled yet). Per-step wall-clock is not part of this shape;
-// peers that want it open a `withTimings()` context around the call and
-// read the bucket — the Conductor and the Renderer both record into it
-// via `src/render/timings.ts`.
+// `derive()` output: pipeline up to HTML and identity, no rasterize.
+// For peers that want the live HTML for inspection without paying CDP cost.
+// `device` is the DeviceReport the Plugin actually saw on `ctx.device`
+// (latest report at the time of the call, or null if no Device has polled
+// yet).
+export type DeriveResult = {
+  result: Result<unknown>;
+  html: string;
+  identity: string;
+  device: DeviceReport | null;
+};
+
+// `render()` output: full pipeline (derive + rasterize). Post error-
+// fallback — if any pipeline step threw, the swapped-in error Result/
+// identity/png is what flows out. Per-step wall-clock is not part of
+// this shape; peers that want it open a `withTimings()` context around
+// the call and read the bucket — the Conductor and the Renderer both
+// record into it via `src/render/timings.ts`.
 export type RenderResult = {
   result: Result<unknown>;
   identity: string;
@@ -43,25 +53,17 @@ export type RenderResult = {
   device: DeviceReport | null;
 };
 
-// Committed state: what the Device is currently being served by the
-// poll path. Null until the first poll has populated Current Result +
-// Current Image. `device` is the DeviceReport captured at commit time
-// (the Plugin's `ctx.device` for the run that produced this state).
+// `committedState()` output: what the Device is currently being served
+// by the poll path. Null until the first poll has populated Current
+// Result + Current Image. `device` is the DeviceReport captured at
+// commit time (the Plugin's `ctx.device` for the run that produced
+// this state).
 export type CommittedState = {
   t: Temporal.ZonedDateTime;
   result: Result<unknown>;
   identity: string;
   device: DeviceReport | null;
 } | null;
-
-// Derive output: HTML and identity at an arbitrary `t` without rasterizing.
-// For peers that want the live HTML for inspection without paying CDP cost.
-export type DeriveResult = {
-  result: Result<unknown>;
-  html: string;
-  identity: string;
-  device: DeviceReport | null;
-};
 
 export type Conductor = {
   // Hono sub-app for the BYOS surface (/api/setup, /api/display, /api/log,
