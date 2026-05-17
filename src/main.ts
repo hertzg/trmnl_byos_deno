@@ -16,14 +16,17 @@ import { createDashboard } from "./dashboard/dashboard.ts";
 import { deriveHtml } from "./render/derive.ts";
 import { identityFor } from "./render/identity.ts";
 import { createRasterize } from "./render/rasterize.ts";
-import { loadPlugin, seedPluginDir } from "./plugin/loader.ts";
+import { seedPluginDir } from "./plugin/loader.ts";
+import { createPluginManager } from "./plugin/plugin-manager.ts";
 
 async function main() {
-  // 1. Seed the Plugin directory if requested, then load the Plugin.
+  // 1. Seed the Plugin directory if requested, then construct the
+  // PluginManager. Construction loads the Plugin module + reads its
+  // `assets/` folder into memory once; every subsequent run reuses both.
   if (PLUGIN_SEED_DIR) {
     await seedPluginDir(PLUGIN_DIR, PLUGIN_SEED_DIR);
   }
-  const plugin = await loadPlugin(PLUGIN_DIR);
+  const pluginManager = await createPluginManager({ pluginDir: PLUGIN_DIR });
   console.log(`[plugin] loaded from ${PLUGIN_DIR}`);
 
   // 2. Runtime services the Conductor + Dashboard depend on.
@@ -42,7 +45,7 @@ async function main() {
   // and the Plugin assets dir. No rasterize step lives here anymore — the
   // Device-facing pixels come from /preview/png on the Dashboard sub-app.
   const conductor = createConductor({
-    plugin,
+    pluginManager,
     deriveHtml,
     identityFor,
     errorView,

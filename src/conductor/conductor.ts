@@ -1,18 +1,18 @@
 import { Hono } from "hono";
 import { serveStatic } from "hono/deno";
-import type { DeviceReport, Plugin, Result, RunContext } from "../plugin/plugin.ts";
+import type { DeviceReport, Result, RunContext } from "../plugin/plugin.ts";
+import type { PluginManager } from "../plugin/plugin-manager.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 import { timed } from "../render/timings.ts";
 
-// The Conductor is opaque to the Plugin's state shape. `Result<unknown>` /
-// `Plugin<unknown>` work here because `Result.view` is declared as a method
-// in the contract (see src/plugin/plugin.ts), which makes the type
-// bivariant in `S` — a Plugin author's `Plugin<MyState>` flows in cleanly,
-// keeping full type safety inside `run` and `view`.
+// The Conductor is opaque to the Plugin's state shape. Going through the
+// PluginManager (which produces a Bundle) means the Conductor never touches
+// the raw Plugin module; once we wire Slot + Renderer in subsequent slices,
+// the Bundle's `assets` map flows alongside `result` without further plumbing.
 
 export type ConductorDeps = {
-  plugin: Plugin<unknown>;
+  pluginManager: PluginManager;
   // The pure HTML-derivation half of the Renderer. Rasterize lives on the
   // dashboard side now — the Conductor no longer turns HTML into PNGs; the
   // Device fetches `/preview/png`, which screenshots `/preview` live.
@@ -92,7 +92,11 @@ export function createConductor(deps: ConductorDeps): Conductor {
     let identity: string;
     let error: Error | null = null;
     try {
-      result = await timed("pipeline.run", () => Promise.resolve(deps.plugin.run(ctx)));
+      // PluginManager returns a Bundle (`{ result, assets }`); the rest of
+      // the derive flow only needs `result` for now. Slot + Renderer will
+      // consume the full Bundle in slices #50 / #52.
+      const bundle = await timed("pipeline.run", () => deps.pluginManager.run(ctx));
+      result = bundle.result;
       html = await timed(
         "pipeline.deriveHtml",
         () => Promise.resolve(deps.deriveHtml(result)),
