@@ -48,15 +48,23 @@ export function createDashboard(deps: DashboardDeps): Hono {
 
       // Derive locally so we can show Result metadata (state, identity,
       // validity, view name) next to the rendered PNG. The PNG itself comes
-      // from CDP screenshotting /preview — see fetchPngFromUrl below.
+      // from CDP screenshotting /preview — when CDP is unreachable we still
+      // render the page (Result, scrubber, timings stay useful for debugging)
+      // and surface the failure as a notice in place of the image.
       const t0 = performance.now();
       const { value, timings } = await withTimings(async () => {
         const derived = await deps.derive(t, "scrub");
         const previewUrl = `${deps.internalOrigin}/preview?${new URLSearchParams({
           t: toDatetimeLocal(t),
         })}`;
-        const png = await timed("pipeline.rasterize", () => deps.fetchPngFromUrl(previewUrl));
-        return { derived, png };
+        let png: Uint8Array | null = null;
+        let pngError: Error | null = null;
+        try {
+          png = await timed("pipeline.rasterize", () => deps.fetchPngFromUrl(previewUrl));
+        } catch (err) {
+          pngError = err instanceof Error ? err : new Error(String(err));
+        }
+        return { derived, png, pngError };
       });
       const totalMs = performance.now() - t0;
 
@@ -73,7 +81,8 @@ export function createDashboard(deps: DashboardDeps): Hono {
           },
           timings,
           totalMs,
-          pngBase64: encodeBase64(value.png),
+          pngBase64: value.png ? encodeBase64(value.png) : null,
+          pngError: value.pngError?.message ?? null,
         }) as Parameters<typeof renderToString>[0],
       );
       return c.html("<!DOCTYPE html>" + page, 200, { "cache-control": "no-store" });

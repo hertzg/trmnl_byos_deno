@@ -228,6 +228,31 @@ Deno.test("GET / renders the Plugin's Result.state as JSON for debugging", async
   assertEquals(decoded.includes('"count": 1'), true, "state JSON pretty-printed");
 });
 
+Deno.test("GET / degrades gracefully when fetchPngFromUrl throws (e.g. CDP down)", async () => {
+  const fetchPngFromUrl = spy((_url: string) => Promise.reject(new Error("CDP /json/version 502")));
+  const app = wire(
+    {
+      plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+      deriveHtml: () => "<p>x</p>",
+      identityFor: () => "id",
+    },
+    { fetchPngFromUrl },
+  );
+
+  const res = await app.request("/");
+
+  // Page still renders — scrubber, Result metadata, timings all stay
+  // useful for debugging while CDP is down.
+  assertEquals(res.status, 200);
+  const html = await res.text();
+  assertEquals(html.includes("rasterize failed"), true, "missing degraded notice");
+  assertEquals(html.includes("CDP /json/version 502"), true, "missing error detail");
+  // The inline <img> is omitted when there's no PNG.
+  assertEquals(html.includes("data:image/png;base64,"), false, "should not embed empty image");
+  // Metadata still present.
+  assertEquals(html.includes("identity"), true, "metadata table missing");
+});
+
 Deno.test("GET / fetches the inlined PNG via fetchPngFromUrl pointed at the internal origin's /preview", async () => {
   const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
   const app = wire(
