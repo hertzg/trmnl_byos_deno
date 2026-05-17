@@ -99,8 +99,8 @@ export default function Dashboard(props: DashboardProps) {
           now: <code>{fmtTime(now)}</code> · timezone: <code>{now.timeZoneId}</code>
         </p>
         <p class="deferred">
-          scrub at arbitrary <code>t</code> is deferred to a later slice; the form below is a
-          placeholder.
+          scrub at arbitrary <code>t</code>{" "}
+          is deferred to a later slice; the form below is a placeholder.
         </p>
         <form method="get" action="/">
           <label for="t">t</label>
@@ -133,9 +133,7 @@ export default function Dashboard(props: DashboardProps) {
             <tr>
               <th scope="row">refresh in</th>
               <td>
-                {refreshIn !== null
-                  ? fmtDuration(refreshIn)
-                  : <span class="muted">(unknown)</span>}
+                {refreshIn !== null ? fmtDuration(refreshIn) : <span class="muted">(unknown)</span>}
               </td>
             </tr>
           </tbody>

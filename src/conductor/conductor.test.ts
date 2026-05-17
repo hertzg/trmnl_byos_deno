@@ -1,7 +1,7 @@
 import { assertEquals, assertGreaterOrEqual, assertLessOrEqual } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
 import { type ConductorDeps, createConductor } from "./conductor.ts";
-import type { Plugin, RunContext } from "../plugin/plugin.ts";
+import type { Plugin } from "../plugin/plugin.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
 import type { Bundle } from "../plugin/bundle.ts";
@@ -374,7 +374,11 @@ Deno.test("Tier 3: once validity has elapsed, the next /api/display runs the Plu
     pluginManager: managerFor({
       run: () => {
         runCount++;
-        return { state: { n: runCount }, validity: fiveMin, view: (s: { n: number }) => `<p>${s.n}</p>` };
+        return {
+          state: { n: runCount },
+          validity: fiveMin,
+          view: (s: { n: number }) => `<p>${s.n}</p>`,
+        };
       },
     }),
     renderer: fakeRenderer(),
