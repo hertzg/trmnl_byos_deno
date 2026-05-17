@@ -111,7 +111,7 @@ export function createDashboard(deps: DashboardDeps): Hono {
       const html = renderToString(
         bundle.result.view(bundle.result.state) as Parameters<typeof renderToString>[0],
       );
-      return c.html(html, error ? 500 : 200, { "cache-control": "no-store" });
+      return c.html("<!DOCTYPE html>" + html, error ? 500 : 200, { "cache-control": "no-store" });
     })
     // Live PNG of /preview, via CDP. The Device fetches this on every poll
     // — the JSON returned by /api/display points image_url here.

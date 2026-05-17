@@ -294,7 +294,7 @@ Deno.test("GET /preview returns the live HTML at t=now and intent=scrub by defau
   const preview = await app.request("/preview");
   assertEquals(preview.status, 200);
   assertEquals(preview.headers.get("content-type")?.startsWith("text/html"), true);
-  assertEquals(await preview.text(), "<p>scrub</p>");
+  assertEquals(await preview.text(), "<!DOCTYPE html><p>scrub</p>");
   assertEquals(run.calls.at(-1)?.args[0].intent, "scrub");
   assertEquals(run.calls.at(-1)?.args[0].t.toString(), T0.toString());
 });
