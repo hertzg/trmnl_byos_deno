@@ -187,6 +187,21 @@ Deno.test("Renderer.rasterize hands the fetcher a URL on the loopback origin (no
   }
 });
 
+// ─── loopback host configurability ─────────────────────────────────────────
+
+Deno.test("default loopbackHost: URL handed to CDP is on http://127.0.0.1:<port> (secure compose-mode default)", async () => {
+  const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
+  try {
+    await renderer.rasterize(bundleWith({}, () => <p>x</p>));
+
+    const url = fetchPngFromUrl.calls[0].args[0];
+    assertMatch(url, /^http:\/\/127\.0\.0\.1:\d+\//);
+  } finally {
+    await renderer.close();
+  }
+});
+
 // ─── concurrency: single-mount with lock ───────────────────────────────────
 
 Deno.test("sequential rasterize calls each see only their own Bundle's HTML", async () => {
