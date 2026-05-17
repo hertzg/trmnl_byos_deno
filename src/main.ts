@@ -73,15 +73,20 @@ async function main() {
   // 7. Dashboard at /. Reads the Slot in-process to show the current
   // Image; triggers a refill via `conductor.app.request("/api/display")`
   // when the Slot is empty so there is exactly one render path. Reads
-  // `telemetry.latest()` to render the trace strip.
+  // `telemetry.latest()` to render the trace strip. Owns the scrub path
+  // (`GET /dashboard/preview.png?t=...`) which calls PluginManager +
+  // Renderer directly — bypasses the Slot and never writes Telemetry.
+  // `POST /dashboard/clear` invokes `slot.clear()` directly.
   const dashboard = createDashboard({
     slot,
     telemetry,
     conductorApp: conductor.app,
+    pluginManager,
+    renderer,
     now,
   });
 
-  // 7. Parent app: access log + error handler, then compose the sub-apps.
+  // 8. Parent app: access log + error handler, then compose the sub-apps.
   const app = new Hono()
     .use(logger())
     .onError((err, c) => {
