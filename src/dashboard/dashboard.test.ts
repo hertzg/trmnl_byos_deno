@@ -501,6 +501,31 @@ Deno.test("GET /preview returns the live HTML at t=now and does not touch Curren
   assertSpyCalls(rasterize, 1); // poll triggered one rasterize; /preview never did
 });
 
+Deno.test("GET /preview returns status 500 with the error view HTML when the Plugin throws", async () => {
+  const boom = new Error("plugin boom");
+  const app = wire({
+    plugin: {
+      run: () => {
+        throw boom;
+      },
+    },
+    renderer: {
+      deriveHtml: (r: Result<unknown>) => String(r.view(r.state)),
+      rasterize: () => Promise.resolve(new Uint8Array()),
+    },
+    identityFor: () => "id",
+    errorView: (err: Error) => `<html><body>ERR: ${err.message}</body></html>`,
+  });
+
+  const res = await app.request("/preview");
+
+  assertEquals(res.status, 500);
+  assertEquals(res.headers.get("content-type")?.startsWith("text/html"), true);
+  assertEquals(res.headers.get("cache-control"), "no-store");
+  const body = await res.text();
+  assertEquals(body.includes("plugin boom"), true, "error message missing from body");
+});
+
 Deno.test("GET /preview/png returns the rasterized PNG and does not touch Current state", async () => {
   const c = clock();
   const previewPng = new Uint8Array([0xbb]);
