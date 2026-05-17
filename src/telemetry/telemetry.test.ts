@@ -30,3 +30,14 @@ Deno.test("latest() returns the trace handed to record()", () => {
 
   assertStrictEquals(telemetry.latest(), trace);
 });
+
+Deno.test("record() replaces the prior trace rather than accumulating", () => {
+  const telemetry = createTelemetry();
+  const first = makeTrace({ identity: "first" });
+  const second = makeTrace({ identity: "second" });
+
+  telemetry.record(first);
+  telemetry.record(second);
+
+  assertStrictEquals(telemetry.latest(), second);
+});
