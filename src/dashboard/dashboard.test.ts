@@ -264,14 +264,16 @@ Deno.test("GET /dashboard/preview.png?t=... runs PluginManager + Renderer.raster
     renderer: defaultRenderer({ rasterize: () => Promise.resolve(scrubPng) }),
   });
 
-  const res = await app.request("/dashboard/preview.png?t=2026-05-16T12:00:00%2B02:00[Europe/Berlin]");
+  const res = await app.request(
+    "/dashboard/preview.png?t=2026-05-16T12:00:00%2B02:00[Europe/Berlin]",
+  );
 
   assertEquals(res.status, 200);
   assertEquals(res.headers.get("content-type"), "image/png");
   assertEquals(new Uint8Array(await res.arrayBuffer()), scrubPng);
 });
 
-Deno.test("GET /dashboard/preview.png parses ?t= into ctx.t and runs Plugin with intent=\"scrub\", device=null", async () => {
+Deno.test('GET /dashboard/preview.png parses ?t= into ctx.t and runs Plugin with intent="scrub", device=null', async () => {
   // The scrub form posts a fully-zoned ISO string; the Dashboard parses it
   // with Temporal.ZonedDateTime.from and threads it onto the RunContext.
   // intent is "scrub" (so Plugins can differentiate dashboard previews
