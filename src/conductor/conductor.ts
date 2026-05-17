@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { serveStatic } from "hono/deno";
 import type { DeviceReport, Result, RunContext } from "../plugin/plugin.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
@@ -26,7 +25,6 @@ export type ConductorDeps = {
   errorValidity: Temporal.Duration;
   // BYOS surface — these flow through the Conductor's own Hono sub-app.
   friendlyId: string;
-  pluginAssetsDir: string;
   onDeviceLog?: (id: string, body: string) => void;
   now: () => Temporal.ZonedDateTime;
 };
@@ -49,8 +47,9 @@ export type DeriveResult = {
 };
 
 export type Conductor = {
-  // Hono sub-app for the BYOS surface (/api/setup, /api/display, /api/log)
-  // and Plugin assets (/assets/*).
+  // Hono sub-app for the BYOS surface (/api/setup, /api/display, /api/log).
+  // No /assets/* route — Plugin assets travel through Bundle into Renderer's
+  // loopback origin (ADR-0003, ADR-0005, slice #51).
   app: Hono;
   // Run Plugin + Renderer.identity at an arbitrary `t`. Used by /preview
   // (whose HTML CDP screenshots) and the dashboard.
@@ -171,18 +170,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
       const id = c.req.raw.headers.get("id") ?? c.req.raw.headers.get("ID") ?? "(none)";
       deps.onDeviceLog?.(id, body);
       return c.body(null, 204);
-    })
-    // serveStatic appends the full request path to `root` (it doesn't strip
-    // the matched URL prefix), so we rewrite `/assets/foo.css` → `/foo.css`
-    // before lookup. That way `pluginAssetsDir` honestly points at the dir
-    // that contains the files, not at its parent.
-    .use(
-      "/assets/*",
-      serveStatic({
-        root: deps.pluginAssetsDir,
-        rewriteRequestPath: (path) => path.replace(/^\/assets/, ""),
-      }),
-    );
+    });
 
   return { app, derive };
 }
