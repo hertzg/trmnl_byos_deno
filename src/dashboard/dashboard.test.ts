@@ -11,7 +11,6 @@ import type { Bundle } from "../plugin/bundle.ts";
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
-const INTERNAL = "http://internal:3000";
 
 // Wrap a Plugin in a stub PluginManager so test bodies keep speaking
 // "Plugin run returns ..." while the Conductor consumes a Bundle.
@@ -28,13 +27,12 @@ function conductorDefaults(
   overrides: Partial<ConductorDeps> = {},
 ): Pick<
   ConductorDeps,
-  "errorView" | "errorValidity" | "friendlyId" | "pluginAssetsDir" | "now"
+  "errorView" | "errorValidity" | "friendlyId" | "now"
 > {
   return {
     errorView: (_err: Error) => "",
     errorValidity: Temporal.Duration.from({ seconds: 30 }),
     friendlyId: "ID",
-    pluginAssetsDir: "/tmp",
     now: () => T0,
     ...overrides,
   };
@@ -42,32 +40,34 @@ function conductorDefaults(
 
 // Default Renderer for dashboard tests: identity derives a deterministic
 // `id-<view-output>` so tests can assert on `filename`/`identity` without
-// re-implementing hashBundle. `rasterize` is unused on the dashboard's
-// /preview/png path — pixels come from `fetchPngFromUrl` for this slice.
+// re-implementing hashBundle. `rasterize` returns a small PNG-magic prefix
+// so /preview/png and the inline / image have bytes that look like a PNG.
 function defaultRenderer(overrides: Partial<Renderer> = {}): Renderer {
   return {
     identity: (b: Bundle) => Promise.resolve("id-" + String(b.result.view(b.result.state))),
-    rasterize: () => Promise.resolve(new Uint8Array()),
+    rasterize: () => Promise.resolve(new Uint8Array([0x89, 0x50, 0x4e, 0x47])),
+    origin: () => "http://127.0.0.1:0",
+    close: () => Promise.resolve(),
     ...overrides,
   };
 }
 
-// Compose the Conductor's HTTP sub-app and the Dashboard the same way main.ts
-// does. Tests that exercise both /api/* and /preview* go through this wiring
-// so they see the same composition the production server does.
+// Compose the Conductor's HTTP sub-app and the Dashboard the same way
+// main.ts does. Tests that exercise both /api/* and /preview* go through
+// this wiring so they see the same composition the production server does.
 function wire(
   conductorDeps: Partial<ConductorDeps>,
   dashboardOverrides: Partial<DashboardDeps> = {},
 ) {
+  const renderer = conductorDeps.renderer ?? defaultRenderer();
   const conductor = createConductor({
     ...conductorDefaults(conductorDeps),
-    renderer: defaultRenderer(),
+    renderer,
     ...conductorDeps,
   } as ConductorDeps);
   const dashboard = createDashboard({
     derive: conductor.derive,
-    fetchPngFromUrl: () => Promise.resolve(new Uint8Array([0x89])),
-    internalOrigin: INTERNAL,
+    renderer,
     now: conductorDeps.now ?? conductorDefaults().now,
     ...dashboardOverrides,
   });
@@ -189,6 +189,10 @@ Deno.test("GET / surfaces ctx.device in the metadata table once a Device has pol
 
 Deno.test("GET / renders the rendered Image, the scrubber, and Result metadata", async () => {
   const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // PNG magic prefix
+  const renderer = defaultRenderer({
+    identity: () => Promise.resolve("dashid"),
+    rasterize: () => Promise.resolve(png),
+  });
   const app = wire(
     {
       pluginManager: managerFor({
@@ -200,9 +204,8 @@ Deno.test("GET / renders the rendered Image, the scrubber, and Result metadata",
           },
         }),
       }),
-      renderer: defaultRenderer({ identity: () => Promise.resolve("dashid") }),
+      renderer,
     },
-    { fetchPngFromUrl: () => Promise.resolve(png) },
   );
 
   const html = await (await app.request("/")).text();
@@ -235,15 +238,17 @@ Deno.test("GET / renders the Plugin's Result.state as JSON for debugging", async
   assertEquals(decoded.includes('"count": 1'), true, "state JSON pretty-printed");
 });
 
-Deno.test("GET / degrades gracefully when fetchPngFromUrl throws (e.g. CDP down)", async () => {
-  const fetchPngFromUrl = spy((_url: string) => Promise.reject(new Error("CDP /json/version 502")));
+Deno.test("GET / degrades gracefully when renderer.rasterize throws (e.g. CDP down)", async () => {
+  const renderer = defaultRenderer({
+    rasterize: () => Promise.reject(new Error("CDP /json/version 502")),
+  });
   const app = wire(
     {
       pluginManager: managerFor({
         run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
       }),
+      renderer,
     },
-    { fetchPngFromUrl },
   );
 
   const res = await app.request("/");
@@ -260,93 +265,53 @@ Deno.test("GET / degrades gracefully when fetchPngFromUrl throws (e.g. CDP down)
   assertEquals(html.includes("identity"), true, "metadata table missing");
 });
 
-Deno.test("GET / fetches the inlined PNG via fetchPngFromUrl pointed at the internal origin's /preview", async () => {
-  const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
-  const app = wire(
-    {
-      pluginManager: managerFor({
-        run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
-      }),
-    },
-    { fetchPngFromUrl },
-  );
+Deno.test("GET / inlines the PNG that renderer.rasterize returns for the scrubbed Bundle", async () => {
+  const rasterize = spy((_b: Bundle) => Promise.resolve(new Uint8Array([0x99])));
+  const renderer = defaultRenderer({ rasterize });
+  const run = spy((ctx: RunContext) => ({
+    state: { at: ctx.t.toString() },
+    validity: fiveMin,
+    view: (s: { at: string }) => `<p>${s.at}</p>`,
+  }));
+  const app = wire({ pluginManager: managerFor({ run }), renderer });
 
   await (await app.request("/?t=2026-05-16T11:00")).body?.cancel();
 
-  assertSpyCalls(fetchPngFromUrl, 1);
-  const url = fetchPngFromUrl.calls[0].args[0];
-  assertEquals(url.startsWith(INTERNAL), true, `url ${url} should start with ${INTERNAL}`);
-  assertEquals(url.includes("/preview?"), true, "url should hit /preview with a query");
-  assertEquals(url.includes("t=2026-05-16T11%3A00"), true, "url should carry the scrub t");
+  assertSpyCalls(rasterize, 1);
+  // The Bundle handed to rasterize is the same Bundle the Plugin produced
+  // for the scrubbed `t` — its rendered view encodes "T11:00".
+  const bundle = rasterize.calls[0].args[0];
+  const html = String(bundle.result.view(bundle.result.state));
+  assertEquals(html.includes("11:00"), true, `expected 11:00 in ${html}`);
 });
 
 // ─── /preview ──────────────────────────────────────────────────────────────
 
-Deno.test("GET /preview returns the live HTML at t=now and intent=scrub by default", async () => {
-  const run = spy((ctx: RunContext) => ({
-    state: { intent: ctx.intent, at: ctx.t.toString() },
-    validity: fiveMin,
-    view: (s: { intent: string }) => `<p>${s.intent}</p>`,
-  }));
-
-  const app = wire({ pluginManager: managerFor({ run }) });
-
-  const preview = await app.request("/preview");
-  assertEquals(preview.status, 200);
-  assertEquals(preview.headers.get("content-type")?.startsWith("text/html"), true);
-  assertEquals(await preview.text(), "<!DOCTYPE html><p>scrub</p>");
-  assertEquals(run.calls.at(-1)?.args[0].intent, "scrub");
-  assertEquals(run.calls.at(-1)?.args[0].t.toString(), T0.toString());
-});
-
-Deno.test("GET /preview honors ?t= and ?intent= so /preview/png can forward them through to CDP", async () => {
-  const run = spy((ctx: RunContext) => ({
-    state: { intent: ctx.intent, at: ctx.t.toString() },
-    validity: fiveMin,
-    view: () => "<p>x</p>",
-  }));
-
-  const app = wire({ pluginManager: managerFor({ run }) });
-
-  await (await app.request("/preview?t=2026-05-16T11:00&intent=poll")).body?.cancel();
-
-  const call = run.calls.at(-1)!;
-  assertEquals(call.args[0].intent, "poll");
-  assertEquals(call.args[0].t.toString(), at("2026-05-16T11:00").toString());
-});
-
-Deno.test("GET /preview returns status 500 with the error view HTML when the Plugin throws", async () => {
-  const boom = new Error("plugin boom");
+Deno.test("GET /preview returns 404 — the HTML CDP screenshots is served only by Renderer's loopback origin", async () => {
   const app = wire({
     pluginManager: managerFor({
-      run: () => {
-        throw boom;
-      },
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
     }),
-    errorView: (err: Error) => `<html><body>ERR: ${err.message}</body></html>`,
   });
 
   const res = await app.request("/preview");
+  await res.body?.cancel();
 
-  assertEquals(res.status, 500);
-  assertEquals(res.headers.get("content-type")?.startsWith("text/html"), true);
-  assertEquals(res.headers.get("cache-control"), "no-store");
-  const body = await res.text();
-  assertEquals(body.includes("plugin boom"), true, "error message missing from body");
+  assertEquals(res.status, 404);
 });
 
 // ─── /preview/png ──────────────────────────────────────────────────────────
 
-Deno.test("GET /preview/png returns the bytes fetchPngFromUrl resolved with", async () => {
+Deno.test("GET /preview/png returns the bytes renderer.rasterize resolved with", async () => {
   const png = new Uint8Array([0xbb]);
-  const fetchPngFromUrl = spy((_url: string) => Promise.resolve(png));
+  const renderer = defaultRenderer({ rasterize: () => Promise.resolve(png) });
   const app = wire(
     {
       pluginManager: managerFor({
         run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
       }),
+      renderer,
     },
-    { fetchPngFromUrl },
   );
 
   const res = await app.request("/preview/png");
@@ -357,38 +322,36 @@ Deno.test("GET /preview/png returns the bytes fetchPngFromUrl resolved with", as
   assertEquals(new Uint8Array(await res.arrayBuffer()), png);
 });
 
-Deno.test("GET /preview/png hands CDP the internalOrigin /preview URL", async () => {
-  const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
+Deno.test("GET /preview/png calls renderer.rasterize with the Bundle Conductor.derive produced", async () => {
+  const rasterize = spy((_b: Bundle) => Promise.resolve(new Uint8Array([0x01])));
+  const renderer = defaultRenderer({ rasterize });
   const app = wire(
     {
       pluginManager: managerFor({
-        run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+        run: () => ({ state: { who: "device" }, validity: fiveMin, view: () => "<p>poll</p>" }),
       }),
+      renderer,
     },
-    { fetchPngFromUrl },
   );
 
   await (await app.request("/preview/png")).body?.cancel();
 
-  assertSpyCalls(fetchPngFromUrl, 1);
-  assertEquals(fetchPngFromUrl.calls[0].args[0], `${INTERNAL}/preview`);
+  assertSpyCalls(rasterize, 1);
+  const bundle = rasterize.calls[0].args[0];
+  assertEquals(bundle.result.state, { who: "device" });
 });
 
-Deno.test("GET /preview/png?t=...&intent=... forwards the query through to /preview via CDP", async () => {
-  const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
-  const app = wire(
-    {
-      pluginManager: managerFor({
-        run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
-      }),
-    },
-    { fetchPngFromUrl },
-  );
+Deno.test("GET /preview/png?t=...&intent=... scrubs the Plugin at the requested moment", async () => {
+  const run = spy((ctx: RunContext) => ({
+    state: { intent: ctx.intent, at: ctx.t.toString() },
+    validity: fiveMin,
+    view: () => "<p>x</p>",
+  }));
+  const app = wire({ pluginManager: managerFor({ run }) });
 
   await (await app.request("/preview/png?t=2026-05-16T11:00&intent=poll")).body?.cancel();
 
-  const url = fetchPngFromUrl.calls[0].args[0];
-  assertEquals(url.startsWith(`${INTERNAL}/preview?`), true);
-  assertEquals(url.includes("t=2026-05-16T11%3A00"), true);
-  assertEquals(url.includes("intent=poll"), true);
+  const call = run.calls.at(-1)!;
+  assertEquals(call.args[0].intent, "poll");
+  assertEquals(call.args[0].t.toString(), at("2026-05-16T11:00").toString());
 });
