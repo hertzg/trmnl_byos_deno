@@ -48,6 +48,16 @@ export type FetchPngFromUrl = (url: string) => Promise<Uint8Array>;
 
 export type RendererDeps = {
   fetchPngFromUrl: FetchPngFromUrl;
+  // Hostname used in the URL handed to CDP (and the bind interface for the
+  // loopback origin). Defaults to "127.0.0.1" — the secure compose-mode
+  // default, where chrome shares the deno container's network namespace.
+  //
+  // Override (typically "host.docker.internal") for the `deno task dev`
+  // workflow, where deno runs on the host and chrome runs in docker and has
+  // to reach the host across the docker bridge. Any value other than
+  // "127.0.0.1" also flips the bind to 0.0.0.0; see the implementation
+  // comment in `createRenderer` for the security trade-off.
+  loopbackHost?: string;
 };
 
 // The path CDP fetches on the loopback origin to get the mounted Bundle's
@@ -90,12 +100,22 @@ export function createRenderer(deps: RendererDeps): Renderer {
   // `Deno.serve` with `port: 0` asks the kernel for an ephemeral port. The
   // returned server exposes `.addr` (the assigned port) and `.shutdown()`
   // (graceful drain on close).
+  //
+  // Default loopbackHost ("127.0.0.1") binds on the loopback interface only,
+  // keeping the origin un-reachable from any other host. The override case
+  // (e.g. "host.docker.internal" for deno-on-host + chrome-in-docker) binds
+  // on 0.0.0.0 so the port is reachable via the host's external IP / docker
+  // bridge; this exposes the loopback port to the local network, which is
+  // acceptable under the single-user trusted-LAN posture of ADR-0001 but is
+  // why the secure default stays 127.0.0.1.
+  const loopbackHost = deps.loopbackHost ?? "127.0.0.1";
+  const bindHostname = loopbackHost === "127.0.0.1" ? "127.0.0.1" : "0.0.0.0";
   const server = Deno.serve(
-    { port: 0, hostname: "127.0.0.1", onListen: () => {} },
+    { port: 0, hostname: bindHostname, onListen: () => {} },
     app.fetch,
   );
   const addr = server.addr as Deno.NetAddr;
-  const origin = `http://127.0.0.1:${addr.port}`;
+  const origin = `http://${loopbackHost}:${addr.port}`;
 
   return {
     identity(bundle) {

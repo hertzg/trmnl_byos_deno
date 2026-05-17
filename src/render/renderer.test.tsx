@@ -202,6 +202,27 @@ Deno.test("default loopbackHost: URL handed to CDP is on http://127.0.0.1:<port>
   }
 });
 
+Deno.test("loopbackHost override: URL handed to CDP uses the configured host (deno-on-host + chrome-in-docker)", async () => {
+  // The `deno task dev` workflow runs deno on the host and chrome in docker;
+  // chrome reaches the host via `host.docker.internal`. The Renderer must
+  // hand CDP a URL with that hostname, not 127.0.0.1.
+  const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
+  const renderer = createRenderer(defaults({
+    fetchPngFromUrl,
+    loopbackHost: "host.docker.internal",
+  }));
+  try {
+    await renderer.rasterize(bundleWith({}, () => <p>x</p>));
+
+    const url = fetchPngFromUrl.calls[0].args[0];
+    assertMatch(url, /^http:\/\/host\.docker\.internal:\d+\//);
+    // origin() exposes the same host for diagnostics.
+    assertMatch(renderer.origin(), /^http:\/\/host\.docker\.internal:\d+$/);
+  } finally {
+    await renderer.close();
+  }
+});
+
 // ─── concurrency: single-mount with lock ───────────────────────────────────
 
 Deno.test("sequential rasterize calls each see only their own Bundle's HTML", async () => {
