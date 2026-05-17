@@ -3,6 +3,7 @@ import { serveStatic } from "hono/deno";
 import type { DeviceReport, Plugin, Result, RunContext } from "../plugin/plugin.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
+import { timed } from "../render/timings.ts";
 
 // The Conductor is opaque to the Plugin's state shape. `Result<unknown>` /
 // `Plugin<unknown>` work here because `Result.view` is declared as a method
@@ -27,10 +28,65 @@ export type ConductorDeps = {
   now: () => Temporal.ZonedDateTime;
 };
 
-// `createConductor` returns a Hono directly. The orchestration logic
-// lives entirely inside the factory closure — its only external surface
-// is HTTP.
-export function createConductor(deps: ConductorDeps): Hono {
+// `derive()` output: pipeline up to HTML and identity, no rasterize.
+// For peers that want the live HTML for inspection without paying CDP cost.
+// `device` is the DeviceReport the Plugin actually saw on `ctx.device`
+// (latest report at the time of the call, or null if no Device has polled
+// yet).
+export type DeriveResult = {
+  result: Result<unknown>;
+  html: string;
+  identity: string;
+  device: DeviceReport | null;
+};
+
+// `render()` output: full pipeline (derive + rasterize). Post error-
+// fallback — if any pipeline step threw, the swapped-in error Result/
+// identity/png is what flows out. Per-step wall-clock is not part of
+// this shape; peers that want it open a `withTimings()` context around
+// the call and read the bucket — the Conductor and the Renderer both
+// record into it via `src/render/timings.ts`.
+export type RenderResult = {
+  result: Result<unknown>;
+  identity: string;
+  png: Uint8Array;
+  device: DeviceReport | null;
+};
+
+// `committedState()` output: what the Device is currently being served
+// by the poll path. Null until the first poll has populated Current
+// Result + Current Image. `device` is the DeviceReport captured at
+// commit time (the Plugin's `ctx.device` for the run that produced
+// this state).
+export type CommittedState = {
+  t: Temporal.ZonedDateTime;
+  result: Result<unknown>;
+  identity: string;
+  device: DeviceReport | null;
+} | null;
+
+export type Conductor = {
+  // Hono sub-app for the BYOS surface (/api/setup, /api/display, /api/log,
+  // /images/:identity/png) and Plugin assets (/assets/*).
+  app: Hono;
+  // Run Plugin + deriveHtml + identityFor at an arbitrary `t`. Skips
+  // rasterize — useful for cheap surfaces that only need the HTML.
+  // Never mutates Current state.
+  derive(t: Temporal.ZonedDateTime): Promise<DeriveResult>;
+  // Full pipeline at an arbitrary `t`: derive + rasterize. Always
+  // rasterizes (never short-circuits via identity match — peers that ask
+  // for a render want fresh bytes; the poll path is the only consumer
+  // that benefits from short-circuiting). Never mutates Current state.
+  render(t: Temporal.ZonedDateTime): Promise<RenderResult>;
+  // Latest committed Result + Image, or null pre-first-poll. Peers read
+  // this to surface "what the Device is seeing right now".
+  committedState(): CommittedState;
+};
+
+// The orchestration logic lives entirely inside the factory closure;
+// peers reach it via the small `render` + `derive` + `committedState`
+// surface.
+export function createConductor(deps: ConductorDeps): Conductor {
   type CurrentResult = { ctx: RunContext; result: Result<unknown> };
   type CurrentImage = { png: Uint8Array; identity: string };
 
@@ -50,6 +106,11 @@ export function createConductor(deps: ConductorDeps): Hono {
     };
   }
 
+  // Each pipeline step is wrapped in `timed()` so callers that open a
+  // `withTimings()` context around the call get per-step wall-clock for
+  // free. Outside such a context `timed()` is a pass-through, so the
+  // poll path pays nothing.
+
   // Pipeline up to identity, with error-view fallback for plugin.run +
   // deriveHtml + identityFor. No state mutation — callers decide whether
   // to update Current Result / Current Image. Rasterize is separate
@@ -67,13 +128,25 @@ export function createConductor(deps: ConductorDeps): Hono {
     let html: string;
     let identity: string;
     try {
-      result = await deps.plugin.run(ctx);
-      html = await deps.renderer.deriveHtml(result);
-      identity = await deps.identityFor(html);
+      result = await timed("pipeline.run", () => Promise.resolve(deps.plugin.run(ctx)));
+      html = await timed(
+        "pipeline.deriveHtml",
+        () => Promise.resolve(deps.renderer.deriveHtml(result)),
+      );
+      identity = await timed(
+        "pipeline.identityFor",
+        () => Promise.resolve(deps.identityFor(html)),
+      );
     } catch (err) {
       result = errorResult(err);
-      html = await deps.renderer.deriveHtml(result);
-      identity = await deps.identityFor(html);
+      html = await timed(
+        "pipeline.deriveHtml",
+        () => Promise.resolve(deps.renderer.deriveHtml(result)),
+      );
+      identity = await timed(
+        "pipeline.identityFor",
+        () => Promise.resolve(deps.identityFor(html)),
+      );
     }
     return { ctx, result, html, identity };
   }
@@ -89,13 +162,25 @@ export function createConductor(deps: ConductorDeps): Hono {
     identity: string,
   ): Promise<{ result: Result<unknown>; html: string; identity: string; png: Uint8Array }> {
     try {
-      const png = await deps.renderer.rasterize(html, result.hints);
+      const png = await timed(
+        "pipeline.rasterize",
+        () => deps.renderer.rasterize(html, result.hints),
+      );
       return { result, html, identity, png };
     } catch (err) {
       const fallback = errorResult(err);
-      const fallbackHtml = await deps.renderer.deriveHtml(fallback);
-      const fallbackIdentity = await deps.identityFor(fallbackHtml);
-      const png = await deps.renderer.rasterize(fallbackHtml, fallback.hints);
+      const fallbackHtml = await timed(
+        "pipeline.deriveHtml",
+        () => Promise.resolve(deps.renderer.deriveHtml(fallback)),
+      );
+      const fallbackIdentity = await timed(
+        "pipeline.identityFor",
+        () => Promise.resolve(deps.identityFor(fallbackHtml)),
+      );
+      const png = await timed(
+        "pipeline.rasterize",
+        () => deps.renderer.rasterize(fallbackHtml, fallback.hints),
+      );
       return { result: fallback, html: fallbackHtml, identity: fallbackIdentity, png };
     }
   }
@@ -133,7 +218,41 @@ export function createConductor(deps: ConductorDeps): Hono {
     };
   }
 
-  return new Hono()
+  // Full pipeline at an arbitrary `t`. Pure with respect to Current
+  // state; the caller decides how to surface the result. Always
+  // rasterizes — peers that ask for a render want fresh bytes even when
+  // identity matches the Current Image (so non-deterministic views show
+  // up). The poll path is the only consumer that benefits from the
+  // identity-match short-circuit.
+  async function render(t: Temporal.ZonedDateTime): Promise<RenderResult> {
+    const { ctx, result, html, identity } = await runAndDerive({ t, intent: "scrub" });
+    const out = await rasterizeWithFallback(result, html, identity);
+    return {
+      result: out.result,
+      identity: out.identity,
+      png: out.png,
+      device: ctx.device,
+    };
+  }
+
+  // Pipeline up to HTML. No rasterize cost.
+  async function derive(t: Temporal.ZonedDateTime): Promise<DeriveResult> {
+    const { ctx, result, html, identity } = await runAndDerive({ t, intent: "scrub" });
+    return { result, html, identity, device: ctx.device };
+  }
+
+  function committedState(): CommittedState {
+    return currentResult && currentImage
+      ? {
+        t: currentResult.ctx.t,
+        result: currentResult.result,
+        identity: currentImage.identity,
+        device: currentResult.ctx.device,
+      }
+      : null;
+  }
+
+  const app = new Hono()
     .get("/api/setup", (c) =>
       // `image_url` is part of the BYOS setup payload. There's no frame
       // to point at yet — the Device proceeds to /api/display next, which
@@ -180,26 +299,6 @@ export function createConductor(deps: ConductorDeps): Hono {
       if (png === undefined) return c.body(null, 404);
       return c.body(png as unknown as ArrayBuffer, 200, { "content-type": "image/png" });
     })
-    // Dev-iteration: live HTML at t=now via scrub. ADR-0005: no CDP cost.
-    // Does not touch Current Result or Current Image.
-    .get("/preview", async (c) => {
-      const { html } = await runAndDerive({ t: deps.now(), intent: "scrub" });
-      return c.html(html, 200, { "cache-control": "no-store" });
-    })
-    // Dev-iteration: live PNG at t=now via scrub. Full pipeline including
-    // the rasterize-with-fallback. Does not touch Current Result or Current
-    // Image.
-    .get("/preview/png", async (c) => {
-      const { result, html, identity } = await runAndDerive({
-        t: deps.now(),
-        intent: "scrub",
-      });
-      const out = await rasterizeWithFallback(result, html, identity);
-      return c.body(out.png as unknown as ArrayBuffer, 200, {
-        "content-type": "image/png",
-        "cache-control": "no-store",
-      });
-    })
     // serveStatic appends the full request path to `root` (it doesn't strip
     // the matched URL prefix), so we rewrite `/assets/foo.css` → `/foo.css`
     // before lookup. That way `pluginAssetsDir` honestly points at the dir
@@ -211,4 +310,6 @@ export function createConductor(deps: ConductorDeps): Hono {
         rewriteRequestPath: (path) => path.replace(/^\/assets/, ""),
       }),
     );
+
+  return { app, derive, render, committedState };
 }

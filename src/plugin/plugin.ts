@@ -1,7 +1,7 @@
 // Heartbeat-derived telemetry from a real Device poll. The holder in
 // src/device.ts parses headers into this shape on every /api/display poll;
-// RunContext.device is whatever the holder has at the moment
-// Conductor.trigger fires (or `null` if no poll has arrived yet).
+// RunContext.device is whatever the holder has at the moment a trigger
+// fires (or `null` if no Device poll has arrived yet).
 //
 // `id` and `lastSeenAt` are non-nullable because they are guaranteed whenever
 // we have a report at all (the BYOS firmware always sends `ID`; the holder

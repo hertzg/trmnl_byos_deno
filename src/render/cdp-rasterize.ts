@@ -28,8 +28,7 @@ export function createCdpRasterize(deps: CdpRasterizeDeps): CdpRasterize {
   const shelf = new Map<string, string>();
 
   // The route lives under an explicit `__internal` prefix so it can never
-  // collide with the application's `/preview` (live HTML at t=now) and
-  // `/preview/png` (live PNG at t=now) dev-iteration routes. The path is
+  // collide with public routes mounted by other sub-apps. The path is
   // chosen and used in exactly one place; only CDP ever fetches it.
   const RENDER_PATH = "/__internal/render";
 
