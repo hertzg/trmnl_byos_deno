@@ -77,6 +77,35 @@ Deno.test("GET /api/display returns BYOS JSON with image_url=/image/<identity>.p
   assertLessOrEqual(body.refresh_rate, 300);
 });
 
+// ─── Tier 3: expired Slot triggers a fresh render ─────────────────────────
+
+Deno.test("Tier 3: once validity has elapsed, the next /api/display runs the Plugin again and surfaces the new identity", async () => {
+  // First poll cold-fills the Slot; the simulated clock then jumps past
+  // `cachedAt + validity` so the next poll falls through to Tier 3.
+  let clock = T0;
+  const now = () => clock;
+  let runCount = 0;
+  const conductor = createConductor({
+    ...defaults({ now, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: () => {
+        runCount++;
+        return { state: { n: runCount }, validity: fiveMin, view: (s: { n: number }) => `<p>${s.n}</p>` };
+      },
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const first = await (await conductor.app.request("/api/display")).json();
+  clock = T0.add(Temporal.Duration.from({ minutes: 5 }));
+  const second = await (await conductor.app.request("/api/display")).json();
+
+  assertEquals(runCount, 2);
+  // Different `state.n` → different `view(state)` → different identity.
+  assertEquals(first.filename, "image-id-<p>1</p>");
+  assertEquals(second.filename, "image-id-<p>2</p>");
+});
+
 // ─── Tier 1: validity hit reuses the Slot, no Plugin run ───────────────────
 
 Deno.test("Tier 1: repeated /api/display polls within validity reuse the Slot — Plugin not invoked again", async () => {
