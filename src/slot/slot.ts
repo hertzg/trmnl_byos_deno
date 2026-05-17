@@ -29,11 +29,17 @@ export type Slot = {
   clear(): void;
 };
 
-export function createSlot(_deps: SlotDeps): Slot {
+export function createSlot(deps: SlotDeps): Slot {
+  let entry: SlotEntry | null = null;
+
   return {
-    put(_entry) {},
+    put(next) {
+      entry = next;
+    },
     display() {
-      return null;
+      if (entry === null) return null;
+      const refreshIn = entry.cachedAt.add(entry.bundle.result.validity).since(deps.now());
+      return { identity: entry.identity, refreshIn };
     },
     image(_id) {
       return Promise.resolve(null);
