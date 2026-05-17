@@ -158,7 +158,7 @@ Deno.test("classify: delay >= 60s emits a +Nm delay alert (rounded down to whole
   const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   assertEquals(row.alerts.length, 1);
   assertEquals(row.alerts[0].kind, "delay");
-  assertEquals(row.alerts[0].text, "+4m delay");
+  assertEquals(row.alerts[0].text, "+4წთ დაგვიანება");
 });
 
 Deno.test("classify: delay < 60s does NOT emit a delay alert", () => {
@@ -334,7 +334,7 @@ Deno.test("classify: long remark text is truncated", () => {
 Deno.test("classify: max delay across legs wins for the single delay alert", () => {
   const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
   const now = new Date("2025-11-10T07:30:00+01:00");
-  // Two transit legs: leg 1 +90s, leg 2 +300s. We emit ONE alert "+5m delay".
+  // Two transit legs: leg 1 +90s, leg 2 +300s. We emit ONE alert "+5წთ დაგვიანება".
   const candidate: Candidate = {
     legs: [
       {
@@ -364,7 +364,7 @@ Deno.test("classify: max delay across legs wins for the single delay alert", () 
   const row = assertRow(classify(candidate, WEEKDAY_OFFICE, tunables, now));
   const delayAlerts = row.alerts.filter((a) => a.kind === "delay");
   assertEquals(delayAlerts.length, 1);
-  assertEquals(delayAlerts[0].text, "+5m delay");
+  assertEquals(delayAlerts[0].text, "+5წთ დაგვიანება");
 });
 
 // ─── exclusion filtering (slice 5) ──────────────────────────────────────────

@@ -11,8 +11,8 @@ import type { CancellationStrip } from "./journey_classifier.ts";
 
 export default function CancelStrip({ strip }: { strip: CancellationStrip }) {
   const text = strip.count > 1
-    ? `${strip.preferenceIcon} · ${strip.count} journeys cancelled`
-    : `${strip.preferenceIcon} · journey cancelled`;
+    ? `${strip.preferenceIcon} · გაუქმდა ${strip.count} მგზავრობა`
+    : `${strip.preferenceIcon} · გაუქმდა`;
   return (
     <div class="cancel-strip">
       <span class="cancel-strip__icon">{strip.preferenceIcon}</span>

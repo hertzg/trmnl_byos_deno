@@ -20,7 +20,7 @@ export default function Footnote(
   const total = visible.reduce((sum, p) => sum + p.count, 0);
   return (
     <div class="footnote">
-      <span class="footnote__chunk">+{total} later</span>
+      <span class="footnote__chunk">+{total} მოგვიანებით</span>
       {visible.map((p) => (
         <span key={p.icon} class="footnote__chunk">
           {" · "}

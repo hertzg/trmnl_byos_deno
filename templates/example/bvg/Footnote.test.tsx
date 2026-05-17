@@ -41,7 +41,7 @@ Deno.test("Footnote renders single-icon summary with leave-by HH:MMs", () => {
     ],
   };
   const html = render(summary);
-  assertStringIncludes(html, "+3 later");
+  assertStringIncludes(html, "+3 მოგვიანებით");
   assertStringIncludes(html, "A:");
   // Leave-bys formatted as HH:MM Berlin time (08:37Z → 09:37 Berlin in November, UTC+1).
   assertStringIncludes(html, "09:37");
@@ -72,7 +72,7 @@ Deno.test("Footnote renders multi-icon summary with all icons", () => {
   };
   const html = render(summary);
   // Total dropped = 2 + 1 = 3.
-  assertStringIncludes(html, "+3 later");
+  assertStringIncludes(html, "+3 მოგვიანებით");
   assertStringIncludes(html, "A:");
   assertStringIncludes(html, "B:");
   assertStringIncludes(html, "09:37");

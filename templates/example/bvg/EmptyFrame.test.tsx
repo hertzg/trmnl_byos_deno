@@ -25,10 +25,10 @@ Deno.test("EmptyFrame for noScheduleApplicable shows the next-anchor hint", () =
     },
   };
   const html = renderEmpty(board, now);
-  assertStringIncludes(html, "nothing to show right now");
-  assertStringIncludes(html, "next:");
-  // Mon 09:30 Berlin
-  assertStringIncludes(html, "Mon");
+  assertStringIncludes(html, "ცარიელია");
+  assertStringIncludes(html, "შემდეგი:");
+  // ორშ (Monday abbrev in Georgian) 09:30 Berlin
+  assertStringIncludes(html, "ორშ");
   assertStringIncludes(html, "09:30");
   assertStringIncludes(html, "A");
   assertStringIncludes(html, "Office");
@@ -44,9 +44,9 @@ Deno.test("EmptyFrame for noScheduleApplicable without nextAnchor omits the hint
     windows: [],
   };
   const html = renderEmpty(board, now);
-  assertStringIncludes(html, "nothing to show right now");
-  // No "next:" hint when there's no anchor.
-  assertEquals(html.includes("next:"), false);
+  assertStringIncludes(html, "ცარიელია");
+  // No "შემდეგი:" hint when there's no anchor.
+  assertEquals(html.includes("შემდეგი:"), false);
 });
 
 Deno.test("EmptyFrame for feedUnreachable shows age in minutes since lastSuccessfulFetchAt", () => {
@@ -61,9 +61,9 @@ Deno.test("EmptyFrame for feedUnreachable shows age in minutes since lastSuccess
     lastSuccessfulFetchAt: lastSuccess,
   };
   const html = renderEmpty(board, now);
-  assertStringIncludes(html, "feed unreachable");
-  assertStringIncludes(html, "data is 7 m old");
-  assertStringIncludes(html, "retrying");
+  assertStringIncludes(html, "მონაცემები მიუწვდომელია");
+  assertStringIncludes(html, "7 წთ-ის წინანდელი");
+  assertStringIncludes(html, "ვცდი თავიდან");
 });
 
 Deno.test("EmptyFrame for feedUnreachable with null cache shows '0 m old'", () => {
@@ -76,8 +76,8 @@ Deno.test("EmptyFrame for feedUnreachable with null cache shows '0 m old'", () =
     lastSuccessfulFetchAt: null,
   };
   const html = renderEmpty(board, now);
-  assertStringIncludes(html, "feed unreachable");
-  assertStringIncludes(html, "data is 0 m old");
+  assertStringIncludes(html, "მონაცემები მიუწვდომელია");
+  assertStringIncludes(html, "0 წთ-ის წინანდელი");
 });
 
 Deno.test("EmptyFrame returns nothing when emptyReason is 'none'", () => {
@@ -90,6 +90,6 @@ Deno.test("EmptyFrame returns nothing when emptyReason is 'none'", () => {
   };
   const html = renderEmpty(board, now);
   // Whatever is rendered must not contain either empty-state title.
-  assertEquals(html.includes("nothing to show right now"), false);
-  assertEquals(html.includes("feed unreachable"), false);
+  assertEquals(html.includes("ცარიელია"), false);
+  assertEquals(html.includes("მონაცემები მიუწვდომელია"), false);
 });

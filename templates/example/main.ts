@@ -66,7 +66,7 @@ export default function (): Plugin<FrameData> {
 
       const validSeconds = Math.max(1, boardValidForSeconds(here, tToDate(ctx.t)));
       return {
-        state: { board: here, device: ctx.device },
+        state: { board: here, device: ctx.device, t: ctx.t },
         validity: Temporal.Duration.from({ seconds: validSeconds }),
         view: DefaultTemplate,
       };

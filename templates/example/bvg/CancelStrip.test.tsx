@@ -13,24 +13,24 @@ const BASE: CancellationStrip = {
   count: 1,
 };
 
-Deno.test("CancelStrip renders icon and 'journey cancelled' for count: 1", () => {
+Deno.test("CancelStrip renders icon and 'გაუქმდა' for count: 1", () => {
   // deno-lint-ignore no-explicit-any
   const html = renderToString(<CancelStrip strip={BASE} /> as any);
   assertStringIncludes(html, "A");
-  assertStringIncludes(html, "journey cancelled");
-  // No pluralised number leaks in.
-  assertEquals(html.includes("journeys cancelled"), false);
+  assertStringIncludes(html, "გაუქმდა");
+  // No pluralised "N მგზავრობა" form leaks in for count 1.
+  assertEquals(html.includes("მგზავრობა"), false);
   // No pictogram artefact (line shorthand) and no times.
   assertEquals(html.includes("S5"), false);
   assertEquals(html.includes("07:52"), false);
   assertEquals(html.includes("08:52"), false);
 });
 
-Deno.test("CancelStrip renders 'N journeys cancelled' for count > 1", () => {
+Deno.test("CancelStrip renders 'გაუქმდა N მგზავრობა' for count > 1", () => {
   const strip: CancellationStrip = { ...BASE, count: 3 };
   // deno-lint-ignore no-explicit-any
   const html = renderToString(<CancelStrip strip={strip} /> as any);
-  assertStringIncludes(html, "3 journeys cancelled");
+  assertStringIncludes(html, "გაუქმდა 3 მგზავრობა");
 });
 
 Deno.test("CancelStrip uses the cancel-strip class hook (no new CSS in slice 7)", () => {

@@ -232,7 +232,7 @@ function buildAlerts(legs: readonly Leg[]): readonly Alert[] {
   }
   if (maxDelaySeconds >= DELAY_ALERT_FLOOR_SECONDS) {
     const minutes = Math.floor(maxDelaySeconds / 60);
-    alerts.push({ kind: "delay", text: `+${minutes}m delay` });
+    alerts.push({ kind: "delay", text: `+${minutes}წთ დაგვიანება` });
   }
 
   // Remark alerts: one per surfaceable remark across all legs, in leg order.

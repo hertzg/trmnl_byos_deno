@@ -25,20 +25,20 @@ export default function Row({ row }: { row: RowData }) {
       <div class="row__icon">{row.preferenceIcon}</div>
       <div class="row__leave">
         {formatHHMM(row.leaveByDate)}
-        {isShifted && <small class="row__was">was {formatHHMM(row.plannedLeaveByDate)}</small>}
+        {isShifted && <small class="row__was">იყო {formatHHMM(row.plannedLeaveByDate)}</small>}
       </div>
       <Pictogram legs={row.legs} />
       <div class="row__arrive">
         {formatHHMM(row.arriveByDate)}
-        <small>at {row.destinationLabel} · {row.preferenceLabel}</small>
+        <small>{row.destinationLabel} · {row.preferenceLabel}</small>
       </div>
-      <div class="row__dur">{row.durationMinutes} min</div>
+      <div class="row__dur">{row.durationMinutes} წთ</div>
       {(row.alerts.length > 0 || isImminent) && (
         <div class="row__notes">
           {row.alerts.map((alert) => (
             <span class={`row__alert row__alert--${alert.kind}`}>⚠ {alert.text}</span>
           ))}
-          {isImminent && <span class="row__leave-now">⚠ leave now</span>}
+          {isImminent && <span class="row__leave-now">⚠ ახლავე გადი</span>}
         </div>
       )}
     </div>

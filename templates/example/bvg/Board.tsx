@@ -19,32 +19,32 @@ export default function Board(
   const isEmpty = board.emptyReason !== "none";
   return (
     <div class="slot slot--full">
-      {/* The "updated HH:MM" stamp was dropped — minute-rolls forced the
+      {
+        /* The "updated HH:MM" stamp was dropped — minute-rolls forced the
           device to repaint a frame with no new info, draining battery. The
-          rows already carry their own leave-by times. */}
-      <Head title="Commute" />
-      {isEmpty
-        ? <EmptyFrame board={board} now={renderNow} />
-        : (
-          <div class="list">
-            {board.rows.map((row) =>
-              row.kind === "row"
-                ? (
-                  <Row
-                    key={row.preferenceKey + row.leaveByDate.toISOString()}
-                    row={row}
-                  />
-                )
-                : (
-                  <CancelStrip
-                    key={"cancel-" + row.preferenceKey +
-                      row.leaveByDate.toISOString()}
-                    strip={row}
-                  />
-                )
-            )}
-          </div>
-        )}
+          rows already carry their own leave-by times. */
+      }
+      <Head title="მგზავრობა" />
+      {isEmpty ? <EmptyFrame board={board} now={renderNow} /> : (
+        <div class="list">
+          {board.rows.map((row) =>
+            row.kind === "row"
+              ? (
+                <Row
+                  key={row.preferenceKey + row.leaveByDate.toISOString()}
+                  row={row}
+                />
+              )
+              : (
+                <CancelStrip
+                  key={"cancel-" + row.preferenceKey +
+                    row.leaveByDate.toISOString()}
+                  strip={row}
+                />
+              )
+          )}
+        </div>
+      )}
       <Footnote clipSummary={board.clipSummary} />
     </div>
   );

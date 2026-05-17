@@ -28,8 +28,7 @@
   font-weight: 100 900;
   font-style: normal;
   font-display: block;
-  src: url("/assets/fonts/noto-sans-georgian-variable.woff2")
-    format("woff2-variations");
+  src: url("/assets/fonts/noto-sans-georgian-variable.woff2") format("woff2-variations");
 }
 
 * {
@@ -48,8 +47,7 @@ html,
 body {
   width: 1872px;
   height: 1404px;
-  font-family:
-    "Inter", "Noto Sans Georgian", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "Noto Sans Georgian", ui-sans-serif, system-ui, sans-serif;
   color: #000;
   background: #fff;
   -webkit-font-smoothing: none;
@@ -408,6 +406,10 @@ body {
 
 .title-bar__title {
   font-weight: 700;
+}
+
+.title-bar__date {
+  color: #444;
 }
 
 .title-bar__instance {

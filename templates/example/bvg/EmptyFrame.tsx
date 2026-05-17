@@ -12,18 +12,7 @@
 // caller's render `now` may differ.
 
 import type { Board } from "./board_assembler.ts";
-import { formatHHMM } from "./time.ts";
-
-const BERLIN_TZ = "Europe/Berlin";
-
-const WEEKDAY_FMT = new Intl.DateTimeFormat("en-GB", {
-  timeZone: BERLIN_TZ,
-  weekday: "short",
-});
-
-function formatBerlinWeekday(d: Date): string {
-  return WEEKDAY_FMT.format(d);
-}
+import { formatHHMM, formatKaWeekday } from "./time.ts";
 
 // Whole minutes elapsed between `from` and `now`, floored at 0. Used for the
 // "data is N m old" stamp on the feedUnreachable frame.
@@ -41,8 +30,8 @@ export default function EmptyFrame({ board, now }: { board: Board; now: Date }) 
     const minutes = ageInMinutes(board.lastSuccessfulFetchAt, now);
     return (
       <div class="empty">
-        <div class="empty__big">feed unreachable</div>
-        <div class="empty__sub">data is {minutes} m old · retrying</div>
+        <div class="empty__big">მონაცემები მიუწვდომელია</div>
+        <div class="empty__sub">{minutes} წთ-ის წინანდელი · ვცდი თავიდან</div>
       </div>
     );
   }
@@ -51,10 +40,10 @@ export default function EmptyFrame({ board, now }: { board: Board; now: Date }) 
   const anchor = board.nextAnchor;
   return (
     <div class="empty">
-      <div class="empty__big">nothing to show right now</div>
+      <div class="empty__big">ცარიელია</div>
       {anchor && (
         <div class="empty__sub">
-          next: {formatBerlinWeekday(anchor.arriveByDate)} {formatHHMM(anchor.arriveByDate)} ·{" "}
+          შემდეგი: {formatKaWeekday(anchor.arriveByDate)} {formatHHMM(anchor.arriveByDate)} ·{" "}
           {anchor.preferenceIcon} · {anchor.preferenceLabel}
         </div>
       )}

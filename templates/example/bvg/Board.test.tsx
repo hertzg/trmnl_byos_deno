@@ -67,7 +67,7 @@ Deno.test("Board renders both Row and CancellationStrip kinds, narrowing on `kin
   // Row content surfaces.
   assertStringIncludes(html, "S5");
   // Strip content surfaces with the pluralised caption.
-  assertStringIncludes(html, "2 journeys cancelled");
+  assertStringIncludes(html, "გაუქმდა 2 მგზავრობა");
   assertStringIncludes(html, "cancel-strip");
 });
 
@@ -80,7 +80,7 @@ Deno.test("Board renders empty frame when no rows", () => {
   };
   // deno-lint-ignore no-explicit-any
   const html = renderToString(<Board board={board} /> as any);
-  assertStringIncludes(html, "nothing to show right now");
+  assertStringIncludes(html, "ცარიელია");
 });
 
 Deno.test("Board renders feedUnreachable empty frame with age sub-text", () => {
@@ -93,8 +93,8 @@ Deno.test("Board renders feedUnreachable empty frame with age sub-text", () => {
   };
   // deno-lint-ignore no-explicit-any
   const html = renderToString(<Board board={board} /> as any);
-  assertStringIncludes(html, "feed unreachable");
-  assertStringIncludes(html, "data is 10 m old");
+  assertStringIncludes(html, "მონაცემები მიუწვდომელია");
+  assertStringIncludes(html, "10 წთ-ის წინანდელი");
 });
 
 Deno.test("Board renders footnote when clipSummary present", () => {
@@ -114,7 +114,7 @@ Deno.test("Board renders footnote when clipSummary present", () => {
   };
   // deno-lint-ignore no-explicit-any
   const html = renderToString(<Board board={board} /> as any);
-  assertStringIncludes(html, "+2 later");
+  assertStringIncludes(html, "+2 მოგვიანებით");
   assertStringIncludes(html, "footnote");
 });
 
@@ -148,9 +148,9 @@ Deno.test("Board renders next-anchor hint inside the noScheduleApplicable frame"
   };
   // deno-lint-ignore no-explicit-any
   const html = renderToString(<Board board={board} /> as any);
-  assertStringIncludes(html, "nothing to show right now");
-  assertStringIncludes(html, "next:");
-  assertStringIncludes(html, "Mon");
+  assertStringIncludes(html, "ცარიელია");
+  assertStringIncludes(html, "შემდეგი:");
+  assertStringIncludes(html, "ორშ");
   assertStringIncludes(html, "09:30");
   assertStringIncludes(html, "Office");
 });
