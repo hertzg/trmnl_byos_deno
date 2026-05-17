@@ -1,5 +1,9 @@
 import type { Plugin, Result, RunContext } from "../../src/plugin/plugin.ts";
-import { type Board, boardValidForSeconds, createBoardAssembler } from "./bvg/board_assembler.ts";
+import {
+  type Board,
+  boardValidForSeconds,
+  createBoardAssembler,
+} from "./bvg/board_assembler.ts";
 import { ROUTES } from "./bvg/routes.ts";
 import DefaultTemplate, { type FrameData } from "./root.tsx";
 
@@ -29,9 +33,15 @@ function tToDate(t: Temporal.ZonedDateTime): Date {
 
 const BACKGROUND_REFRESH_MS = 30_000;
 
-export default function (): Plugin<FrameData> {
+// ADR-0002 module shape: default-export a Plugin object directly. This Plugin
+// needs closure state (the assembler with its caches, the timer-refreshed
+// board), so we build the object inline at the export site instead of in a
+// top-level factory function. Importing this module starts the background
+// refresh timer; that is intentional — the timer's lifecycle is bound to
+// the Plugin's lifecycle.
+export default (() => {
   // ─── World-knowledge layer ────────────────────────────────────────────
-  // One assembler instance, kept in the factory closure so its internal
+  // One assembler instance, kept in the export-site closure so its internal
   // caches (lastSuccessfulFetchAt, observed travel times) survive across
   // runs. See bvg/board_assembler.ts for what those caches do.
   const assembler = createBoardAssembler();
@@ -62,14 +72,20 @@ export default function (): Plugin<FrameData> {
         // hasn't fired yet (very first poll), block on a synchronous fetch
         // — any failure propagates to the Conductor's error-view fallback.
         : board ??
-          (board = await assembler.assembleBoard(ROUTES, resolveBackgroundNow()));
+          (board = await assembler.assembleBoard(
+            ROUTES,
+            resolveBackgroundNow(),
+          ));
 
-      const validSeconds = Math.max(1, boardValidForSeconds(here, tToDate(ctx.t)));
+      const validSeconds = Math.max(
+        1,
+        boardValidForSeconds(here, tToDate(ctx.t)),
+      );
       return {
         state: { board: here, device: ctx.device, t: ctx.t },
         validity: Temporal.Duration.from({ seconds: validSeconds }),
         view: DefaultTemplate,
       };
     },
-  };
-}
+  } satisfies Plugin<FrameData>;
+})();
