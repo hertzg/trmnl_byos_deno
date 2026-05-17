@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert";
+import { spy } from "@std/testing/mock";
 import { createSlot, type SlotEntry } from "./slot.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 
@@ -102,4 +103,25 @@ Deno.test("clear() returns the slot to empty (display and image both null again)
 
   assertEquals(slot.display(), null);
   assertEquals(await slot.image("abc123"), null);
+});
+
+Deno.test("multiple image(id) calls share the stored promise (no re-render)", async () => {
+  const slot = createSlot({ now: fixedNow });
+  const bytes = new Uint8Array([1, 2, 3]);
+  const rasterize = spy(() => Promise.resolve(bytes));
+  // The Conductor would construct this promise once via the rasterizer; Slot
+  // must hand it back as-is across calls and never invoke the rasterizer
+  // itself.
+  const imagePromise = rasterize();
+  slot.put(makeEntry({ identity: "abc123", image: imagePromise }));
+
+  const a = await slot.image("abc123");
+  const b = await slot.image("abc123");
+  const c = await slot.image("abc123");
+
+  assertEquals(a, bytes);
+  assertEquals(b, bytes);
+  assertEquals(c, bytes);
+  // Single invocation by the test (the put()); Slot never calls rasterize.
+  assertEquals(rasterize.calls.length, 1);
 });
