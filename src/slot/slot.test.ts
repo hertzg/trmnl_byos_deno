@@ -93,3 +93,13 @@ Deno.test("image(id) returns null once the entry's validity has elapsed, even on
 
   assertEquals(await slot.image("abc123"), null);
 });
+
+Deno.test("clear() returns the slot to empty (display and image both null again)", async () => {
+  const slot = createSlot({ now: fixedNow });
+  slot.put(makeEntry({ identity: "abc123" }));
+
+  slot.clear();
+
+  assertEquals(slot.display(), null);
+  assertEquals(await slot.image("abc123"), null);
+});

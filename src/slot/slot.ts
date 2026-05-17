@@ -56,6 +56,8 @@ export function createSlot(deps: SlotDeps): Slot {
       if (entry.identity !== id) return null;
       return await entry.image;
     },
-    clear() {},
+    clear() {
+      entry = null;
+    },
   };
 }
