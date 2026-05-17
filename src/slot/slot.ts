@@ -32,19 +32,27 @@ export type Slot = {
 export function createSlot(deps: SlotDeps): Slot {
   let entry: SlotEntry | null = null;
 
+  function expiryOf(e: SlotEntry): Temporal.ZonedDateTime {
+    return e.cachedAt.add(e.bundle.result.validity);
+  }
+
+  function isStillValid(e: SlotEntry, now: Temporal.ZonedDateTime): boolean {
+    return Temporal.ZonedDateTime.compare(now, expiryOf(e)) < 0;
+  }
+
   return {
     put(next) {
       entry = next;
     },
     display() {
       if (entry === null) return null;
-      const expiresAt = entry.cachedAt.add(entry.bundle.result.validity);
       const now = deps.now();
-      if (Temporal.ZonedDateTime.compare(now, expiresAt) >= 0) return null;
-      return { identity: entry.identity, refreshIn: expiresAt.since(now) };
+      if (!isStillValid(entry, now)) return null;
+      return { identity: entry.identity, refreshIn: expiryOf(entry).since(now) };
     },
     async image(id) {
       if (entry === null) return null;
+      if (!isStillValid(entry, deps.now())) return null;
       if (entry.identity !== id) return null;
       return await entry.image;
     },

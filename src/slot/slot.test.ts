@@ -72,3 +72,24 @@ Deno.test("image(id) returns the bytes when id matches the entry's identity", as
 
   assertEquals(await slot.image("abc123"), bytes);
 });
+
+Deno.test("image(id) returns null when id does not match the entry's identity", async () => {
+  const slot = createSlot({ now: fixedNow });
+  slot.put(makeEntry({ identity: "abc123" }));
+
+  assertEquals(await slot.image("different"), null);
+});
+
+Deno.test("image(id) returns null once the entry's validity has elapsed, even on identity match", async () => {
+  let clock = Temporal.ZonedDateTime.from(`2026-05-17T12:00[${zone}]`);
+  const slot = createSlot({ now: () => clock });
+  slot.put(makeEntry({
+    identity: "abc123",
+    bundle: makeBundle(Temporal.Duration.from({ minutes: 5 })),
+    cachedAt: clock,
+  }));
+
+  clock = clock.add(Temporal.Duration.from({ minutes: 5 }));
+
+  assertEquals(await slot.image("abc123"), null);
+});
