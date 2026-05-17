@@ -51,3 +51,16 @@ Deno.test("after put(), display() returns the entry's identity and remaining val
   assertEquals(display?.identity, "abc123");
   assertEquals(display?.refreshIn.total({ unit: "seconds" }), 300);
 });
+
+Deno.test("display() returns null after the entry's validity has elapsed", () => {
+  let clock = Temporal.ZonedDateTime.from(`2026-05-17T12:00[${zone}]`);
+  const slot = createSlot({ now: () => clock });
+  slot.put(makeEntry({
+    bundle: makeBundle(Temporal.Duration.from({ minutes: 5 })),
+    cachedAt: clock,
+  }));
+
+  clock = clock.add(Temporal.Duration.from({ minutes: 5 }));
+
+  assertEquals(slot.display(), null);
+});

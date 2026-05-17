@@ -38,8 +38,10 @@ export function createSlot(deps: SlotDeps): Slot {
     },
     display() {
       if (entry === null) return null;
-      const refreshIn = entry.cachedAt.add(entry.bundle.result.validity).since(deps.now());
-      return { identity: entry.identity, refreshIn };
+      const expiresAt = entry.cachedAt.add(entry.bundle.result.validity);
+      const now = deps.now();
+      if (Temporal.ZonedDateTime.compare(now, expiresAt) >= 0) return null;
+      return { identity: entry.identity, refreshIn: expiresAt.since(now) };
     },
     image(_id) {
       return Promise.resolve(null);
