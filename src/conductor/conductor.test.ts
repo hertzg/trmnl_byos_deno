@@ -24,12 +24,15 @@ function managerFor(plugin: Plugin<unknown>): PluginManager {
 
 // A fake Renderer whose `identity` derives a deterministic, inspectable
 // string from the Bundle's rendered view output — tests can then assert on
-// `out.identity` without re-implementing hashBundle. `rasterize` is unused
-// by `derive()` itself (Slot/Image path lives outside this slice).
+// `out.identity` without re-implementing hashBundle. `rasterize`, `origin`,
+// and `close` are stubs; the Conductor doesn't touch them on its derive
+// path (rasterize lives on the Dashboard side for this slice).
 function fakeRenderer(overrides: Partial<Renderer> = {}): Renderer {
   return {
     identity: (b: Bundle) => Promise.resolve(`id-${String(b.result.view(b.result.state))}`),
     rasterize: () => Promise.resolve(new Uint8Array()),
+    origin: () => "http://127.0.0.1:0",
+    close: () => Promise.resolve(),
     ...overrides,
   };
 }
@@ -38,13 +41,12 @@ function defaults(
   overrides: Partial<ConductorDeps> = {},
 ): Pick<
   ConductorDeps,
-  "errorView" | "errorValidity" | "friendlyId" | "pluginAssetsDir" | "now"
+  "errorView" | "errorValidity" | "friendlyId" | "now"
 > {
   return {
     errorView: (_err: Error) => "",
     errorValidity: Temporal.Duration.from({ seconds: 30 }),
     friendlyId: "ID",
-    pluginAssetsDir: "/tmp",
     now: () => T0,
     ...overrides,
   };
@@ -269,12 +271,9 @@ Deno.test("GET /api/display falls back to the error view filename when the Plugi
 
 // ─── /assets/* ─────────────────────────────────────────────────────────────
 
-Deno.test("GET /assets/:file serves files from pluginAssetsDir without the /assets prefix duplicating in the path", async () => {
-  const assetsDir = await Deno.makeTempDir({ prefix: "conductor-assets-test-" });
-  await Deno.writeTextFile(`${assetsDir}/style.css`, ".x { color: red; }");
-
+Deno.test("GET /assets/<anything> on the public surface returns 404 — Plugin assets travel inside the Bundle to Renderer's loopback only", async () => {
   const conductor = createConductor({
-    ...defaults({ pluginAssetsDir: assetsDir }),
+    ...defaults(),
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
     }),
@@ -282,9 +281,9 @@ Deno.test("GET /assets/:file serves files from pluginAssetsDir without the /asse
   });
 
   const res = await conductor.app.request("/assets/style.css");
+  await res.body?.cancel();
 
-  assertEquals(res.status, 200);
-  assertEquals(await res.text(), ".x { color: red; }");
+  assertEquals(res.status, 404);
 });
 
 // ─── /api/log ──────────────────────────────────────────────────────────────
