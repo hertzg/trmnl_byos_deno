@@ -58,8 +58,8 @@ export default function () {
 
 ## The factory pattern (and why no module globals)
 
-Your Plugin almost certainly needs _some_ internal state — a cached fetch result, a timer, a
-derived index. Put it in the **factory closure**, not at module scope:
+Your Plugin almost certainly needs _some_ internal state — a cached fetch result, a timer, a derived
+index. Put it in the **factory closure**, not at module scope:
 
 ```tsx
 // good
@@ -98,7 +98,7 @@ setInterval(refresh, 60_000);
 
 export default function () {
   return {
-    run({ t }) { /* read `data` */ },
+    run({ t }) {/* read `data` */},
   };
 }
 ```
@@ -109,11 +109,11 @@ Both work today. The factory version is better because:
    doesn't trigger fetches or timers. It can construct the Plugin (or not) as it sees fit.
 2. **Each call to the factory is independent.** Tests can instantiate multiple isolated copies.
    Hot-reload (if it ever exists) discards old instances cleanly.
-3. **Module-globals make composition unsafe.** A Super-Plugin that imports two instances of the
-   same Plugin from different paths would still share module state — silently, with no error.
+3. **Module-globals make composition unsafe.** A Super-Plugin that imports two instances of the same
+   Plugin from different paths would still share module state — silently, with no error.
 
-If you'd rather write a class than a factory, that's fine —
-`export default () => new MyPlugin()` makes them equivalent.
+If you'd rather write a class than a factory, that's fine — `export default () => new MyPlugin()`
+makes them equivalent.
 
 ## Two ways to think about `run`
 
@@ -161,8 +161,8 @@ export default function () {
 
 ### Time-indexed (photo rotation, clock, calendar)
 
-There's no external data layer — the answer is determined entirely by `t`. `run({ t, … })` is
-"what would I show at moment `t`?"
+There's no external data layer — the answer is determined entirely by `t`. `run({ t, … })` is "what
+would I show at moment `t`?"
 
 ```tsx
 const photos = ["a.jpg", "b.jpg", "c.jpg"];
@@ -191,15 +191,15 @@ export default function () {
 }
 ```
 
-Same contract, different mental shape. If your Plugin is mostly data-driven with a sprinkle of
-time logic, you're in the first camp. If it's mostly time logic with no external data, the second.
+Same contract, different mental shape. If your Plugin is mostly data-driven with a sprinkle of time
+logic, you're in the first camp. If it's mostly time logic with no external data, the second.
 
 ## The two-layer structure of a real Plugin
 
 A data-driven Plugin always has two layers:
 
-1. **World-knowledge layer** — fetches, caches, subscribes. Lives in the factory closure. Updates
-   on wall-clock cadence (timers).
+1. **World-knowledge layer** — fetches, caches, subscribes. Lives in the factory closure. Updates on
+   wall-clock cadence (timers).
 2. **Render layer** — `run({ t, … })` reads from the world-knowledge layer, derives state, decides
    validity, and returns a Result with the view component included. The view itself is a pure
    function of `state`.
@@ -273,14 +273,14 @@ const minutesLeft = Math.floor((Date.now() - someInternalDeadline.getTime()) / 6
 validity: Temporal.Duration.from({ minutes: minutesLeft });
 ```
 
-Compute everything against `t`. Wall-clock is fine for the _internal_ world-knowledge layer
-(refresh timers, fetch decisions) — those are about the real world. But anything that goes into
-the Result's `state` or `validity` should be a function of `t`.
+Compute everything against `t`. Wall-clock is fine for the _internal_ world-knowledge layer (refresh
+timers, fetch decisions) — those are about the real world. But anything that goes into the Result's
+`state` or `validity` should be a function of `t`.
 
 ## When `intent` actually matters
 
 Most Plugins behave identically for `poll`, `scrub`, and `prerender`. Read `ctx.intent` only when
-the Plugin is *state-advancing* — i.e. running it changes what the next call will return.
+the Plugin is _state-advancing_ — i.e. running it changes what the next call will return.
 
 ```tsx
 // a "next photo on every poll" Plugin
@@ -303,13 +303,14 @@ already gives the same answer for the same `t`.
 
 ## View purity: not enforced, strongly recommended
 
-The Conductor caches the **Current Image** by hashing the HTML your view produces (see ADR-0004).
+The Conductor returns `filename = image-${identityFor(html)}` on `/api/display`. The Device's
+firmware compares it against the previous poll's filename and skips both the image download and the
+e-ink refresh when it matches (see ADR-0004). The server itself doesn't cache rendered PNGs — every
+Device fetch live-renders — so this Device-side filename comparison is the _only_ cache that fires.
 If your `view` is a pure function of `state`, identical state → identical JSX → identical HTML →
-identity match → the Current Image is kept (no `rasterize` call, and the Device's filename matches
-its last download so it skips the repaint too). If your view isn't pure (reads `Date.now()`,
-closures, random), the HTML differs across calls → identity mismatch → `rasterize` runs every
-time, and the Device repaints on every poll. The output is still **correct**; you just defeat both
-caches.
+identical filename → Device skips the repaint. If your view isn't pure (reads `Date.now()`,
+closures, random), the HTML differs across calls → different filename → Device repaints on every
+poll. The output is still **correct**; you just defeat the flicker-avoidance mechanism.
 
 Pure view means:
 
@@ -323,15 +324,15 @@ based on `t`). Then `view(state)` stays pure.
 
 ## Common traps
 
-| Trap                              | What it looks like                                                                                                      | How to spot it                                                                                      | How to fix                                                                |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Trap                              | What it looks like                                                                                                      | How to spot it                                                                                      | How to fix                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | Wall-clock in view                | Preview shows current time even when you scrub forward.                                                                 | Scrub `+1h`; preview should change appropriately. If it shows "now," you're reading the wall-clock. | Put time-relevant data in `state` via `run({ t })`; read from `state` in `view`. |
-| Wall-clock in validity            | Timeline ticks in the dashboard don't move when you scrub.                                                              | Scrub forward; the boundaries on the timeline strip should slide with `t`.                          | Compute validity against `ctx.t`, not against wall-clock.                 |
-| Module globals                    | Two tests interfere; restart fixes things mysteriously.                                                                 | Run a test twice in the same process.                                                               | Move state into the factory closure.                                      |
-| Fetches inside `run`              | Dashboard scrub is slow; lots of network noise.                                                                         | Open Network tab in the browser; scrub the dashboard.                                               | Move fetches to the world-knowledge layer (factory body + timer).         |
-| State-advancing on every intent   | Scrubbing the dashboard advances state that should only advance on real polls.                                          | Scrub forward and back; state-advancing Plugins drift unexpectedly.                                 | Gate state advance on `ctx.intent === "poll"`.                            |
-| Mutating state after returning it | Rendered output doesn't match the state shown in debug tools.                                                           | Inspect `state` in the dashboard's data view (when implemented).                                    | Return immutable / freshly-constructed `state` objects.                   |
-| External-mutable assets           | `<img src="https://cdn/x.jpg">` whose bytes change without the URL changing — Device skips a repaint when it shouldn't. | A change is "missed" — the Device still shows the previous picture.                                 | Inline mutable image bytes as data URIs, so the change is in the state.   |
+| Wall-clock in validity            | Timeline ticks in the dashboard don't move when you scrub.                                                              | Scrub forward; the boundaries on the timeline strip should slide with `t`.                          | Compute validity against `ctx.t`, not against wall-clock.                        |
+| Module globals                    | Two tests interfere; restart fixes things mysteriously.                                                                 | Run a test twice in the same process.                                                               | Move state into the factory closure.                                             |
+| Fetches inside `run`              | Dashboard scrub is slow; lots of network noise.                                                                         | Open Network tab in the browser; scrub the dashboard.                                               | Move fetches to the world-knowledge layer (factory body + timer).                |
+| State-advancing on every intent   | Scrubbing the dashboard advances state that should only advance on real polls.                                          | Scrub forward and back; state-advancing Plugins drift unexpectedly.                                 | Gate state advance on `ctx.intent === "poll"`.                                   |
+| Mutating state after returning it | Rendered output doesn't match the state shown in debug tools.                                                           | Inspect `state` in the dashboard's data view (when implemented).                                    | Return immutable / freshly-constructed `state` objects.                          |
+| External-mutable assets           | `<img src="https://cdn/x.jpg">` whose bytes change without the URL changing — Device skips a repaint when it shouldn't. | A change is "missed" — the Device still shows the previous picture.                                 | Inline mutable image bytes as data URIs, so the change is in the state.          |
 
 ## A worked example
 
@@ -396,8 +397,8 @@ function nextCommuteEnd(t: Temporal.ZonedDateTime) {/* ... */}
 
 Notes:
 
-- World-knowledge layer (the `board` cache + refresh timer) is in the factory body, _not_ at
-  module scope.
+- World-knowledge layer (the `board` cache + refresh timer) is in the factory body, _not_ at module
+  scope.
 - `run` doesn't fetch — it reads from the closure-cached `board`.
 - All time-relevant decisions (`isCommute`, `nextBoundary`, `upcoming`) come from `t`, not from
   wall-clock.
@@ -408,8 +409,8 @@ Notes:
 
 ## Composition: writing a Super-Plugin
 
-A Super-Plugin imports other Plugins and composes them. It's just a Plugin — same `{ run }` shape
-— that calls sub-Plugin factories, runs them, and assembles their Results:
+A Super-Plugin imports other Plugins and composes them. It's just a Plugin — same `{ run }` shape —
+that calls sub-Plugin factories, runs them, and assembles their Results:
 
 ```tsx
 import createBvg from "./bvg/main.ts";
@@ -448,14 +449,14 @@ export default function (config: unknown) {
 }
 ```
 
-The Super-Plugin can route on sub-Plugin data (`bvgResult.state.entries.length` before committing
-to BVG) and delegate to sub-Plugin views (the `view` references each Result's `view` directly).
-No Server-side composition machinery; it's just imports and function composition.
+The Super-Plugin can route on sub-Plugin data (`bvgResult.state.entries.length` before committing to
+BVG) and delegate to sub-Plugin views (the `view` references each Result's `view` directly). No
+Server-side composition machinery; it's just imports and function composition.
 
-For the *pure pass-through* case (no routing, no wrapping), the Super-Plugin is a one-liner:
+For the _pure pass-through_ case (no routing, no wrapping), the Super-Plugin is a one-liner:
 
 ```ts
-run: (ctx) => sub.run(ctx);
+run: ((ctx) => sub.run(ctx));
 ```
 
 ## Module layout for downstream composability
@@ -470,9 +471,9 @@ widgets/bvg/
   └── render.tsx    ← <BoardView/>, <IdleView/> — pure rendering of those types
 ```
 
-A Super-Plugin can then `import { fetchBvgBoard } from "./bvg/data.ts"` to inspect BVG's data
-layer without going through the full Plugin contract, or
-`import { BoardView } from "./bvg/render.tsx"` to embed BVG's render output into a custom layout.
+A Super-Plugin can then `import { fetchBvgBoard } from "./bvg/data.ts"` to inspect BVG's data layer
+without going through the full Plugin contract, or `import { BoardView } from "./bvg/render.tsx"` to
+embed BVG's render output into a custom layout.
 
 This convention is documented but not enforced — you only need it if you (or downstream authors)
 want to compose your Plugin into something larger. A leaf Plugin doesn't need the split.
@@ -481,15 +482,11 @@ want to compose your Plugin into something larger. A leaf Plugin doesn't need th
 
 The Conductor + Renderer handle everything past `run(ctx) → Result`. You do not implement:
 
-- HTML derivation (`Renderer.deriveHtml` invokes your view with the Result's state and runs
+- HTML derivation (`deriveHtml` invokes your view with the Result's state and runs
   `renderToString`).
-- Rasterization (`Renderer.rasterize`: CDP screenshot → dither → PNG).
+- Rasterization (`fetchPngFromUrl` screenshots `/preview` via CDP and dithers the result).
 - Image identity / filename derivation.
-- Device-side cache headers.
 - HTTP routes, BYOS protocol, refresh rates.
-- Concurrency / single-flight de-duplication of Device polls.
-- The Current Result's and Current Image's storage and replacement.
-- Prerender warm-up scheduling.
 
 You return a Result. The rest is the Server's problem.
 
@@ -497,8 +494,8 @@ You return a Result. The rest is the Server's problem.
 
 This document is opinion. The contract is the law (ADR-0002). If a pattern here doesn't fit your
 Plugin and you have a clearer way to honor the contract, do that. The factory-vs-class choice, the
-data.ts/render.tsx split, the "pure view" recommendation — all of these are guidance for the
-common case, not requirements.
+data.ts/render.tsx split, the "pure view" recommendation — all of these are guidance for the common
+case, not requirements.
 
 The two things that aren't negotiable:
 

@@ -15,7 +15,6 @@ import ErrorView from "./conductor/error-view.tsx";
 import { createDashboard } from "./dashboard/dashboard.ts";
 import { deriveHtml } from "./render/derive.ts";
 import { identityFor } from "./render/identity.ts";
-import { createCdpRasterize } from "./render/cdp-rasterize.ts";
 import { createRasterize } from "./render/rasterize.ts";
 import { loadPlugin, seedPluginDir } from "./plugin/loader.ts";
 
@@ -27,7 +26,7 @@ async function main() {
   const plugin = await loadPlugin(PLUGIN_DIR);
   console.log(`[plugin] loaded from ${PLUGIN_DIR}`);
 
-  // 2. Runtime services the Conductor depends on.
+  // 2. Runtime services the Conductor + Dashboard depend on.
   const now = () => Temporal.Now.zonedDateTimeISO();
   const errorView = (err: Error) => ErrorView(err);
   const errorValidity = Temporal.Duration.from({ seconds: 30 });
@@ -35,20 +34,16 @@ async function main() {
   const onDeviceLog = (id: string, body: string) =>
     console.log(`[device-log] ${id.toUpperCase()}: ${body}`);
 
-  // 3. Rasterizer chain: URL-fetching CDP backend → shelf-backed bridge that
-  // exposes Conductor's (html, hints) → png API and owns the /__internal/render
-  // sub-app CDP fetches from.
+  // 3. CDP-backed url → png. The Device fetches /preview/png on every poll;
+  // /preview/png hands CDP a /preview URL and returns the screenshot.
   const fetchPngFromUrl = createRasterize({ cdpUrl: CDP_URL, ...ACTIVE_PROFILE });
-  const cdp = createCdpRasterize({ origin: INTERNAL_URL_ORIGIN, fetchPngFromUrl });
 
-  // 4. Renderer pair (pure functions; no instance state).
-  const renderer = { deriveHtml, rasterize: cdp.rasterize };
-
-  // 5. Conductor wires the Plugin, Renderer, and BYOS surface together and
-  // exposes its own Hono sub-app.
+  // 4. Conductor owns the BYOS surface (/api/setup, /api/display, /api/log)
+  // and the Plugin assets dir. No rasterize step lives here anymore — the
+  // Device-facing pixels come from /preview/png on the Dashboard sub-app.
   const conductor = createConductor({
     plugin,
-    renderer,
+    deriveHtml,
     identityFor,
     errorView,
     errorValidity,
@@ -58,17 +53,16 @@ async function main() {
     now,
   });
 
-  // 6. Dashboard: peer sub-app that reads Current state and drives the
-  // Plugin via the Conductor's small `derive` + `render` + `committedState`
-  // surface.
+  // 5. Dashboard hosts /, /preview, /preview/png. /preview is the page CDP
+  // screenshots — the Device-facing render path runs through here too.
   const dashboard = createDashboard({
     derive: conductor.derive,
-    render: conductor.render,
-    committedState: conductor.committedState,
+    fetchPngFromUrl,
+    internalOrigin: INTERNAL_URL_ORIGIN,
     now,
   });
 
-  // 7. Parent app: access log + error handler, then compose the sub-apps.
+  // 6. Parent app: access log + error handler, then compose the sub-apps.
   const app = new Hono()
     .use(logger())
     .onError((err, c) => {
@@ -76,7 +70,6 @@ async function main() {
       return c.json({ error: "internal" }, 500);
     })
     .route("/", conductor.app)
-    .route("/", cdp.app)
     .route("/", dashboard);
 
   console.log(`trmnl-byos-deno on :${PORT}`);

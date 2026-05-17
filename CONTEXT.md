@@ -23,7 +23,8 @@ Plugin's data, the duration that data stands for, optional rasterization hints, 
 component that turns the data into JSX. _Avoid_: template, app.
 
 **RunContext**: The single argument to `run`. Always contains `t: Temporal.ZonedDateTime`, an
-`intent` (Device poll, dashboard scrub, prerender warm-up), and a `device` (latest
+`intent` (`"poll"` for the Device's `/api/display` call, `"scrub"` for a dashboard or `/preview`
+fetch; `"prerender"` is reserved but unused since ADR-0007 was withdrawn), and a `device` (latest
 heartbeat-derived telemetry). Open-shaped — more fields may be added non-breakingly over time;
 Plugins read what they need and ignore the rest. _Avoid_: bag, params, options.
 
@@ -31,123 +32,104 @@ Plugins read what they need and ignore the rest. _Avoid_: bag, params, options.
 public data shape; `validity` is the duration that data stands for; `hints` are optional
 rasterization hints the Renderer may consult; `view` is the JSX component `(state) => JSXElement`
 the Renderer invokes with `state`. `view` rides in the Result (not as static Plugin config) because
-view and state are type-locked and because it makes Super-Plugin composition mechanical.
-_Avoid_: sample, snapshot, presentation, output.
+view and state are type-locked and because it makes Super-Plugin composition mechanical. _Avoid_:
+sample, snapshot, presentation, output.
 
-**Conductor**: The per-poll orchestrator. Holds the **Current Result** and the **Current Image**.
-For each trigger (Device poll, dashboard scrub, prerender warm-up) decides whether to call
-`Plugin.run`, whether to re-derive HTML, whether to re-rasterize, and whether to reuse what it
-already has. Owns identity computation. _Avoid_: pipeline, manager, orchestrator (the role
-description, not the name).
+**Conductor**: Hosts the BYOS surface (`/api/setup`, `/api/display`, `/api/log`, `/assets/*`) and
+exposes a single `derive(t, intent?)` for peers that want to run the Plugin and turn its Result into
+HTML + identity. Holds no rendered-PNG cache (ADR-0004); the only mutable state it carries between
+requests is `latestDevice`, the most-recent DeviceReport parsed off a poll. _Avoid_: pipeline,
+manager, orchestrator (the role description, not the name).
 
-**Renderer**: An internal Server module — a pair of stateless functions. `deriveHtml(result)`
-invokes `result.view(result.state)` and runs `renderToString` to produce an HTML string.
-`rasterize(html, hints)` talks to a CDP sidecar to screenshot the HTML at the active panel's
-geometry, applies dither, and returns PNG bytes. The CDP sidecar is one implementation detail of
-`rasterize`; the Renderer's identity as a Server module is independent of it. _Avoid_: CDP,
-sidecar, headless-browser — those are how this Renderer happens to do its job.
+**Renderer**: An internal Server concept split across two functions, both stateless.
+`deriveHtml(result)` invokes `result.view(result.state)` and runs `renderToString` to produce an
+HTML string — owned by the Conductor. `fetchPngFromUrl(url)` talks to a CDP sidecar to screenshot
+the URL at the active panel's geometry, applies dither, and returns PNG bytes — owned by the
+dashboard's `/preview/png` handler. The CDP sidecar is one implementation detail of
+`fetchPngFromUrl`. _Avoid_: CDP, sidecar, headless-browser — those are how this Renderer happens to
+do its job.
 
-**Image**: The PNG bytes the Server hands to the Device. Carries an identity (a hash of the HTML
-that produced these bytes) the Device caches against. The Image is the only artifact crossing the
-Server/Device boundary. _Avoid_: frame, picture, output.
-
-**Current Result**: The Result the Conductor is currently honoring — the latest
-`{ state, validity, hints?, view }` paired with the `RunContext` it was committed at. Replaced when
-validity expires (or earlier, when a prerender warm-up runs). _Avoid_: current sample, current
-snapshot.
-
-**Current Image**: The Image the Conductor is currently serving — `{ png, identity }`. Replaced
-only when a fresh `deriveHtml + rasterize` produces a different identity (see ADR-0004).
+**Image**: The PNG bytes the Server hands to the Device. The Server never holds a rendered Image in
+memory across requests — `/preview/png` produces fresh bytes on every call. The Image carries an
+identity (a hash of the HTML that produced its source render) that the Device caches against via the
+`filename` field on `/api/display`. _Avoid_: frame, picture, output.
 
 ## Relationships
 
 - One Server orchestrates exactly one Plugin and serves exactly one Device.
-- The Conductor has three trigger kinds: a Device poll (asks about now), a dashboard scrub (asks
-  about an arbitrary `t`), and a prerender warm-up (asks about a near-future `t` so the Image is
-  ready when the Device's next poll arrives — see ADR-0007).
+- The Plugin runs on two triggers: a Device poll (intent `"poll"`, asks about now — through
+  `/api/display`) and a `/preview` fetch (intent `"scrub"`, asks about whatever `t` the caller
+  supplied — through CDP for the Device-facing PNG and direct from the browser for the dashboard).
 - The Device initiates every Device-driven interaction; the Server never pushes.
 - The Image is the only artifact crossing the Server/Device boundary; the Device is unaware of
   Result, Plugin, view, or Conductor.
-- A Plugin owns its own internal state (caches, timers, fetched data); the Conductor does not
-  govern it.
+- A Plugin owns its own internal state (caches, timers, fetched data); the Conductor does not govern
+  it.
 - `RunContext.t` is a `Temporal.ZonedDateTime`; `Result.validity` is a `Temporal.Duration`.
-- **Image identity** is derived from the HTML the Plugin's view produces. The Conductor reuses the
-  Current Image when a fresh HTML hashes to the same identity; the Device caches by
-  `filename = identity`. The hash function and length are encapsulated; see ADR-0004.
+- **Image identity** is derived from the HTML the Plugin's view produces. The Conductor returns it
+  as `filename` from `/api/display`; the Device's firmware compares it against the previous poll's
+  filename and skips both the download and the e-ink refresh when it matches. The hash function and
+  length are encapsulated; see ADR-0004.
 - Multi-mode composition (e.g. BVG mornings, photo otherwise) lives inside a Super-Plugin that
   imports other Plugins as plain code — never in the Server or the Conductor.
 
 ## Lifecycle (Device poll)
 
-Pipeline (one full pass, no skips):
-`Device poll → Conductor → Plugin.run(ctx) → Result → Renderer.deriveHtml(result) → Renderer.rasterize(html, hints) → Image → Device`
+Two HTTP hops per cycle. The first computes metadata; the second produces the pixels.
 
 ```mermaid
 sequenceDiagram
     participant Device
-    participant Server
     participant Conductor
     participant Plugin
-    participant Renderer
+    participant Dashboard as Dashboard /preview/png
+    participant CDP
+    participant Preview as Dashboard /preview
 
-    Device->>Server: poll
-    Server->>Conductor: trigger { t, intent: "poll", device }
-
-    alt Current Result still in validity
-        Note over Conductor: reuse Current Image
-    else expired or absent
-        Conductor->>Plugin: run(ctx)
-        Plugin-->>Conductor: Result
-        Conductor->>Renderer: deriveHtml(result)
-        Renderer-->>Conductor: html
-        Note over Conductor: identity = hash(html)
-        alt identity matches Current Image
-            Note over Conductor: keep Current Image
-        else identity differs
-            Conductor->>Renderer: rasterize(html, hints)
-            Renderer-->>Conductor: png
-            Note over Conductor: store new Current Image
-        end
-    end
-
-    Conductor-->>Server: image_url, filename, refresh_rate
-    Server-->>Device: image_url, filename, refresh_rate
+    Device->>Conductor: GET /api/display
+    Conductor->>Plugin: run({ t: now, intent: "poll" })
+    Plugin-->>Conductor: Result
+    Note over Conductor: identity = hash(deriveHtml(result))
+    Conductor-->>Device: { image_url: "/preview/png", filename, refresh_rate }
 
     alt filename matches szPrevFile
         Note over Device: skip fetch and repaint
     else
-        Device->>Server: fetch image_url
-        Server-->>Device: PNG bytes
+        Device->>Dashboard: GET /preview/png
+        Dashboard->>CDP: screenshot internalOrigin + /preview
+        CDP->>Preview: GET /preview
+        Preview->>Plugin: run({ t: now, intent: "scrub" })
+        Plugin-->>Preview: Result
+        Preview-->>CDP: HTML
+        CDP-->>Dashboard: PNG bytes
+        Dashboard-->>Device: PNG bytes
         Note over Device: repaint panel
     end
 
     Note over Device: sleep refresh_rate
 ```
 
-The Conductor uses `Plugin.run` for every trigger kind (poll, scrub, prerender). The skip-point
-inside the "expired" branch is after `deriveHtml`: if the new HTML hashes to the same value as the
-Current Image's identity, reuse the Current Image (skip `rasterize`). Rasterize is the expensive
-step; this is the save worth making.
+The Plugin runs twice per Device cycle. There is no server-side render cache (ADR-0004) — every
+Device fetch produces fresh pixels. The Device-side `filename` cache is the only dedupe that fires,
+and it fires on the Device, not the Server.
 
-For a dashboard scrub the Conductor runs the same pipeline at the arbitrary `t` the dashboard
-supplies, returning the resulting Image to the dashboard without touching the Current Result or
-Current Image.
-
-For a prerender warm-up the Conductor anticipates the Device's next poll and runs the pipeline
-ahead of time so the Current Image is hot when the Device actually polls (see ADR-0007).
+For a dashboard scrub the dashboard handler calls `derive(t, "scrub")` to get Result metadata and
+fetches the PNG via the same CDP hop pointed at `/preview?t=...`. The Server holds no "what the
+dashboard last saw" state.
 
 ## Static assets and styling
 
-**Current behavior:** The Server serves `/preview/:id/assets/*` from the Plugin's folder on disk;
-the PDG (Plugin Design Guide) and the base design-system stylesheet pull through this path. Asset
-bytes are read live per render and are *not* included in **Image** identity, so an asset change only
-takes effect after the Server restarts.
+**Current behavior:** The Server serves `/assets/*` from the Plugin's `assets/` directory on disk.
+Both the dashboard `<img>` preview and the CDP-screenshotted `/preview` resolve asset URLs through
+this prefix. Asset bytes are read live per request and are _not_ included in **Image** identity, so
+an asset change takes effect on the next render but does not by itself cause the Device's filename
+cache to invalidate.
 
 **Known gaps (deferred):**
 
 - A Plugin is currently a folder by convention; the convention isn't part of the **Plugin**
   contract.
-- Asset changes don't bust the **Current Image** because identity is HTML-only.
+- Asset changes don't bust the Device's filename cache because identity is HTML-only.
 - Composition (a Super-Plugin pulling in sub-Plugins) has no defined asset story — nested folders,
   merged asset maps, render-time bundling, and fully-inline (data URIs) are all candidates.
 
@@ -157,12 +139,12 @@ current behavior stands; see the corresponding entry under **Open questions**.
 ## Example dialogue
 
 > **Dev:** "What happens when the dashboard opens but no Device has polled yet?" **Domain expert:**
-> "No Current Result exists. The dashboard's request goes through the Conductor exactly like a
-> Device poll — `Plugin.run({ t: now, intent: 'scrub', device })`."
+> "The dashboard's request calls `derive(now, 'scrub')`. The Plugin runs with `ctx.device = null`.
+> Nothing is pinned anywhere; the next Device poll runs the Plugin again."
 
 > **Dev:** "If I scrub forward, does the Device see anything different?" **Domain expert:** "No.
-> Scrub calls `Plugin.run({ t, intent: 'scrub', device })` and runs the result through the Renderer
-> for the dashboard — it doesn't touch the Current Result or Current Image."
+> Scrub is just `Plugin.run({ t, intent: 'scrub', device })` rendered to a one-off PNG for the
+> dashboard. The Server holds no rendered-PNG state, so there's nothing to disturb."
 
 > **Dev:** "How does a Super-Plugin show BVG at commute, photo otherwise?" **Domain expert:** "It's
 > a Plugin whose factory imports both sub-Plugins. Its `run(ctx)` calls one or both sub-`run`s,
@@ -173,15 +155,15 @@ current behavior stands; see the corresponding entry under **Open questions**.
 ## Flagged ambiguities
 
 - "template" in the codebase = **Plugin** (rename pending).
-- "snapshot" / "present" / "Sample" / "Presentation" are gone from the target vocabulary —
-  collapsed into `run` and `Result`. The codebase still uses the old names; rename pending.
+- "snapshot" / "present" / "Sample" / "Presentation" are gone from the target vocabulary — collapsed
+  into `run` and `Result`. The codebase still uses the old names; rename pending.
 - The content-hash filename (ADR-0004) is the **Image** identity at the wire.
 
 ## Open questions
 
 - **`RunContext.device` contents** — exactly which heartbeat-derived fields populate it (battery,
-  RSSI, last-seen timestamp, full DeviceReport, …). The RunContext shape is open; this is the
-  open question about what fills one of its fields.
+  RSSI, last-seen timestamp, full DeviceReport, …). The RunContext shape is open; this is the open
+  question about what fills one of its fields.
 - **Future Results** — pre-committing for `t > now` beyond the prerender warm-up of the immediate
   next poll. No use case today.
 - **Multi-device** — contract written without single-device assumptions; extends naturally if

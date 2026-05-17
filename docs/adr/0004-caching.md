@@ -1,107 +1,102 @@
-# 0004 — Avoiding redundant work: validity, identity, and the Current Image
+# 0004 — No server-side render cache; `validity` drives `refresh_rate` and the Device's filename cache
 
 **Status:** Accepted
 
 ## Context
 
-Two costs we want to avoid:
+Two costs we could try to avoid:
 
-1. **Server-side** — running `Renderer.rasterize` (CDP screenshot + dither) takes meaningful CPU
-   and burns the headless browser's working set. Doing it when the result would be byte-identical
-   to what the Conductor is already holding is pure waste.
+1. **Server-side** — running CDP screenshot + dither takes meaningful CPU and burns the headless
+   browser's working set. Doing it when the result would be byte-identical to what we already
+   produced is, in principle, waste.
 2. **Device-side** — every e-ink refresh draws meaningful battery and produces a brief, visible
-   flicker as the panel cycles. The flicker is the load-bearing cost: it directly conflicts with
-   the "inconspicuous decor" intent. Battery is the secondary cost. Repainting when the pixels are
+   flicker as the panel cycles. The flicker is the load-bearing cost: it directly conflicts with the
+   "inconspicuous decor" intent. Battery is the secondary cost. Repainting when the pixels are
    identical to what's already on screen is wasted energy and wasted attention.
 
-The **Conductor** holds exactly one **Current Result** and one **Current Image** (ADR-0003). There
-is no LRU of past Images. So "caching" here is not a lookup over history — it's a single decision
-at re-run time: _do we replace the Current Image, or keep it?_
+An earlier iteration of this Server held a **Current Image** on the Conductor — one PNG keyed by its
+HTML-hash identity, replaced only when a fresh render hashed differently. The Device's poll served
+from that cache. It was a meaningful CPU win but had two downsides that compounded over time:
+
+- Any pipeline glitch (transient upstream data fetch failure, race, etc.) could pin an error-view
+  frame as the Current Image. The Device kept showing it until the Plugin's next non-erroring run
+  produced different HTML — which, with deterministic plugins, could be a long time.
+- Debug surfaces had to model "what the Device sees" separately from "what the Plugin would produce
+  now" because they could legitimately differ. Useful but expensive in concept count.
 
 ## Decision
 
-Two independent mechanisms, both consistent with "Conductor holds one Current Result + one Current
-Image":
+The Server holds no rendered-PNG cache. Every Device fetch re-renders.
 
-### `validity` governs when to do anything at all
+### Single render path
 
-`Result.validity` plays three roles, all the same idea ("this is fresh for this duration"):
+`/preview/png` is the only thing that produces PNG bytes. The Device, the dashboard, and dev `curl`
+all hit the same handler. It runs the Plugin (via CDP fetching `/preview`), screenshots, returns.
+ADR-0003 has the request shape.
 
-1. **Plugin → Conductor**: "my Result is good for this long; don't re-run before that."
-2. **Conductor self-management**: "don't call `run` again until `ctx.t.add(validity)` — except for
-   a scheduled prerender warm-up shortly before then (ADR-0007)."
-3. **Conductor → Device**: `refresh_rate = validity`. "Come back to poll after this duration."
+### `validity` still earns its keep — on the Device side
 
-While the Current Result is still inside its validity window, every Device poll is answered with
-the existing Current Image. No `run`, no `deriveHtml`, no `rasterize` — pure read.
+`Result.validity` plays two roles:
 
-### Identity comparison governs whether to re-rasterize
+1. **Plugin → Conductor**: "my Result is good for this long." The Conductor surfaces it as
+   `refresh_rate` on `/api/display`. The Device sleeps for that long before its next poll. A Plugin
+   that's valid for an hour gets polled hourly; the Server isn't asked to render in the meantime.
+2. **Plugin → Device**: indirectly. `refresh_rate` is the only handle the Server has on Device
+   power; respecting `validity` is how a Plugin keeps a panel on a coin cell for months.
 
-When `validity` has expired (or a prerender warm-up fires), the Conductor re-runs the pipeline:
+### Identity earns its keep — also on the Device side
 
-1. Call `plugin.run(ctx)` → new Result. Replace the Current Result.
-2. Call `renderer.deriveHtml(result)` → HTML string. (The Renderer invokes
-   `result.view(result.state)` and runs `renderToString` internally; see ADR-0003.)
-3. `identity = identityFor(html)`. The `identityFor` function encapsulates the hash choice and
-   truncation length so they can change without rippling through the rest of the system; today it
-   is a short SHA-256 hex prefix.
-4. **Compare to the Current Image's identity:**
-   - **Match** → keep the Current Image (its PNG bytes are still correct). Skip `rasterize`.
-   - **Mismatch** → call `renderer.rasterize(html, result.hints)` → new PNG. Replace the Current
-     Image with `{ png, identity }`. The previous Image is discarded.
+The BYOS firmware deduplicates frames by `filename`. If the new poll's `filename` matches the
+previous one's, the firmware skips the image download _and_ skips the e-ink refresh. That is the
+load-bearing flicker-avoidance mechanism.
 
-The Device-side filename is always `image-${currentImage.identity}`. When the Conductor keeps the
-Current Image, the filename is unchanged; the Device's SPIFFS comparison matches `szPrevFile` and
-it skips both the download and the e-ink refresh.
+The Conductor computes `identity = identityFor(deriveHtml(result))` inside `/api/display` and
+returns `filename = image-${identity}`. A Plugin whose HTML is stable across runs gets stable
+filenames; the panel stays quiet.
+
+### What we deliberately don't do
+
+- **No server-side PNG cache.** The Conductor used to hold a Current Image keyed by identity; it no
+  longer does. The win was modest (CDP screenshot at minute cadence is fine); the loss was
+  occasional sticky error frames.
+- **No LRU / history of past Images.** Same reasoning, stronger.
+- **No prerender warm-up.** The previous design (ADR-0007, withdrawn) pre-rendered into the cache
+  shortly before the Device's expected poll. Without a cache, there's nothing to warm; the render
+  happens in the Device's request path. The Device's wake-up latency dominates the render cost
+  anyway, so the loss is small.
 
 ### Why HTML (not state) is the identity input
 
-Identity is computed over the rendered HTML, not over `Result.state` directly. HTML captures
-**both** inputs to the Image — the state the Plugin produced *and* the view (in the Result) it was
-rendered through. State changes that don't affect the rendered output get free skips; view-code
-changes (edit the component, save) correctly invalidate without any version bump or restart
-dependency.
+Identity is still computed over the rendered HTML, not over `Result.state` directly. HTML captures
+_both_ inputs to the Image — the state the Plugin produced _and_ the view it was rendered through.
+State changes that don't affect rendering get free dedupe on the Device side; view-code changes
+correctly invalidate without a version bump or restart dependency.
 
 ### View purity helps but isn't required
 
-If `result.view` is pure on `result.state`, identical state → identical HTML → identity match →
-Current Image kept → no `rasterize` call, no Device repaint. If the view reads `Date.now()` or
-closures, HTML differs on every run → identity mismatch → `rasterize` runs and the Device
-repaints every time. The output is still **correct**; both savings just stop firing.
+If `result.view` is pure on `result.state`, identical state → identical HTML → identical `filename`
+→ Device skips the refresh. If the view reads `Date.now()` or closures, HTML differs on every run →
+different `filename` → Device refreshes every poll. Output is still **correct**; flicker just stops
+being suppressed.
 
 `docs/plugin-authoring.md` documents view purity as best practice and walks through the
 dashboard-visible traps when it's violated.
 
-## What we deliberately don't do
-
-- **No LRU / history of past Images.** A Plugin that oscillates between two HTML outputs
-  re-rasterizes on every transition, even if it produced one of them before. The Device-side
-  filename cache still benefits on the second visit (the Device's RTC-persisted filename outlives
-  the Conductor's memory of "what we held last"). Not worth the complexity for one Device polling
-  every ~60s.
-- **No state-hash skip-point.** `run` is one call; the only skip-point in the pipeline is after
-  `deriveHtml`. A state-hash skip would save only the cheap `run` plus `deriveHtml`; the win on
-  the expensive `rasterize` comes from the HTML-hash check, which is correct under view-code
-  changes too.
-
 ## Consequences
 
-- **Conductor state is two records.** `CurrentResult = { ctx, result }` and
-  `CurrentImage = { png, identity }`. No cache eviction, no LRU bookkeeping.
-- **`rasterize` runs only when the new HTML actually differs from what the Conductor holds.** A
-  Plugin whose `run` produces the same HTML across many calls costs zero `rasterize` invocations
-  across that stretch — the Conductor keeps the Current Image, the Device sees the same filename
-  and skips.
-- **`validity` is the universal "fresh-for" duration.** One Plugin-supplied value governs re-run
-  timing, Conductor idle behavior, and Device sleep — all telling the same story. Prerender
-  warm-ups (ADR-0007) shift *when* the re-run happens within the validity window without changing
-  the budget.
-- **View code changes are caught immediately.** Edit `view`, save. Next run produces different
-  HTML → identity mismatch → fresh `rasterize` → new Image → new filename → Device updates. No
-  server-restart dependency for correctness.
-- **`renderToString` runs on every re-run.** Required to compute the identity. Tree walk on a JSX
-  element; microseconds in practice.
-- **Tradeoff: external mutable assets are not detected.** `<img src="https://cdn/x.jpg">` whose
-  bytes change without the URL changing produces identical HTML → identical identity → Device
-  skips a legitimately-changed render. Plugin authors who need this should inline mutable image
-  bytes as data URIs so the change appears in the HTML.
+- **Conductor holds one mutable piece of state**: `latestDevice` (the last DeviceReport we parsed
+  off `/api/display`). No `currentResult`, no `currentImage`, no validity-window logic, no
+  identity-gated rasterize, no LRU.
+- **CDP screenshot runs on every Device poll.** At minute-scale polling that's ~one render per
+  minute per Plugin — fine for a single-Device deployment.
+- **The Plugin runs twice per Device cycle** (once in `/api/display`, once in `/preview` via CDP). A
+  misbehaving Plugin with side effects in `run` will see them duplicated; the contract treats `run`
+  as a pure projection of context to Result anyway.
+- **View code changes are caught immediately.** Edit `view`, save, next poll's `filename` changes,
+  Device refreshes. Same property the old cache provided.
+- **Tradeoff: external mutable assets are still not detected.** `<img src="https://cdn/x.jpg">`
+  whose bytes change without the URL changing produces identical HTML → identical `filename` →
+  Device skips a legitimately-changed render. Plugin authors who need this should inline mutable
+  image bytes as data URIs so the change appears in the HTML.
+- **No stuck-frame failure mode.** A transient `Plugin.run` failure renders the error view for one
+  poll cycle (30s validity); the next poll re-runs from scratch.

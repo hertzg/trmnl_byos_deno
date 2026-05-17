@@ -1,96 +1,120 @@
 import { Hono } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
 import { encodeBase64 } from "@std/encoding/base64";
-import type { CommittedState, DeriveResult, RenderResult } from "../conductor/conductor.ts";
+import type { DeriveResult } from "../conductor/conductor.ts";
+import type { RunContext } from "../plugin/plugin.ts";
 import { withTimings } from "../render/timings.ts";
+import { timed } from "../render/timings.ts";
 import Dashboard from "./dashboard.tsx";
 
 export type DashboardDeps = {
-  // HTML-only run of the pipeline. Used by /preview (no CDP cost).
-  derive: (t: Temporal.ZonedDateTime) => Promise<DeriveResult>;
-  // Full pipeline (derive + rasterize). Used by / and /preview/png. The
-  // dashboard never touches Current state directly; everything flows
-  // through the Conductor surface.
-  render: (t: Temporal.ZonedDateTime) => Promise<RenderResult>;
-  // Latest Current Result + Current Image, or null pre-first-poll. Lets the
-  // dashboard render the "committed (Device sees this)" column.
-  committedState: () => CommittedState;
+  // HTML-only run of the pipeline. Used by /preview (the page CDP screen-
+  // shots) and the dashboard at /, which calls it once per scrub to surface
+  // the Result metadata.
+  derive: (t: Temporal.ZonedDateTime, intent?: RunContext["intent"]) => Promise<DeriveResult>;
+  // CDP-backed url → png. Used by /preview/png to screenshot /preview live.
+  fetchPngFromUrl: (url: string) => Promise<Uint8Array>;
+  // The origin CDP should fetch /preview from. Typically the deno service's
+  // internal docker hostname; the Device sees a different origin via the
+  // /api/display response.
+  internalOrigin: string;
   now: () => Temporal.ZonedDateTime;
 };
 
-// Dashboard at /. ADR-0005: a Plugin-debugging surface, not just a preview.
-// Composed as a peer Hono sub-app via `app.route("/", dashboard)` so the HTTP
-// surfaces stay legible (each prefix lives in one module).
+// Parse the dashboard's datetime-local form value ("YYYY-MM-DDTHH:MM") in
+// the server's timezone. Returns `null` for malformed input so the caller
+// can surface a parse-error notice instead of guessing.
+function parseT(
+  raw: string | undefined,
+  now: () => Temporal.ZonedDateTime,
+): { t: Temporal.ZonedDateTime | null; error: string | null } {
+  if (raw === undefined) return { t: null, error: null };
+  try {
+    return { t: Temporal.PlainDateTime.from(raw).toZonedDateTime(now().timeZoneId), error: null };
+  } catch (err) {
+    return { t: null, error: (err as Error).message };
+  }
+}
+
+// Dashboard + the live-render endpoints. Composed as a peer Hono sub-app
+// via `app.route("/", dashboard)` so the HTTP surfaces stay legible (each
+// prefix lives in one module).
 export function createDashboard(deps: DashboardDeps): Hono {
   return new Hono()
     .get("/", async (c) => {
       const now = deps.now();
-      const committed = deps.committedState();
+      const { t: tRequested, error: parseError } = parseT(c.req.query("t"), deps.now);
+      const t = tRequested ?? now;
 
-      // Datetime-local form value: "YYYY-MM-DDTHH:MM" (no timezone). Interpret
-      // in the server's timezone — that's the timezone the page renders in,
-      // so it's the user's mental model of "what time t means". Malformed
-      // input is treated as "no request" (default fires) and surfaced as a
-      // parseError notice so the operator sees what happened.
-      const tParam = c.req.query("t");
-      let tRequested: Temporal.ZonedDateTime | null = null;
-      let parseError: string | null = null;
-      if (tParam !== undefined) {
-        try {
-          tRequested = Temporal.PlainDateTime.from(tParam).toZonedDateTime(now.timeZoneId);
-        } catch (err) {
-          parseError = (err as Error).message;
-        }
-      }
-
-      // Default (no `?t=`) lands on commit (or now if nothing's committed
-      // yet). Explicit `?t=` clamps forward to the commit moment when one
-      // exists — and only then. Commit is the right floor because the
-      // clamp exists to protect the committed-vs-current A/B; with no
-      // commit there's nothing to protect, so any `?t=` passes through.
-      const t = tRequested === null
-        ? committed?.t ?? now
-        : committed && Temporal.ZonedDateTime.compare(tRequested, committed.t) < 0
-        ? committed.t
-        : tRequested;
-
-      // Wrap the render in a timings collector. The Conductor and Renderer
-      // both record per-step wall-clock into the bucket via timed(); we
-      // pass it to the JSX so the dashboard can render the strip.
+      // Derive locally so we can show Result metadata (state, identity,
+      // validity, view name) next to the rendered PNG. The PNG itself comes
+      // from CDP screenshotting /preview — see fetchPngFromUrl below.
       const t0 = performance.now();
-      const { value: out, timings } = await withTimings(() => deps.render(t));
+      const { value, timings } = await withTimings(async () => {
+        const derived = await deps.derive(t, "scrub");
+        const previewUrl = `${deps.internalOrigin}/preview?${new URLSearchParams({
+          t: toDatetimeLocal(t),
+        })}`;
+        const png = await timed("pipeline.rasterize", () => deps.fetchPngFromUrl(previewUrl));
+        return { derived, png };
+      });
       const totalMs = performance.now() - t0;
+
       const page = renderToString(
         Dashboard({
           t,
           tRequested,
           parseError,
           now,
-          committed,
-          current: { result: out.result, identity: out.identity, device: out.device },
+          current: {
+            result: value.derived.result,
+            identity: value.derived.identity,
+            device: value.derived.device,
+          },
           timings,
           totalMs,
-          pngBase64: encodeBase64(out.png),
+          pngBase64: encodeBase64(value.png),
         }) as Parameters<typeof renderToString>[0],
       );
       return c.html("<!DOCTYPE html>" + page, 200, { "cache-control": "no-store" });
     })
-    // Dev-iteration: live HTML at t=now. ADR-0005: no CDP cost
-    // (no rasterize). Does not touch Current Result or Current Image.
+    // Live HTML of the Plugin's current output. `?t=` lets the dashboard
+    // (and any other consumer) scrub; default is `now`. This is also the
+    // page CDP screenshots when serving /preview/png — the Device-facing
+    // render path runs through here too.
+    //
     // When the pipeline caught an error and swapped in the error view,
-    // surface it as a 500 so dev iteration tools (browser, curl) see the
-    // failure — the body is still the error-view HTML.
+    // status flips to 500 so dev iteration tools (browser, curl) see the
+    // failure; the body is still the error-view HTML.
     .get("/preview", async (c) => {
-      const { html, error } = await deps.derive(deps.now());
+      const { t: tRequested } = parseT(c.req.query("t"), deps.now);
+      const intent = (c.req.query("intent") ?? "scrub") as RunContext["intent"];
+      const { html, error } = await deps.derive(tRequested ?? deps.now(), intent);
       return c.html(html, error ? 500 : 200, { "cache-control": "no-store" });
     })
-    // Dev-iteration: live PNG at t=now via the full pipeline. Does not
-    // touch Current Result or Current Image.
+    // Live PNG of /preview, via CDP. The Device fetches this on every poll
+    // — the JSON returned by /api/display points image_url here.
     .get("/preview/png", async (c) => {
-      const out = await deps.render(deps.now());
-      return c.body(out.png as unknown as ArrayBuffer, 200, {
+      // Forward `?t=` and `?intent=` so CDP screenshots /preview at the
+      // same scrub position the caller requested.
+      const passthrough = new URLSearchParams();
+      const t = c.req.query("t");
+      const intent = c.req.query("intent");
+      if (t !== undefined) passthrough.set("t", t);
+      if (intent !== undefined) passthrough.set("intent", intent);
+      const query = passthrough.toString();
+      const previewUrl = `${deps.internalOrigin}/preview${query ? `?${query}` : ""}`;
+      const png = await deps.fetchPngFromUrl(previewUrl);
+      return c.body(png as unknown as ArrayBuffer, 200, {
         "content-type": "image/png",
         "cache-control": "no-store",
       });
     });
+}
+
+// `<input type="datetime-local">` exchanges values in "YYYY-MM-DDTHH:MM".
+// The forward query to /preview reuses the same shape so the parsing path
+// is identical for the browser and the server-internal hop.
+function toDatetimeLocal(t: Temporal.ZonedDateTime): string {
+  return t.toPlainDateTime().toString({ smallestUnit: "minute" });
 }

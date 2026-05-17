@@ -1,90 +1,92 @@
-# 0003 — Render pipeline, Current Result, and Current Image
+# 0003 — Render pipeline: Plugin → HTML → live screenshot
 
 **Status:** Accepted
 
 ## Context
 
 The **Plugin** exposes `run(ctx) → Result`; the **Device** displays PNG bytes. The **Server** owns
-the chain between them. It also needs a notion of "what the Device is currently being shown" that's
-stable across the Plugin's `validity` window, so multiple polls in that window don't trigger
-redundant work. That ownership lives in the **Conductor**, the per-poll orchestrator inside the
-Server.
+the chain between them.
+
+The Server runs a headless browser (CDP / cloakbrowser) to turn HTML into a panel-resolution PNG.
+CDP can only screenshot a URL, not a string — so the Server has to host the HTML somewhere CDP can
+fetch.
 
 ## Decision
 
-### The Conductor holds a Current Result and a Current Image
+### One HTTP path covers both the dev-iteration preview and the Device-facing render
 
-```ts
-type CurrentResult = { ctx: RunContext; result: Result<unknown> };
-type CurrentImage = { png: Uint8Array; identity: string };
-```
+`/preview` returns the Plugin's live HTML. `/preview/png` is the same render, screenshotted live: on
+every request it hands CDP the internal URL of `/preview` (with whatever `?t=` / `?intent=` query
+the caller passed) and returns the resulting PNG. There is no shelved-HTML / internal-route
+back-channel — `/preview` is just an ordinary route CDP fetches like any other URL on the Server.
 
-Two independent records. The Conductor replaces the Current Result on every re-run; it replaces the
-Current Image only when a fresh render produces a different identity (see ADR-0004).
+The Device fetches `/preview/png` directly. `/api/display`'s `image_url` field points there.
 
-On a Device poll at `now`:
+### Per-poll pipeline
 
-1. If `now < currentResult.ctx.t.add(currentResult.result.validity)` → return the Current Image
-   (validity window in effect — no work).
-2. Otherwise call `plugin.run({ t: now, intent: "poll", device })` and run the resulting Result
-   through the render pipeline below.
+On `GET /api/display`:
 
-A prerender warm-up may replace the Current Result before the Device poll arrives (ADR-0007). The
-poll-time path then takes the validity-in-effect branch.
+1. Record the Device's heartbeat from the request headers into `latestDevice` (so the next Plugin
+   run sees an up-to-date `ctx.device`).
+2. Call `Plugin.run({ t: now, intent: "poll", device: latestDevice })`.
+3. Derive HTML and identity. The identity becomes `filename`; `validity` becomes `refresh_rate`.
+4. Respond with `image_url = ${publicOrigin}/preview/png`.
 
-If `plugin.run`, `renderer.deriveHtml`, or `renderer.rasterize` fails, the Conductor falls back to
-a Server-supplied error view (a small "ErrorCard") with a short validity (~30s). If the error view
-itself fails to rasterize, the error propagates and `/api/display` returns 500.
+On `GET /preview/png` (the Device's next call):
 
-### The render pipeline
+1. Hand CDP `${internalOrigin}/preview` (forwarding any `?t=` / `?intent=` query).
+2. CDP fetches `/preview`, which runs the Plugin again, derives HTML, and returns it.
+3. CDP screenshots; the dithered PNG comes back.
+4. Respond with the PNG bytes.
 
-The Conductor owns everything from "we have a Result" through to "bytes the Device fetches":
+Two Plugin runs per Device cycle is the cost — one inside `/api/display` (for `refresh_rate` +
+`filename`) and one inside `/preview` (for the actual pixels). At the polling cadences this Server
+is tuned for (minutes), the extra run is invisible.
 
-1. **Derive HTML.** Call `renderer.deriveHtml(result)`. The Renderer invokes
-   `result.view(result.state)` and runs `renderToString` over the resulting JSX element, prefixed
-   with `<!DOCTYPE html>`. Returns an HTML string.
-2. **Derive identity.** The Conductor computes `identity = identityFor(html)`. The exact hash
-   function and length are encapsulated in `identityFor`; today: a truncated SHA-256 hex string.
-   See ADR-0004.
-3. **Identity comparison (short-circuit).** If the identity matches the Current Image's identity,
-   keep the Current Image — steps 4–5 are skipped.
-4. **Rasterize.** Call `renderer.rasterize(html, result.hints)`. The Renderer talks to a CDP
-   sidecar to screenshot the HTML at the active panel's geometry, applies any `hints` it
-   recognizes (dither, viewport, filters, …), and returns PNG bytes packed 2 px/byte, PNG
-   color-type=0.
-5. **Replace Current Image.** The new PNG plus its identity becomes the new Current Image,
-   replacing the previous one.
+### Error fallback
 
-The Image the Device fetches is always the Current Image's PNG; its `filename` is always
-`image-${currentImage.identity}`. See ADR-0004 for the full caching framing and the role of
-`validity`.
+If `Plugin.run` / `deriveHtml` / `identityFor` throws inside the Conductor's `derive`, the Conductor
+swaps in a Server-supplied error view as a Result with the configured short validity (~30s).
+`/api/display` and `/preview` both surface the error view that way. `/preview` flips its status to
+500 so dev iteration tools see the failure.
+
+If CDP itself fails (browser down, network error to the sidecar), `/preview/png` propagates the
+error to the caller — the Device retries on the next poll. There is no synthesised "error PNG"
+because synthesising one would also need CDP.
+
+### Conductor surface
+
+`derive(t, intent?) → { result, html, identity, device, error }`. That plus the BYOS sub-app
+(`/api/setup`, `/api/display`, `/api/log`, `/assets/*`) is the full Conductor surface. No
+`render()`, no `committedState()`, no `currentImage` — see ADR-0004 for the deliberate "no cache"
+framing.
+
+### Renderer is internal and stateless
+
+Two functions:
+
+- `deriveHtml(result) → string` — invokes `result.view(result.state)`, runs `renderToString`,
+  prefixes `<!DOCTYPE html>`.
+- `fetchPngFromUrl(url) → Promise<Uint8Array>` — talks to CDP, screenshots the URL at the active
+  panel's geometry, dithers, returns PNG bytes (color-type=0, packed per the panel's bit depth).
+
+`deriveHtml` is owned by the Conductor (it composes with `identityFor` for `filename`).
+`fetchPngFromUrl` is owned by the Dashboard sub-app (`/preview/png` is the only consumer). Both are
+pure functions of their inputs; neither carries instance state.
 
 Panel-specific parameters (width, height, DPR, default bit depth, default dither mode) live in
 `src/render/profiles.ts`. Adding a new panel model is a registry entry, not service code.
 
-### Renderer is internal, stateless, and split
-
-The Renderer is an internal Server module — not a separate process, not a user-facing surface. It
-exposes two stateless functions:
-
-- `deriveHtml(result) → string`
-- `rasterize(html, hints) → Promise<Uint8Array>`
-
-The split exists so the Conductor can insert the identity check between them: derive HTML cheaply,
-hash it, and skip the expensive rasterize call when the identity matches. A CDP sidecar process
-backs `rasterize`; the sidecar is `rasterize`'s implementation detail, not a participant in the
-Plugin/Conductor/Renderer vocabulary.
-
 ## Consequences
 
-- The Plugin is unaware of the pipeline. It exposes `run`; everything after is Conductor/Renderer
-  concern.
-- The Device is unaware of the pipeline. It receives an Image and an identity.
-- Per-Plugin error fallback is handled at the Conductor layer, so individual Plugins can stay
-  unaware of HTTP semantics.
-- Prerender warm-ups (ADR-0007) slot in as a Conductor-triggered run of the same pipeline ahead of
-  the Device's poll — no contract change required.
-- Adding device models is cheap: a new registry entry, no service changes.
-- The Renderer is treated as a black box from the Plugin's perspective. Today its `rasterize`
-  talks to CDP/CloakBrowser; tomorrow it could be anything that takes HTML and returns dithered
-  PNG bytes.
+- **One render path.** `/preview/png` serves the dashboard, dev `curl`, and the Device — all the
+  same code. A bug in the Device-facing render reproduces in the browser instantly.
+- **No shelf, no `/__internal/render/:id`.** CDP fetches `/preview` like any other client.
+- **The Plugin runs twice per Device cycle.** Acceptable at minute-scale polling; revisited if
+  Plugins ever become expensive.
+- **No "what the Device sees right now" state to inspect.** Every fetch is fresh; there is nothing
+  pinned. See ADR-0004 for why that's the chosen trade.
+- **Adding device models is cheap:** a new registry entry, no service changes.
+- **The Renderer is treated as a black box from the Plugin's perspective.** Today its
+  `fetchPngFromUrl` talks to CDP / cloakbrowser; tomorrow it could be anything that takes a URL and
+  returns dithered PNG bytes.

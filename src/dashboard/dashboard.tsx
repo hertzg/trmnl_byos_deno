@@ -1,36 +1,25 @@
 /** @jsxImportSource hono/jsx */
 
-// Dashboard at /. ADR-0005: a Plugin-debugging surface, not just a preview.
-// The `t` scrubber drives the Conductor (default lands on the Current
-// Result's commit moment; explicit `?t=` clamps forward to it) and renders
-// what the Plugin produced side-by-side with what the Device is currently
-// being served. The committed-vs-current diff and the rendered state make
-// two silent Plugin bugs visible (docs/plugin-authoring.md):
-//   - a view that reads wall-clock looks identical at every scrub position
-//     even though `state` is identical
-//   - a Plugin that computes `validity` against wall-clock has an `expiresAt`
-//     that doesn't slide with `t`
+// Dashboard at /. A Plugin-debugging surface, not just a preview.
+// The `t` scrubber runs the Plugin at an arbitrary moment and shows the
+// resulting Image + Result metadata. A `view` that reads wall-clock looks
+// identical at every scrub position even though `state` is identical; a
+// `validity` computed against wall-clock has an `expiresAt` that doesn't
+// slide with `t`. Both are silent under Device-only operation; the scrub
+// view makes them visible.
 
 import type { DeviceReport, Result } from "../plugin/plugin.ts";
 
 export type DashboardProps = {
   t: Temporal.ZonedDateTime;
-  // What the operator's `?t=` parsed to, before forward-only clamping.
-  // Null when no `?t=` was supplied (or parse failed). The page shows a
-  // notice when `t !== tRequested` so the snap isn't silent.
+  // What the operator's `?t=` parsed to. Null when no `?t=` was supplied
+  // (or parse failed). When non-null and different from the effective `t`
+  // a notice is rendered — today the two only differ when parsing fails.
   tRequested: Temporal.ZonedDateTime | null;
   // Set when `?t=` was supplied but Temporal.PlainDateTime.from threw.
   parseError: string | null;
   now: Temporal.ZonedDateTime;
-  // What the Device is currently being served by /api/display. Null until
-  // the first poll has populated Current Result + Current Image.
-  committed: {
-    t: Temporal.ZonedDateTime;
-    result: Result<unknown>;
-    identity: string;
-    device: DeviceReport | null;
-  } | null;
-  // What the dashboard's scrub at `t` produced. Always present.
+  // What the scrub at `t` produced. Always present.
   current: { result: Result<unknown>; identity: string; device: DeviceReport | null };
   // Flat per-step wall-clock collected via withTimings (from src/render/
   // timings.ts). Labels follow the convention "<group>.<step>" — the
@@ -41,21 +30,14 @@ export type DashboardProps = {
   pngBase64: string;
 };
 
-// `<input type="datetime-local">` exchanges values in "YYYY-MM-DDTHH:MM".
-// The browser shows this in the user's locale; the server interprets it in
-// its own timezone on submit (see GET / handler).
 function toDatetimeLocal(t: Temporal.ZonedDateTime): string {
   return t.toPlainDateTime().toString({ smallestUnit: "minute" });
 }
 
-// Display time: drop timezone annotation and sub-second precision. The
-// timezone is shown once in the page footer; everything renders in it.
 function fmtTime(t: Temporal.ZonedDateTime): string {
   return t.toPlainDateTime().toString({ smallestUnit: "second" }).replace("T", " ");
 }
 
-// "1d 3h", "5m 30s", "12s". Operator-readable; the underlying ISO string is
-// already preserved on the datetime-local input and the URLs.
 function fmtSeconds(totalSec: number): string {
   const t = Math.round(totalSec);
   if (t === 0) return "0s";
@@ -73,7 +55,6 @@ function fmtDuration(d: Temporal.Duration): string {
   return fmtSeconds(d.total({ unit: "seconds" }));
 }
 
-// Signed delta from `from` to `to`. "+30h59m from now", "27s ago", "now".
 function fmtDelta(to: Temporal.ZonedDateTime, from: Temporal.ZonedDateTime): string {
   const cmp = Temporal.ZonedDateTime.compare(to, from);
   if (cmp === 0) return "now";
@@ -88,9 +69,6 @@ function stepHref(t: Temporal.ZonedDateTime, by: Temporal.DurationLike): string 
   return `/?t=${encodeURIComponent(toDatetimeLocal(next))}`;
 }
 
-// Quick-jump increments. Chosen to span the kinds of validity windows a Plugin
-// typically uses — minutes for "departures every 5", hours for "photo of the
-// day". Picker is minute-granular, so no sub-minute steps.
 const STEPS: Array<{ label: string; by: Temporal.DurationLike }> = [
   { label: "+1m", by: { minutes: 1 } },
   { label: "+5m", by: { minutes: 5 } },
@@ -99,9 +77,6 @@ const STEPS: Array<{ label: string; by: Temporal.DurationLike }> = [
   { label: "+6h", by: { hours: 6 } },
 ];
 
-// Render Result.state as readable JSON. Replacer is defensive — `state` is
-// the Plugin's data shape and should be JSON-friendly, but a hand-rolled
-// Plugin might leak a function or a BigInt. Don't crash the debug page.
 function stateJson(state: unknown): string {
   try {
     return JSON.stringify(
@@ -139,7 +114,6 @@ const css = `
     padding: 4px 10px; border: 1px solid #bbb; background: #fff; color: #111;
     text-decoration: none; border-radius: 2px;
   }
-  .steps a.commit { border-color: #111; }
   .steps a.reset { border-style: dashed; }
   .image-frame {
     background: #fff; border: 1px solid #ddd; padding: 12px;
@@ -151,16 +125,11 @@ const css = `
     background: #fff; border: 1px solid #ddd; margin-bottom: 16px;
   }
   table.meta th, table.meta td { padding: 6px 12px; text-align: left; vertical-align: top; }
-  table.meta thead th {
-    background: #fafafa; border-bottom: 1px solid #ddd;
-    font-size: 12px; color: #555; font-weight: 500; text-transform: lowercase;
-  }
   table.meta tbody th {
     width: max-content; color: #555; font-weight: normal; white-space: nowrap;
     border-right: 1px solid #eee;
   }
-  table.meta tbody td { font-family: ui-monospace, "SF Mono", Menlo, monospace; width: 50%; }
-  table.meta tbody td.diff { background: #fffbe6; }
+  table.meta tbody td { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
   table.meta .rel { color: #888; font-family: inherit; font-size: 12px; }
   table.meta .muted { color: #888; font-family: inherit; font-style: italic; }
   p.head { margin: 8px 0 16px; font-size: 12px; color: #555; }
@@ -206,14 +175,6 @@ function viewName(r: Result<unknown>): string {
   return r.view.name || "(anonymous)";
 }
 
-type Row = {
-  label: string;
-  committed: string | null; // null → no Current Result yet
-  committedRel?: string | null;
-  current: string;
-  currentRel?: string | null;
-};
-
 function deviceLabel(d: DeviceReport | null): string {
   return d?.id ?? "(none yet)";
 }
@@ -226,10 +187,6 @@ function fmtMs(ms: number): string {
 
 type TimingEntry = { label: string; ms: number };
 
-// One row per step. Bar width is the step's share of the section's max
-// (so each block is internally readable regardless of which steps live
-// in it). The longest bar in the section gets a darker fill to make the
-// dominant cost obvious at a glance.
 function TimingsBlock(props: { title: string; entries: TimingEntry[] }) {
   const max = Math.max(0.001, ...props.entries.map((e) => e.ms));
   return (
@@ -252,11 +209,6 @@ function TimingsBlock(props: { title: string; entries: TimingEntry[] }) {
   );
 }
 
-// Group the flat timings bucket by the first dot-separated segment of each
-// label. `plugin.run` → "plugin"; `cdp.connect` → "cdp"; bare names fall
-// into "(uncategorised)". Each group renders as its own proportional bar
-// block, so the operator sees pipeline phases side by side without the
-// Conductor needing to know about the visual structure.
 function groupTimings(timings: Record<string, number>): Array<[string, TimingEntry[]]> {
   const groups = new Map<string, TimingEntry[]>();
   for (const [label, ms] of Object.entries(timings)) {
@@ -271,53 +223,10 @@ function groupTimings(timings: Record<string, number>): Array<[string, TimingEnt
 }
 
 export default function Dashboard(props: DashboardProps) {
-  const { t, tRequested, parseError, now, committed, current, timings, totalMs, pngBase64 } = props;
-  const tCommit = committed?.t ?? null;
-  // Clamp fired iff `?t=` was supplied, parsed, and got snapped forward.
-  const clamped = tRequested !== null && Temporal.ZonedDateTime.compare(tRequested, t) !== 0;
+  const { t, tRequested, parseError, now, current, timings, totalMs, pngBase64 } = props;
   const groupedTimings = groupTimings(timings);
-
   const currentExpires = t.add(current.result.validity);
-  const committedExpires = committed ? committed.t.add(committed.result.validity) : null;
 
-  const rows: Row[] = [
-    {
-      label: "t",
-      committed: committed ? fmtTime(committed.t) : null,
-      committedRel: committed ? fmtDelta(committed.t, now) : null,
-      current: fmtTime(t),
-      currentRel: fmtDelta(t, now),
-    },
-    {
-      label: "validity",
-      committed: committed ? fmtDuration(committed.result.validity) : null,
-      current: fmtDuration(current.result.validity),
-    },
-    {
-      label: "expires",
-      committed: committedExpires ? fmtTime(committedExpires) : null,
-      committedRel: committed
-        ? `+${fmtDuration(committed.result.validity)} past committed t`
-        : null,
-      current: fmtTime(currentExpires),
-      currentRel: `+${fmtDuration(current.result.validity)} past chosen t`,
-    },
-    {
-      label: "view",
-      committed: committed ? viewName(committed.result) : null,
-      current: viewName(current.result),
-    },
-    {
-      label: "identity",
-      committed: committed ? committed.identity : null,
-      current: current.identity,
-    },
-    {
-      label: "device",
-      committed: committed ? deviceLabel(committed.device) : null,
-      current: deviceLabel(current.device),
-    },
-  ];
   return (
     <html>
       <head>
@@ -343,20 +252,15 @@ export default function Dashboard(props: DashboardProps) {
             <span class="rel">({parseError})</span>
           </p>
         )}
-        {clamped && tRequested && (
+        {tRequested && Temporal.ZonedDateTime.compare(tRequested, t) !== 0 && (
           <p class="notice">
-            forward-only: requested <code>{toDatetimeLocal(tRequested)}</code>{" "}
-            is before the Current Result's commit — clamped to <code>{fmtTime(t)}</code>.
+            requested <code>{toDatetimeLocal(tRequested)}</code> — rendered at{" "}
+            <code>{fmtTime(t)}</code>.
           </p>
         )}
         <div class="steps">
           <span>step:</span>
           {STEPS.map((s) => <a key={s.label} href={stepHref(t, s.by)}>{s.label}</a>)}
-          {tCommit && (
-            <a class="commit" href={`/?t=${encodeURIComponent(toDatetimeLocal(tCommit))}`}>
-              current commit
-            </a>
-          )}
           <a class="reset" href="/">reset</a>
         </div>
         {groupedTimings.map(([group, entries]) => (
@@ -372,47 +276,36 @@ export default function Dashboard(props: DashboardProps) {
           now: <code>{fmtTime(now)}</code> · timezone: <code>{now.timeZoneId}</code>
         </p>
         <table class="meta">
-          <thead>
-            <tr>
-              <th></th>
-              <th>committed (Device sees this)</th>
-              <th>current (chosen t)</th>
-            </tr>
-          </thead>
           <tbody>
-            {rows.map((row) => {
-              const differs = row.committed !== null && row.committed !== row.current;
-              const cls = differs ? "diff" : undefined;
-              return (
-                <tr key={row.label}>
-                  <th scope="row">{row.label}</th>
-                  <td class={cls}>
-                    {row.committed === null
-                      ? <span class="muted">(no Current Result yet)</span>
-                      : (
-                        <>
-                          {row.committed}
-                          {row.committedRel && (
-                            <>
-                              {" "}
-                              <span class="rel">({row.committedRel})</span>
-                            </>
-                          )}
-                        </>
-                      )}
-                  </td>
-                  <td class={cls}>
-                    {row.current}
-                    {row.currentRel && (
-                      <>
-                        {" "}
-                        <span class="rel">({row.currentRel})</span>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+            <tr>
+              <th scope="row">t</th>
+              <td>
+                {fmtTime(t)} <span class="rel">({fmtDelta(t, now)})</span>
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">validity</th>
+              <td>{fmtDuration(current.result.validity)}</td>
+            </tr>
+            <tr>
+              <th scope="row">expires</th>
+              <td>
+                {fmtTime(currentExpires)}{" "}
+                <span class="rel">(+{fmtDuration(current.result.validity)} past chosen t)</span>
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">view</th>
+              <td>{viewName(current.result)}</td>
+            </tr>
+            <tr>
+              <th scope="row">identity</th>
+              <td>{current.identity}</td>
+            </tr>
+            <tr>
+              <th scope="row">device</th>
+              <td>{deviceLabel(current.device)}</td>
+            </tr>
           </tbody>
         </table>
         <details class="state" open>

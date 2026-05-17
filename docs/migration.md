@@ -9,16 +9,16 @@ the PRD will be.
 
 ## What's being migrated, at a glance
 
-| Today                                                              | Target                                                                                  |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| `template` (codebase term + `templates/` dir + `TEMPLATE_DIR` env) | **Plugin** (term, dir, env)                                                             |
-| `setup(config: SetupConfig): Registration`                         | `default function (): Plugin`                                                           |
-| `onDisplay(): { jsx, validForSeconds }`                            | `run(ctx: RunContext) → Result { state, validity, hints?, view }`                       |
-| `Date`, `validForSeconds: number`                                  | `Temporal.ZonedDateTime`, `Temporal.Duration`                                           |
-| Server holds one in-flight render + LRU of jobs                    | **Conductor** holds **Current Result** + **Current Image**; identity = hash(HTML)       |
-| Render pipeline implicit in Server                                 | **Renderer** as internal Server module: `deriveHtml(result)` + `rasterize(html, hints)` |
-| `getDevice()` injected into setup config                           | Plugin owns its own config; device telemetry rides in `RunContext.device` instead       |
-| Existing ADRs (0001–0008) describing old shape                     | Clean-slate ADRs reflecting the target model (0001–0007)                                |
+| Today                                                              | Target                                                                                                                                     |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `template` (codebase term + `templates/` dir + `TEMPLATE_DIR` env) | **Plugin** (term, dir, env)                                                                                                                |
+| `setup(config: SetupConfig): Registration`                         | `default function (): Plugin`                                                                                                              |
+| `onDisplay(): { jsx, validForSeconds }`                            | `run(ctx: RunContext) → Result { state, validity, hints?, view }`                                                                          |
+| `Date`, `validForSeconds: number`                                  | `Temporal.ZonedDateTime`, `Temporal.Duration`                                                                                              |
+| Server holds one in-flight render + LRU of jobs                    | No server-side render cache; every Device fetch live-renders. Dedupe happens Device-side via the `filename` (HTML hash) in `/api/display`. |
+| Render pipeline implicit in Server                                 | `Conductor.deriveHtml(result)` produces HTML; `fetchPngFromUrl(url)` screenshots a live `/preview` URL via CDP                             |
+| `getDevice()` injected into setup config                           | Plugin owns its own config; device telemetry rides in `RunContext.device` instead                                                          |
+| Existing ADRs (0001–0008) describing old shape                     | Clean-slate ADRs reflecting the target model (0001–0007)                                                                                   |
 
 ## Things that don't change
 
