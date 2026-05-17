@@ -1,6 +1,8 @@
 import { assertEquals, assertStrictEquals } from "@std/assert";
 import { join } from "@std/path";
+import { Hono } from "hono";
 import { createConductor } from "../conductor/conductor.ts";
+import { createDashboard } from "../dashboard/dashboard.ts";
 import type { RunContext } from "./plugin.ts";
 import type { Bundle } from "./bundle.ts";
 import { createPluginManager } from "./plugin-manager.ts";
@@ -246,6 +248,79 @@ Deno.test("a PluginManager wired through the real Renderer surfaces a filename d
     // 16-char lowercase hex per ADR-0004.
     assertEquals(/^image-[0-9a-f]{16}$/.test(body.filename), true);
     assertEquals(body.refresh_rate, 60);
+  } finally {
+    await renderer.close();
+  }
+});
+
+Deno.test("end-to-end: /preview/png drives PluginManager → Renderer.rasterize through the production wiring and CDP fetches the loopback origin", async () => {
+  // The full /preview/png path: Dashboard → conductor.derive → PluginManager.run
+  // → Bundle → renderer.rasterize. The real Renderer mounts the Bundle on
+  // its loopback origin and hands its URL to fetchPngFromUrl. Our stub
+  // fetchPngFromUrl plays CDP: it really fetches the URL it's handed, asserts
+  // the HTML matches the Plugin's view output, and returns PNG-shaped bytes.
+  // If CDP could fetch this origin, it would get the right HTML.
+  const dir = await writePluginDir({
+    "main.ts": `
+      export default {
+        run() {
+          return {
+            state: { msg: "ahoy from disk" },
+            validity: Temporal.Duration.from({ minutes: 5 }),
+            view: (s) => "<p>" + s.msg + "</p>",
+          };
+        },
+      };
+    `,
+    "assets/style.css": ".x { color: red; }",
+  });
+  const pluginManager = await createPluginManager({ pluginDir: dir });
+
+  // Boxed in an object so TS doesn't narrow the closure-captured `let`s to
+  // `null` after the assignment is hidden behind a callback.
+  const seen: { url: string | null; html: string | null; css: string | null } = {
+    url: null,
+    html: null,
+    css: null,
+  };
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+  const renderer = createRenderer({
+    fetchPngFromUrl: async (url) => {
+      seen.url = url;
+      seen.html = await (await fetch(url)).text();
+      seen.css = await (await fetch(new URL("/assets/style.css", new URL(url)))).text();
+      return png;
+    },
+  });
+
+  try {
+    const conductor = createConductor({
+      pluginManager,
+      renderer,
+      errorView: (_err: Error) => "",
+      errorValidity: Temporal.Duration.from({ seconds: 30 }),
+      friendlyId: "SMOKE",
+      now: () => T0,
+    });
+    const dashboard = createDashboard({
+      derive: conductor.derive,
+      renderer,
+      now: () => T0,
+    });
+    const app = new Hono().route("/", conductor.app).route("/", dashboard);
+
+    const res = await app.request("/preview/png");
+
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get("content-type"), "image/png");
+    assertEquals(new Uint8Array(await res.arrayBuffer()), png);
+    // CDP-shaped fetcher saw a URL on the Renderer's loopback origin, not
+    // the outward server.
+    assertEquals(seen.url?.startsWith(renderer.origin() + "/"), true);
+    // And it really fetched the Plugin's rendered HTML through the loopback.
+    assertEquals(seen.html, "<!DOCTYPE html><p>ahoy from disk</p>");
+    // The Bundle's asset is reachable on the same origin.
+    assertEquals(seen.css, ".x { color: red; }");
   } finally {
     await renderer.close();
   }

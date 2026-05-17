@@ -14,25 +14,11 @@ export const FRIENDLY_ID = env("FRIENDLY_ID", "TRMNL");
 
 // HTTP base of the CDP container (cloakhq/cloakbrowser cloakserve). The
 // per-process WS endpoint is resolved via /json/version on each render.
+// CDP must be able to reach the Renderer's loopback origin (127.0.0.1:<ephemeral>);
+// running CDP in the host network namespace (--network host) or with
+// `--add-host=host.docker.internal:host-gateway` plus a manual route is the
+// usual deployment shape. See ADR-0003 / ADR-0005.
 export const CDP_URL = env("CDP_URL", "http://localhost:9222");
-
-// URL origin the headless browser uses to fetch our HTML for rasterization. Must be
-// reachable from CDP's network namespace, which is almost never 127.0.0.1 — chrome
-// typically runs in its own container.
-//
-// Default targets the documented dev workflow (deno on host + cloakbrowser via docker):
-// `host.docker.internal` resolves to the host from inside chrome's container on Docker
-// Desktop / Colima / OrbStack (Mac) and on Linux when started with
-// `--add-host=host.docker.internal:host-gateway`.
-//
-// Override scenarios:
-//   - docker-compose: set to the deno service's network hostname (e.g. http://trmnl-byos-dev:3000)
-//   - chrome runs natively on host: set to http://127.0.0.1:${PORT}
-//   - linux without host-gateway: set to the host's LAN IP
-export const INTERNAL_URL_ORIGIN = env(
-  "INTERNAL_URL_ORIGIN",
-  `http://host.docker.internal:${PORT}`,
-);
 
 // Absolute path to the user's Plugin directory. The directory must contain a
 // `main.ts` whose default export is a factory returning a Plugin (ADR-0002).

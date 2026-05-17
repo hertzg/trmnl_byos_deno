@@ -2,24 +2,21 @@
 # Run with: docker compose up --build
 # For a device on your LAN to reach the server, set PUBLIC_URL_ORIGIN to the host's LAN IP, e.g.:
 #   PUBLIC_URL_ORIGIN=http://192.168.1.10:3000 docker compose up
+#
+# Networking note (slice #51): the Renderer owns a loopback HTTP origin on
+# 127.0.0.1:<ephemeral> that CDP fetches the Bundle (HTML + assets) from.
+# Chrome therefore has to share the deno container's network namespace —
+# `network_mode: service:trmnl-byos-dev` puts chrome on the deno container's
+# loopback so 127.0.0.1 resolves to the deno process. The CDP HTTP port
+# (9222) is reached via the same shared loopback at http://localhost:9222.
 services:
-  chrome:
-    image: cloakhq/cloakbrowser
-    container_name: trmnl-byos-chrome-dev
-    command: cloakserve
-    restart: unless-stopped
-    # Exposed on the host so a non-Docker `deno task dev` can also point at it.
-    ports:
-      - "127.0.0.1:9222:9222"
-
   trmnl-byos-dev:
     build: .
     container_name: trmnl-byos-dev
-    depends_on:
-      chrome:
-        condition: service_started
     ports:
       - "3000:3000"
+      # Exposed on the host so a non-Docker workflow can also point at CDP.
+      - "127.0.0.1:9222:9222"
     volumes:
       - ./src:/app/src:cached
       # Bind-mount the in-repo example as the runtime template. Already populated, so the
@@ -28,11 +25,9 @@ services:
       - ./templates/example:/app/template:cached
     environment:
       PUBLIC_URL_ORIGIN: "${PUBLIC_URL_ORIGIN:-http://127.0.0.1:3000}"
-      # The chrome sidecar fetches our HTML from this URL. It must be reachable from
-      # chrome's network namespace — that's the docker-network service name, not localhost.
-      INTERNAL_URL_ORIGIN: "http://trmnl-byos-dev:3000"
+      # CDP shares this container's network namespace, so localhost reaches it.
+      CDP_URL: "http://localhost:9222"
       FRIENDLY_ID: "DEV"
-      CDP_URL: "http://chrome:9222"
       DEVICE_ID: "trmnl-x"
       TZ: "${TZ:-Etc/UTC}"
     command:
@@ -41,3 +36,18 @@ services:
       - --allow-all
       - --watch=src,/app/template
       - src/main.ts
+
+  chrome:
+    image: cloakhq/cloakbrowser
+    container_name: trmnl-byos-chrome-dev
+    command: cloakserve
+    restart: unless-stopped
+    # Share the deno container's network namespace so chrome can fetch the
+    # Renderer's loopback origin at 127.0.0.1:<ephemeral>. Slice #51 made
+    # this required — before it, CDP fetched a public /preview route on the
+    # outward server, which was reachable cross-container via the docker
+    # network.
+    network_mode: "service:trmnl-byos-dev"
+    depends_on:
+      trmnl-byos-dev:
+        condition: service_started
