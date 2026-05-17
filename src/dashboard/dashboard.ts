@@ -3,17 +3,21 @@ import { renderToString } from "hono/jsx/dom/server";
 import { encodeBase64 } from "@std/encoding/base64";
 import type { DeriveResult } from "../conductor/conductor.ts";
 import type { RunContext } from "../plugin/plugin.ts";
+import type { FetchPngFromUrl } from "../render/renderer.ts";
 import { withTimings } from "../render/timings.ts";
 import { timed } from "../render/timings.ts";
 import Dashboard from "./dashboard.tsx";
 
 export type DashboardDeps = {
-  // HTML-only run of the pipeline. Used by /preview (the page CDP screen-
-  // shots) and the dashboard at /, which calls it once per scrub to surface
-  // the Result metadata.
+  // Run Plugin + Renderer.identity at the chosen t and return the Bundle +
+  // identity (see Conductor.derive). Used by /preview (whose HTML CDP
+  // screenshots) and the dashboard at /, which calls it once per scrub to
+  // surface the Result metadata.
   derive: (t: Temporal.ZonedDateTime, intent?: RunContext["intent"]) => Promise<DeriveResult>;
-  // CDP-backed url → png. Used by /preview/png to screenshot /preview live.
-  fetchPngFromUrl: (url: string) => Promise<Uint8Array>;
+  // CDP-backed url → png. Used by /preview/png to screenshot /preview live,
+  // and (until slice #54 switches to renderer.rasterize) by the dashboard's
+  // own preview path with the caller's ?t=/?intent= forwarded through.
+  fetchPngFromUrl: FetchPngFromUrl;
   // The origin CDP should fetch /preview from. Typically the deno service's
   // internal docker hostname; the Device sees a different origin via the
   // /api/display response.
