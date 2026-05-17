@@ -75,13 +75,27 @@ export type CommittedState = {
   device: DeviceReport | null;
 } | null;
 
+// Derive output: HTML and identity at an arbitrary `t` without rasterizing.
+// Used by peers (e.g. the dashboard's /preview route) that want the live
+// HTML for inspection without paying CDP cost.
+export type DeriveResult = {
+  result: Result<unknown>;
+  html: string;
+  identity: string;
+  device: DeviceReport | null;
+};
+
 export type Conductor = {
   // Hono sub-app for the BYOS surface (/api/setup, /api/display, /api/log,
   // /images/:identity/png) and Plugin assets (/assets/*).
   app: Hono;
-  // Run Plugin + Renderer at an arbitrary `t` with intent: "scrub". Never
-  // mutates Current Result or Current Image. The peer that calls this owns
-  // shaping the response.
+  // Run Plugin + deriveHtml + identityFor at an arbitrary `t` with
+  // intent: "scrub". Skips rasterize — useful for cheap dev-iteration
+  // surfaces that only need the HTML. Never mutates Current state.
+  derive(t: Temporal.ZonedDateTime): Promise<DeriveResult>;
+  // Full pipeline at an arbitrary `t`: derive + rasterize, with per-step
+  // timings. Always rasterizes (never short-circuits via identity match).
+  // Never mutates Current state.
   scrub(t: Temporal.ZonedDateTime): Promise<ScrubResult>;
   // Latest committed Result + Image, or null pre-first-poll. Peers read
   // this to surface "what the Device is seeing right now".
@@ -267,6 +281,13 @@ export function createConductor(deps: ConductorDeps): Conductor {
     return { result, identity, png, device: ctx.device, timings };
   }
 
+  // HTML-only scrub. No rasterize cost — purpose-built for cheap
+  // dev-iteration surfaces (the dashboard's /preview).
+  async function derive(t: Temporal.ZonedDateTime): Promise<DeriveResult> {
+    const { ctx, result, html, identity } = await runAndDerive({ t, intent: "scrub" });
+    return { result, html, identity, device: ctx.device };
+  }
+
   function committedState(): CommittedState {
     return currentResult && currentImage
       ? {
@@ -325,26 +346,6 @@ export function createConductor(deps: ConductorDeps): Conductor {
       if (png === undefined) return c.body(null, 404);
       return c.body(png as unknown as ArrayBuffer, 200, { "content-type": "image/png" });
     })
-    // Dev-iteration: live HTML at t=now via scrub. ADR-0005: no CDP cost.
-    // Does not touch Current Result or Current Image.
-    .get("/preview", async (c) => {
-      const { html } = await runAndDerive({ t: deps.now(), intent: "scrub" });
-      return c.html(html, 200, { "cache-control": "no-store" });
-    })
-    // Dev-iteration: live PNG at t=now via scrub. Full pipeline including
-    // the rasterize-with-fallback. Does not touch Current Result or Current
-    // Image.
-    .get("/preview/png", async (c) => {
-      const { result, html, identity } = await runAndDerive({
-        t: deps.now(),
-        intent: "scrub",
-      });
-      const out = await rasterizeWithFallback(result, html, identity);
-      return c.body(out.png as unknown as ArrayBuffer, 200, {
-        "content-type": "image/png",
-        "cache-control": "no-store",
-      });
-    })
     // serveStatic appends the full request path to `root` (it doesn't strip
     // the matched URL prefix), so we rewrite `/assets/foo.css` → `/foo.css`
     // before lookup. That way `pluginAssetsDir` honestly points at the dir
@@ -357,5 +358,5 @@ export function createConductor(deps: ConductorDeps): Conductor {
       }),
     );
 
-  return { app, scrub, committedState };
+  return { app, derive, scrub, committedState };
 }

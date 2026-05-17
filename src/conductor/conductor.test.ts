@@ -364,82 +364,8 @@ Deno.test("GET /images/:identity/png returns 404 for an unknown identity", async
   assertEquals(res.status, 404);
 });
 
-// ─── dev-iteration preview routes ──────────────────────────────────────────
-
-Deno.test("GET /preview returns the live HTML at t=now and does not touch Current state", async () => {
-  const c = clock();
-  const run = spy((ctx: RunContext) => ({
-    state: { intent: ctx.intent },
-    validity: fiveMin,
-    view: (s: { intent: string }) => `<p>${s.intent}</p>`,
-  }));
-  const rasterize = spy(() => Promise.resolve(new Uint8Array([0xaa])));
-
-  const conductor = createConductor({
-    ...defaults({ now: c.now }),
-    plugin: { run },
-    renderer: {
-      deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
-      rasterize,
-    },
-    identityFor: (html) => `id-${html}`,
-  });
-
-  // Prime Current state with a poll, then scrub via /preview. Current state
-  // must not advance — a subsequent /api/display inside the original
-  // validity window still serves the poll's image.
-  const firstPoll = await (await conductor.app.request("/api/display")).json();
-
-  const preview = await conductor.app.request("/preview");
-  assertEquals(preview.status, 200);
-  assertEquals(preview.headers.get("content-type")?.startsWith("text/html"), true);
-  assertEquals(await preview.text(), "<p>scrub</p>");
-
-  const secondPoll = await (await conductor.app.request("/api/display")).json();
-  assertEquals(secondPoll.filename, firstPoll.filename);
-  assertSpyCalls(rasterize, 1); // poll triggered one rasterize; /preview never did
-});
-
-Deno.test("GET /preview/png returns the rasterized PNG and does not touch Current state", async () => {
-  const c = clock();
-  const previewPng = new Uint8Array([0xbb]);
-  const pollPng = new Uint8Array([0xcc]);
-  const pngs = [pollPng, previewPng];
-  let p = 0;
-  const rasterize = spy(() => Promise.resolve(pngs[p++]));
-
-  const conductor = createConductor({
-    ...defaults({ now: c.now }),
-    plugin: {
-      run: (ctx: RunContext) => ({
-        state: { intent: ctx.intent },
-        validity: fiveMin,
-        view: (s: { intent: string }) => `<p>${s.intent}</p>`,
-      }),
-    },
-    renderer: {
-      deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
-      rasterize,
-    },
-    identityFor: (html) => `id-${html}`,
-  });
-
-  const firstPoll = await (await conductor.app.request("/api/display")).json();
-  // After the poll, Current Image is `pollPng` with identity `id-<p>poll</p>`.
-
-  const preview = await conductor.app.request("/preview/png");
-  assertEquals(preview.status, 200);
-  assertEquals(preview.headers.get("content-type"), "image/png");
-  assertEquals(new Uint8Array(await preview.arrayBuffer()), previewPng);
-  assertSpyCalls(rasterize, 2); // poll + preview/png both rasterized
-
-  // Current state untouched: /api/display still serves the poll's image.
-  const secondPoll = await (await conductor.app.request("/api/display")).json();
-  assertEquals(secondPoll.filename, firstPoll.filename);
-});
-
-// (Dashboard at `/` lives in its own peer sub-app — see
-// src/dashboard/dashboard.test.ts for its HTTP tests.)
+// (Dashboard at `/`, `/preview`, `/preview/png` live in their own peer
+// sub-app — see src/dashboard/dashboard.test.ts for their HTTP tests.)
 
 Deno.test("GET /assets/:file serves files from pluginAssetsDir without the /assets prefix duplicating in the path", async () => {
   const assetsDir = await Deno.makeTempDir({ prefix: "conductor-assets-test-" });

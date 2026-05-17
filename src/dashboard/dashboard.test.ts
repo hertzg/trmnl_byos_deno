@@ -42,6 +42,7 @@ function defaults(
 function wire(deps: Partial<ConductorDeps>) {
   const conductor = createConductor({ ...defaults(deps), ...deps } as ConductorDeps);
   const dashboard = createDashboard({
+    derive: conductor.derive,
     scrub: conductor.scrub,
     committedState: conductor.committedState,
     now: deps.now ?? defaults().now,
@@ -462,4 +463,77 @@ Deno.test("GET / surfaces both committed and current identities when a Current R
   // Column headers present.
   assertEquals(html.includes("committed"), true);
   assertEquals(html.includes("current"), true);
+});
+
+// ─── dev-iteration preview routes ──────────────────────────────────────────
+
+Deno.test("GET /preview returns the live HTML at t=now and does not touch Current state", async () => {
+  const c = clock();
+  const run = spy((ctx: RunContext) => ({
+    state: { intent: ctx.intent },
+    validity: fiveMin,
+    view: (s: { intent: string }) => `<p>${s.intent}</p>`,
+  }));
+  const rasterize = spy(() => Promise.resolve(new Uint8Array([0xaa])));
+
+  const app = wire({
+    now: c.now,
+    plugin: { run },
+    renderer: {
+      deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
+      rasterize,
+    },
+    identityFor: (html) => `id-${html}`,
+  });
+
+  // Prime Current state with a poll, then scrub via /preview. Current state
+  // must not advance — a subsequent /api/display inside the original
+  // validity window still serves the poll's image.
+  const firstPoll = await (await app.request("/api/display")).json();
+
+  const preview = await app.request("/preview");
+  assertEquals(preview.status, 200);
+  assertEquals(preview.headers.get("content-type")?.startsWith("text/html"), true);
+  assertEquals(await preview.text(), "<p>scrub</p>");
+
+  const secondPoll = await (await app.request("/api/display")).json();
+  assertEquals(secondPoll.filename, firstPoll.filename);
+  assertSpyCalls(rasterize, 1); // poll triggered one rasterize; /preview never did
+});
+
+Deno.test("GET /preview/png returns the rasterized PNG and does not touch Current state", async () => {
+  const c = clock();
+  const previewPng = new Uint8Array([0xbb]);
+  const pollPng = new Uint8Array([0xcc]);
+  const pngs = [pollPng, previewPng];
+  let p = 0;
+  const rasterize = spy(() => Promise.resolve(pngs[p++]));
+
+  const app = wire({
+    now: c.now,
+    plugin: {
+      run: (ctx: RunContext) => ({
+        state: { intent: ctx.intent },
+        validity: fiveMin,
+        view: (s: { intent: string }) => `<p>${s.intent}</p>`,
+      }),
+    },
+    renderer: {
+      deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
+      rasterize,
+    },
+    identityFor: (html) => `id-${html}`,
+  });
+
+  const firstPoll = await (await app.request("/api/display")).json();
+
+  const preview = await app.request("/preview/png");
+  assertEquals(preview.status, 200);
+  assertEquals(preview.headers.get("content-type"), "image/png");
+  assertEquals(new Uint8Array(await preview.arrayBuffer()), previewPng);
+  assertSpyCalls(rasterize, 2); // poll + preview/png both rasterized
+
+  // Current state untouched: /api/display still serves the poll's image.
+  const secondPoll = await (await app.request("/api/display")).json();
+  assertEquals(secondPoll.filename, firstPoll.filename);
 });

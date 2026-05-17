@@ -1,13 +1,15 @@
 import { Hono } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
 import { encodeBase64 } from "@std/encoding/base64";
-import type { CommittedState, ScrubResult } from "../conductor/conductor.ts";
+import type { CommittedState, DeriveResult, ScrubResult } from "../conductor/conductor.ts";
 import Dashboard from "./dashboard.tsx";
 
 export type DashboardDeps = {
-  // Drive the Plugin at an arbitrary `t` with intent: "scrub". The dashboard
-  // never touches Current state directly; everything flows through the
-  // Conductor's purpose-built surface.
+  // HTML-only scrub. Used by /preview for cheap dev-iteration (no CDP cost).
+  derive: (t: Temporal.ZonedDateTime) => Promise<DeriveResult>;
+  // Full pipeline at an arbitrary `t` (derive + rasterize + timings). Used
+  // by both / (the dashboard) and /preview/png. The dashboard never touches
+  // Current state directly; everything flows through the Conductor surface.
   scrub: (t: Temporal.ZonedDateTime) => Promise<ScrubResult>;
   // Latest Current Result + Current Image, or null pre-first-poll. Lets the
   // dashboard render the "committed (Device sees this)" column.
@@ -65,5 +67,20 @@ export function createDashboard(deps: DashboardDeps): Hono {
         }) as Parameters<typeof renderToString>[0],
       );
       return c.html("<!DOCTYPE html>" + page, 200, { "cache-control": "no-store" });
+    })
+    // Dev-iteration: live HTML at t=now via scrub. ADR-0005: no CDP cost
+    // (no rasterize). Does not touch Current Result or Current Image.
+    .get("/preview", async (c) => {
+      const { html } = await deps.derive(deps.now());
+      return c.html(html, 200, { "cache-control": "no-store" });
+    })
+    // Dev-iteration: live PNG at t=now via full scrub pipeline. Does not
+    // touch Current Result or Current Image.
+    .get("/preview/png", async (c) => {
+      const out = await deps.scrub(deps.now());
+      return c.body(out.png as unknown as ArrayBuffer, 200, {
+        "content-type": "image/png",
+        "cache-control": "no-store",
+      });
     });
 }
