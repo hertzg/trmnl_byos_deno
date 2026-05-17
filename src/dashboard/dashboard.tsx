@@ -144,7 +144,7 @@ function TraceStrip({ trace }: { trace: RenderTrace | null }) {
             <td>{fmtDurationMs(trace.durations.pluginRun)}</td>
           </tr>
           <tr>
-            <th scope="row">identity</th>
+            <th scope="row">identity hash</th>
             <td>{fmtDurationMs(trace.durations.identity)}</td>
           </tr>
           <tr>

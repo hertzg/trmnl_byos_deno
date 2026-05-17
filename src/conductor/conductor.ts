@@ -83,8 +83,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
 
   // Wrap an Error in the Server-supplied error view as a Result. Used by
   // the orchestration loop's catch arm.
-  function errorResult(err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
+  function errorResult(error: Error) {
     return {
       state: error,
       validity: deps.errorValidity,
@@ -107,16 +106,15 @@ export function createConductor(deps: ConductorDeps): Conductor {
   // time would force a placeholder, and the Conductor returns from
   // `/api/display` before the rasterize promise resolves anyway.
   async function doRefill(ctx: RunContext): Promise<void> {
-    const ranAt = deps.now();
-    let pluginRunStart = ranAt;
-    let pluginRunEnd = ranAt;
-    let identityEnd = ranAt;
+    const pluginRunStart = deps.now();
+    const ranAt = pluginRunStart;
+    let pluginRunEnd = pluginRunStart;
+    let identityEnd = pluginRunStart;
     let caught: Error | null = null;
     let bundle: Bundle;
     let identity: string;
     let image: Promise<Uint8Array>;
     try {
-      pluginRunStart = deps.now();
       bundle = await deps.pluginManager.run(ctx);
       pluginRunEnd = deps.now();
       identity = await deps.renderer.identity(bundle);
@@ -129,12 +127,11 @@ export function createConductor(deps: ConductorDeps): Conductor {
       // empty — the error view renders self-contained HTML.
       caught = err instanceof Error ? err : new Error(String(err));
       pluginRunEnd = deps.now();
-      bundle = { result: errorResult(err), assets: {} };
+      bundle = { result: errorResult(caught), assets: {} };
       identity = await deps.renderer.identity(bundle);
       identityEnd = deps.now();
       image = deps.renderer.rasterize(bundle);
     }
-    const rasterizeStart = identityEnd;
     // Record the trace once the eager rasterize completes (success or
     // failure). `.finally` runs even if `image` rejects — a CDP outage
     // mid-rasterize still gets a trace entry with the real timings up
@@ -152,7 +149,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
           durations: {
             pluginRun: pluginRunEnd.since(pluginRunStart),
             identity: identityEnd.since(pluginRunEnd),
-            rasterize: deps.now().since(rasterizeStart),
+            rasterize: deps.now().since(identityEnd),
           },
           error: caught,
         };

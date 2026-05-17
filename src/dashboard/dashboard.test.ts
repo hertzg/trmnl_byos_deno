@@ -168,7 +168,7 @@ Deno.test("GET / renders the trace block populated from telemetry.latest()", asy
   // path renders no <pre class="error"> block.
   assertEquals(html.includes("trace-id"), true, "missing trace identity");
   assertEquals(html.includes("plugin run"), true, "missing pluginRun label");
-  assertEquals(html.includes("identity"), true, "missing identity label");
+  assertEquals(html.includes("identity hash"), true, "missing identity-duration label");
   assertEquals(html.includes("rasterize"), true, "missing rasterize label");
   assertEquals(html.includes('class="error"'), false, "error block should be absent on success");
 });
