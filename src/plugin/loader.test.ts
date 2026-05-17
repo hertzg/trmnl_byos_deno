@@ -1,5 +1,7 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { join } from "@std/path";
+import { createConductor } from "../conductor/conductor.ts";
+import type { Result } from "./plugin.ts";
 import { loadPlugin } from "./loader.ts";
 
 async function writeFixture(content: string): Promise<string> {
@@ -80,4 +82,41 @@ Deno.test("loadPlugin throws a clear error when the default export has no run me
     Error,
     "run method",
   );
+});
+
+Deno.test("a Plugin loaded via loadPlugin drives /api/display end-to-end", async () => {
+  // Smoke test: prove the new contract round-trips through the Conductor.
+  // Uses an on-disk fixture (not the real templates/example, which depends
+  // on the user-private routes.ts) so the test is hermetic.
+  const dir = await writeFixture(`
+    export default {
+      run(ctx) {
+        return {
+          state: { intent: ctx.intent },
+          validity: Temporal.Duration.from({ seconds: 120 }),
+          view: (s) => "<p>" + s.intent + "</p>",
+        };
+      },
+    };
+  `);
+  const plugin = await loadPlugin(dir);
+
+  const conductor = createConductor({
+    plugin,
+    deriveHtml: (r: Result<unknown>) => String(r.view(r.state)),
+    identityFor: (html: string) => "id-" + html,
+    errorView: (_err: Error) => "",
+    errorValidity: Temporal.Duration.from({ seconds: 30 }),
+    friendlyId: "SMOKE",
+    pluginAssetsDir: "/tmp",
+    now: () => Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]"),
+  });
+
+  const res = await conductor.app.request("/api/display");
+  const body = await res.json();
+
+  assertEquals(res.status, 200);
+  assertEquals(body.status, 0);
+  assertEquals(body.filename, "image-id-<p>poll</p>");
+  assertEquals(body.refresh_rate, 120);
 });
