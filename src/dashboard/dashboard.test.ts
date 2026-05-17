@@ -3,12 +3,24 @@ import { assertSpyCalls, spy } from "@std/testing/mock";
 import { Hono } from "hono";
 import { type ConductorDeps, createConductor } from "../conductor/conductor.ts";
 import { createDashboard, type DashboardDeps } from "./dashboard.ts";
-import type { Result, RunContext } from "../plugin/plugin.ts";
+import type { Plugin, Result, RunContext } from "../plugin/plugin.ts";
+import type { PluginManager } from "../plugin/plugin-manager.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
 const INTERNAL = "http://internal:3000";
+
+// Wrap a Plugin in a stub PluginManager so test bodies keep speaking
+// "Plugin run returns ..." while the Conductor consumes a Bundle.
+function managerFor(plugin: Plugin<unknown>): PluginManager {
+  return {
+    async run(ctx) {
+      const result = await plugin.run(ctx);
+      return { result, assets: {} };
+    },
+  };
+}
 
 function conductorDefaults(
   overrides: Partial<ConductorDeps> = {},
@@ -51,7 +63,9 @@ function wire(
 
 Deno.test("GET / returns 200 with an HTML dashboard page", async () => {
   const app = wire({
-    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "x",
   });
@@ -71,7 +85,7 @@ Deno.test("GET / runs the Plugin with intent=scrub", async () => {
   }));
 
   const app = wire({
-    plugin: { run },
+    pluginManager: managerFor({ run }),
     deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
     identityFor: (html) => `id-${html}`,
   });
@@ -89,7 +103,7 @@ Deno.test("GET / defaults t to now when no ?t= is supplied", async () => {
   }));
 
   const app = wire({
-    plugin: { run },
+    pluginManager: managerFor({ run }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "id",
   });
@@ -108,7 +122,7 @@ Deno.test("GET /?t=<future> scrubs the Plugin at the supplied t", async () => {
   }));
 
   const app = wire({
-    plugin: { run },
+    pluginManager: managerFor({ run }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "id",
   });
@@ -126,7 +140,7 @@ Deno.test("GET /?t=<garbage> shows a parse-error notice and falls back to defaul
     view: () => "<p>x</p>",
   }));
   const app = wire({
-    plugin: { run },
+    pluginManager: managerFor({ run }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "id",
   });
@@ -142,7 +156,9 @@ Deno.test("GET /?t=<garbage> shows a parse-error notice and falls back to defaul
 
 Deno.test("GET / renders pipeline timings: per-step bar + total re-render", async () => {
   const app = wire({
-    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "id",
   });
@@ -158,13 +174,13 @@ Deno.test("GET / renders pipeline timings: per-step bar + total re-render", asyn
 
 Deno.test("GET / surfaces ctx.device in the metadata table once a Device has polled", async () => {
   const app = wire({
-    plugin: {
+    pluginManager: managerFor({
       run: (ctx: RunContext) => ({
         state: { seen: ctx.device?.id ?? null },
         validity: fiveMin,
         view: () => "<p>x</p>",
       }),
-    },
+    }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "id",
   });
@@ -181,7 +197,7 @@ Deno.test("GET / renders the rendered Image, the scrubber, and Result metadata",
   const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // PNG magic prefix
   const app = wire(
     {
-      plugin: {
+      pluginManager: managerFor({
         run: () => ({
           state: { msg: "hello" },
           validity: Temporal.Duration.from({ minutes: 7 }),
@@ -189,7 +205,7 @@ Deno.test("GET / renders the rendered Image, the scrubber, and Result metadata",
             return `<p>${s.msg}</p>`;
           },
         }),
-      },
+      }),
       deriveHtml: (r: Result<{ msg: string }>) => String(r.view(r.state)),
       identityFor: () => "dashid",
     },
@@ -210,13 +226,13 @@ Deno.test("GET / renders the rendered Image, the scrubber, and Result metadata",
 
 Deno.test("GET / renders the Plugin's Result.state as JSON for debugging", async () => {
   const app = wire({
-    plugin: {
+    pluginManager: managerFor({
       run: () => ({
         state: { departures: [{ line: "U7", at: "10:05" }], count: 1 },
         validity: fiveMin,
         view: () => "<p>x</p>",
       }),
-    },
+    }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "id",
   });
@@ -232,7 +248,9 @@ Deno.test("GET / degrades gracefully when fetchPngFromUrl throws (e.g. CDP down)
   const fetchPngFromUrl = spy((_url: string) => Promise.reject(new Error("CDP /json/version 502")));
   const app = wire(
     {
-      plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+      pluginManager: managerFor({
+        run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+      }),
       deriveHtml: () => "<p>x</p>",
       identityFor: () => "id",
     },
@@ -257,7 +275,9 @@ Deno.test("GET / fetches the inlined PNG via fetchPngFromUrl pointed at the inte
   const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
   const app = wire(
     {
-      plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+      pluginManager: managerFor({
+        run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+      }),
       deriveHtml: () => "<p>x</p>",
       identityFor: () => "id",
     },
@@ -283,7 +303,7 @@ Deno.test("GET /preview returns the live HTML at t=now and intent=scrub by defau
   }));
 
   const app = wire({
-    plugin: { run },
+    pluginManager: managerFor({ run }),
     deriveHtml: (r: Result<{ intent: string }>) => String(r.view(r.state)),
     identityFor: (html) => `id-${html}`,
   });
@@ -304,7 +324,7 @@ Deno.test("GET /preview honors ?t= and ?intent= so /preview/png can forward them
   }));
 
   const app = wire({
-    plugin: { run },
+    pluginManager: managerFor({ run }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "id",
   });
@@ -319,11 +339,11 @@ Deno.test("GET /preview honors ?t= and ?intent= so /preview/png can forward them
 Deno.test("GET /preview returns status 500 with the error view HTML when the Plugin throws", async () => {
   const boom = new Error("plugin boom");
   const app = wire({
-    plugin: {
+    pluginManager: managerFor({
       run: () => {
         throw boom;
       },
-    },
+    }),
     deriveHtml: (r: Result<unknown>) => String(r.view(r.state)),
     identityFor: () => "id",
     errorView: (err: Error) => `<html><body>ERR: ${err.message}</body></html>`,
@@ -345,7 +365,9 @@ Deno.test("GET /preview/png returns the bytes fetchPngFromUrl resolved with", as
   const fetchPngFromUrl = spy((_url: string) => Promise.resolve(png));
   const app = wire(
     {
-      plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+      pluginManager: managerFor({
+        run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+      }),
       deriveHtml: () => "<p>x</p>",
       identityFor: () => "id",
     },
@@ -364,7 +386,9 @@ Deno.test("GET /preview/png hands CDP the internalOrigin /preview URL", async ()
   const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
   const app = wire(
     {
-      plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+      pluginManager: managerFor({
+        run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+      }),
       deriveHtml: () => "<p>x</p>",
       identityFor: () => "id",
     },
@@ -381,7 +405,9 @@ Deno.test("GET /preview/png?t=...&intent=... forwards the query through to /prev
   const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
   const app = wire(
     {
-      plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+      pluginManager: managerFor({
+        run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+      }),
       deriveHtml: () => "<p>x</p>",
       identityFor: () => "id",
     },

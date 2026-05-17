@@ -1,11 +1,24 @@
 import { assertEquals, assertGreaterOrEqual, assertLessOrEqual } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
 import { type ConductorDeps, createConductor } from "./conductor.ts";
-import type { Result, RunContext } from "../plugin/plugin.ts";
+import type { Plugin, Result, RunContext } from "../plugin/plugin.ts";
+import type { PluginManager } from "../plugin/plugin-manager.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
+
+// Wrap a Plugin in a stub PluginManager so existing tests keep speaking
+// "Plugin run returns ..." while the Conductor consumes a Bundle. The asset
+// map is empty: this slice's Conductor behaviour does not consult it.
+function managerFor(plugin: Plugin<unknown>): PluginManager {
+  return {
+    async run(ctx) {
+      const result = await plugin.run(ctx);
+      return { result, assets: {} };
+    },
+  };
+}
 
 function defaults(
   overrides: Partial<ConductorDeps> = {},
@@ -36,7 +49,7 @@ Deno.test("derive runs Plugin + deriveHtml + identityFor and surfaces all three 
 
   const conductor = createConductor({
     ...defaults(),
-    plugin: { run },
+    pluginManager: managerFor({ run }),
     deriveHtml,
     identityFor,
   });
@@ -60,7 +73,7 @@ Deno.test("derive defaults intent to scrub and forwards the caller's intent when
 
   const conductor = createConductor({
     ...defaults(),
-    plugin: { run },
+    pluginManager: managerFor({ run }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "id",
   });
@@ -77,11 +90,11 @@ Deno.test("derive falls back to the error view when Plugin.run throws", async ()
   const errorView = spy((_err: Error) => "ERR");
   const conductor = createConductor({
     ...defaults({ errorView }),
-    plugin: {
+    pluginManager: managerFor({
       run: () => {
         throw boom;
       },
-    },
+    }),
     deriveHtml: (r: Result<unknown>) => String(r.view(r.state)),
     identityFor: (html) => `id-${html}`,
   });
@@ -100,7 +113,9 @@ Deno.test("derive falls back to the error view when deriveHtml throws", async ()
   let calls = 0;
   const conductor = createConductor({
     ...defaults({ errorView }),
-    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>real</p>" }) },
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>real</p>" }),
+    }),
     deriveHtml: (r: Result<unknown>) => {
       calls++;
       if (calls === 1) throw boom;
@@ -121,7 +136,9 @@ Deno.test("derive falls back to the error view when deriveHtml throws", async ()
 Deno.test("GET /api/setup returns BYOS setup JSON with friendlyId and image_url pointing at /preview/png", async () => {
   const conductor = createConductor({
     ...defaults({ friendlyId: "MY-DEVICE" }),
-    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "" }) },
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
+    }),
     deriveHtml: () => "",
     identityFor: () => "x",
   });
@@ -138,7 +155,9 @@ Deno.test("GET /api/setup returns BYOS setup JSON with friendlyId and image_url 
 Deno.test("GET /api/display returns image_url=/preview/png, filename from identity, refresh_rate from validity", async () => {
   const conductor = createConductor({
     ...defaults(),
-    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }) },
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "deadbeefcafef00d",
   });
@@ -162,7 +181,7 @@ Deno.test("GET /api/display runs the Plugin with intent=poll", async () => {
   }));
   const conductor = createConductor({
     ...defaults(),
-    plugin: { run },
+    pluginManager: managerFor({ run }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "x",
   });
@@ -181,7 +200,7 @@ Deno.test("GET /api/display forwards the latest parsed DeviceReport into the nex
   }));
   const conductor = createConductor({
     ...defaults(),
-    plugin: { run },
+    pluginManager: managerFor({ run }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "x",
   });
@@ -205,7 +224,7 @@ Deno.test("GET /api/display leaves ctx.device null when no Device has polled yet
   }));
   const conductor = createConductor({
     ...defaults(),
-    plugin: { run },
+    pluginManager: managerFor({ run }),
     deriveHtml: () => "<p>x</p>",
     identityFor: () => "x",
   });
@@ -219,11 +238,11 @@ Deno.test("GET /api/display leaves ctx.device null when no Device has polled yet
 Deno.test("GET /api/display falls back to the error view filename when the Plugin throws", async () => {
   const conductor = createConductor({
     ...defaults(),
-    plugin: {
+    pluginManager: managerFor({
       run: () => {
         throw new Error("boom");
       },
-    },
+    }),
     deriveHtml: (r: Result<unknown>) => String(r.view(r.state)),
     identityFor: (html) => `id-${html}`,
     errorView: (_err: Error) => "ERR",
@@ -247,7 +266,9 @@ Deno.test("GET /assets/:file serves files from pluginAssetsDir without the /asse
 
   const conductor = createConductor({
     ...defaults({ pluginAssetsDir: assetsDir }),
-    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "" }) },
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
+    }),
     deriveHtml: () => "",
     identityFor: () => "x",
   });
@@ -264,7 +285,9 @@ Deno.test("POST /api/log returns 204 and invokes onDeviceLog with the id header 
   const onDeviceLog = spy((_id: string, _body: string) => {});
   const conductor = createConductor({
     ...defaults({ onDeviceLog }),
-    plugin: { run: () => ({ state: {}, validity: fiveMin, view: () => "" }) },
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
+    }),
     deriveHtml: () => "",
     identityFor: () => "x",
   });

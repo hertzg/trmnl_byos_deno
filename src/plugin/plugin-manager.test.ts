@@ -1,6 +1,7 @@
 import { assertEquals, assertStrictEquals } from "@std/assert";
 import { join } from "@std/path";
-import type { RunContext } from "./plugin.ts";
+import { createConductor } from "../conductor/conductor.ts";
+import type { Result, RunContext } from "./plugin.ts";
 import { createPluginManager } from "./plugin-manager.ts";
 
 const T0 = Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]");
@@ -44,7 +45,10 @@ Deno.test("Bundle.assets is empty when the assets directory does not exist", asy
 
   assertEquals(bundle.assets, {});
   assertEquals(bundle.result.state, { ok: true });
-  assertEquals(bundle.result.validity.total({ unit: "minutes" }), fiveMin.total({ unit: "minutes" }));
+  assertEquals(
+    bundle.result.validity.total({ unit: "minutes" }),
+    fiveMin.total({ unit: "minutes" }),
+  );
 });
 
 Deno.test("a file in assets/ becomes /assets/<name> keyed against its bytes", async () => {
@@ -140,4 +144,44 @@ Deno.test("a file inside a nested subdirectory keeps its full sub-path", async (
     new TextDecoder().decode(bundle.assets["/assets/icons/transit/bus.svg"]),
     "<svg id=bus/>",
   );
+});
+
+Deno.test("a PluginManager loaded from disk drives /api/display end-to-end through the Conductor", async () => {
+  // Hermetic smoke test: write a Plugin to a temp dir, construct the
+  // PluginManager + Conductor like main.ts does, hit /api/display, and
+  // assert the BYOS-shaped JSON falls out the other side.
+  const dir = await writePluginDir({
+    "main.ts": `
+      export default {
+        run(ctx) {
+          return {
+            state: { intent: ctx.intent },
+            validity: Temporal.Duration.from({ seconds: 120 }),
+            view: (s) => "<p>" + s.intent + "</p>",
+          };
+        },
+      };
+    `,
+    "assets/foo.svg": "<svg/>",
+  });
+
+  const pluginManager = await createPluginManager({ pluginDir: dir });
+  const conductor = createConductor({
+    pluginManager,
+    deriveHtml: (r: Result<unknown>) => String(r.view(r.state)),
+    identityFor: (html: string) => "id-" + html,
+    errorView: (_err: Error) => "",
+    errorValidity: Temporal.Duration.from({ seconds: 30 }),
+    friendlyId: "SMOKE",
+    pluginAssetsDir: join(dir, "assets"),
+    now: () => T0,
+  });
+
+  const res = await conductor.app.request("/api/display");
+  const body = await res.json();
+
+  assertEquals(res.status, 200);
+  assertEquals(body.status, 0);
+  assertEquals(body.filename, "image-id-<p>poll</p>");
+  assertEquals(body.refresh_rate, 120);
 });
