@@ -3,22 +3,22 @@ import { assertSpyCalls, spy } from "@std/testing/mock";
 import { type CdpRasterize, createCdpRasterize } from "./cdp-rasterize.ts";
 
 // Simulates CDP: fetchPngFromUrl reaches back into the rasterizer's own
-// preview route to check that the shelved HTML is actually fetchable
-// through it. `ref` lets fetchPngFromUrl close over the bridge we'll
-// only construct on the next line.
+// internal-render route to check that the shelved HTML is actually
+// fetchable through it. `ref` lets fetchPngFromUrl close over the bridge
+// we'll only construct on the next line.
 type Ref = { bridge?: CdpRasterize };
 
-Deno.test("rasterize shelves html under a generated id, hands CDP /preview/:id on the configured origin, and returns the PNG", async () => {
+Deno.test("rasterize shelves html under a generated id, hands CDP /__internal/render/:id on the configured origin, and returns the PNG", async () => {
   const expectedPng = new Uint8Array([42]);
   const ref: Ref = {};
   let urlFetched: string | undefined;
-  let htmlSeenViaPreview: string | undefined;
+  let htmlSeenViaShelf: string | undefined;
 
   const fetchPngFromUrl = spy(async (url: string) => {
     urlFetched = url;
     const path = new URL(url).pathname;
     const res = await ref.bridge!.app.request(path);
-    htmlSeenViaPreview = await res.text();
+    htmlSeenViaShelf = await res.text();
     return expectedPng;
   });
 
@@ -27,7 +27,7 @@ Deno.test("rasterize shelves html under a generated id, hands CDP /preview/:id o
   const png = await ref.bridge.rasterize("<p>render me</p>");
 
   assertEquals(png, expectedPng);
-  assertEquals(htmlSeenViaPreview, "<p>render me</p>");
+  assertEquals(htmlSeenViaShelf, "<p>render me</p>");
   assertSpyCalls(fetchPngFromUrl, 1);
   assertEquals(urlFetched?.startsWith("http://internal:8080/__internal/render/"), true);
 });
@@ -68,7 +68,7 @@ Deno.test("rasterize cleans up the shelf even when fetchPngFromUrl throws", asyn
   assertEquals(after.status, 404);
 });
 
-Deno.test("preview route 404s for an unknown id", async () => {
+Deno.test("internal render route 404s for an unknown id", async () => {
   const bridge = createCdpRasterize({
     origin: "http://internal:8080",
     fetchPngFromUrl: () => Promise.resolve(new Uint8Array()),

@@ -28,15 +28,15 @@ export type ConductorDeps = {
   now: () => Temporal.ZonedDateTime;
 };
 
-// Scrub output: the full pipeline at an arbitrary `t`. Post error-fallback —
-// if any pipeline step threw, the swapped-in error Result/identity/png is
-// what flows out. `device` is the DeviceReport the Plugin actually saw on
-// its `ctx.device` (latest report at the time of the call, or null if no
+// Full-pipeline output at an arbitrary `t`. Post error-fallback — if any
+// pipeline step threw, the swapped-in error Result/identity/png is what
+// flows out. `device` is the DeviceReport the Plugin actually saw on its
+// `ctx.device` (latest report at the time of the call, or null if no
 // Device has polled yet). Per-step wall-clock is not part of this shape;
-// peers that want it open an `withTimings()` context around the call and
+// peers that want it open a `withTimings()` context around the call and
 // read the bucket — the Conductor and the Renderer both record into it
 // via `src/render/timings.ts`.
-export type ScrubResult = {
+export type RenderResult = {
   result: Result<unknown>;
   identity: string;
   png: Uint8Array;
@@ -55,8 +55,7 @@ export type CommittedState = {
 } | null;
 
 // Derive output: HTML and identity at an arbitrary `t` without rasterizing.
-// Used by peers (e.g. the dashboard's /preview route) that want the live
-// HTML for inspection without paying CDP cost.
+// For peers that want the live HTML for inspection without paying CDP cost.
 export type DeriveResult = {
   result: Result<unknown>;
   html: string;
@@ -68,21 +67,23 @@ export type Conductor = {
   // Hono sub-app for the BYOS surface (/api/setup, /api/display, /api/log,
   // /images/:identity/png) and Plugin assets (/assets/*).
   app: Hono;
-  // Run Plugin + deriveHtml + identityFor at an arbitrary `t` with
-  // intent: "scrub". Skips rasterize — useful for cheap dev-iteration
-  // surfaces that only need the HTML. Never mutates Current state.
-  derive(t: Temporal.ZonedDateTime): Promise<DeriveResult>;
-  // Full pipeline at an arbitrary `t`: derive + rasterize, with per-step
-  // timings. Always rasterizes (never short-circuits via identity match).
+  // Run Plugin + deriveHtml + identityFor at an arbitrary `t`. Skips
+  // rasterize — useful for cheap surfaces that only need the HTML.
   // Never mutates Current state.
-  scrub(t: Temporal.ZonedDateTime): Promise<ScrubResult>;
+  derive(t: Temporal.ZonedDateTime): Promise<DeriveResult>;
+  // Full pipeline at an arbitrary `t`: derive + rasterize. Always
+  // rasterizes (never short-circuits via identity match — peers that ask
+  // for a render want fresh bytes; the poll path is the only consumer
+  // that benefits from short-circuiting). Never mutates Current state.
+  render(t: Temporal.ZonedDateTime): Promise<RenderResult>;
   // Latest committed Result + Image, or null pre-first-poll. Peers read
   // this to surface "what the Device is seeing right now".
   committedState(): CommittedState;
 };
 
 // The orchestration logic lives entirely inside the factory closure;
-// peers reach it via the small `scrub` + `committedState` surface.
+// peers reach it via the small `render` + `derive` + `committedState`
+// surface.
 export function createConductor(deps: ConductorDeps): Conductor {
   type CurrentResult = { ctx: RunContext; result: Result<unknown> };
   type CurrentImage = { png: Uint8Array; identity: string };
@@ -103,10 +104,10 @@ export function createConductor(deps: ConductorDeps): Conductor {
     };
   }
 
-  // Each pipeline step is wrapped in `timed()` so peers (the dashboard)
-  // can collect per-step wall-clock by opening a `withTimings()` context
-  // around the call. Outside such a context, `timed()` is a pass-through
-  // (the poll path pays nothing).
+  // Each pipeline step is wrapped in `timed()` so callers that open a
+  // `withTimings()` context around the call get per-step wall-clock for
+  // free. Outside such a context `timed()` is a pass-through, so the
+  // poll path pays nothing.
 
   // Pipeline up to identity, with error-view fallback for plugin.run +
   // deriveHtml + identityFor. No state mutation — callers decide whether
@@ -125,23 +126,23 @@ export function createConductor(deps: ConductorDeps): Conductor {
     let html: string;
     let identity: string;
     try {
-      result = await timed("plugin.run", () => Promise.resolve(deps.plugin.run(ctx)));
+      result = await timed("pipeline.run", () => Promise.resolve(deps.plugin.run(ctx)));
       html = await timed(
-        "renderer.deriveHtml",
+        "pipeline.deriveHtml",
         () => Promise.resolve(deps.renderer.deriveHtml(result)),
       );
       identity = await timed(
-        "renderer.identityFor",
+        "pipeline.identityFor",
         () => Promise.resolve(deps.identityFor(html)),
       );
     } catch (err) {
       result = errorResult(err);
       html = await timed(
-        "renderer.deriveHtml",
+        "pipeline.deriveHtml",
         () => Promise.resolve(deps.renderer.deriveHtml(result)),
       );
       identity = await timed(
-        "renderer.identityFor",
+        "pipeline.identityFor",
         () => Promise.resolve(deps.identityFor(html)),
       );
     }
@@ -160,22 +161,22 @@ export function createConductor(deps: ConductorDeps): Conductor {
   ): Promise<{ result: Result<unknown>; html: string; identity: string; png: Uint8Array }> {
     try {
       const png = await timed(
-        "renderer.rasterize",
+        "pipeline.rasterize",
         () => deps.renderer.rasterize(html, result.hints),
       );
       return { result, html, identity, png };
     } catch (err) {
       const fallback = errorResult(err);
       const fallbackHtml = await timed(
-        "renderer.deriveHtml",
+        "pipeline.deriveHtml",
         () => Promise.resolve(deps.renderer.deriveHtml(fallback)),
       );
       const fallbackIdentity = await timed(
-        "renderer.identityFor",
+        "pipeline.identityFor",
         () => Promise.resolve(deps.identityFor(fallbackHtml)),
       );
       const png = await timed(
-        "renderer.rasterize",
+        "pipeline.rasterize",
         () => deps.renderer.rasterize(fallbackHtml, fallback.hints),
       );
       return { result: fallback, html: fallbackHtml, identity: fallbackIdentity, png };
@@ -215,14 +216,13 @@ export function createConductor(deps: ConductorDeps): Conductor {
     };
   }
 
-  // Scrub trigger: full pipeline at an arbitrary `t`. Pure with respect
-  // to Current state; the caller decides how to surface the result.
-  //
-  // Deliberately always rasterizes — even when the scrub's identity
-  // matches the Current Image's identity. The poll path short-circuits
-  // (it serves the same bytes the Device cached); scrub callers want a
-  // fresh render so non-deterministic views show up.
-  async function scrub(t: Temporal.ZonedDateTime): Promise<ScrubResult> {
+  // Full pipeline at an arbitrary `t`. Pure with respect to Current
+  // state; the caller decides how to surface the result. Always
+  // rasterizes — peers that ask for a render want fresh bytes even when
+  // identity matches the Current Image (so non-deterministic views show
+  // up). The poll path is the only consumer that benefits from the
+  // identity-match short-circuit.
+  async function render(t: Temporal.ZonedDateTime): Promise<RenderResult> {
     const { ctx, result, html, identity } = await runAndDerive({ t, intent: "scrub" });
     const out = await rasterizeWithFallback(result, html, identity);
     return {
@@ -233,7 +233,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
     };
   }
 
-  // HTML-only scrub trigger. No rasterize cost.
+  // Pipeline up to HTML. No rasterize cost.
   async function derive(t: Temporal.ZonedDateTime): Promise<DeriveResult> {
     const { ctx, result, html, identity } = await runAndDerive({ t, intent: "scrub" });
     return { result, html, identity, device: ctx.device };
@@ -309,5 +309,5 @@ export function createConductor(deps: ConductorDeps): Conductor {
       }),
     );
 
-  return { app, derive, scrub, committedState };
+  return { app, derive, render, committedState };
 }

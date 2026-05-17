@@ -63,8 +63,8 @@ export async function renderUrl(opts: RenderOptions): Promise<Uint8Array> {
     await timed("cdp.lifecycleEnable", () => cdp.Page.setLifecycleEventsEnabled({ enabled: true }));
 
     // Listeners must be wired before goto so we don't miss early events.
-    // Each phase is timed separately so the dashboard shows the actual
-    // navigation cost vs. pure lifecycle-event wait time:
+    // Each phase is timed separately so callers that collect timings can
+    // distinguish actual navigation cost from pure lifecycle-event wait:
     //   - cdp.goto: the page.goto call itself
     //   - cdp.fcp: residual wait for firstContentfulPaint after goto returned
     //     (0ms if the event already fired during goto)

@@ -62,7 +62,7 @@ async function main() {
   // scrubs via the Conductor's small `scrub` + `committedState` surface.
   const dashboard = createDashboard({
     derive: conductor.derive,
-    scrub: conductor.scrub,
+    render: conductor.render,
     committedState: conductor.committedState,
     now,
   });

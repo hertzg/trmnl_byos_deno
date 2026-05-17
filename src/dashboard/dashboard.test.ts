@@ -43,7 +43,7 @@ function wire(deps: Partial<ConductorDeps>) {
   const conductor = createConductor({ ...defaults(deps), ...deps } as ConductorDeps);
   const dashboard = createDashboard({
     derive: conductor.derive,
-    scrub: conductor.scrub,
+    render: conductor.render,
     committedState: conductor.committedState,
     now: deps.now ?? defaults().now,
   });
