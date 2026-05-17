@@ -8,6 +8,7 @@ import type { Plugin } from "../plugin/plugin.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
 import type { Bundle } from "../plugin/bundle.ts";
+import { createTelemetry } from "../telemetry/telemetry.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
@@ -35,13 +36,17 @@ function defaultRenderer(overrides: Partial<Renderer> = {}): Renderer {
 function conductorDefaults(
   now: () => Temporal.ZonedDateTime,
   overrides: Partial<ConductorDeps> = {},
-): Pick<ConductorDeps, "errorView" | "errorValidity" | "friendlyId" | "now" | "slot"> {
+): Pick<
+  ConductorDeps,
+  "errorView" | "errorValidity" | "friendlyId" | "now" | "slot" | "telemetry"
+> {
   return {
     errorView: (_err: Error) => "",
     errorValidity: Temporal.Duration.from({ seconds: 30 }),
     friendlyId: "ID",
     now,
     slot: createSlot({ now }),
+    telemetry: createTelemetry(),
     ...overrides,
   };
 }

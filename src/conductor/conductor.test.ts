@@ -6,6 +6,7 @@ import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import { createSlot } from "../slot/slot.ts";
+import { createTelemetry } from "../telemetry/telemetry.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
@@ -42,7 +43,7 @@ function defaults(
   overrides: Partial<ConductorDeps> = {},
 ): Pick<
   ConductorDeps,
-  "errorView" | "errorValidity" | "friendlyId" | "now" | "slot"
+  "errorView" | "errorValidity" | "friendlyId" | "now" | "slot" | "telemetry"
 > {
   const now = overrides.now ?? (() => T0);
   return {
@@ -51,6 +52,7 @@ function defaults(
     friendlyId: "ID",
     now,
     slot: createSlot({ now }),
+    telemetry: createTelemetry(),
     ...overrides,
   };
 }
@@ -395,6 +397,37 @@ Deno.test("Tier 3: once validity has elapsed, the next /api/display runs the Plu
 });
 
 // ─── Tier 1: validity hit reuses the Slot, no Plugin run ───────────────────
+
+// ─── Telemetry: trace recorded once per orchestration cycle ────────────────
+
+Deno.test("Conductor records exactly one trace per successful /api/display cycle (after rasterize resolves)", async () => {
+  // The trace is deferred until the eager rasterize resolves; if it were
+  // recorded at slot.put time, the rasterize duration would be unknown.
+  // Single record per cycle, with the actual rasterize wall-clock baked in.
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const conductor = createConductor({
+    ...defaults({ telemetry }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({ identity: () => Promise.resolve("trace-id-1") }),
+  });
+
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  // Yield so the rasterize .finally callback (which records) gets to run.
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+  const trace = record.calls[0].args[0];
+  assertEquals(trace.identity, "trace-id-1");
+  assertEquals(trace.error, null);
+  // All three duration buckets present.
+  assertEquals(trace.durations.pluginRun instanceof Temporal.Duration, true);
+  assertEquals(trace.durations.identity instanceof Temporal.Duration, true);
+  assertEquals(trace.durations.rasterize instanceof Temporal.Duration, true);
+});
 
 Deno.test("Tier 1: repeated /api/display polls within validity reuse the Slot — Plugin not invoked again", async () => {
   // The Slot's `display()` answers non-null while the entry's

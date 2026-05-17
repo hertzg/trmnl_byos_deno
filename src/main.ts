@@ -15,6 +15,7 @@ import { createFetchPngFromUrl, createRenderer } from "./render/renderer.ts";
 import { seedPluginDir } from "./plugin/loader.ts";
 import { createPluginManager } from "./plugin/plugin-manager.ts";
 import { createSlot } from "./slot/slot.ts";
+import { createTelemetry } from "./telemetry/telemetry.ts";
 
 async function main() {
   // 1. Seed the Plugin directory if requested, then construct the
@@ -47,7 +48,12 @@ async function main() {
   // reads `display()` to know the current identity).
   const slot = createSlot({ now });
 
-  // 5. Conductor owns the BYOS surface (/api/setup, /api/display,
+  // 5. Per-cycle render trace. The Conductor records once per orchestration
+  // cycle (after the eager rasterize resolves); the Dashboard reads
+  // `latest()` to render the trace strip. One entry, replaced each render.
+  const telemetry = createTelemetry();
+
+  // 6. Conductor owns the BYOS surface (/api/setup, /api/display,
   // /api/log) and the identity-keyed render output (/image/<id>.png). On
   // each /api/display poll it orchestrates Plugin → identity → start
   // rasterize → Slot.put, or returns the cached identity if the Slot is
@@ -56,6 +62,7 @@ async function main() {
     pluginManager,
     renderer,
     slot,
+    telemetry,
     errorView,
     errorValidity,
     friendlyId: FRIENDLY_ID,
@@ -63,7 +70,7 @@ async function main() {
     now,
   });
 
-  // 6. Dashboard at /. Reads the Slot in-process to show the current
+  // 7. Dashboard at /. Reads the Slot in-process to show the current
   // Image; triggers a refill via `conductor.app.request("/api/display")`
   // when the Slot is empty so there is exactly one render path.
   const dashboard = createDashboard({

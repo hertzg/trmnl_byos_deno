@@ -4,6 +4,7 @@ import type { Bundle } from "../plugin/bundle.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
 import type { Slot, SlotDisplay } from "../slot/slot.ts";
+import type { RenderTrace, Telemetry } from "../telemetry/telemetry.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 
@@ -48,6 +49,12 @@ export type ConductorDeps = {
   // using these and re-enters the orchestration loop.
   errorView: (err: Error) => unknown;
   errorValidity: Temporal.Duration;
+  // Singleton that holds the most-recent RenderTrace. The Conductor
+  // records exactly one trace per orchestration cycle — deferred until
+  // the eager rasterize resolves so the trace's `durations.rasterize`
+  // is the actual wall-clock and not a placeholder. The Dashboard reads
+  // `telemetry.latest()` to render the trace strip.
+  telemetry: Telemetry;
   // BYOS surface — these flow through the Conductor's own Hono sub-app.
   friendlyId: string;
   onDeviceLog?: (id: string, body: string) => void;
@@ -85,27 +92,66 @@ export function createConductor(deps: ConductorDeps): Conductor {
     };
   }
 
-  // Run Plugin → identity → start rasterize → push into Slot. On throw
-  // anywhere in Plugin.run / Renderer.identity, build an error Bundle and
-  // push that instead. After `doRefill` resolves, `slot.display()` is
-  // guaranteed non-null.
+  // Run Plugin → identity → push into Slot, with explicit timestamps
+  // around each step so we can hand a complete RenderTrace to Telemetry
+  // when the eager rasterize resolves. On throw anywhere in
+  // `pluginManager.run` / `renderer.identity`, build an error Bundle and
+  // run the same identity → rasterize sequence on it — the trace's
+  // `error` field is set to the caught Error and the durations reflect
+  // whatever ran before the throw plus the error-Bundle's identity +
+  // rasterize times.
+  //
+  // Telemetry is recorded once per cycle (success or error), inside the
+  // rasterize promise's `.finally`. Deferring the record means the trace
+  // includes the real rasterize wall-clock — recording at `slot.put`
+  // time would force a placeholder, and the Conductor returns from
+  // `/api/display` before the rasterize promise resolves anyway.
   async function doRefill(ctx: RunContext): Promise<void> {
+    const ranAt = deps.now();
+    let pluginRunStart = ranAt;
+    let pluginRunEnd = ranAt;
+    let identityEnd = ranAt;
+    let caught: Error | null = null;
     let bundle: Bundle;
     let identity: string;
     let image: Promise<Uint8Array>;
     try {
+      pluginRunStart = deps.now();
       bundle = await deps.pluginManager.run(ctx);
+      pluginRunEnd = deps.now();
       identity = await deps.renderer.identity(bundle);
+      identityEnd = deps.now();
       image = deps.renderer.rasterize(bundle);
     } catch (err) {
       // Error path: re-enter the same loop with a fabricated error Bundle.
       // The error Bundle's `view` is the Server-supplied error view; its
       // `validity` is the Conductor's `errorValidity` (~30 s). Assets are
       // empty — the error view renders self-contained HTML.
+      caught = err instanceof Error ? err : new Error(String(err));
+      pluginRunEnd = deps.now();
       bundle = { result: errorResult(err), assets: {} };
       identity = await deps.renderer.identity(bundle);
+      identityEnd = deps.now();
       image = deps.renderer.rasterize(bundle);
     }
+    const rasterizeStart = identityEnd;
+    // Record the trace once the eager rasterize completes (success or
+    // failure). `.finally` runs even if `image` rejects — a CDP outage
+    // mid-rasterize still gets a trace entry with the real timings up
+    // to the failure point.
+    image.finally(() => {
+      const trace: RenderTrace = {
+        ranAt,
+        identity,
+        durations: {
+          pluginRun: pluginRunEnd.since(pluginRunStart),
+          identity: identityEnd.since(pluginRunEnd),
+          rasterize: deps.now().since(rasterizeStart),
+        },
+        error: caught,
+      };
+      deps.telemetry.record(trace);
+    });
     deps.slot.put({
       bundle,
       identity,
