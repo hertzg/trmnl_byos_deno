@@ -19,9 +19,13 @@ import { ditherNative } from "./_internal/dither.ts";
 // In addition to the render methods, the Renderer owns the loopback HTTP
 // server CDP fetches from. Construction spins it up on an OS-assigned
 // ephemeral port (`Deno.serve({port: 0})`); `close()` shuts it down. The
-// loopback is reachable only on 127.0.0.1 — nothing outside the process can
-// hit it. `origin()` exposes its base URL for diagnostics; the URLs handed
-// to CDP point at this origin and never at the outward server.
+// default (`loopbackHost = "host.docker.internal"`) binds the port on
+// 0.0.0.0 so chrome-in-docker can reach it across the docker bridge —
+// LAN-reachable, acceptable under ADR-0001's trusted-single-user-LAN
+// posture. Override with `LOOPBACK_HOST=127.0.0.1` (compose mode) to
+// restore 127.0.0.1-only binding. `origin()` exposes its base URL for
+// diagnostics; the URLs handed to CDP point at this origin and never at
+// the outward server.
 //
 // Concurrency: single-mount-with-lock. `rasterize` calls serialize through a
 // promise chain. While one call is in flight, the loopback serves that
