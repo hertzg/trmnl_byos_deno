@@ -2,9 +2,7 @@ import { renderToString } from "hono/jsx/dom/server";
 import { encodeHex } from "@std/encoding/hex";
 import type { Bundle } from "./plugin/bundle.ts";
 
-// Hash choice + truncation length are encapsulated here so they can change
-// without rippling through callers. Device-side SPIFFS cache handles >=16
-// chars comfortably (resolved on PR #34).
+// Device-side SPIFFS cache handles >=16 chars comfortably (PR #34).
 const LENGTH = 16;
 
 export async function hashBundle(bundle: Bundle): Promise<string> {

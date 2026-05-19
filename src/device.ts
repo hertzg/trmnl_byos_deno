@@ -1,19 +1,7 @@
-// Per-Device intel reported by the firmware on every /api/display poll
-// (see usetrmnl/trmnl-firmware src/api-client/display.cpp addHeaders()):
-//
-//   ID, Battery-Voltage, RSSI, FW-Version, Model, Width, Height, ...
-//
-// The Conductor (ADR-0003) owns the latest DeviceReport itself and stamps
-// it into the RunContext on every trigger. The Conductor's /api/display
-// route handler calls `parseDeviceHeaders(req.raw.headers)` and, when it
-// gets a non-null report, updates its internal `latestDevice` directly.
-
 import type { DeviceReport } from "./plugin/plugin.ts";
 
-// Linear Li-ion approximation: 4.2 V → 100 %, 3.3 V → 0 %, clamped. Reasonable
-// for an at-a-glance indicator; the discharge curve is non-linear in reality
-// but the difference matters more for runtime estimation than for "looks low,
-// charge it soon."
+// Linear Li-ion approximation: 4.2 V → 100 %, 3.3 V → 0 %, clamped. Coarse
+// but fine for an at-a-glance indicator.
 const BATTERY_FULL_V = 4.2;
 const BATTERY_EMPTY_V = 3.3;
 
@@ -36,8 +24,8 @@ function readNumber(headers: Headers, name: string): number | null {
 }
 
 // Returns `null` when the request didn't carry the `ID` header — without it
-// we have no Device identity to attach the report to, so the caller treats
-// the request as not-a-Device-poll and keeps its previous state.
+// we have no Device identity to attach the report to. Caller treats this as
+// not-a-Device-poll and keeps its previous state.
 export function parseDeviceHeaders(
   headers: Headers,
   now: () => Temporal.ZonedDateTime = () => Temporal.Now.zonedDateTimeISO(),

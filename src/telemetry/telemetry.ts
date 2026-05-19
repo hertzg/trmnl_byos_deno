@@ -1,9 +1,6 @@
-// A single rendering cycle's diagnostic trace. Recorded by the Conductor at
-// the end of each render and read by the Dashboard to populate the trace
-// strip. One entry; replaced each render. `error` is non-null when the
-// orchestration loop caught a throw (e.g. Plugin failure, view-time JSX
-// error); the durations are still populated for whatever stages ran before
-// the failure.
+// One render's diagnostic trace. Conductor records once per cycle; Dashboard
+// reads to render the trace strip. `error` is non-null when the orchestration
+// loop caught a throw — durations still reflect whatever ran before failure.
 export type RenderTrace = {
   ranAt: Temporal.ZonedDateTime;
   identity: string;

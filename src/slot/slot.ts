@@ -1,11 +1,7 @@
 import type { Bundle } from "../plugin/bundle.ts";
 
-// A Slot entry holds everything the Conductor pushed in when the latest
-// Bundle landed: the Bundle itself, its identity (so Slot can answer
-// `image(id)` without re-hashing), and the eagerly-started rasterize
-// promise (so the second caller awaits the same work as the first).
-// `cachedAt` is recorded when the entry lands; `display()` derives
-// `refreshIn` from `cachedAt + bundle.result.validity`.
+// Single-Image cache. See ADR-0004.
+
 export type SlotEntry = {
   identity: string;
   bundle: Bundle;

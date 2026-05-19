@@ -3,12 +3,9 @@ import type { Bundle } from "./bundle.ts";
 import { loadPlugin } from "./loader.ts";
 import type { RunContext } from "./plugin.ts";
 
-// The PluginManager owns the Plugin's lifecycle: it loads the Plugin module
-// once at construction, reads its `assets/` directory recursively into memory
-// once at construction, and exposes one method — `run(ctx) → Bundle` — that
-// calls `plugin.run(ctx)` and attaches the (same) asset map to every Bundle
-// it returns. The asset map is captured by closure; from the Plugin's
-// perspective there is no way to mutate it.
+// Owns the Plugin's lifecycle: loads the module and its `assets/` folder
+// once at construction, then attaches the same asset map to every Bundle
+// it returns. See ADR-0002.
 
 export type PluginManagerDeps = {
   pluginDir: string;
@@ -33,11 +30,8 @@ export async function createPluginManager(
   };
 }
 
-// Walks `dir` recursively and returns every file keyed by its public URL path
-// (`/assets/<path-relative-to-dir>`). Reads file bytes raw — binary and text
-// flow through identically. Returns an empty map if `dir` does not exist,
-// because a Plugin without an `assets/` folder is valid (its view simply
-// references no assets).
+// Recursive walk keyed by `/assets/<path>`. Empty map if the dir doesn't
+// exist — a Plugin without assets is valid.
 async function readAssetsDir(dir: string): Promise<Record<string, Uint8Array>> {
   const assets: Record<string, Uint8Array> = {};
   try {
