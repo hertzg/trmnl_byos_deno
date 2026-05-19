@@ -32,8 +32,8 @@ export async function createPluginManager(
 
 // Recursive walk keyed by `/assets/<path>`. Empty map if the dir doesn't
 // exist — a Plugin without assets is valid.
-async function readAssetsDir(dir: string): Promise<Record<string, Uint8Array>> {
-  const assets: Record<string, Uint8Array> = {};
+async function readAssetsDir(dir: string): Promise<Record<string, Uint8Array<ArrayBuffer>>> {
+  const assets: Record<string, Uint8Array<ArrayBuffer>> = {};
   try {
     await Deno.stat(dir);
   } catch {
@@ -46,7 +46,7 @@ async function readAssetsDir(dir: string): Promise<Record<string, Uint8Array>> {
 async function collectFiles(
   root: string,
   relativePrefix: string,
-  out: Record<string, Uint8Array>,
+  out: Record<string, Uint8Array<ArrayBuffer>>,
 ): Promise<void> {
   for await (const entry of Deno.readDir(join(root, relativePrefix))) {
     const childRelative = relativePrefix === "" ? entry.name : `${relativePrefix}/${entry.name}`;

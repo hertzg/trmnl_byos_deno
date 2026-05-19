@@ -13,12 +13,12 @@ import { ditherNative } from "./_internal/dither.ts";
 
 export type Renderer = {
   identity(bundle: Bundle): Promise<string>;
-  rasterize(bundle: Bundle): Promise<Uint8Array>;
+  rasterize(bundle: Bundle): Promise<Uint8Array<ArrayBuffer>>;
   origin(): string;
   close(): Promise<void>;
 };
 
-export type FetchPngFromUrl = (url: string) => Promise<Uint8Array>;
+export type FetchPngFromUrl = (url: string) => Promise<Uint8Array<ArrayBuffer>>;
 
 export type RendererDeps = {
   fetchPngFromUrl: FetchPngFromUrl;
@@ -52,7 +52,7 @@ export function createRenderer(deps: RendererDeps): Renderer {
       const path = new URL(c.req.url).pathname;
       const bytes = mounted.assets[path];
       if (!bytes) return c.text("not found", 404);
-      return c.body(bytes as unknown as ArrayBuffer, 200, {
+      return c.body(bytes, 200, {
         "cache-control": "no-store",
       });
     });
@@ -115,7 +115,7 @@ export function createFetchPngFromUrl(config: FetchPngFromUrlConfig): FetchPngFr
       // `transform: scale(--pixel-ratio)`, so CDP renders at native res / DPR=1.
       deviceScaleFactor: 1,
     });
-    return await ditherNative(raw as Uint8Array<ArrayBuffer>, {
+    return await ditherNative(raw, {
       bitDepth: config.bitDepth,
       mode: config.dither,
     });

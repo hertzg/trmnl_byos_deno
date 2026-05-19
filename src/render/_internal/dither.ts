@@ -14,7 +14,7 @@ export interface DitherOptions {
 export async function ditherNative(
   input: Uint8Array<ArrayBuffer>,
   opts: DitherOptions = {},
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
   const bitDepth = opts.bitDepth ?? 4;
   const mode = opts.mode ?? "floyd-steinberg";
   const { header, body } = await decodePNG(input);
@@ -206,7 +206,7 @@ async function encodePng(
   width: number,
   height: number,
   bitDepth: number,
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
   // Filtered scanlines: filter byte (0/None) + sub-byte packed samples MSB-first per the PNG spec.
   const samplesPerByte = (8 / bitDepth) | 0;
   const stride = Math.ceil(width / samplesPerByte);

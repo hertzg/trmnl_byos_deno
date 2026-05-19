@@ -34,7 +34,7 @@ export function createDashboard(deps: DashboardDeps): Hono {
           identity: display?.identity ?? null,
           refreshIn: display?.refreshIn ?? null,
           trace: deps.telemetry.latest(),
-        }) as Parameters<typeof renderToString>[0],
+        }),
       );
       return c.html("<!DOCTYPE html>" + page, 200, { "cache-control": "no-store" });
     })
@@ -48,7 +48,8 @@ export function createDashboard(deps: DashboardDeps): Hono {
       };
       const bundle = await deps.pluginManager.run(ctx);
       const png = await deps.renderer.rasterize(bundle);
-      return c.body(png as unknown as ArrayBuffer, 200, {
+
+      return c.body(png, 200, {
         "content-type": "image/png",
         "cache-control": "no-store",
       });

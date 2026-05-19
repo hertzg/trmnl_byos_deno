@@ -42,7 +42,12 @@ export async function resolveCdpEndpoint(cdpUrl: string | URL): Promise<string> 
 // waits for FCP + networkIdle, and returns a PNG screenshot. Going through a real HTTP
 // fetch (vs. setContent) means relative asset URLs in the HTML resolve naturally — that's
 // what enables /assets/style.css and friends.
-export async function renderUrl(opts: RenderOptions): Promise<Uint8Array> {
+//
+// Return narrowed to `Uint8Array<ArrayBuffer>`: Astral's `page.screenshot()` is typed
+// `Promise<Uint8Array>` (= `Uint8Array<ArrayBufferLike>` since TS 5.7), but its
+// implementation always allocates a fresh ArrayBuffer (atob → number[] → new Uint8Array).
+// The cast happens once here so every downstream consumer sees the narrow type.
+export async function renderUrl(opts: RenderOptions): Promise<Uint8Array<ArrayBuffer>> {
   const { endpoint, url, deviceWidth, deviceHeight, deviceScaleFactor } = opts;
 
   const browser = await connect({ endpoint });
@@ -68,7 +73,7 @@ export async function renderUrl(opts: RenderOptions): Promise<Uint8Array> {
     await page.goto(url);
     await fcp;
     await networkIdle;
-    return await page.screenshot({ format: "png" });
+    return (await page.screenshot({ format: "png" })) as Uint8Array<ArrayBuffer>;
   } finally {
     // Disconnects the WS; the remote browser process keeps running.
     await browser.close();
