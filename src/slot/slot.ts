@@ -6,7 +6,7 @@ export type SlotEntry = {
   identity: string;
   bundle: Bundle;
   cachedAt: Temporal.ZonedDateTime;
-  image: Promise<Uint8Array>;
+  image: Promise<Uint8Array<ArrayBuffer>>;
 };
 
 export type SlotDeps = {
@@ -21,7 +21,7 @@ export type SlotDisplay = {
 export type Slot = {
   put(entry: SlotEntry): void;
   display(): SlotDisplay | null;
-  image(id: string): Promise<Uint8Array | null>;
+  image(id: string): Promise<Uint8Array<ArrayBuffer> | null>;
   clear(): void;
 };
 

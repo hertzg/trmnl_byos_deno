@@ -10,7 +10,7 @@ const fiveMin = Temporal.Duration.from({ minutes: 5 });
 function bundleWith(
   state: unknown,
   view: (s: unknown) => unknown,
-  assets: Record<string, Uint8Array> = {},
+  assets: Record<string, Uint8Array<ArrayBuffer>> = {},
 ): Bundle {
   return {
     result: { state, validity: fiveMin, view },

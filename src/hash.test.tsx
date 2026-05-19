@@ -6,7 +6,7 @@ import type { Bundle } from "./plugin/bundle.ts";
 function bundleWith(
   state: unknown,
   view: (s: unknown) => unknown,
-  assets: Record<string, Uint8Array> = {},
+  assets: Record<string, Uint8Array<ArrayBuffer>> = {},
 ): Bundle {
   return {
     result: {

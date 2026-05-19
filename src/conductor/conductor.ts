@@ -51,7 +51,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
     let caught: Error | null = null;
     let bundle: Bundle;
     let identity: string;
-    let image: Promise<Uint8Array>;
+    let image: Promise<Uint8Array<ArrayBuffer>>;
     try {
       bundle = await deps.pluginManager.run(ctx);
       pluginRunEnd = deps.now();
@@ -152,7 +152,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
       const id = param.replace(/\.png$/, "");
       const bytes = await deps.slot.image(id);
       if (bytes === null) return c.notFound();
-      return c.body(bytes as unknown as ArrayBuffer, 200, {
+      return c.body(bytes, 200, {
         "content-type": "image/png",
         "cache-control": "no-store",
       });
