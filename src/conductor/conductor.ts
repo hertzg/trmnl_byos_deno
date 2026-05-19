@@ -8,81 +8,33 @@ import type { RenderTrace, Telemetry } from "../telemetry/telemetry.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 
-// The Conductor is the BYOS-facing facade. It owns the orchestration loop
-// from Device poll (`/api/display`) through Plugin run → Renderer.identity
-// → eager Renderer.rasterize → Slot.put, and serves the resulting PNG bytes
-// at `/image/<identity>.png`. The Plugin's state shape is opaque to the
-// Conductor — `pluginManager.run(ctx)` returns a Bundle whose details the
-// Conductor doesn't inspect.
-//
-// Three tiers of laziness govern each /api/display poll (ADR-0004):
-//
-//   Tier 1 — Slot still valid: return cached identity; no Plugin run.
-//   Tier 2 — Slot expired, identity unchanged: (reserved, not implemented).
-//   Tier 3 — Slot expired or empty: run Plugin, compute identity, start
-//            rasterize, put into Slot, return new identity.
-//
-// On any throw inside steps 2–3, the loop re-enters with an error Bundle
-// built from `errorView` + `errorValidity` (~30 s). The error Bundle flows
-// through the Slot exactly like a real Bundle — no second cache path.
-//
-// Concurrent /api/display calls share a single in-flight refill (single-
-// flight) so a cache miss runs the Plugin at most once.
+// BYOS facade. Owns the orchestration loop from `/api/display` through
+// Plugin → identity → eager rasterize → Slot.put, and serves the PNG at
+// `/image/<identity>.png`. See ADR-0003 (pipeline) and ADR-0004 (three-tier
+// cache + error fallback).
 
 export type ConductorDeps = {
-  // Loaded once at boot; reused across calls. Captures the Plugin module +
-  // its on-disk assets folder. See src/plugin/plugin-manager.ts.
   pluginManager: PluginManager;
-  // The Renderer owns Bundle → identity and Bundle → Image. The Conductor
-  // calls `identity(bundle)` to derive the Slot's cache key + Device's
-  // filename, and starts `rasterize(bundle)` (not awaited) so the eager
-  // PNG promise is in flight by the time the Device follows up with
-  // `/image/<identity>.png`.
   renderer: Renderer;
-  // Single-Image cache (ADR-0004). The Conductor pushes
-  // `{ bundle, identity, image, cachedAt }` triples in via `slot.put`; the
-  // Slot answers `display()` / `image(id)` for the orchestration loop and
-  // the /image/<id>.png handler respectively.
   slot: Slot;
-  // Server-supplied error view + validity. When Plugin.run or
-  // Renderer.identity throws, the Conductor wraps the Error in a Result
-  // using these and re-enters the orchestration loop.
   errorView: (err: Error) => unknown;
   errorValidity: Temporal.Duration;
-  // Singleton that holds the most-recent RenderTrace. The Conductor
-  // records exactly one trace per orchestration cycle — deferred until
-  // the eager rasterize resolves so the trace's `durations.rasterize`
-  // is the actual wall-clock and not a placeholder. The Dashboard reads
-  // `telemetry.latest()` to render the trace strip.
   telemetry: Telemetry;
-  // BYOS surface — these flow through the Conductor's own Hono sub-app.
   friendlyId: string;
   onDeviceLog?: (id: string, body: string) => void;
   now: () => Temporal.ZonedDateTime;
 };
 
 export type Conductor = {
-  // Hono sub-app for the BYOS surface (`/api/setup`, `/api/display`,
-  // `/api/log`) plus the identity-keyed render output (`/image/:id.png`).
-  // No public `/assets/*` route — Plugin assets travel inside Bundles to
-  // Renderer's internal loopback origin only (ADR-0003 / ADR-0005).
   app: Hono;
 };
 
-// The orchestration logic lives entirely inside the factory closure;
-// peers reach it through the Conductor's HTTP surface.
 export function createConductor(deps: ConductorDeps): Conductor {
   let latestDevice: DeviceReport | null = null;
-  // Single-flight: the in-flight refill (Plugin → identity → start
-  // rasterize → Slot.put). Concurrent callers await the same promise so a
-  // cache miss runs the Plugin exactly once even under burst load (e.g.
-  // the Device's poll racing the Dashboard's in-process refill).
-  // Set inside `refillSlot`, cleared in its `.finally` so the next miss
-  // refills from scratch.
+  // Single-flight: a cache miss runs the Plugin at most once even under
+  // burst load (Device poll racing the Dashboard's in-process refill).
   let pendingRefill: Promise<void> | null = null;
 
-  // Wrap an Error in the Server-supplied error view as a Result. Used by
-  // the orchestration loop's catch arm.
   function errorResult(error: Error) {
     return {
       state: error,
@@ -91,20 +43,6 @@ export function createConductor(deps: ConductorDeps): Conductor {
     };
   }
 
-  // Run Plugin → identity → push into Slot, with explicit timestamps
-  // around each step so we can hand a complete RenderTrace to Telemetry
-  // when the eager rasterize resolves. On throw anywhere in
-  // `pluginManager.run` / `renderer.identity`, build an error Bundle and
-  // run the same identity → rasterize sequence on it — the trace's
-  // `error` field is set to the caught Error and the durations reflect
-  // whatever ran before the throw plus the error-Bundle's identity +
-  // rasterize times.
-  //
-  // Telemetry is recorded once per cycle (success or error), inside the
-  // rasterize promise's `.finally`. Deferring the record means the trace
-  // includes the real rasterize wall-clock — recording at `slot.put`
-  // time would force a placeholder, and the Conductor returns from
-  // `/api/display` before the rasterize promise resolves anyway.
   async function doRefill(ctx: RunContext): Promise<void> {
     const pluginRunStart = deps.now();
     const ranAt = pluginRunStart;
@@ -121,10 +59,8 @@ export function createConductor(deps: ConductorDeps): Conductor {
       identityEnd = deps.now();
       image = deps.renderer.rasterize(bundle);
     } catch (err) {
-      // Error path: re-enter the same loop with a fabricated error Bundle.
-      // The error Bundle's `view` is the Server-supplied error view; its
-      // `validity` is the Conductor's `errorValidity` (~30 s). Assets are
-      // empty — the error view renders self-contained HTML.
+      // Error path: re-enter the same loop with a fabricated error Bundle
+      // (ADR-0003). Empty assets — error view renders self-contained HTML.
       caught = err instanceof Error ? err : new Error(String(err));
       pluginRunEnd = deps.now();
       bundle = { result: errorResult(caught), assets: {} };
@@ -132,15 +68,11 @@ export function createConductor(deps: ConductorDeps): Conductor {
       identityEnd = deps.now();
       image = deps.renderer.rasterize(bundle);
     }
-    // Record the trace once the eager rasterize completes (success or
-    // failure). `.finally` runs even if `image` rejects — a CDP outage
-    // mid-rasterize still gets a trace entry with the real timings up
-    // to the failure point. The trailing `.catch(noop)` is essential:
-    // `.finally` re-throws the upstream rejection on the chain we
-    // create here, and that chain is otherwise dangling. The
-    // underlying `image` promise the Slot stores keeps its rejection;
-    // the /image/<id>.png handler is the only consumer that has to
-    // observe it.
+    // Record telemetry once the eager rasterize settles, so `rasterize`
+    // duration is real wall-clock. The trailing `.catch(noop)` is essential:
+    // `.finally` re-throws upstream rejection on the chain we create here,
+    // and that chain is otherwise dangling. The `image` promise the Slot
+    // stores keeps its rejection; the /image/<id>.png handler observes it.
     image
       .finally(() => {
         const trace: RenderTrace = {
@@ -164,11 +96,6 @@ export function createConductor(deps: ConductorDeps): Conductor {
     });
   }
 
-  // Single-flight wrapper around doRefill: callers that arrive while a
-  // refill is already in flight await the same promise rather than
-  // kicking a second Plugin run. The pattern is inlined here (not
-  // extracted) because the Conductor has exactly one of these and the
-  // closure is small enough to read in place.
   function refillSlot(ctx: RunContext): Promise<void> {
     if (pendingRefill !== null) return pendingRefill;
     pendingRefill = doRefill(ctx).finally(() => {
@@ -177,10 +104,6 @@ export function createConductor(deps: ConductorDeps): Conductor {
     return pendingRefill;
   }
 
-  // Compute or look up the current display metadata. Tier 1: Slot still
-  // valid → return its `display()` directly. Tier 3 (and Tier 2, not yet
-  // implemented): refill the Slot (deduped via `pendingRefill`), then
-  // return its `display()`.
   async function ensureDisplay(intent: RunContext["intent"]): Promise<SlotDisplay> {
     const cached = deps.slot.display();
     if (cached !== null) return cached;
@@ -195,10 +118,8 @@ export function createConductor(deps: ConductorDeps): Conductor {
 
   const app = new Hono()
     .get("/api/setup", (c) =>
-      // `image_url` here is a placeholder — the BYOS firmware proceeds to
-      // /api/display immediately after setup, which returns the real
-      // identity-keyed URL. We hand back the same shape (/image/<id>.png)
-      // pointing at `setup` so the field is syntactically a render URL.
+      // `image_url` is a placeholder — firmware proceeds to /api/display
+      // immediately, which returns the real identity-keyed URL.
       c.json({
         status: 200,
         api_key: "byos",
@@ -227,9 +148,6 @@ export function createConductor(deps: ConductorDeps): Conductor {
       });
     })
     .get("/image/:id{.+\\.png}", async (c) => {
-      // `:id{.+\\.png}` matches "<identity>.png"; strip the extension to
-      // get the Slot key. Identity mismatch (or empty / expired Slot)
-      // returns 404 — the Device's next /api/display corrects.
       const param = c.req.param("id");
       const id = param.replace(/\.png$/, "");
       const bytes = await deps.slot.image(id);

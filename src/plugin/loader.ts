@@ -1,11 +1,8 @@
 import { join, toFileUrl } from "@std/path";
 import type { Plugin } from "./plugin.ts";
 
-// Copies `source` into `target` only when `target` is empty (or doesn't exist).
-// Used to seed a fresh bind-mount with the bundled example: first run gets
-// files; subsequent runs preserve the user's edits. Anything in `target` (even
-// unrelated files) blocks seeding — the user empties the dir on the host to
-// re-seed.
+// Seeds `target` from `source` only when `target` is empty — the user
+// re-seeds by emptying the directory on the host.
 export async function seedPluginDir(target: string, source: string): Promise<void> {
   await Deno.mkdir(target, { recursive: true });
   for await (const _ of Deno.readDir(target)) {
@@ -30,11 +27,6 @@ async function copyDirContents(src: string, dst: string): Promise<void> {
   }
 }
 
-// Type predicate that lets loadPlugin return Plugin<unknown> without an `as`
-// cast: once isPlugin returns true, TypeScript narrows the value to the
-// Plugin shape. Kept exported so it can be tested directly — the loader's
-// error-message guards still live in loadPlugin because they need the
-// mainPath for context.
 export function isPlugin(value: unknown): value is Plugin<unknown> {
   return (
     typeof value === "object" &&

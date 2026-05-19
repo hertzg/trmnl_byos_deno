@@ -1,10 +1,8 @@
 import type { DitherMode } from "./_internal/dither.ts";
 
-// A device profile bundles every render parameter that varies by panel: the panel's
-// physical pixel dimensions, the dithered output's bit depth, and the dither algorithm
-// tuned for that panel. Templates that use the TRMNL framework CSS handle the
-// CSS-to-physical scaling themselves (via `transform: scale(--pixel-ratio)` on .screen),
-// so the rasterizer always renders at the panel's native resolution with DPR=1.
+// Per-panel render parameters. Templates that use the TRMNL framework CSS
+// handle CSS-to-physical scaling themselves (`transform: scale(--pixel-ratio)`
+// on .screen), so the rasterizer always renders at native res with DPR=1.
 export type DeviceProfile = {
   width: number;
   height: number;
@@ -12,8 +10,6 @@ export type DeviceProfile = {
   dither: DitherMode;
 };
 
-// Hardcoded registry. Adding a device model is a new entry here, not a sprawl of new
-// env vars.
 const PROFILES: Record<string, DeviceProfile> = {
   "trmnl-x": {
     width: 1872,

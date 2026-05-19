@@ -2,24 +2,13 @@
 
 import type { RenderTrace } from "../telemetry/telemetry.ts";
 
-// Dashboard at /. The admin/debug page: a heading, the current Image
-// (or a notice when the Slot is empty / refill failed), the current Slot
-// identity and remaining validity, an enabled scrub form that GETs
-// /dashboard/preview.png?t=..., a clear-cache button that POSTs to
-// /dashboard/clear, and a trace strip at the bottom populated from
-// `telemetry.latest()`.
-
 export type DashboardProps = {
   now: Temporal.ZonedDateTime;
   // `null` when the Slot is empty after a refill attempt (e.g. the
   // Conductor's error path itself failed) — the page surfaces that state
-  // instead of trying to embed a broken /image URL.
+  // instead of embedding a broken /image URL.
   identity: string | null;
   refreshIn: Temporal.Duration | null;
-  // The most-recent render trace from Telemetry, or `null` before any
-  // cycle has run. The strip at the bottom of the page reports
-  // identity, ranAt, the three durations, and the error message when
-  // the cycle failed.
   trace: RenderTrace | null;
 };
 
