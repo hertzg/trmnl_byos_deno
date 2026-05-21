@@ -1,0 +1,30 @@
+.ds-item {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+}
+
+.ds-item__meta {
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+
+.ds-item__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ds-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ds-item--meta-emphasis .ds-item__meta {
+  /* Reserve a fixed meta column so prominent ranks or indices line up the
+     content baseline across rows regardless of digit count. */
+  flex-basis: 12rem;
+  font-size: 1.25em;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
