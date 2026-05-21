@@ -1,14 +1,16 @@
-/* Targets the trmnl-x panel directly (1872×1404, DPR=1, 4-bit grayscale).
+/* BVG-specific styles for the trmnl-x panel (1872×1404, DPR=1, 4-bit grayscale).
+ * Loads after the DesignSystem's <Styles /> in source order so any rule below
+ * that names a DS class wins by cascade (ADR-0008 §Customization API). Core
+ * primitives — box reset, rem anchor, body base typography, Layout padding,
+ * StatusBar, BatteryIndicator, EmptyState — live in templates/ds/ now.
+ *
  * Pure black-on-white, no shadows, no anti-alias trickery — what dithers cleanly.
  *
  * Legibility rules of thumb:
  *   - Solid black-on-white beats outlined: thin borders dither poorly.
  *   - Body weight 500 (medium), data tokens 700/900 — 400 looks washed out after dither.
  *   - Generous whitespace — adjacent dense elements ghost and compete.
- *   - Sized for wall/desk distance, not laptop-monitor distance.
- *
- * Sizing: all dimensions are expressed in rem. The html base below pegs
- * 1rem = 10px so px-thinking still works arithmetically (32px = 3.2rem). */
+ *   - Sized for wall/desk distance, not laptop-monitor distance. */
 
 /* Inter Variable for Latin/digits, Noto Sans Georgian Variable for the Georgian
  * Mkhedruli script. Both self-hosted so the renderer stays offline (per the original
@@ -31,47 +33,12 @@
   src: url("/assets/fonts/noto-sans-georgian-variable.woff2") format("woff2-variations");
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-/* Anchor the rem base at 10px so every other length stays one decimal away
- * from its physical-pixel equivalent on the fixed-resolution panel. */
-html {
-  font-size: 10px;
-}
-
-html,
+/* Override the DS base font stack with the BVG plugin's preferred faces. DS's
+ * base.css ships `ui-sans-serif, system-ui, sans-serif`; we layer Inter and
+ * Noto Sans Georgian on top, falling back to the DS stack. Source-order
+ * cascade wins because <Styles /> renders before this file in <head>. */
 body {
-  width: 1872px;
-  height: 1404px;
   font-family: "Inter", "Noto Sans Georgian", ui-sans-serif, system-ui, sans-serif;
-  color: #000;
-  background: #fff;
-  -webkit-font-smoothing: none;
-  font-smooth: never;
-}
-
-body {
-  font-size: 3.4rem;
-  line-height: 1.25;
-  font-weight: 500;
-  display: flex;
-  flex-direction: column;
-  padding: 4rem 4.8rem;
-  gap: 2.8rem;
-}
-
-/* The slot fills whatever the body's flex container hands it. With the title-bar
- * footer at fixed height, this gives the slot ~1776 × 1230 — close enough to the
- * wireframe target that the layouts inside don't need to scale. */
-.slot {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 /* ----- shared header ----- */
@@ -392,17 +359,7 @@ body {
   margin-bottom: 1rem;
 }
 
-/* ----- footer / title bar ----- */
-
-.title-bar {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 0.4rem solid #000;
-  padding-top: 1.6rem;
-  font-size: 2.4rem;
-}
+/* ----- title-bar text helpers (StatusBar children) ----- */
 
 .title-bar__title {
   font-weight: 700;
@@ -414,48 +371,6 @@ body {
 
 .title-bar__instance {
   color: #444;
-}
-
-/* Battery indicator anchored to the lower-right corner of the title-bar (the
- * title-bar uses justify-content: space-between, so the third child lands at the
- * end). Pure black-and-white CSS battery glyph dithers cleanly on e-ink. */
-.battery {
-  display: inline-flex;
-  align-items: center;
-  gap: 1rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.battery__shell {
-  position: relative;
-  width: 44px;
-  height: 22px;
-  border: 3px solid #000;
-  padding: 2px;
-  display: flex;
-}
-
-/* Cap on the right side of the shell. */
-.battery__shell::after {
-  content: "";
-  position: absolute;
-  left: 100%;
-  top: 5px;
-  margin-left: 2px;
-  width: 4px;
-  height: 8px;
-  background: #000;
-}
-
-.battery__fill {
-  display: block;
-  height: 100%;
-  background: #000;
-}
-
-.battery__pct {
-  font-size: 2.4rem;
 }
 
 /* ===== journey board ===== */
@@ -666,29 +581,6 @@ body {
 
 .cancel-strip__text {
   letter-spacing: 0.03em;
-}
-
-/* Empty frame — feedUnreachable / noScheduleApplicable. */
-.empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 1.6rem;
-  text-align: center;
-}
-
-.empty__big {
-  font-size: 6.4rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-}
-
-.empty__sub {
-  font-size: 2.8rem;
-  font-weight: 500;
-  color: #555;
 }
 
 /* Clip-summary footnote — appears at the bottom when overflow tail is dropped. */
