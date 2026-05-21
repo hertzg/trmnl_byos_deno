@@ -1,0 +1,17 @@
+.ds-layout {
+  display: flex;
+  flex-direction: column;
+  padding: 4rem 4.8rem;
+  gap: 2.8rem;
+}
+
+.ds-layout--bleed {
+  padding: 0;
+}
+
+.ds-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
