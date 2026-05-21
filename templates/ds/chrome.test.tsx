@@ -51,6 +51,20 @@ Deno.test("BatteryIndicator exposes voltage via the title attribute", () => {
   assertStringIncludes(html, 'title="3.81 V"');
 });
 
+Deno.test("BatteryIndicator omits the title attribute slot when voltage is absent", () => {
+  const html = renderToString(<BatteryIndicator value={50} />);
+
+  // No `title` key and no stray space — opening tag must close cleanly after the class attr.
+  assertMatch(html, /<span class="ds-battery">/);
+  assert(!html.includes("title"));
+});
+
+Deno.test("BatteryIndicator renders the title attribute when voltage is present", () => {
+  const html = renderToString(<BatteryIndicator value={50} voltage={3.81} />);
+
+  assertMatch(html, /<span class="ds-battery" title="3\.81 V">/);
+});
+
 Deno.test("EmptyState renders both big and sub when both are passed", () => {
   const html = renderToString(<EmptyState big="—" sub="no data" />);
 

@@ -29,3 +29,19 @@ Deno.test("Styles does not inline any @font-face declarations", () => {
     "DS base.css must not ship @font-face — fonts stay plugin-controlled",
   );
 });
+
+Deno.test("dangerouslySetInnerHTML preserves CSS trigger chars verbatim", () => {
+  // Pin the non-escaping contract independently of the current CSS inventory:
+  // render a synthetic stylesheet containing every char hono/jsx would otherwise
+  // HTML-escape (", ', <, >, &) and assert the raw bytes survive the render.
+  const synthetic = `body::before{content:"\\"'<>&"}`;
+  const html = renderToString(
+    <style dangerouslySetInnerHTML={{ __html: synthetic }} />,
+  );
+
+  assertStringIncludes(html, synthetic);
+  assert(
+    !/&(?:lt|gt|amp|quot|#\d+);/.test(html),
+    "dangerouslySetInnerHTML must not HTML-escape CSS text",
+  );
+});
