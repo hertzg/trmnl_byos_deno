@@ -1,6 +1,7 @@
 /** @jsxImportSource hono/jsx */
 import baseCss from "./base.css" with { type: "text" };
 import chromeCss from "./chrome.css" with { type: "text" };
+import layoutCss from "./Layout.css" with { type: "text" };
 import typographyCss from "./typography.css" with { type: "text" };
 import itemCss from "./Item.css" with { type: "text" };
 
@@ -8,6 +9,7 @@ import itemCss from "./Item.css" with { type: "text" };
 const css = [
   baseCss,
   chromeCss,
+  layoutCss,
   typographyCss,
   itemCss,
 ].join("\n");
