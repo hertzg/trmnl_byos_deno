@@ -35,3 +35,7 @@
 .ds-flex--wrap {
   flex-wrap: wrap;
 }
+
+.ds-columns {
+  column-fill: balance;
+}

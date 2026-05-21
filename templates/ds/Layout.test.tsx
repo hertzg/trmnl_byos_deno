@@ -6,6 +6,7 @@ import { Content } from "./Content.tsx";
 import { Grid } from "./Grid.tsx";
 import { Flex } from "./Flex.tsx";
 import { Columns } from "./Columns.tsx";
+import { Styles } from "./Styles.tsx";
 
 Deno.test("Layout default has ds-layout, no bleed modifier, no inline padding", () => {
   const html = renderToString(<Layout>x</Layout>);
@@ -20,6 +21,24 @@ Deno.test("Layout bleed adds the modifier class", () => {
 
   assertStringIncludes(html, "ds-layout");
   assertStringIncludes(html, "ds-layout--bleed");
+});
+
+Deno.test("Layout bleed overrides padding by source order", () => {
+  const html = renderToString(
+    <>
+      <Styles />
+      <Layout bleed>x</Layout>
+    </>,
+  );
+
+  const base = html.indexOf(".ds-layout {");
+  const bleed = html.indexOf(".ds-layout--bleed");
+  assert(base !== -1, "expected .ds-layout base rule in <Styles> output");
+  assert(bleed !== -1, "expected .ds-layout--bleed rule in <Styles> output");
+  assert(
+    bleed > base,
+    ".ds-layout--bleed must come after .ds-layout so same-specificity padding override wins by source order",
+  );
 });
 
 Deno.test("Content renders with ds-content classname", () => {
