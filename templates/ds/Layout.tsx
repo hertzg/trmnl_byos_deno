@@ -1,9 +1,9 @@
 /** @jsxImportSource hono/jsx */
-import type { JSX } from "hono/jsx/jsx-runtime";
+import type { Child } from "hono/jsx";
 
 export type LayoutProps = {
   bleed?: boolean;
-  children?: JSX.Element | JSX.Element[] | string;
+  children?: Child;
 };
 
 export function Layout({ bleed, children }: LayoutProps) {

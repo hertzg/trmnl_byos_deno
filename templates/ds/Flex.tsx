@@ -1,5 +1,5 @@
 /** @jsxImportSource hono/jsx */
-import type { JSX } from "hono/jsx/jsx-runtime";
+import type { Child } from "hono/jsx";
 
 export type FlexAlign = "start" | "center" | "end" | "baseline" | "stretch";
 export type FlexJustify = "start" | "center" | "end" | "space-between" | "space-around";
@@ -11,7 +11,7 @@ export type FlexProps = {
   align?: FlexAlign;
   justify?: FlexJustify;
   wrap?: boolean;
-  children?: JSX.Element | JSX.Element[] | string;
+  children?: Child;
 };
 
 const alignMap: Record<FlexAlign, string> = {

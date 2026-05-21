@@ -1,10 +1,10 @@
 /** @jsxImportSource hono/jsx */
-import type { JSX } from "hono/jsx/jsx-runtime";
+import type { Child } from "hono/jsx";
 
 export type GridProps = {
   cols?: number | string;
   gap?: string;
-  children?: JSX.Element | JSX.Element[] | string;
+  children?: Child;
 };
 
 export function Grid({ cols, gap, children }: GridProps) {

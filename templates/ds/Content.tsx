@@ -1,8 +1,8 @@
 /** @jsxImportSource hono/jsx */
-import type { JSX } from "hono/jsx/jsx-runtime";
+import type { Child } from "hono/jsx";
 
 export type ContentProps = {
-  children?: JSX.Element | JSX.Element[] | string;
+  children?: Child;
 };
 
 export function Content({ children }: ContentProps) {

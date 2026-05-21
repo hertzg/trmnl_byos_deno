@@ -1,10 +1,10 @@
 /** @jsxImportSource hono/jsx */
-import type { JSX } from "hono/jsx/jsx-runtime";
+import type { Child } from "hono/jsx";
 
 export type ColumnsProps = {
   count?: number;
   gap?: string;
-  children?: JSX.Element | JSX.Element[] | string;
+  children?: Child;
 };
 
 export function Columns({ count = 2, gap, children }: ColumnsProps) {
