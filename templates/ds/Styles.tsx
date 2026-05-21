@@ -9,5 +9,5 @@ const css = [
 ].join("\n");
 
 export function Styles() {
-  return <style>{css}</style>;
+  return <style dangerouslySetInnerHTML={{ __html: css }} />;
 }
