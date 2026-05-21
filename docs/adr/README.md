@@ -11,6 +11,7 @@ Each ADR captures a single decision with its context and consequences.
 | [0005](0005-http-layer.md)           | HTTP layer: Hono, routing, and the dashboard at `/`                                                    | Accepted  |
 | [0006](0006-non-features.md)         | Explicit non-features                                                                                  | Accepted  |
 | [0007](0007-prerender-scheduling.md) | Prerender warm-up ahead of Device wake                                                                 | Withdrawn |
+| [0008](0008-design-system.md)        | Project-native design system, framework-informed                                                       | Accepted  |
 
 ## Format
 
