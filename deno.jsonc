@@ -10,6 +10,7 @@
     "jsx": "precompile",
     "jsxImportSource": "hono/jsx"
   },
+  "unstable": ["raw-imports"],
   "imports": {
     "@astral/astral": "jsr:@astral/astral@^0.5.4",
     "@hertzg/crc": "jsr:@hertzg/crc@^0.2.0",

@@ -119,8 +119,8 @@ authoring canvas can apply their own `transform: scale()` in plugin-specific CSS
 
 ### CSS delivery
 
-Plain CSS file (`templates/ds/styles.css`) imported as text via Deno's `with { type: "text" }`
-attribute import. The `<Styles />` component emits a single `<style>{cssText}</style>` into
+Plain CSS files under `templates/ds/` — starting with `base.css` — imported as text via Deno's
+`with { type: "text" }` attribute import. The `<Styles />` component emits a single `<style>{cssText}</style>` into
 `<head>`. `hono/css` (CSS-in-JS via Hono v4's `css` template tag) was considered and deferred:
 for a handful of primitives on a single Device, tree-shaking and hashed-class
 collision-avoidance are noise; plain CSS is the more readable shape, and plugin overrides stay
