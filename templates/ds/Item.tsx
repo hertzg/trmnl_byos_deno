@@ -18,7 +18,7 @@ export function Item({ meta, content, icon, emphasis }: ItemProps) {
   return (
     <div class={className}>
       <div class="ds-item__meta">{meta}</div>
-      {icon !== undefined && <div class="ds-item__icon">{icon}</div>}
+      {icon != null && <div class="ds-item__icon">{icon}</div>}
       <div class="ds-item__content">{content}</div>
     </div>
   );

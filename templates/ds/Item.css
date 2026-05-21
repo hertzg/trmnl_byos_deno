@@ -21,6 +21,8 @@
 }
 
 .ds-item--meta-emphasis .ds-item__meta {
+  /* Reserve a fixed meta column so prominent ranks or indices line up the
+     content baseline across rows regardless of digit count. */
   flex-basis: 12rem;
   font-size: 1.25em;
   font-weight: 900;
