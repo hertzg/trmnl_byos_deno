@@ -1,0 +1,26 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 10px;
+}
+
+html,
+body {
+  width: 1872px;
+  height: 1404px;
+  font-family: "Inter", "Noto Sans Georgian", ui-sans-serif, system-ui, sans-serif;
+  color: #000;
+  background: #fff;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+body {
+  font-size: 3.4rem;
+  line-height: 1.25;
+  font-weight: 500;
+}
