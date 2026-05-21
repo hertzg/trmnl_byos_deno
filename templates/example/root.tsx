@@ -1,5 +1,10 @@
 /** @jsxImportSource hono/jsx */
 import type { DeviceReport } from "../../src/plugin/plugin.ts";
+import { BatteryIndicator } from "../ds/BatteryIndicator.tsx";
+import { Content } from "../ds/Content.tsx";
+import { Layout } from "../ds/Layout.tsx";
+import { StatusBar } from "../ds/StatusBar.tsx";
+import { Styles } from "../ds/Styles.tsx";
 import type { Board } from "./bvg/board_assembler.ts";
 import BoardView from "./bvg/Board.tsx";
 import { formatKaDate } from "./bvg/time.ts";
@@ -25,24 +30,6 @@ function formatDate(t: Temporal.ZonedDateTime): string {
   return formatKaDate(new Date(t.toInstant().epochMilliseconds));
 }
 
-// Battery shell + fill + percent text. Renders nothing when the device hasn't
-// reported a battery voltage yet (first poll after boot, or non-battery
-// clients like the local /preview view).
-function Battery({ device }: { device: DeviceReport | null }) {
-  if (!device || device.batteryPercent == null) return null;
-  return (
-    <span class="battery" title={`${device.batteryVoltage?.toFixed(2)} V`}>
-      <span class="battery__shell">
-        <span
-          class="battery__fill"
-          style={`width: ${device.batteryPercent}%`}
-        />
-      </span>
-      <span class="battery__pct">{device.batteryPercent}%</span>
-    </span>
-  );
-}
-
 export default function DefaultTemplate({ board, device, t }: FrameData) {
   // The footer used to carry "next update HH:MM (+Ns)" and the head a
   // "updated HH:MM" stamp. Both ticked between refreshes, forcing the
@@ -53,16 +40,24 @@ export default function DefaultTemplate({ board, device, t }: FrameData) {
       <head>
         <meta charset="utf-8" />
         <title>trmnl-byos-deno</title>
+        <Styles />
         <link rel="stylesheet" href="/assets/style.css" />
       </head>
       <body>
-        <BoardView board={board} />
-        <footer class="title-bar">
-          <span class="title-bar__title">trmnl-byos-deno</span>
-          <span class="title-bar__date">{formatDate(t)}</span>
-          <span class="title-bar__instance">ტრანსპორტი</span>
-          <Battery device={device} />
-        </footer>
+        <Layout>
+          <Content>
+            <BoardView board={board} />
+          </Content>
+          <StatusBar position="bottom">
+            <span class="title-bar__title">trmnl-byos-deno</span>
+            <span class="title-bar__date">{formatDate(t)}</span>
+            <span class="title-bar__instance">ტრანსპორტი</span>
+            <BatteryIndicator
+              value={device?.batteryPercent ?? null}
+              voltage={device?.batteryVoltage}
+            />
+          </StatusBar>
+        </Layout>
       </body>
     </html>
   );

@@ -18,7 +18,7 @@ export default function Board(
   const renderNow = now ?? board.fetchedAt;
   const isEmpty = board.emptyReason !== "none";
   return (
-    <div class="slot slot--full">
+    <>
       {
         /* The "updated HH:MM" stamp was dropped — minute-rolls forced the
           device to repaint a frame with no new info, draining battery. The
@@ -46,6 +46,6 @@ export default function Board(
         </div>
       )}
       <Footnote clipSummary={board.clipSummary} />
-    </div>
+    </>
   );
 }

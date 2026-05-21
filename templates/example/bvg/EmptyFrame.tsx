@@ -11,6 +11,7 @@
 // number stays fresh against `now` — the assembler's `fetchedAt` and the
 // caller's render `now` may differ.
 
+import { EmptyState } from "../../ds/EmptyState.tsx";
 import type { Board } from "./board_assembler.ts";
 import { formatHHMM, formatKaWeekday } from "./time.ts";
 
@@ -29,24 +30,26 @@ export default function EmptyFrame({ board, now }: { board: Board; now: Date }) 
   if (board.emptyReason === "feedUnreachable") {
     const minutes = ageInMinutes(board.lastSuccessfulFetchAt, now);
     return (
-      <div class="empty">
-        <div class="empty__big">მონაცემები მიუწვდომელია</div>
-        <div class="empty__sub">{minutes} წთ-ის წინანდელი · ვცდი თავიდან</div>
-      </div>
+      <EmptyState
+        big="მონაცემები მიუწვდომელია"
+        sub={`${minutes} წთ-ის წინანდელი · ვცდი თავიდან`}
+      />
     );
   }
 
   // noScheduleApplicable
   const anchor = board.nextAnchor;
   return (
-    <div class="empty">
-      <div class="empty__big">ცარიელია</div>
-      {anchor && (
-        <div class="empty__sub">
-          შემდეგი: {formatKaWeekday(anchor.arriveByDate)} {formatHHMM(anchor.arriveByDate)} ·{" "}
-          {anchor.preferenceIcon} · {anchor.preferenceLabel}
-        </div>
-      )}
-    </div>
+    <EmptyState
+      big="ცარიელია"
+      sub={anchor
+        ? (
+          <>
+            შემდეგი: {formatKaWeekday(anchor.arriveByDate)} {formatHHMM(anchor.arriveByDate)} ·{" "}
+            {anchor.preferenceIcon} · {anchor.preferenceLabel}
+          </>
+        )
+        : undefined}
+    />
   );
 }
