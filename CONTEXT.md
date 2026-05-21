@@ -22,6 +22,15 @@ the Plugin's data, the duration that data stands for, optional rasterization hin
 component that turns the data into JSX. Asset bytes live in `pluginDir/assets/` and are referenced
 from view by their `/assets/...` URL path. _Avoid_: template, app.
 
+**DesignSystem**: Shared visual vocabulary for **Plugin** views, shipped from `templates/ds/`.
+Provides layout primitives (`Layout`, `Content`, `Grid`, `Flex`, `Columns`), typography
+(`Title`, `Value`, `Label`, `Description`), the Item pattern (`meta + content + icon`), chrome
+overlays (`StatusBar`, `BatteryIndicator`), and `EmptyState`. Components are individually
+importable; CSS ships via a `<Styles />` component the Plugin author renders explicitly in
+`<head>`. Framework-informed but project-native — adopts the TRMNL Design Framework's e-ink
+research without its class-based API or marketplace orientation (see ADR-0008). _Avoid_:
+framework, theme, UI kit.
+
 **RunContext**: The single argument to `run`. Always contains `t: Temporal.ZonedDateTime`, an
 `intent` (`"poll"` for the Device's `/api/display` call, `"scrub"` for a dashboard preview), and a
 `device` (latest heartbeat-derived telemetry). Open-shaped — more fields may be added
@@ -103,6 +112,10 @@ field. _Avoid_: frame, picture, output.
   e-ink refresh when it matches.
 - Multi-mode composition (e.g. BVG mornings, photo otherwise) lives inside a Super-Plugin that
   imports other Plugins as plain code — never in the Server or the Conductor.
+- Every byte in a **Plugin**'s rendered HTML arrives via explicit **Plugin**-author import. The
+  **Server**, **Renderer**, and **PluginManager** never inject styles, scripts, or assets
+  behind the scenes. The **DesignSystem** is opt-in the same way: the Plugin imports and
+  renders `<Styles />` explicitly (see ADR-0008).
 
 ## Lifecycle (Device poll)
 
