@@ -22,8 +22,10 @@ Adopting that framework wholesale conflicts with this project's posture:
 - The framework targets four device sizes with `view` adapters; this **Server** targets exactly
   one **Device** (ADR-0001) at native 1872×1404.
 - The framework's templating is Liquid; this project's Plugins author JSX (ADR-0002).
-- The framework includes runtime JS engines (`data-fit-value`, etc.) that introduce a
-  rasterize-time dependency — undesirable for a single-author offline rasterizer.
+- The framework includes runtime JS engines (`data-fit-value`, overflow handlers with `data-*`
+  hints, table/item clamping) that introduce a rasterize-time dependency. Currently
+  undesirable, but not ruled out — the overflow-handling patches in particular are worth
+  revisiting once a concrete Plugin runs into the layout edge cases they solve.
 - The framework's colour system covers TRMNL devices with richer palettes; TRMNL X is 4-bit
   gray.
 
@@ -44,6 +46,17 @@ ship via a `<Styles />` component the Plugin author renders explicitly in `<head
 
 ### Surface
 
+The list below is a proposal, not a fixed contract. Components, props, and divisions evolve as
+the DesignSystem gets used — the second Plugin will surface ergonomic gaps the first one
+didn't.
+
+A **page wrapper** is also under consideration: a component that bundles the default
+`<html>/<head>/<body>` boilerplate (including `<Styles />`, charset, title) so Plugin authors
+return only their page contents instead of composing the full document each time. Exact API —
+name, props, optional vs. required — falls out from the second Plugin's pain points. Plugin
+authors can always assemble the boilerplate by hand (as `templates/example/root.tsx` does
+today).
+
 - `<Layout>` — flex column container. Default has padding/gap matching BVG's current body
   (`4rem 4.8rem / 2.8rem`). `<Layout bleed>` strips padding for edge-to-edge content (photos,
   full-canvas visualisations).
@@ -63,6 +76,10 @@ ship via a `<Styles />` component the Plugin author renders explicitly in `<head
 
 ### Customization API
 
+Same caveat as Surface — these calls are starting points, not finalised. The
+variants-vs-classes and slots-vs-compound choices in particular want real Plugin code to
+validate; if they don't survive contact with the second Plugin, the API shifts.
+
 - **Variants** are props, not class strings: `<Title size="lg">`, not `<Title class="title--lg">`.
 - **Slots** are props, not compound components: `<Item meta={...} content={...} />`, not
   `<Item><Item.Meta>…</Item.Meta></Item>`.
@@ -76,15 +93,21 @@ ship via a `<Styles />` component the Plugin author renders explicitly in `<head
 - Typography scale (`xxsmall…peta`) and the 14-step gray naming (`gray-10…gray-75`).
 - The Item pattern (`meta + content + icon`).
 - E-ink physics rules: no shadows, gradients, or opacity; `image-dither` on photos only.
-- The 3-second rule and planning exercise.
+- The 3-second rule (the Device gets a ~3-second glance; the **what** — primary metric — the
+  context — what it means — and the source must all be instantly legible) and the spatial
+  planning exercise that precedes it (decide content blocks, space allocation, primary axis,
+  and what gets cut — before writing any markup).
 
-### What stays out
+### What stays out (for now)
+
+Deferred rather than permanently rejected. Each can be reconsidered when a concrete Plugin
+shows clear need.
 
 - Class-based API.
 - "No custom CSS" hard rule.
 - Multi-size view adaptation (`view-fullpage`, `view-quadrant`, etc.).
 - Liquid coupling.
-- Runtime JS engines (`data-fit-value`, etc.).
+- Runtime JS engines (`data-fit-value`, etc.) — see the overflow-handling caveat in Context.
 - Colour system beyond 4-bit gray.
 
 ### Coordinate system
@@ -98,10 +121,12 @@ authoring canvas can apply their own `transform: scale()` in plugin-specific CSS
 
 Plain CSS file (`templates/ds/styles.css`) imported as text via Deno's `with { type: "text" }`
 attribute import. The `<Styles />` component emits a single `<style>{cssText}</style>` into
-`<head>`. `hono/css` (CSS-in-JS via Hono v4's `css` template tag) was considered and rejected:
+`<head>`. `hono/css` (CSS-in-JS via Hono v4's `css` template tag) was considered and deferred:
 for a handful of primitives on a single Device, tree-shaking and hashed-class
 collision-avoidance are noise; plain CSS is the more readable shape, and plugin overrides stay
-trivial because classnames are stable.
+trivial because classnames are stable. This is the starting choice, not a permanent one — if
+the surface grows past where source-of-truth ambiguity bites, or override patterns get gnarly,
+`hono/css` (or another CSS-in-JS shape) is the natural follow-up.
 
 ## Consequences
 
