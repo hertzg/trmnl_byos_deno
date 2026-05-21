@@ -1,0 +1,18 @@
+.ds-item {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+}
+
+.ds-item__meta {
+  flex: 0 0 auto;
+}
+
+.ds-item__icon {
+  flex: 0 0 auto;
+}
+
+.ds-item__content {
+  flex: 1;
+  min-width: 0;
+}

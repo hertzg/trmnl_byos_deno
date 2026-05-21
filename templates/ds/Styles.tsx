@@ -1,11 +1,15 @@
 /** @jsxImportSource hono/jsx */
 import baseCss from "./base.css" with { type: "text" };
 import chromeCss from "./chrome.css" with { type: "text" };
+import typographyCss from "./typography.css" with { type: "text" };
+import itemCss from "./Item.css" with { type: "text" };
 
 // Future components add their CSS to this array.
 const css = [
   baseCss,
   chromeCss,
+  typographyCss,
+  itemCss,
 ].join("\n");
 
 export function Styles() {
