@@ -9,6 +9,10 @@ Deno.test("Styles renders a single <style> element", () => {
   assertMatch(html, /^<style[^>]*>[\s\S]*<\/style>$/);
   assertEquals(html.match(/<style[\s>]/g)?.length, 1);
   assertEquals(html.match(/<\/style>/g)?.length, 1);
+  assert(
+    !/&(?:lt|gt|amp|quot|#\d+);/.test(html),
+    "Styles must not HTML-escape CSS text inside <style>",
+  );
 });
 
 Deno.test("Styles inlines the rem anchor from base.css", () => {
