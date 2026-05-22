@@ -75,9 +75,10 @@ the public surface. _Avoid_: CDP, sidecar, headless-browser.
 
 **Slot**: The single-Image cache. Holds at most one entry: `{ bundle, identity, image, cachedAt }`,
 where `image` is a `Promise<Uint8Array>` of PNG bytes (kicked off eagerly when the entry lands).
-Four operations: `put(entry)` swaps the entry; `display() → { identity, refreshIn } | null`
-returns metadata if the entry's `validity` hasn't elapsed; `image(id) → bytes | null` returns
-bytes if `id` matches the entry's identity; `clear()` invalidates. Slot has no Renderer or
+Four operations: `put(entry)` swaps the entry; `display() → { identity, cachedAt, refreshIn } |
+null` returns metadata if the entry's `validity` hasn't elapsed (`cachedAt` + `refreshIn` bound
+the cached window the Dashboard draws); `image(id) → bytes | null` returns bytes if `id` matches
+the entry's identity; `clear()` invalidates. Slot has no Renderer or
 PluginManager dep — it stores what callers push in. _Avoid_: cache (the unqualified word).
 
 **Conductor**: The facade for the **Device** path. Hosts the BYOS surface (`/api/setup`,
@@ -87,11 +88,13 @@ Renderer.identity → start Renderer.rasterize → push the trio into the Slot �
 caught throw anywhere in that loop, the same loop re-runs with a fabricated error Bundle. _Avoid_:
 pipeline, manager.
 
-**Dashboard**: The debug/observe add-on. Three routes: `GET /` (admin page showing current Image
-+ trace + a scrub form), `GET /dashboard/preview.png?t=...` (transient preview render at arbitrary
-`t`, bypasses the Slot), `POST /dashboard/clear` (invalidates the Slot). Dashboard reads Telemetry
-to render the trace, reads the Slot's `display()` to know the current Image identity, and uses
-the same `/image/<identity>.png` URL the Device uses for the live preview. _Avoid_: admin, UI.
+**Dashboard**: The debug/observe add-on. Three routes: `GET /` (admin page showing the current
+Image, the render trace, and the scrub timeline), `GET /dashboard/preview.png?t=...` (transient
+preview render at arbitrary `t`, bypasses the Slot; returns the render's identity and validity as
+response headers alongside the PNG), `POST /dashboard/clear` (invalidates the Slot). Dashboard
+reads Telemetry to render the trace, reads the Slot's `display()` to know the current Image
+identity and cached window, and uses the same `/image/<identity>.png` URL the Device uses to show
+the current Image. _Avoid_: admin, UI.
 
 **Telemetry**: The singleton that holds the most-recent render trace — durations of plugin-run,
 identity, and rasterize; the resulting identity; the error if one occurred. Conductor records;
