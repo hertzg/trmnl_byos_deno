@@ -71,69 +71,73 @@ function toScrubInputValue(t: Temporal.ZonedDateTime): string {
 }
 
 const css = `
-  html, body { margin: 0; padding: 0; background: #f4f4f4; color: #111; }
+  /* ---- base ---- */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
+    background: #f4f4f4; color: #111;
     font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-    padding: 24px;
-    max-width: 1080px;
-    margin: 0 auto;
+    font-size: 14px; line-height: 1.5;
+    max-width: 1080px; margin: 0 auto; padding: 24px;
   }
-  h1 { margin: 0 0 16px; font-size: 20px; letter-spacing: -0.01em; }
-  form { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
-  form label { font-size: 13px; color: #555; }
-  form input[type="text"], form input[type="date"] {
-    font: inherit; padding: 6px 8px; border: 1px solid #bbb; background: #fff;
+  button {
+    font: inherit; font-size: 13px; padding: 5px 11px;
+    border: 1px solid #bbb; border-radius: 4px;
+    background: #fff; color: #222; cursor: pointer;
+  }
+  button:hover { background: #efefef; }
+  input[type="text"], input[type="date"] {
+    font: inherit; font-size: 13px; padding: 5px 8px;
+    border: 1px solid #bbb; border-radius: 4px; background: #fff;
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
   }
-  form button { font: inherit; padding: 6px 12px; border: 1px solid #111; background: #111; color: #fff; cursor: pointer; }
-  table.meta {
-    border-collapse: collapse; width: 100%; font-size: 13px;
-    background: #fff; border: 1px solid #ddd; margin-bottom: 16px;
+
+  /* ---- top bar ---- */
+  .topbar {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 8px 24px; flex-wrap: wrap;
+    margin: 0 0 28px; padding-bottom: 12px; border-bottom: 1px solid #dcdcdc;
   }
-  table.meta th, table.meta td { padding: 6px 12px; text-align: left; vertical-align: top; }
-  table.meta tbody th {
-    width: max-content; color: #555; font-weight: normal; white-space: nowrap;
-    border-right: 1px solid #eee;
+  .topbar h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+  .topbar .now { font-size: 12px; color: #999; }
+  .topbar .now code { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #555; }
+
+  /* ---- section panel ---- */
+  section.panel { margin: 0 0 34px; }
+  section.panel > h2 {
+    margin: 0 0 14px; padding-bottom: 6px; border-bottom: 1px solid #e3e3e3;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.07em;
+    text-transform: uppercase; color: #555;
   }
-  table.meta tbody td { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-  table.meta .muted { color: #888; font-family: inherit; font-style: italic; }
-  p.head { margin: 8px 0 16px; font-size: 12px; color: #555; }
-  p.head code { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #111; }
-  section.block { margin: 0 0 24px; }
-  section.block > h2 {
-    font-size: 14px; font-weight: 600; margin: 0 0 4px; color: #333;
-    letter-spacing: 0.02em; text-transform: uppercase;
+  section.panel > h2 .cap {
+    margin-left: 4px; font-weight: 400; letter-spacing: 0;
+    text-transform: none; color: #aaa;
   }
-  .sub { font-size: 12px; color: #999; margin: 0 0 8px; }
-  hr.div { border: 0; border-top: 1px dashed #ccc; margin: 24px 0; }
-  section.trace { margin-top: 24px; }
-  section.trace h2 {
-    font-size: 14px; font-weight: 600; margin: 0 0 8px;
-    color: #333; letter-spacing: 0.02em; text-transform: uppercase;
+  .hint { margin: 0 4px 6px; font-size: 11px; color: #aaa; }
+
+  /* ---- facts: shared key/value rows (preview, slot, trace) ---- */
+  .facts { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: baseline; }
+  .fact { display: flex; flex-direction: column; gap: 3px; }
+  .fact .k {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+    text-transform: uppercase; color: #aaa;
   }
-  section.trace .empty {
-    padding: 8px 12px; font-size: 12px; color: #777; font-style: italic;
-    background: #fafafa; border: 1px solid #eee;
+  .fact .v {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; color: #111;
   }
-  section.trace pre.error {
-    margin: 8px 0 0; padding: 8px 12px; font-size: 12px;
-    background: #fff0f0; border: 1px solid #f3b0b0; color: #6b1212;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    white-space: pre-wrap; word-break: break-word;
-  }
+  .fact .v.lg { font-size: 15px; font-weight: 600; }
+  .fact .v.muted { font-family: inherit; font-style: italic; color: #999; }
 
   /* ---- timeline controls (date picker + span buttons) ---- */
   .tl-controls {
-    display: flex; gap: 22px; flex-wrap: wrap; align-items: center;
-    font-size: 13px; margin: 0 0 12px;
+    display: flex; gap: 12px 24px; flex-wrap: wrap; align-items: center;
+    margin: 0 0 14px;
   }
-  .tl-controls .grp { display: flex; align-items: center; gap: 6px; }
-  .tl-controls .grp > span { color: #888; margin-right: 2px; }
-  .tl-controls button {
-    font: inherit; padding: 4px 10px; border: 1px solid #bbb;
-    background: #fff; color: #333; cursor: pointer; border-radius: 4px;
-  }
+  .tl-controls .grp { display: flex; align-items: center; gap: 6px; margin: 0; }
+  .tl-controls .grp > span { font-size: 12px; color: #999; margin-right: 2px; }
+  .tl-controls button { padding: 4px 10px; }
   .tl-controls button.on { background: #111; color: #fff; border-color: #111; }
+  .tl-controls button.on:hover { background: #111; }
 
   /* ---- day overview strip ---- */
   .overview {
@@ -258,12 +262,14 @@ const css = `
   .legend .sw.now { width: 1.5px; background: #111; }
   .legend .sw.scrub { width: 1.5px; background: #111; }
 
-  /* ---- main preview — ephemeral render ---- */
-  .preview-row { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
-  .preview-pane { position: relative; flex: 1 1 100%; }
+  /* ---- preview: the hero — breaks out wider than the column ---- */
+  section.preview {
+    margin-left: calc(-1 * clamp(0px, (100vw - 100% - 48px) / 2, 160px));
+    margin-right: calc(-1 * clamp(0px, (100vw - 100% - 48px) / 2, 160px));
+  }
   .preview-frame {
     position: relative; background: #fff; border: 1px solid #ddd; padding: 10px;
-    box-sizing: border-box; min-height: 160px;
+    min-height: 200px;
   }
   .preview-frame.stale { border-style: dashed; border-color: #bbb; }
   /* No fixed aspect — the rendered Image sizes the frame to its own
@@ -303,27 +309,46 @@ const css = `
     font-size: 12px; text-align: center;
   }
   .preview-frame.errored .preview-error { display: grid; }
-  .preview-meta { font-size: 13px; min-width: 250px; }
-  .preview-meta .pm-row { margin: 0 0 8px; }
-  .preview-meta .pm-k {
-    color: #999; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+
+  /* preview footer — render facts + projected API response */
+  .preview-footer {
+    display: flex; flex-wrap: wrap; gap: 18px 48px;
+    align-items: flex-start; margin-top: 16px;
   }
-  .preview-meta .pm-v {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #111; font-size: 13px;
-  }
-  .preview-meta .pm-v.big { font-size: 14px; font-weight: 700; }
+  .preview-summary { flex: 1 1 320px; display: flex; flex-direction: column; gap: 12px; }
   .badge {
-    display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 3px;
-    margin-top: 2px; border: 1px solid #ccc; background: #f3f3f3; color: #666;
+    align-self: flex-start; font-size: 11px; padding: 3px 8px; border-radius: 3px;
+    border: 1px solid #ccc; background: #f3f3f3; color: #666;
   }
   .badge.match { border-color: #111; background: #fff; color: #111; font-weight: 700; }
-
-  /* ---- projected /api/display response ---- */
+  .api { flex: 0 1 auto; min-width: 0; }
+  .api-head {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+    text-transform: uppercase; color: #aaa; margin-bottom: 6px;
+  }
   pre.api-resp {
     margin: 0; background: #f6f6f6; border: 1px solid #ddd; padding: 12px 14px;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; color: #222;
-    white-space: pre; overflow-x: auto; line-height: 1.5; display: inline-block;
-    min-width: 360px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+    color: #222; line-height: 1.5;
+    white-space: pre; overflow-x: auto; width: max-content; max-width: 100%;
+  }
+
+  /* ---- slot & trace ---- */
+  .slot-bar {
+    display: flex; flex-wrap: wrap; gap: 16px 32px;
+    align-items: flex-end; justify-content: space-between;
+  }
+  .trace { margin-top: 22px; padding-top: 16px; border-top: 1px solid #ececec; }
+  .trace-head {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+    text-transform: uppercase; color: #aaa; margin-bottom: 10px;
+  }
+  .trace .empty { margin: 0; font-size: 12px; color: #999; font-style: italic; }
+  .trace pre.error {
+    margin: 12px 0 0; padding: 8px 12px; font-size: 12px;
+    background: #fff0f0; border: 1px solid #f3b0b0; color: #6b1212;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    white-space: pre-wrap; word-break: break-word;
   }
 `;
 
@@ -348,7 +373,7 @@ const js = `
   var NOW = DASH.nowMs;
 
   var state = {
-    spanKey: 3, scrubMs: DASH.scrubMs, winStart: 0,
+    spanKey: 1, scrubMs: DASH.scrubMs, winStart: 0,
     renderGen: 0, dragScrub: false, dragPan: false,
   };
 
@@ -651,7 +676,7 @@ const js = `
     layoutDetail();
   }
 
-  // ---- span buttons (client-side; default 3 h, no persistence) -------
+  // ---- span buttons (client-side; default 1 h, no persistence) -------
   var spanGrp = $("grp-span");
   spanGrp.addEventListener("click", function (e) {
     var btn = e.target.closest("button");
@@ -711,54 +736,47 @@ const js = `
 `;
 
 function TraceStrip({ trace }: { trace: RenderTrace | null }) {
-  if (trace === null) {
-    return (
-      <section class="trace">
-        <h2>last render trace</h2>
-        <p class="empty">no cycle has run yet</p>
-      </section>
-    );
-  }
   return (
-    <section class="trace">
-      <h2>last render trace</h2>
-      <table class="meta">
-        <tbody>
-          <tr>
-            <th scope="row">identity</th>
-            <td>{trace.identity}</td>
-          </tr>
-          <tr>
-            <th scope="row">ran at</th>
-            <td>{fmtTime(trace.ranAt)}</td>
-          </tr>
-          <tr>
-            <th scope="row">plugin run</th>
-            <td>{fmtDurationMs(trace.durations.pluginRun)}</td>
-          </tr>
-          <tr>
-            <th scope="row">identity hash</th>
-            <td>{fmtDurationMs(trace.durations.identity)}</td>
-          </tr>
-          <tr>
-            <th scope="row">rasterize</th>
-            <td>{fmtDurationMs(trace.durations.rasterize)}</td>
-          </tr>
-        </tbody>
-      </table>
-      {trace.error !== null
-        ? (
-          // `Error.stack` already begins with `Error: <message>` on every
-          // engine we run on (V8 / Deno), so rendering both `message` and
-          // `stack` would repeat the message verbatim at the top of the
-          // block. Fall back to `message` only when `stack` is missing
-          // (defensive — shouldn't happen in practice).
-          <pre class="error">
-            {trace.error.stack ?? trace.error.message}
-          </pre>
-        )
-        : null}
-    </section>
+    <div class="trace">
+      <div class="trace-head">last render trace</div>
+      {trace === null ? <p class="empty">no cycle has run yet</p> : (
+        <>
+          <div class="facts">
+            <div class="fact">
+              <span class="k">identity</span>
+              <span class="v">{trace.identity}</span>
+            </div>
+            <div class="fact">
+              <span class="k">ran at</span>
+              <span class="v">{fmtTime(trace.ranAt)}</span>
+            </div>
+            <div class="fact">
+              <span class="k">plugin run</span>
+              <span class="v">{fmtDurationMs(trace.durations.pluginRun)}</span>
+            </div>
+            <div class="fact">
+              <span class="k">identity hash</span>
+              <span class="v">{fmtDurationMs(trace.durations.identity)}</span>
+            </div>
+            <div class="fact">
+              <span class="k">rasterize</span>
+              <span class="v">{fmtDurationMs(trace.durations.rasterize)}</span>
+            </div>
+          </div>
+          {trace.error !== null
+            ? (
+              // `Error.stack` already begins with `Error: <message>` on every
+              // engine we run on (V8 / Deno), so rendering both `message` and
+              // `stack` would repeat the message verbatim. Fall back to
+              // `message` only when `stack` is missing (defensive).
+              <pre class="error">
+                {trace.error.stack ?? trace.error.message}
+              </pre>
+            )
+            : null}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -781,13 +799,15 @@ export default function Dashboard(props: DashboardProps) {
         <style dangerouslySetInnerHTML={{ __html: css }} />
       </head>
       <body>
-        <h1>dashboard</h1>
-        <p class="head">
-          now: <code>{fmtTime(now)}</code> · timezone: <code>{now.timeZoneId}</code>
-        </p>
+        <header class="topbar">
+          <h1>trmnl-byos dashboard</h1>
+          <div class="now">
+            now <code>{fmtTime(now)}</code> · <code>{now.timeZoneId}</code>
+          </div>
+        </header>
 
-        <section class="block">
-          <h2>scrub timeline</h2>
+        <section class="panel">
+          <h2>timeline</h2>
           <div class="tl-controls">
             <form class="grp" method="get" action="/">
               <span>date</span>
@@ -796,8 +816,8 @@ export default function Dashboard(props: DashboardProps) {
             </form>
             <div class="grp" id="grp-span">
               <span>span</span>
-              <button type="button" data-v="1">1 h</button>
-              <button type="button" data-v="3" class="on">3 h</button>
+              <button type="button" data-v="1" class="on">1 h</button>
+              <button type="button" data-v="3">3 h</button>
               <button type="button" data-v="6">6 h</button>
               <button type="button" data-v="12">12 h</button>
               <button type="button" data-v="24">24 h</button>
@@ -813,7 +833,7 @@ export default function Dashboard(props: DashboardProps) {
               <button type="submit">go</button>
             </form>
           </div>
-          <p class="sub">day overview — drag to move the detail window within the day</p>
+          <p class="hint">day overview · drag to move the detail window within the day</p>
           <div class="overview" id="overview">
             <div class="ov-rail"></div>
             <div class="ov-cache" id="ov-cache"></div>
@@ -821,7 +841,9 @@ export default function Dashboard(props: DashboardProps) {
             <div class="ov-viewport" id="ov-viewport"></div>
             <div class="ov-viewport-frame" id="ov-viewport-frame"></div>
           </div>
-          <p class="sub">detail — drag to scrub; the preview renders at the playhead on release</p>
+          <p class="hint">
+            detail · drag to scrub — the preview renders at the playhead on release
+          </p>
           <div class="timeline-wrap" id="tl">
             <div class="track" id="track">
               <div class="rail"></div>
@@ -862,77 +884,73 @@ export default function Dashboard(props: DashboardProps) {
           </div>
         </section>
 
-        <section class="block">
-          <h2>main preview — ephemeral render at the playhead</h2>
-          <p class="sub">
-            Every scrub position renders fresh, as if the cache were invalidated at that instant.
-            The Slot is never touched.
-          </p>
-          <div class="preview-row">
-            <div class="preview-pane">
-              <div class="preview-frame" id="preview-frame">
-                <img id="preview-img" alt="ephemeral preview render" />
-                <div class="stale-chip">release to render</div>
-                <div class="spinner-veil">
-                  <div class="spinner"></div>
-                  <span>rasterizing…</span>
-                </div>
-                <div class="preview-error">
-                  <span id="preview-error-text">render failed</span>
-                </div>
-              </div>
-              <div class="preview-loupe" id="preview-loupe"></div>
+        <section class="panel preview">
+          <h2>
+            preview <span class="cap">— ephemeral render at the playhead</span>
+          </h2>
+          <div class="preview-frame" id="preview-frame">
+            <img id="preview-img" alt="ephemeral preview render" />
+            <div class="stale-chip">release to render</div>
+            <div class="spinner-veil">
+              <div class="spinner"></div>
+              <span>rasterizing…</span>
             </div>
-            <div class="preview-meta">
-              <div class="pm-row">
-                <div class="pm-k">rendered at t</div>
-                <div class="pm-v big" id="pv-time">—</div>
+            <div class="preview-error">
+              <span id="preview-error-text">render failed</span>
+            </div>
+          </div>
+          <div class="preview-loupe" id="preview-loupe"></div>
+          <div class="preview-footer">
+            <div class="preview-summary">
+              <div class="facts">
+                <div class="fact">
+                  <span class="k">rendered at t</span>
+                  <span class="v lg" id="pv-time">—</span>
+                </div>
+                <div class="fact">
+                  <span class="k">projected validity</span>
+                  <span class="v" id="pv-validity">—</span>
+                </div>
+                <div class="fact">
+                  <span class="k">render identity</span>
+                  <span class="v" id="pv-id">—</span>
+                </div>
               </div>
-              <div class="pm-row">
-                <div class="pm-k">projected validity</div>
-                <div class="pm-v" id="pv-validity">—</div>
-              </div>
-              <div class="pm-row">
-                <div class="pm-k">render identity</div>
-                <div class="pm-v" id="pv-id">—</div>
-              </div>
-              <div class="pm-row">
-                <span class="badge" id="pv-badge">transient render</span>
-              </div>
+              <span class="badge" id="pv-badge">transient render</span>
+            </div>
+            <div class="api">
+              <div class="api-head">GET /api/display — projected</div>
+              <pre class="api-resp" id="api-resp">—</pre>
             </div>
           </div>
         </section>
 
-        <section class="block">
-          <h2>GET /api/display — projected response</h2>
-          <p class="sub">
-            The JSON the Server would answer a Device poll at the scrub head — identity, image URL,
-            and refresh_rate (the render's validity in seconds). Ephemeral: this poll is not
-            actually performed.
-          </p>
-          <pre class="api-resp" id="api-resp">—</pre>
+        <section class="panel">
+          <h2>
+            {"slot & trace "}
+            <span class="cap">— live device-facing state</span>
+          </h2>
+          <div class="slot-bar">
+            <div class="facts">
+              <div class="fact">
+                <span class="k">cached image</span>
+                {identity !== null
+                  ? <span class="v">{identity}</span>
+                  : <span class="v muted">(none)</span>}
+              </div>
+              <div class="fact">
+                <span class="k">refresh in</span>
+                {refreshIn !== null
+                  ? <span class="v">{fmtDuration(refreshIn)}</span>
+                  : <span class="v muted">(unknown)</span>}
+              </div>
+            </div>
+            <form method="post" action="/dashboard/clear">
+              <button type="submit">clear cache</button>
+            </form>
+          </div>
+          <TraceStrip trace={trace} />
         </section>
-
-        <hr class="div" />
-
-        <form method="post" action="/dashboard/clear">
-          <button type="submit">clear cache</button>
-        </form>
-        <table class="meta">
-          <tbody>
-            <tr>
-              <th scope="row">identity</th>
-              <td>{identity ?? <span class="muted">(none)</span>}</td>
-            </tr>
-            <tr>
-              <th scope="row">refresh in</th>
-              <td>
-                {refreshIn !== null ? fmtDuration(refreshIn) : <span class="muted">(unknown)</span>}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <TraceStrip trace={trace} />
         <script dangerouslySetInnerHTML={{ __html: `window.__DASH__ = ${stateJson};` }} />
         <script dangerouslySetInnerHTML={{ __html: js }} />
       </body>

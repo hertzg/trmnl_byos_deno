@@ -442,9 +442,9 @@ Deno.test("GET / renders the scrub timeline DOM", async () => {
   assertEquals(html.includes('id="track"'), true, "missing detail track");
   assertEquals(html.includes('id="scrub"'), true, "missing scrub head");
   assertEquals(
-    /scrub timeline/i.test(html),
+    /<h2>\s*timeline\s*<\/h2>/i.test(html),
     true,
-    "missing 'scrub timeline' heading",
+    "missing 'timeline' section heading",
   );
 });
 
