@@ -412,45 +412,58 @@ Deno.test("GET /dashboard/preview.png does NOT mutate the Slot or write to Telem
   assertEquals(slot.display()?.identity, identityBefore);
 });
 
-// ─── GET / — enabled scrub form + clear button ────────────────────────────
+// ─── GET / — the "jump to t" form + clear button ──────────────────────────
 
-Deno.test("GET / renders an enabled scrub form that posts to /dashboard/preview.png", async () => {
-  // The form's action is /dashboard/preview.png (GET, so the browser can
-  // embed the result as an <img> or open it directly). The `t` input is
-  // editable (not `disabled`) and seeded with the current `now()` so the
-  // operator can tweak from a sensible default.
+Deno.test("GET / renders a 'jump to t' form that navigates GET /", async () => {
+  // The text scrub field no longer posts a preview — the timeline owns the
+  // transient render now. The `t` input is repurposed: submitting it
+  // navigates `GET /?t=<value>`, re-rendering that day server-side. The
+  // input stays editable and seeded so the operator can tweak from a
+  // sensible default.
   const { app } = wire({});
 
   const html = await (await app.request("/")).text();
 
-  // Form action points at the scrub route.
+  // A GET form to / carries the `t` input.
   assertEquals(
-    /<form[^>]*action="\/dashboard\/preview\.png"/.test(html),
+    /<form[^>]*method="get"[^>]*action="\/"[^>]*>[\s\S]*?name="t"/.test(html),
     true,
-    "scrub form must post to /dashboard/preview.png",
+    "the t form must navigate GET /",
+  );
+  // The form no longer targets the preview route.
+  assertEquals(
+    /action="\/dashboard\/preview\.png"/.test(html),
+    false,
+    "the t form must not post to /dashboard/preview.png anymore",
   );
   // The `t` input is editable.
   assertEquals(
     /<input[^>]*name="t"[^>]*disabled/.test(html),
     false,
-    "scrub input must not be disabled",
-  );
-  // The submit button is editable.
-  assertEquals(
-    /<button[^>]*type="submit"[^>]*disabled/.test(html),
-    false,
-    "scrub button must not be disabled",
-  );
-  // No deferred-scrub placeholder copy on the page.
-  assertEquals(
-    /deferred to a later slice/.test(html),
-    false,
-    "deferred-placeholder copy should be gone",
+    "t input must not be disabled",
   );
 });
 
-Deno.test("GET /'s scrub input is seeded with a Temporal.ZonedDateTime.from-parseable now() so round-trip works", async () => {
-  // The form value goes back as `?t=...` on submit and the route parses
+Deno.test("GET / renders the scrub timeline DOM", async () => {
+  // The timeline replaces the old text-field scrub control. Assert on the
+  // stable DOM hooks the client script binds to: the overview strip, the
+  // detail track, the scrub head, and the section heading.
+  const { app } = wire({});
+
+  const html = await (await app.request("/")).text();
+
+  assertEquals(html.includes('id="overview"'), true, "missing day-overview element");
+  assertEquals(html.includes('id="track"'), true, "missing detail track");
+  assertEquals(html.includes('id="scrub"'), true, "missing scrub head");
+  assertEquals(
+    /scrub timeline/i.test(html),
+    true,
+    "missing 'scrub timeline' heading",
+  );
+});
+
+Deno.test("GET /'s 'jump to t' input is seeded with a Temporal.ZonedDateTime.from-parseable now() so round-trip works", async () => {
+  // The input value goes back as `?t=...` on submit and the route parses
   // with `Temporal.ZonedDateTime.from`. If we seeded a `datetime-local`
   // string we'd lose the zone and fall back to now() on submit — which
   // means the form looks like a no-op. Lock in the full-zoned shape.
@@ -459,12 +472,132 @@ Deno.test("GET /'s scrub input is seeded with a Temporal.ZonedDateTime.from-pars
   const html = await (await app.request("/")).text();
 
   const match = /<input[^>]*name="t"[^>]*value="([^"]+)"/.exec(html);
-  assertEquals(match !== null, true, "scrub input value attribute missing");
+  assertEquals(match !== null, true, "t input value attribute missing");
   const seeded = match![1];
   // Round-trip: the seeded value must parse, and must round-trip to
   // the same ZonedDateTime the helper would emit for T0.
   const parsed = Temporal.ZonedDateTime.from(seeded);
   assertEquals(parsed.toString(), T0.toString());
+});
+
+// ─── GET / — embedded window.__DASH__ timeline state ──────────────────────
+
+// Pull the JSON out of the inline `window.__DASH__ = {...};` script.
+function extractDash(html: string): Record<string, unknown> {
+  const m = /window\.__DASH__\s*=\s*(\{[\s\S]*?\});/.exec(html);
+  assertEquals(m !== null, true, "window.__DASH__ assignment missing");
+  return JSON.parse(m![1].replace(/\\u003c/g, "<"));
+}
+
+Deno.test("GET / embeds a window.__DASH__ timeline-state object", async () => {
+  const { app } = wire({});
+
+  const html = await (await app.request("/")).text();
+  const dash = extractDash(html);
+
+  assertEquals(typeof dash.tz, "string");
+  assertEquals(typeof dash.nowMs, "number");
+  assertEquals(typeof dash.dayStartMs, "number");
+  assertEquals(typeof dash.dayEndMs, "number");
+  assertEquals(typeof dash.scrubMs, "number");
+  // cache is an object or null — both are acceptable depending on Slot state.
+  assertEquals(dash.cache === null || typeof dash.cache === "object", true);
+});
+
+Deno.test("GET /?t=<iso> embeds the scrub instant and that day's midnight", async () => {
+  const { app } = wire({});
+
+  const tIso = "2026-05-16T14:30:00+02:00[Europe/Berlin]";
+  const html = await (await app.request(`/?t=${encodeURIComponent(tIso)}`)).text();
+  const dash = extractDash(html);
+
+  const instant = Temporal.ZonedDateTime.from(tIso);
+  assertEquals(dash.scrubMs, instant.epochMilliseconds);
+  assertEquals(dash.dayStartMs, instant.startOfDay().epochMilliseconds);
+});
+
+Deno.test("GET /?date=<YYYY-MM-DD> embeds that date's midnight as dayStartMs", async () => {
+  const { app } = wire({});
+
+  const html = await (await app.request("/?date=2026-05-18")).text();
+  const dash = extractDash(html);
+
+  const expected = Temporal.PlainDate.from("2026-05-18")
+    .toZonedDateTime("Europe/Berlin");
+  assertEquals(dash.dayStartMs, expected.epochMilliseconds);
+  // A non-today date with no time-of-day opens at its own midnight.
+  assertEquals(dash.scrubMs, expected.epochMilliseconds);
+});
+
+Deno.test("GET / with a primed Slot embeds a non-null __DASH__.cache", async () => {
+  // After the in-process refill the Slot holds an entry; the timeline
+  // state carries the cached window so the client can draw the band.
+  const { app } = wire({
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: defaultRenderer({ identity: () => Promise.resolve("cache-id-xyz") }),
+  });
+
+  const html = await (await app.request("/")).text();
+  const dash = extractDash(html);
+
+  const cache = dash.cache as Record<string, unknown> | null;
+  assertEquals(cache !== null, true, "cache should be non-null with a primed Slot");
+  assertEquals(typeof cache!.cachedAtMs, "number");
+  assertEquals(typeof cache!.expiresMs, "number");
+  assertEquals(cache!.identity, "cache-id-xyz");
+});
+
+Deno.test("GET / embeds the cached window's true expiry (cachedAt + validity), not the shrinking remaining time", async () => {
+  // refreshIn shrinks as the page ages; expiresMs must stay pinned to the
+  // entry's absolute expiry (cachedAt + validity), not cachedAt + refreshIn.
+  let clock = T0;
+  const { app } = wire({
+    now: () => clock,
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+  });
+  // Cold-fill the Slot at T0 — the entry's cachedAt is T0, expiry T0 + 5 min.
+  await (await app.request("/api/display")).body?.cancel();
+  // Two minutes pass; the entry is still valid (expiry is 5 min out).
+  clock = clock.add(Temporal.Duration.from({ minutes: 2 }));
+
+  const html = await (await app.request("/")).text();
+  const dash = extractDash(html);
+  const cache = dash.cache as Record<string, unknown>;
+
+  assertEquals(cache.cachedAtMs, T0.epochMilliseconds);
+  assertEquals(
+    cache.expiresMs,
+    T0.add(fiveMin).epochMilliseconds,
+    "expiresMs must be cachedAt + validity, independent of how long ago it was cached",
+  );
+});
+
+Deno.test("GET / with an empty Slot embeds __DASH__.cache as null", async () => {
+  // The no-op conductorApp never fills the Slot, so display() stays null
+  // and the timeline state reflects that with cache: null.
+  const now = () => T0;
+  const slot = createSlot({ now });
+  const telemetry = createTelemetry();
+  const noopApp = new Hono().get("/api/display", (c) => c.body(null, 204));
+  const dashboard = createDashboard({
+    slot,
+    telemetry,
+    conductorApp: noopApp,
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
+    }),
+    renderer: defaultRenderer(),
+    now,
+  });
+
+  const html = await (await dashboard.request("/")).text();
+  const dash = extractDash(html);
+
+  assertEquals(dash.cache, null);
 });
 
 Deno.test("GET / renders a clear-cache form that POSTs to /dashboard/clear", async () => {

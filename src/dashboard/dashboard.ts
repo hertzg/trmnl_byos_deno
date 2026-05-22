@@ -5,7 +5,7 @@ import type { Renderer } from "../render/renderer.ts";
 import type { RunContext } from "../plugin/plugin.ts";
 import type { Slot } from "../slot/slot.ts";
 import type { Telemetry } from "../telemetry/telemetry.ts";
-import Dashboard from "./dashboard.tsx";
+import Dashboard, { type TimelineState } from "./dashboard.tsx";
 
 // Dashboard at /. Debug surface. See ADR-0005.
 
@@ -28,12 +28,34 @@ export function createDashboard(deps: DashboardDeps): Hono {
       }
       const display = deps.slot.display();
       const now = deps.now();
+      // The displayed instant + day come from `?t=` / `?date=`; changing
+      // the day is always a server round-trip (ADR-0005) so the day's tz
+      // boundaries are computed once, here, with Temporal.
+      const { instant, dayStart, dayEnd } = resolveDisplayed(
+        c.req.query("t"),
+        c.req.query("date"),
+        now,
+      );
+      const timeline: TimelineState = {
+        tz: now.timeZoneId,
+        nowMs: now.epochMilliseconds,
+        dayStartMs: dayStart.epochMilliseconds,
+        dayEndMs: dayEnd.epochMilliseconds,
+        scrubMs: instant.epochMilliseconds,
+        cache: display === null ? null : {
+          cachedAtMs: display.cachedAt.epochMilliseconds,
+          expiresMs: now.add(display.refreshIn).epochMilliseconds,
+          identity: display.identity,
+        },
+      };
       const page = renderToString(
         Dashboard({
           now,
+          displayed: instant,
           identity: display?.identity ?? null,
           refreshIn: display?.refreshIn ?? null,
           trace: deps.telemetry.latest(),
+          timeline,
         }),
       );
       return c.html("<!DOCTYPE html>" + page, 200, { "cache-control": "no-store" });
@@ -63,6 +85,45 @@ export function createDashboard(deps: DashboardDeps): Hono {
       // 303 turns the browser's next request into a GET.
       return c.redirect("/", 303);
     });
+}
+
+type Displayed = {
+  instant: Temporal.ZonedDateTime;
+  dayStart: Temporal.ZonedDateTime;
+  dayEnd: Temporal.ZonedDateTime;
+};
+
+// Resolve the displayed instant and its day from `?t=` / `?date=`. Any
+// parse failure falls back to "today, now" — the dashboard never 500s on a
+// bad query string. `dayEnd` is `dayStart + 1 day`; Temporal makes that the
+// next midnight even across a 23 h / 25 h DST day.
+function resolveDisplayed(
+  tRaw: string | undefined,
+  dateRaw: string | undefined,
+  current: Temporal.ZonedDateTime,
+): Displayed {
+  let instant = current;
+  let dayStart = current.startOfDay();
+
+  if (tRaw) {
+    try {
+      instant = Temporal.ZonedDateTime.from(tRaw);
+      dayStart = instant.startOfDay();
+    } catch {
+      // Fall through to the default below.
+    }
+  } else if (dateRaw) {
+    try {
+      dayStart = Temporal.PlainDate.from(dateRaw).toZonedDateTime(current.timeZoneId);
+      // A date alone has no time-of-day: today shows `now`, other days
+      // open at their own midnight.
+      instant = dayStart.equals(current.startOfDay()) ? current : dayStart;
+    } catch {
+      // Fall through to the default below.
+    }
+  }
+
+  return { instant, dayStart, dayEnd: dayStart.add({ days: 1 }) };
 }
 
 function parseScrubTime(
