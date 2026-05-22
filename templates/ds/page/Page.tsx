@@ -1,6 +1,6 @@
 /** @jsxImportSource hono/jsx */
 import type { Child } from "hono/jsx";
-import { Styles } from "./Styles.tsx";
+import { Styles } from "../styles/Styles.tsx";
 
 export type PageProps = {
   title: string;

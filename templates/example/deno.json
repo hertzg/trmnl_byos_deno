@@ -4,6 +4,8 @@
     "jsxImportSource": "hono/jsx"
   },
   "imports": {
+    "@ds": "../ds/mod.ts",
+    "@ds/": "../ds/",
     "@std/cache": "jsr:@std/cache@^0.2.3",
     "hono/jsx": "jsr:@hono/hono@^4/jsx",
     "hono/jsx/jsx-runtime": "jsr:@hono/hono@^4/jsx/jsx-runtime"

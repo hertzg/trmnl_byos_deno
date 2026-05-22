@@ -1,10 +1,6 @@
 /** @jsxImportSource hono/jsx */
 import type { DeviceReport } from "../../src/plugin/plugin.ts";
-import { BatteryIndicator } from "../ds/BatteryIndicator.tsx";
-import { Content } from "../ds/Content.tsx";
-import { Layout } from "../ds/Layout.tsx";
-import { Page } from "../ds/Page.tsx";
-import { StatusBar } from "../ds/StatusBar.tsx";
+import { BatteryIndicator, Content, Layout, Page, StatusBar } from "@ds";
 import type { Board } from "./bvg/board_assembler.ts";
 import BoardView from "./bvg/Board.tsx";
 import { formatKaDate } from "./bvg/time.ts";

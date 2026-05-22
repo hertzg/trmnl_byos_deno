@@ -2,7 +2,7 @@
 import { assert, assertStringIncludes } from "@std/assert";
 import { renderToString } from "hono/jsx/dom/server";
 import { Item } from "./Item.tsx";
-import { Value } from "./Value.tsx";
+import { Value } from "../typography/Value.tsx";
 
 Deno.test("Item always renders the meta slot, even when meta prop is undefined", () => {
   const html = renderToString(<Item content={<span>body</span>} />);
