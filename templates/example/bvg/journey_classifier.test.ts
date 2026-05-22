@@ -34,7 +34,11 @@ const WEEKDAY_OFFICE: Preference = {
   origin: HBF,
   destination: ALEX,
   schedule: [
-    { applicableDays: ["mon", "tue", "wed", "thu", "fri"], arriveByLocalTime: "09:30" },
+    {
+      applicableDays: ["mon", "tue", "wed", "thu", "fri"],
+      arriveByLocalTime: "09:30",
+      showFromLocalTime: "07:00",
+    },
   ],
 };
 
@@ -267,11 +271,10 @@ Deno.test("classify: cancelled candidate outside window is dropped (window check
     cancelled: true,
     hasRealtime: true,
   });
-  // Effective arrive-by 07:16Z; earliestArrival sits AFTER it → dropped.
+  // Effective arrive-by 07:16Z; closesAt sits BEFORE it → dropped.
   const window: VisibilityWindow = {
     opensAt: new Date("2025-11-10T05:00:00Z"),
-    earliestArrival: new Date("2025-11-10T08:00:00Z"),
-    closesAt: new Date("2025-11-10T09:00:00Z"),
+    closesAt: new Date("2025-11-10T07:00:00Z"),
     arriveByDate: new Date("2025-11-10T08:30:00Z"),
   };
   const result = classify(candidate, WEEKDAY_OFFICE, tunables, now, window);
@@ -530,46 +533,15 @@ type WindowCase = {
 
 const WINDOW_ARRIVE_BY = new Date("2025-11-10T08:30:00Z");
 
-// SINGLE_TRANSIT_CANDIDATE: effective leave-by 06:52Z, arrive-by 07:16Z. Each
-// case pins one window edge near 07:16Z to exercise the inclusive boundary on
-// `earliestArrival` (lower) and `closesAt` (upper). `opensAt` is permissive
-// because it no longer gates per-candidate visibility — it's purely cadence.
+// SINGLE_TRANSIT_CANDIDATE: effective arrive-by 07:16Z. Each case pins
+// `closesAt` near 07:16Z to exercise the inclusive upper boundary. There is no
+// lower bound — only `closesAt` gates per-candidate visibility. `opensAt` is
+// permissive because it never gates visibility — it's purely cadence.
 const WINDOW_CASES: readonly WindowCase[] = [
-  {
-    name: "just inside earliestArrival (earliestArrival < arrive-by) → kept",
-    window: {
-      opensAt: new Date("2025-11-10T05:00:00Z"),
-      earliestArrival: new Date("2025-11-10T07:15:00Z"),
-      closesAt: new Date("2025-11-10T09:00:00Z"),
-      arriveByDate: WINDOW_ARRIVE_BY,
-    },
-    expectDropped: false,
-  },
-  {
-    name: "earliestArrival edge: earliestArrival == arrive-by → kept (inclusive)",
-    window: {
-      opensAt: new Date("2025-11-10T05:00:00Z"),
-      earliestArrival: new Date("2025-11-10T07:16:00Z"),
-      closesAt: new Date("2025-11-10T09:00:00Z"),
-      arriveByDate: WINDOW_ARRIVE_BY,
-    },
-    expectDropped: false,
-  },
-  {
-    name: "earliestArrival edge: earliestArrival > arrive-by → dropped",
-    window: {
-      opensAt: new Date("2025-11-10T05:00:00Z"),
-      earliestArrival: new Date("2025-11-10T07:17:00Z"),
-      closesAt: new Date("2025-11-10T09:00:00Z"),
-      arriveByDate: WINDOW_ARRIVE_BY,
-    },
-    expectDropped: true,
-  },
   {
     name: "closesAt edge: closesAt == arrive-by → kept (inclusive)",
     window: {
       opensAt: new Date("2025-11-10T05:00:00Z"),
-      earliestArrival: new Date("2025-11-10T05:00:00Z"),
       closesAt: new Date("2025-11-10T07:16:00Z"),
       arriveByDate: WINDOW_ARRIVE_BY,
     },
@@ -579,19 +551,26 @@ const WINDOW_CASES: readonly WindowCase[] = [
     name: "closesAt edge: closesAt < arrive-by → dropped",
     window: {
       opensAt: new Date("2025-11-10T05:00:00Z"),
-      earliestArrival: new Date("2025-11-10T05:00:00Z"),
       closesAt: new Date("2025-11-10T07:15:00Z"),
       arriveByDate: WINDOW_ARRIVE_BY,
     },
     expectDropped: true,
   },
   {
+    name: "candidate arriving well before arrive-by → kept (no early bound)",
+    window: {
+      opensAt: new Date("2025-11-10T05:00:00Z"),
+      closesAt: new Date("2025-11-10T09:00:00Z"),
+      arriveByDate: WINDOW_ARRIVE_BY,
+    },
+    expectDropped: false,
+  },
+  {
     name: "leaveBy may sit before opensAt (window opens after departure) → kept",
     window: {
-      // Activation hasn't fired yet, but a candidate that already arrives in
-      // [earliestArrival, closesAt] is still surfaceable.
+      // Activation hasn't fired yet, but a candidate that already arrives at
+      // or before closesAt is still surfaceable.
       opensAt: new Date("2025-11-10T07:30:00Z"),
-      earliestArrival: new Date("2025-11-10T05:00:00Z"),
       closesAt: new Date("2025-11-10T09:00:00Z"),
       arriveByDate: WINDOW_ARRIVE_BY,
     },
@@ -621,7 +600,6 @@ Deno.test("classify: candidate whose effective leave-by is past grace is dropped
   const now = new Date("2025-11-10T06:58:00.001Z");
   const window: VisibilityWindow = {
     opensAt: new Date("2025-11-10T05:00:00Z"),
-    earliestArrival: new Date("2025-11-10T05:00:00Z"),
     closesAt: new Date("2025-11-10T09:00:00Z"),
     arriveByDate: new Date("2025-11-10T08:30:00Z"),
   };
@@ -634,7 +612,6 @@ Deno.test("classify: candidate whose effective leave-by equals now is kept", () 
   const now = new Date("2025-11-10T06:52:00Z");
   const window: VisibilityWindow = {
     opensAt: new Date("2025-11-10T05:00:00Z"),
-    earliestArrival: new Date("2025-11-10T05:00:00Z"),
     closesAt: new Date("2025-11-10T09:00:00Z"),
     arriveByDate: new Date("2025-11-10T08:30:00Z"),
   };
@@ -650,7 +627,6 @@ Deno.test("classify: candidate whose effective leave-by equals now is kept", () 
 
 const PERMISSIVE_WINDOW: VisibilityWindow = {
   opensAt: new Date("2025-11-10T05:00:00Z"),
-  earliestArrival: new Date("2025-11-10T05:00:00Z"),
   closesAt: new Date("2025-11-10T09:00:00Z"),
   arriveByDate: new Date("2025-11-10T08:30:00Z"),
 };
@@ -740,16 +716,14 @@ Deno.test("classify imminence: cancelled candidate at imminent leave-by still em
   assertEquals(result.kind, "cancellationStrip");
 });
 
-// Low-frequency line simulation. Six candidates spread evenly through the
-// hour before arrive-by (08:30Z). Narrowing the earliest-arrival window
-// visibly reduces the surviving count (filter is on arrival, not leave-by).
-Deno.test("classify: narrowing earliestArrival visibly reduces rows", () => {
+// Low-frequency line simulation. Six candidates spread evenly before
+// arrive-by. Tightening `closesAt` — the only per-candidate filter — visibly
+// reduces the surviving count.
+Deno.test("classify: tightening closesAt visibly reduces rows", () => {
   const arriveByDate = new Date("2025-11-10T08:30:00Z");
-  // Earlier than every candidate's effective leave-by (06:52Z is the earliest).
   const now = new Date("2025-11-10T06:00:00Z");
 
-  // Candidate departures (Berlin local times — 08:00..08:25 in 5m steps).
-  // 12-min ride, ALEX walk-in 4m → effective arrive-by lands at:
+  // 12-min ride + ALEX walk-in 4m → effective arrive-bys:
   //   dep 08:00 → 07:16Z, 08:05 → 07:21Z, 08:10 → 07:26Z,
   //   dep 08:15 → 07:31Z, 08:20 → 07:36Z, 08:25 → 07:41Z
   const candidates: readonly Candidate[] = [
@@ -774,34 +748,19 @@ Deno.test("classify: narrowing earliestArrival visibly reduces rows", () => {
     arrival: new Date(new Date(dep).getTime() + 12 * 60_000),
   }));
 
-  type Case = {
-    earlyArrivalMinutes: number;
-    expectedSurvivors: number;
-  };
-
-  // arrive-by = 08:30Z. earliestArrival = 08:30Z − earlyArrivalMinutes.
   // Effective arrive-bys: 07:16Z, 07:21Z, 07:26Z, 07:31Z, 07:36Z, 07:41Z.
-  //   early=120: earliestArrival=06:30Z → all 6 ≥ 06:30Z survive
-  //   early=90:  earliestArrival=07:00Z → all 6 still survive
-  //   early=60:  earliestArrival=07:30Z → 3 survive (07:31, 07:36, 07:41)
-  //   early=40:  earliestArrival=07:50Z → 0 survive
-  //   early=20:  earliestArrival=08:10Z → 0 survive
-  //
-  // Generous late tail and permissive opensAt isolate the earliest-arrival
-  // effect from cadence (opensAt) and late-tail filter.
-  const cases: readonly Case[] = [
-    { earlyArrivalMinutes: 120, expectedSurvivors: 6 },
-    { earlyArrivalMinutes: 90, expectedSurvivors: 6 },
-    { earlyArrivalMinutes: 60, expectedSurvivors: 3 },
-    { earlyArrivalMinutes: 40, expectedSurvivors: 0 },
-    { earlyArrivalMinutes: 20, expectedSurvivors: 0 },
+  // A candidate survives iff its effective arrive-by is at or before closesAt.
+  const cases: readonly { closesAt: string; expectedSurvivors: number }[] = [
+    { closesAt: "2025-11-10T08:00:00Z", expectedSurvivors: 6 },
+    { closesAt: "2025-11-10T07:41:00Z", expectedSurvivors: 6 }, // inclusive edge
+    { closesAt: "2025-11-10T07:30:00Z", expectedSurvivors: 3 },
+    { closesAt: "2025-11-10T07:15:00Z", expectedSurvivors: 0 },
   ];
 
   for (const c of cases) {
     const window: VisibilityWindow = {
       opensAt: new Date(arriveByDate.getTime() - 240 * 60_000),
-      earliestArrival: new Date(arriveByDate.getTime() - c.earlyArrivalMinutes * 60_000),
-      closesAt: new Date(arriveByDate.getTime() + 60 * 60_000),
+      closesAt: new Date(c.closesAt),
       arriveByDate,
     };
     const tunables = resolveTunables(WEEKDAY_OFFICE, WEEKDAY_OFFICE.schedule[0]);
@@ -812,7 +771,7 @@ Deno.test("classify: narrowing earliestArrival visibly reduces rows", () => {
     assertEquals(
       surviving,
       c.expectedSurvivors,
-      `early=${c.earlyArrivalMinutes} expected ${c.expectedSurvivors} got ${surviving}`,
+      `closesAt=${c.closesAt} expected ${c.expectedSurvivors} got ${surviving}`,
     );
   }
 });

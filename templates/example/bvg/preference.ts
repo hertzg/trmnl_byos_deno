@@ -72,22 +72,16 @@ export type ScheduleRule = {
   // The user must be at the destination by this local time on `applicableDays`.
   arriveByLocalTime: TimeOfDay;
 
+  // Wall-clock time the board wakes for this rule. The screen is dark before
+  // it; from it until the window's `closesAt` the board shows every catchable
+  // option. Set it to when you want the screen to come alive.
+  showFromLocalTime: TimeOfDay;
+
   // ── per-rule overrides — replace (don't merge with) the values inherited
   //    from the Preference and DEFAULTS. `undefined` falls through. ──
 
-  // Minutes before `arriveBy` that the *earliest acceptable* arrival sits.
-  // Bounds the per-candidate filter: a candidate arriving earlier than
-  // `arriveBy − windowEarliestArrivalMinutes` is dropped.
-  windowEarliestArrivalMinutesOverride?: number;
-
-  // Cold-start fallback for the activation-lead travel buffer. Once the
-  // assembler has observed an actual candidate travel time for this preference
-  // it uses that (ceil to 5 min) instead. Only consulted before the first
-  // successful fetch, so set this to a generous upper bound.
-  fallbackTravelBufferMinutesOverride?: number;
-
-  // Minutes after the arrive-by moment the window stays open. Skewed small
-  // because arriving late is worse than arriving early.
+  // Minutes after the arrive-by moment the window stays open. Bounds the
+  // latest acceptable arrival and how long the board stays lit past arrive-by.
   windowLateTailMinutesOverride?: number;
 
   // Minutes after a row's leave-by passes that it stays visible with a
@@ -135,8 +129,6 @@ export type Preference = {
   // ── per-preference overrides — apply when a ScheduleRule doesn't override
   //    further. Fall through to DEFAULTS when omitted. ──
 
-  windowEarliestArrivalMinutes?: number;
-  fallbackTravelBufferMinutes?: number;
   windowLateTailMinutes?: number;
   imminentDepartureGraceMinutes?: number;
   preparationMinutes?: number;
@@ -160,16 +152,10 @@ export const TIMEZONE = "Europe/Berlin";
 export const DEFAULTS = {
   timezone: TIMEZONE,
 
-  // Visibility window geometry. Asymmetric: long early-arrival window so
-  // options surface in advance of the user's needed-by time, short late tail
-  // because arriving late is more painful than arriving early.
-  windowEarliestArrivalMinutes: 60,
+  // Latest acceptable arrival, measured from the rule's arrive-by time. Drives
+  // the window's `closesAt` and how long the board stays lit past arrive-by.
+  // The window's `opensAt` is configured directly per rule (`showFromLocalTime`).
   windowLateTailMinutes: 15,
-
-  // Cold-start fallback for the activation-lead travel buffer. Used only
-  // before any candidate has been observed for the preference; thereafter the
-  // observed max travel time (ceil to 5 min) replaces it.
-  fallbackTravelBufferMinutes: 120,
 
   // Imminent-departure handling.
   imminentDepartureGraceMinutes: 5,
@@ -199,8 +185,6 @@ export const DEFAULTS = {
 // preference at one point in time. All fields are required and concrete —
 // downstream code never sees `undefined` and never re-reads `DEFAULTS`.
 export type ResolvedTunables = {
-  windowEarliestArrivalMinutes: number;
-  fallbackTravelBufferMinutes: number;
   windowLateTailMinutes: number;
   imminentDepartureGraceMinutes: number;
   preparationMinutes: number;
@@ -212,14 +196,6 @@ export function resolveTunables(
   applicableRule: ScheduleRule,
 ): ResolvedTunables {
   return {
-    windowEarliestArrivalMinutes: applicableRule.windowEarliestArrivalMinutesOverride ??
-      preference.windowEarliestArrivalMinutes ??
-      DEFAULTS.windowEarliestArrivalMinutes,
-
-    fallbackTravelBufferMinutes: applicableRule.fallbackTravelBufferMinutesOverride ??
-      preference.fallbackTravelBufferMinutes ??
-      DEFAULTS.fallbackTravelBufferMinutes,
-
     windowLateTailMinutes: applicableRule.windowLateTailMinutesOverride ??
       preference.windowLateTailMinutes ??
       DEFAULTS.windowLateTailMinutes,

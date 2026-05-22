@@ -15,11 +15,17 @@ const BVG_JOURNEYS_URL = "https://v6.bvg.transport.rest/journeys";
 // pipeline render `feedUnreachable` instead of holding the request open.
 const FETCH_TIMEOUT_MS = 10_000;
 
-// HAFAS `/journeys` defaults to 3 results, which truncates the visibility
-// window long before `windowEarliestArrivalMinutes` can. Ask for a generous
-// upper bound and let the local filter trim — at the few-hour scale the
-// window covers, BVG rarely has more than this anyway.
-const RESULTS_PER_REQUEST = 50;
+// HAFAS `/journeys` ignores large `results` values — a single call returns
+// only a handful of journeys clustered around the anchor (≈3–6 in practice),
+// covering barely 20 minutes of departures. `fetchCandidates` therefore pages
+// backward through `earlierRef` to span the whole visibility window; `results`
+// just nudges each page slightly fuller.
+const RESULTS_PER_REQUEST = 10;
+
+// Safety cap on backward pagination. At ≈3–6 journeys/page this still reaches
+// several hours back — far past any realistic visibility window — so hitting
+// it means the feed is misbehaving, not that the window is genuinely large.
+const MAX_PAGES = 12;
 
 // ─── domain value objects ───────────────────────────────────────────────────
 
@@ -95,6 +101,11 @@ export type Candidate = {
   // Convenience: first leg's departure / last leg's arrival.
   departure: Date;
   arrival: Date;
+  // HAFAS's stable per-journey identity. Used to dedup a journey that
+  // surfaces on two adjacent pages even if its realtime times shifted
+  // between the fetches. Absent on candidates not sourced from HAFAS
+  // (e.g. test fixtures) — dedup falls back to departure+arrival then.
+  refreshToken?: string;
 };
 
 export type FeedError = {
@@ -140,10 +151,16 @@ type HafasLeg = {
 
 type HafasJourney = {
   legs?: HafasLeg[];
+  // HAFAS's stable per-journey identity, opaque to us. Carried onto the
+  // mapped `Candidate` so cross-page dedup survives realtime time shifts.
+  refreshToken?: string | null;
 };
 
 type HafasJourneysResponse = {
   journeys?: HafasJourney[];
+  // Opaque HAFAS cursor for the chronologically-preceding page. Passed back as
+  // the `earlierThan` query param to walk the window backward.
+  earlierRef?: string | null;
 };
 
 // ─── mapper ─────────────────────────────────────────────────────────────────
@@ -229,6 +246,7 @@ function mapJourney(raw: HafasJourney): Candidate | null {
     legs,
     departure: legs[0].departure,
     arrival: legs[legs.length - 1].arrival,
+    refreshToken: raw.refreshToken ?? undefined,
   };
 }
 
@@ -249,11 +267,84 @@ export function mapJourneysResponse(body: unknown): Candidate[] {
 export type FetchCandidates = (
   origin: Place,
   destination: Place,
-  // Latest acceptable arrival instant (= window's `closesAt`). HAFAS returns
-  // journeys arriving *at or before* this moment, so anchoring at the late-tail
-  // edge — not the user's arrive-by — is what lets late-tail candidates surface.
+  // Latest acceptable arrival instant (= window's `closesAt`). The first page
+  // is anchored here; HAFAS returns journeys arriving *at or before* it, so
+  // anchoring at the late-tail edge is what lets late-tail candidates surface.
   latestArrivalDate: Date,
+  // Earliest departure still worth fetching (= the render's `now`). Backward
+  // pagination stops once a page reaches journeys departing at or before this
+  // — anything earlier is already uncatchable and gets dropped downstream.
+  earliestDepartureDate: Date,
 ) => Promise<Candidate[] | FeedError>;
+
+// One fetched-and-mapped page of `/journeys` results, plus the cursor for the
+// page chronologically before it (`null` when HAFAS offers none).
+export type JourneyPage = {
+  candidates: Candidate[];
+  earlierRef: string | null;
+};
+
+// Where a page is anchored: the first page pins an arrival instant, every
+// later page rides an `earlierRef` handed back by its successor.
+export type PageAnchor =
+  | { kind: "arrival"; date: Date }
+  | { kind: "earlier"; ref: string };
+
+// Fetches a single page. Injected into `collectWindow` so the pagination walk
+// is exercised without a live BVG endpoint.
+export type FetchPage = (anchor: PageAnchor) => Promise<JourneyPage | FeedError>;
+
+function isFeedError(v: JourneyPage | FeedError): v is FeedError {
+  return "kind" in v;
+}
+
+// Pages backward from `latestArrivalDate` until a page reaches departures at or
+// before `earliestDepartureDate`, HAFAS runs out of earlier pages, or
+// `MAX_PAGES` is hit. A FeedError on the first page propagates; a FeedError on
+// a later page returns whatever earlier pages already yielded, so a mid-walk
+// hiccup still shows the late tail rather than a `feedUnreachable` screen.
+export async function collectWindow(
+  fetchPage: FetchPage,
+  latestArrivalDate: Date,
+  earliestDepartureDate: Date,
+): Promise<Candidate[] | FeedError> {
+  const collected: Candidate[] = [];
+  // Pagination pages are non-overlapping by design, but a journey straddling a
+  // page boundary can surface twice. HAFAS's `refreshToken` is the primary
+  // dedup key — a stable per-journey identity that survives realtime time
+  // shifts between the two fetches. Candidates without one (e.g. test
+  // fixtures) fall back to first-leg departure + last-leg arrival.
+  const seen = new Set<string>();
+  let anchor: PageAnchor = { kind: "arrival", date: latestArrivalDate };
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const result = await fetchPage(anchor);
+    if (isFeedError(result)) {
+      if (collected.length === 0) return result;
+      break;
+    }
+
+    let pageEarliestDeparture = Infinity;
+    for (const c of result.candidates) {
+      pageEarliestDeparture = Math.min(pageEarliestDeparture, c.departure.getTime());
+      const key = c.refreshToken ??
+        `${c.departure.toISOString()}|${c.arrival.toISOString()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      collected.push(c);
+    }
+
+    // Stop once this page reaches the render instant (it still includes the
+    // straddling journeys departing just before it), or HAFAS offers no
+    // earlier page, or the page came back empty.
+    if (result.candidates.length === 0) break;
+    if (pageEarliestDeparture <= earliestDepartureDate.getTime()) break;
+    if (!result.earlierRef) break;
+    anchor = { kind: "earlier", ref: result.earlierRef };
+  }
+
+  return collected;
+}
 
 // `from`/`to` accept either a HAFAS stop id (set as the bare `from`/`to` param)
 // or a coordinate triple (`from.latitude`/`from.longitude`/`from.address`).
@@ -269,34 +360,65 @@ function appendPlaceParams(url: URL, prefix: "from" | "to", place: Place): void 
   url.searchParams.set(`${prefix}.address`, place.address);
 }
 
-// Default implementation: hit BVG's `/journeys` and map. Network or parse
-// failures produce a `FeedError` so callers can render `feedUnreachable` in a
-// later slice without seeing exceptions.
-export const fetchCandidates: FetchCandidates = async (
+// Builds a `FetchPage` bound to one origin/destination pair and one wall-clock
+// deadline shared across every page, so the whole paginated walk still honours
+// `FETCH_TIMEOUT_MS` end-to-end. Network or parse failures produce a
+// `FeedError` so callers can render `feedUnreachable` without seeing exceptions.
+function hafasFetchPage(
+  origin: Place,
+  destination: Place,
+  deadline: number,
+): FetchPage {
+  return async (anchor) => {
+    const url = new URL(BVG_JOURNEYS_URL);
+    appendPlaceParams(url, "from", origin);
+    appendPlaceParams(url, "to", destination);
+    if (anchor.kind === "arrival") {
+      url.searchParams.set("arrival", anchor.date.toISOString());
+    } else {
+      url.searchParams.set("earlierThan", anchor.ref);
+    }
+    url.searchParams.set("results", String(RESULTS_PER_REQUEST));
+    url.searchParams.set("language", "en");
+
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      return { kind: "feed-error", message: `timeout after ${FETCH_TIMEOUT_MS}ms` };
+    }
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(remainingMs) });
+      if (!r.ok) {
+        return { kind: "feed-error", message: `HTTP ${r.status}` };
+      }
+      const body = await r.json() as HafasJourneysResponse;
+      return {
+        candidates: mapJourneysResponse(body),
+        earlierRef: body.earlierRef ?? null,
+      };
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "TimeoutError") {
+        return { kind: "feed-error", message: `timeout after ${FETCH_TIMEOUT_MS}ms` };
+      }
+      return {
+        kind: "feed-error",
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
+  };
+}
+
+// Default implementation: page backward through BVG's `/journeys` from the
+// window's late edge until the walk reaches the render instant.
+export const fetchCandidates: FetchCandidates = (
   origin,
   destination,
   latestArrivalDate,
+  earliestDepartureDate,
 ) => {
-  const url = new URL(BVG_JOURNEYS_URL);
-  appendPlaceParams(url, "from", origin);
-  appendPlaceParams(url, "to", destination);
-  url.searchParams.set("arrival", latestArrivalDate.toISOString());
-  url.searchParams.set("results", String(RESULTS_PER_REQUEST));
-  url.searchParams.set("language", "en");
-  try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-    if (!r.ok) {
-      return { kind: "feed-error", message: `HTTP ${r.status}` };
-    }
-    const body = await r.json();
-    return mapJourneysResponse(body);
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "TimeoutError") {
-      return { kind: "feed-error", message: `timeout after ${FETCH_TIMEOUT_MS}ms` };
-    }
-    return {
-      kind: "feed-error",
-      message: err instanceof Error ? err.message : String(err),
-    };
-  }
+  const deadline = Date.now() + FETCH_TIMEOUT_MS;
+  return collectWindow(
+    hafasFetchPage(origin, destination, deadline),
+    latestArrivalDate,
+    earliestDepartureDate,
+  );
 };

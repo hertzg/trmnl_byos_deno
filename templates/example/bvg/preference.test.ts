@@ -23,46 +23,17 @@ function makeRule(overrides: Partial<ScheduleRule> = {}): ScheduleRule {
   return {
     applicableDays: ["mon"],
     arriveByLocalTime: "09:30",
+    showFromLocalTime: "07:30",
     ...overrides,
   };
 }
 
 Deno.test("resolveTunables falls through to DEFAULTS when nothing is set", () => {
   const t = resolveTunables(makePreference(), makeRule());
-  assertEquals(t.windowEarliestArrivalMinutes, DEFAULTS.windowEarliestArrivalMinutes);
   assertEquals(t.windowLateTailMinutes, DEFAULTS.windowLateTailMinutes);
   assertEquals(t.imminentDepartureGraceMinutes, DEFAULTS.imminentDepartureGraceMinutes);
   assertEquals(t.preparationMinutes, DEFAULTS.preparationMinutes);
   assertEquals(t.excludedLineNames, DEFAULTS.excludedLineNames);
-});
-
-Deno.test("resolveTunables cascade: windowEarliestArrivalMinutes (DEFAULT ← Pref ← Rule)", () => {
-  // Preference overrides DEFAULT.
-  assertEquals(
-    resolveTunables(makePreference({ windowEarliestArrivalMinutes: 45 }), makeRule()).windowEarliestArrivalMinutes,
-    45,
-  );
-  // Rule overrides Preference.
-  assertEquals(
-    resolveTunables(
-      makePreference({ windowEarliestArrivalMinutes: 45 }),
-      makeRule({ windowEarliestArrivalMinutesOverride: 30 }),
-    ).windowEarliestArrivalMinutes,
-    30,
-  );
-  // Explicit 0 on rule wins over a non-zero preference (does not fall through).
-  assertEquals(
-    resolveTunables(
-      makePreference({ windowEarliestArrivalMinutes: 45 }),
-      makeRule({ windowEarliestArrivalMinutesOverride: 0 }),
-    ).windowEarliestArrivalMinutes,
-    0,
-  );
-  // Explicit 0 on preference wins over a non-zero default; rule undefined falls through.
-  assertEquals(
-    resolveTunables(makePreference({ windowEarliestArrivalMinutes: 0 }), makeRule()).windowEarliestArrivalMinutes,
-    0,
-  );
 });
 
 Deno.test("resolveTunables cascade: windowLateTailMinutes", () => {

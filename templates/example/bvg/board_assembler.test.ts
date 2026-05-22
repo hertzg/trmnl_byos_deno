@@ -29,7 +29,11 @@ const OFFICE: Preference = {
   origin: HBF,
   destination: ALEX,
   schedule: [
-    { applicableDays: ["mon", "tue", "wed", "thu", "fri"], arriveByLocalTime: "09:30" },
+    {
+      applicableDays: ["mon", "tue", "wed", "thu", "fri"],
+      arriveByLocalTime: "09:30",
+      showFromLocalTime: "07:00",
+    },
   ],
 };
 
@@ -112,7 +116,11 @@ const STUDIO: Preference = {
   origin: POTSDAMER,
   destination: ZOO,
   schedule: [
-    { applicableDays: ["mon", "tue", "wed", "thu", "fri"], arriveByLocalTime: "09:30" },
+    {
+      applicableDays: ["mon", "tue", "wed", "thu", "fri"],
+      arriveByLocalTime: "09:30",
+      showFromLocalTime: "07:00",
+    },
   ],
 };
 
@@ -347,14 +355,14 @@ Deno.test("assembleBoard tolerates a single preference's FeedError; others rende
 
 // ─── slice 3: visibility window + window-edge cadence ──────────────────────
 
-Deno.test("makeVisibilityWindow derives opensAt, earliestArrival and closesAt from tunables", () => {
-  // arrive-by 09:30 Berlin = 08:30Z. Defaults: earliestArrival 60, late tail 15.
-  // Travel buffer (passed in) = 60 → opensAt = earliestArrival − 60 = 06:30Z.
+Deno.test("makeVisibilityWindow sets opensAt from showFromDate and closesAt from the late tail", () => {
+  // arrive-by 09:30 Berlin = 08:30Z; showFrom 07:00 Berlin = 06:00Z.
+  // Default late tail 15 → closesAt = 08:45Z.
   const arriveByDate = new Date("2025-11-10T08:30:00Z");
+  const showFromDate = new Date("2025-11-10T06:00:00Z");
   const tunables = resolveTunables(OFFICE, OFFICE.schedule[0]);
-  const window = makeVisibilityWindow(tunables, arriveByDate, 60);
-  assertEquals(window.opensAt.toISOString(), "2025-11-10T06:30:00.000Z");
-  assertEquals(window.earliestArrival.toISOString(), "2025-11-10T07:30:00.000Z");
+  const window = makeVisibilityWindow(tunables, arriveByDate, showFromDate);
+  assertEquals(window.opensAt.toISOString(), "2025-11-10T06:00:00.000Z");
   assertEquals(window.closesAt.toISOString(), "2025-11-10T08:45:00.000Z");
   assertEquals(window.arriveByDate, arriveByDate);
 });
@@ -364,7 +372,6 @@ Deno.test("boardValidForSeconds ticks at upcoming window opensAt edge", () => {
   const now = new Date("2025-11-10T07:00:00Z");
   const window: VisibilityWindow = {
     opensAt: new Date(now.getTime() + 25_000),
-    earliestArrival: new Date(now.getTime() + 30 * 60_000),
     closesAt: new Date(now.getTime() + 60 * 60_000),
     arriveByDate: new Date(now.getTime() + 90 * 60_000),
   };
@@ -388,7 +395,6 @@ Deno.test("boardValidForSeconds returns idle ceiling when no rows and no upcomin
   const now = new Date("2025-11-10T10:00:00Z");
   const window: VisibilityWindow = {
     opensAt: new Date(now.getTime() - 60 * 60_000),
-    earliestArrival: new Date(now.getTime() - 50 * 60_000),
     closesAt: new Date(now.getTime() - 30 * 60_000),
     arriveByDate: new Date(now.getTime() - 45 * 60_000),
   };
@@ -407,7 +413,6 @@ Deno.test("boardValidForSeconds picks the smallest of head-row, window edges, ce
   // Realtime ceiling = 90. Smallest is 90.
   const window: VisibilityWindow = {
     opensAt: new Date(now.getTime() + 200_000),
-    earliestArrival: new Date(now.getTime() + 30 * 60_000),
     closesAt: new Date(now.getTime() + 60 * 60_000),
     arriveByDate: new Date(now.getTime() + 90 * 60_000),
   };
@@ -907,7 +912,9 @@ Deno.test("assembleBoard: nextAnchor picks the soonest across preferences", asyn
   const now = new Date("2025-11-14T19:00:00Z"); // Fri 20:00 Berlin
   const STUDIO_SAT: Preference = {
     ...STUDIO,
-    schedule: [{ applicableDays: ["sat"], arriveByLocalTime: "14:00" }],
+    schedule: [
+      { applicableDays: ["sat"], arriveByLocalTime: "14:00", showFromLocalTime: "12:00" },
+    ],
   };
   const stubFetch: FetchCandidates = () => Promise.resolve([]);
   const board = await assembleBoard(
