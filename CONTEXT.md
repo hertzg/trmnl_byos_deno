@@ -105,6 +105,27 @@ by `identity` (a hash of the Bundle's rendered HTML + asset bytes). The Device's
 filename cache matches against the identity returned in `/api/display`'s `filename` field. _Avoid_:
 frame, picture, output.
 
+**Super-Plugin**: A **Plugin** that composes other **Plugins** as plain code — imports them, calls
+their `run`, inspects the returned **Result**s to route, and returns one Result of its own. The
+**Server** and **Conductor** see a Super-Plugin as exactly one Plugin; the nesting is invisible to
+them. All multi-mode display logic lives here, never in the Server (see ADR-0002). It floors every
+Result's `validity` at 5 minutes as a battery policy — the **Device** is never told to poll sooner —
+accepting that fast-moving content (the realtime **Transport** board) may run up to 5 minutes stale.
+_Avoid_: orchestrator, router, manager.
+
+**Transport**: The commute departure-board leaf **Plugin** — Berlin BVG journeys for the configured
+routes, surfaced during commute windows. Its **Result** `state` carries a `Board` whose
+`emptyReason` (`none` / `noScheduleApplicable` / `feedUnreachable`) is the signal a composing
+**Super-Plugin** routes on, and whose quiet-state `validity` reports when the next commute window
+opens. _Avoid_: departures, BVG (that is the upstream feed, not the Plugin).
+
+**Gallery**: The full-screen photo leaf **Plugin** — rotates sequentially, time-indexed on `t`,
+through a curated set of bundled images. It is the **Device**'s default quiet-state display: a
+composing **Super-Plugin** shows the Gallery whenever **Transport** is schedule-quiet
+(`emptyReason === "noScheduleApplicable"`), clamping the **Result** `validity` to
+`min(Gallery, Transport)` (then floored at 5 minutes — see **Super-Plugin**) so an opening commute
+window is woken into. Renders edge-to-edge, no chrome. _Avoid_: screensaver, slideshow, picture.
+
 ## Relationships
 
 - One Server orchestrates exactly one Plugin and serves exactly one Device.
@@ -235,9 +256,6 @@ asset edit invalidates the Device's filename cache on the next poll.
   needed.
 - **Result hint fields** — exact field names alongside `view` will land as concrete needs appear
   (dither, viewport, filters, etc.).
-- **Composition asset story** — how a Super-Plugin aggregates sub-Plugin assets without URL
-  collisions. Nested folders, merged asset maps, render-time inlining are all candidates. Deferred
-  until a concrete Super-Plugin drives the trade-offs.
 - **Identity tier (Tier 2) implementation** — the design reserves an optimization where an expired
   Slot whose freshly-computed identity matches the previous one skips rasterize. Not built until the
   rasterize cost is shown to matter in practice.
