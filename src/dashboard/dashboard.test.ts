@@ -115,23 +115,10 @@ Deno.test("GET / triggers a refill via /api/display when the Slot is empty", asy
   assertSpyCalls(run, 1);
 });
 
-Deno.test("GET / embeds <img src=/image/<identity>.png> referencing the Slot's current identity", async () => {
-  const { app } = wire({
-    pluginManager: managerFor({
-      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
-    }),
-    renderer: defaultRenderer({ identity: () => Promise.resolve("dashid-aaa") }),
-  });
-
-  const html = await (await app.request("/")).text();
-
-  assertEquals(html.includes('src="/image/dashid-aaa.png"'), true, "image src missing");
-});
-
-Deno.test("GET / surfaces a notice when the Slot stays empty (no Conductor wiring)", async () => {
+Deno.test("GET / still renders against an empty Slot (no Conductor wiring)", async () => {
   // Construct the Dashboard against an empty Slot whose refill hook is a
-  // no-op. The page must still render — surfacing the empty state through
-  // a notice instead of trying to embed a broken /image URL.
+  // no-op. The page must still render — the meta table surfaces the empty
+  // identity rather than the page crashing on a missing Slot entry.
   const now = () => T0;
   const slot = createSlot({ now });
   const telemetry = createTelemetry();
@@ -151,8 +138,7 @@ Deno.test("GET / surfaces a notice when the Slot stays empty (no Conductor wirin
 
   assertEquals(res.status, 200);
   const html = await res.text();
-  assertEquals(html.includes("Slot is empty"), true, "missing empty-slot notice");
-  assertEquals(html.includes("data:image/png"), false, "should not embed an image");
+  assertEquals(html.includes("(none)"), true, "empty identity not surfaced");
 });
 
 // ─── Dashboard reads telemetry.latest() to render the trace ─────────────
