@@ -47,11 +47,15 @@ export function createDashboard(deps: DashboardDeps): Hono {
         device: null,
       };
       const bundle = await deps.pluginManager.run(ctx);
+      const identity = await deps.renderer.identity(bundle);
       const png = await deps.renderer.rasterize(bundle);
+      const validity = String(bundle.result.validity.total({ unit: "seconds" }));
 
       return c.body(png, 200, {
         "content-type": "image/png",
         "cache-control": "no-store",
+        "x-identity": identity,
+        "x-validity": validity,
       });
     })
     .post("/dashboard/clear", (c) => {

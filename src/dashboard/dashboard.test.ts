@@ -329,6 +329,38 @@ Deno.test("GET /dashboard/preview.png falls back to now() when ?t is missing or 
   assertEquals(seen.ts[1].toString(), T0.toString());
 });
 
+Deno.test("GET /dashboard/preview.png response carries x-identity equal to renderer.identity's return value", async () => {
+  const { app } = wire({
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: defaultRenderer({ identity: () => Promise.resolve("some-fixed-id") }),
+  });
+
+  const res = await app.request(
+    "/dashboard/preview.png?t=2026-05-16T12:00:00%2B02:00[Europe/Berlin]",
+  );
+  await res.arrayBuffer();
+
+  assertEquals(res.headers.get("x-identity"), "some-fixed-id");
+});
+
+Deno.test("GET /dashboard/preview.png response carries x-validity equal to the bundle validity in seconds, stringified", async () => {
+  const { app } = wire({
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+  });
+
+  const res = await app.request(
+    "/dashboard/preview.png?t=2026-05-16T12:00:00%2B02:00[Europe/Berlin]",
+  );
+  await res.arrayBuffer();
+
+  // fiveMin = 5 * 60 = 300 seconds
+  assertEquals(res.headers.get("x-validity"), "300");
+});
+
 Deno.test("GET /dashboard/preview.png does NOT mutate the Slot or write to Telemetry", async () => {
   // ADR-0003: scrub bypasses the Slot and does not record to Telemetry.
   // Spy on slot.put / slot.clear / telemetry.record and assert each stays
