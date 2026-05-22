@@ -15,6 +15,7 @@ export type SlotDeps = {
 
 export type SlotDisplay = {
   identity: string;
+  cachedAt: Temporal.ZonedDateTime;
   refreshIn: Temporal.Duration;
 };
 
@@ -44,7 +45,11 @@ export function createSlot(deps: SlotDeps): Slot {
       if (entry === null) return null;
       const now = deps.now();
       if (!isStillValid(entry, now)) return null;
-      return { identity: entry.identity, refreshIn: expiryOf(entry).since(now) };
+      return {
+        identity: entry.identity,
+        cachedAt: entry.cachedAt,
+        refreshIn: expiryOf(entry).since(now),
+      };
     },
     async image(id) {
       if (entry === null) return null;
