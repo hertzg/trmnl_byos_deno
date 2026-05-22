@@ -16,13 +16,9 @@ COPY deno.jsonc ./
 COPY src/ ./src/
 RUN deno cache src/main.ts
 
-# Bundled example Plugin, kept apart from the runtime Plugin dir. The Deno
-# seeder (src/plugin/loader.ts) copies this into PLUGIN_DIR only when
-# PLUGIN_DIR is empty, so a populated bind-mount is never overwritten.
-COPY templates/example/ /app/plugin-seed/
-
-ENV PLUGIN_DIR=/app/plugin
-ENV PLUGIN_SEED_DIR=/app/plugin-seed
+# Bundled Plugin + DesignSystem, served directly from PLUGIN_DIR's default
+# (./templates/example, resolved against WORKDIR).
+COPY templates/ ./templates/
 
 EXPOSE 3000
 
