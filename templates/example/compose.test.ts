@@ -25,6 +25,12 @@ function board(emptyReason: Board["emptyReason"]): Board {
   return { emptyReason } as Board;
 }
 
+// A fixed instant for fixtures — composeResult never reads state.t, but a
+// complete FrameData keeps the fixture honest (no cast hiding a missing field).
+const FIXTURE_T = Temporal.Instant.fromEpochMilliseconds(0).toZonedDateTimeISO(
+  "UTC",
+);
+
 /**
  * Fabricate a Result<FrameData> with an identity-testable view function.
  * Only `state.board.emptyReason`, `validity`, and `view` matter to composeResult.
@@ -32,12 +38,17 @@ function board(emptyReason: Board["emptyReason"]): Board {
 function makeTransportResult(
   emptyReason: Board["emptyReason"],
   validity: Temporal.Duration,
+  hints?: Result<FrameData>["hints"],
 ): Result<FrameData> {
-  // composeResult only reads state.board.emptyReason; cast a partial FrameData.
-  const state = { board: board(emptyReason), device: null } as FrameData;
+  const state: FrameData = {
+    board: board(emptyReason),
+    device: null,
+    t: FIXTURE_T,
+  };
   return {
     state,
     validity,
+    hints,
     view: (_s: FrameData) => null, // sentinel; identity tested via assertStrictEquals
   };
 }
@@ -45,11 +56,15 @@ function makeTransportResult(
 /**
  * Fabricate a Result<GalleryState> with an identity-testable view function.
  */
-function makeGalleryResult(validity: Temporal.Duration): Result<GalleryState> {
+function makeGalleryResult(
+  validity: Temporal.Duration,
+  hints?: Result<GalleryState>["hints"],
+): Result<GalleryState> {
   const state: GalleryState = { src: "/assets/gallery/test.jpg" };
   return {
     state,
     validity,
+    hints,
     view: (_s: GalleryState) => null, // sentinel; identity tested via assertStrictEquals
   };
 }
@@ -106,6 +121,39 @@ Deno.test('composeResult: emptyReason "noScheduleApplicable" → runs Gallery, r
   assertStrictEquals(result.view, galleryResult.view);
 
   // runGallery must have been called exactly once.
+  assertSpyCalls(runGallery, 1);
+});
+
+// ---------------------------------------------------------------------------
+// hints passthrough — Transport branch
+// ---------------------------------------------------------------------------
+
+Deno.test("composeResult: Transport branch — hints are passed through unchanged (reference identity)", async () => {
+  const transportHints: Record<string, unknown> = { dither: "atkinson" };
+  const transportResult = makeTransportResult("none", mins(10), transportHints);
+  const runGallery = spy(() => makeGalleryResult(mins(10)));
+
+  const result = await composeResult(transportResult, runGallery);
+
+  // hints must be the exact same object reference — delegation, not reconstruction.
+  assertStrictEquals(result.hints, transportHints);
+  assertSpyCalls(runGallery, 0);
+});
+
+// ---------------------------------------------------------------------------
+// hints passthrough — Gallery branch
+// ---------------------------------------------------------------------------
+
+Deno.test("composeResult: Gallery branch — hints are passed through unchanged (reference identity)", async () => {
+  const galleryHints: Record<string, unknown> = { dither: "floydSteinberg" };
+  const transportResult = makeTransportResult("noScheduleApplicable", mins(60));
+  const galleryResult = makeGalleryResult(mins(30), galleryHints);
+  const runGallery = spy(() => galleryResult);
+
+  const result = await composeResult(transportResult, runGallery);
+
+  // hints must be the Gallery result's exact object reference — delegation, not reconstruction.
+  assertStrictEquals(result.hints, galleryHints);
   assertSpyCalls(runGallery, 1);
 });
 
