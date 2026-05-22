@@ -1,5 +1,5 @@
 /** @jsxImportSource hono/jsx */
-import { assertEquals, assertMatch, assertNotEquals } from "@std/assert";
+import { assertEquals, assertMatch, assertNotEquals, assertStringIncludes } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
 import { createRenderer, type RendererDeps } from "./renderer.ts";
 import { hashBundle } from "../hash.ts";
@@ -160,6 +160,95 @@ Deno.test("loopback origin returns 404 for asset paths not declared by the mount
   try {
     await renderer.rasterize(bundleWith({}, () => <p>x</p>));
     assertEquals(status, 404);
+  } finally {
+    await renderer.close();
+  }
+});
+
+// ─── asset Content-Type ────────────────────────────────────────────────────
+
+Deno.test("loopback origin serves SVG assets with an image/svg+xml Content-Type", async () => {
+  // Load-bearing: Chrome refuses to render an SVG inside an <img> unless it's
+  // served as image/svg+xml, so a missing/wrong type breaks the BVG glyphs.
+  let contentType: string | null = null;
+  const fetchPngFromUrl = spy(async (url: string) => {
+    const r = await fetch(new URL("/assets/icon.svg", new URL(url)));
+    contentType = r.headers.get("content-type");
+    await r.body?.cancel();
+    return new Uint8Array([0x01]);
+  });
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
+  try {
+    await renderer.rasterize(bundleWith(
+      {},
+      () => <p>x</p>,
+      { "/assets/icon.svg": new TextEncoder().encode("<svg id=icon/>") },
+    ));
+    assertStringIncludes(contentType ?? "", "image/svg+xml");
+  } finally {
+    await renderer.close();
+  }
+});
+
+Deno.test("loopback origin serves CSS assets with a text/css Content-Type", async () => {
+  let contentType: string | null = null;
+  const fetchPngFromUrl = spy(async (url: string) => {
+    const r = await fetch(new URL("/assets/style.css", new URL(url)));
+    contentType = r.headers.get("content-type");
+    await r.body?.cancel();
+    return new Uint8Array([0x01]);
+  });
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
+  try {
+    await renderer.rasterize(bundleWith(
+      {},
+      () => <p>x</p>,
+      { "/assets/style.css": new TextEncoder().encode("p{color:#000}") },
+    ));
+    assertStringIncludes(contentType ?? "", "text/css");
+  } finally {
+    await renderer.close();
+  }
+});
+
+Deno.test("loopback origin serves PNG assets with an image/png Content-Type", async () => {
+  let contentType: string | null = null;
+  const fetchPngFromUrl = spy(async (url: string) => {
+    const r = await fetch(new URL("/assets/photo.png", new URL(url)));
+    contentType = r.headers.get("content-type");
+    await r.body?.cancel();
+    return new Uint8Array([0x01]);
+  });
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
+  try {
+    await renderer.rasterize(bundleWith(
+      {},
+      () => <p>x</p>,
+      { "/assets/photo.png": new Uint8Array([0x89, 0x50, 0x4e, 0x47]) },
+    ));
+    assertStringIncludes(contentType ?? "", "image/png");
+  } finally {
+    await renderer.close();
+  }
+});
+
+Deno.test("loopback origin omits Content-Type for assets with an unknown extension", async () => {
+  // Unknown/absent extension: omit the header rather than invent a type.
+  let contentType: string | null = "unset";
+  const fetchPngFromUrl = spy(async (url: string) => {
+    const r = await fetch(new URL("/assets/data", new URL(url)));
+    contentType = r.headers.get("content-type");
+    await r.body?.cancel();
+    return new Uint8Array([0x01]);
+  });
+  const renderer = createRenderer(defaults({ fetchPngFromUrl }));
+  try {
+    await renderer.rasterize(bundleWith(
+      {},
+      () => <p>x</p>,
+      { "/assets/data": new Uint8Array([0x00, 0x01]) },
+    ));
+    assertEquals(contentType, null);
   } finally {
     await renderer.close();
   }

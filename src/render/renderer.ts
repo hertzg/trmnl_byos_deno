@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
+import { contentType } from "@std/media-types";
+import { extname } from "@std/path";
 import type { Bundle } from "../plugin/bundle.ts";
 import { hashBundle } from "../hash.ts";
 import type { DeviceProfile } from "./profiles.ts";
@@ -52,9 +54,12 @@ export function createRenderer(deps: RendererDeps): Renderer {
       const path = new URL(c.req.url).pathname;
       const bytes = mounted.assets[path];
       if (!bytes) return c.text("not found", 404);
-      return c.body(bytes, 200, {
-        "cache-control": "no-store",
-      });
+      // Chrome won't render an SVG inside an <img> unless it's served as
+      // image/svg+xml — SVG is deliberately not content-sniffed for <img>.
+      const headers: Record<string, string> = { "cache-control": "no-store" };
+      const type = contentType(extname(path));
+      if (type) headers["content-type"] = type;
+      return c.body(bytes, 200, headers);
     });
 
   // Default loopback ("host.docker.internal") targets `deno task dev`:
