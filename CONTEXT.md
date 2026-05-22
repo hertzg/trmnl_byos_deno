@@ -27,9 +27,20 @@ Provides layout primitives (`Layout`, `Content`, `Grid`, `Flex`, `Columns`), typ
 (`Title`, `Value`, `Label`, `Description`), the Item pattern (`meta + content + icon`), chrome
 overlays (`StatusBar`, `BatteryIndicator`), and `EmptyState`. Components are individually
 importable; CSS ships via a `<Styles />` component the Plugin author renders explicitly in
-`<head>`. Framework-informed but project-native — adopts the TRMNL Design Framework's e-ink
-research without its class-based API or marketplace orientation (see ADR-0008). _Avoid_:
-framework, theme, UI kit.
+`<head>`. A `<Page>` document wrapper is the natural next promotion (see ADR-0008 §Surface and
+the "page wrapper" entry below) — it owns `<html>/<head>/<body>` boilerplate and auto-renders
+`<Styles />` plus a charset, title, and optional plugin override stylesheet. Framework-informed
+but project-native — adopts the TRMNL Design Framework's e-ink research without its class-based
+API or marketplace orientation (see ADR-0008). _Avoid_: framework, theme, UI kit.
+
+**Page**: A `<Page>` DesignSystem component that owns the document skeleton — `<html lang>`,
+`<head>` (charset, `<title>`, auto-`<Styles />`, optional plugin override `<link rel="stylesheet">`),
+and `<body>`. Plugin children land directly inside `<body>`; the Plugin still composes
+`<Layout>`, `<Content>`, `<StatusBar>` etc. inside as needed. The Page auto-renders `<Styles />`
+on the Plugin's behalf — a deliberate softening of the cornerstone (Server/Renderer/PluginManager
+still inject nothing; DS components compose each other freely once the Plugin imports them).
+Plugins that don't want DS styling don't use `<Page>`; they hand-roll the document the way
+`templates/example/root.tsx` did pre-Page. _Avoid_: Document, Frame, Screen.
 
 **RunContext**: The single argument to `run`. Always contains `t: Temporal.ZonedDateTime`, an
 `intent` (`"poll"` for the Device's `/api/display` call, `"scrub"` for a dashboard preview), and a
