@@ -136,15 +136,12 @@ export function classify(
 
   // Window check (slice 3). Runs AFTER leave-by/arrive-by are computed because
   // it compares those *effective* (realtime-adjusted, walk-shifted) instants —
-  // not the raw leg times. The filter is purely on arrival: a candidate is
-  // surfaceable iff its `arriveByDate` falls in `[earliestArrival, closesAt]`.
-  // Both edges are inclusive. `opensAt` is the screen's *activation* edge and
-  // does not gate per-candidate visibility — leave-by may sit before opensAt
-  // when the user has to leave earlier than the screen turns on.
-  if (window) {
-    if (arriveByDate.getTime() < window.earliestArrival.getTime()) return null;
-    if (arriveByDate.getTime() > window.closesAt.getTime()) return null;
-  }
+  // not the raw leg times. The only bound is the upper one: a candidate is
+  // surfaceable iff its `arriveByDate` is at or before `closesAt` (inclusive).
+  // There is no early-arrival cutoff — the screen stays dark before `opensAt`
+  // and once lit shows every catchable option; `opensAt` does not gate
+  // per-candidate visibility.
+  if (window && arriveByDate.getTime() > window.closesAt.getTime()) return null;
 
   // Past-leave-by drop (slice 3 + slice 8 grace). A row whose effective
   // leave-by is more than `imminentDepartureGraceMinutes` in the past is no

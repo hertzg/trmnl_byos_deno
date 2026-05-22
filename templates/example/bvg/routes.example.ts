@@ -57,14 +57,15 @@ const A_OFFICE_WEEKDAY: Preference = {
     {
       applicableDays: ["mon", "tue", "wed", "thu"],
       arriveByLocalTime: "09:30",
+      showFromLocalTime: "07:30",
     },
   ],
 };
 
 // Same person, Friday — different origin (gym, not home), and the user
 // declared they want a 15-minute "be ready by" anchor across this whole
-// preference. The Friday rule narrows the visibility window to 30 min and
-// explicitly clears the inherited bus exclusion (allowed today).
+// preference. The Friday rule wakes the board later and explicitly clears the
+// inherited bus exclusion (allowed today).
 const A_OFFICE_FRIDAY: Preference = {
   preferenceKey: "a-office-fri",
   rowIcon: "🧑",
@@ -77,7 +78,7 @@ const A_OFFICE_FRIDAY: Preference = {
     {
       applicableDays: ["fri"],
       arriveByLocalTime: "10:00",
-      windowEarliestArrivalMinutesOverride: 30, // narrower window on Fri
+      showFromLocalTime: "08:30", // wake the board later on Fri
       excludedLineNamesOverride: [], // override to nothing — bus is fine
     },
   ],
@@ -95,6 +96,7 @@ const A_HOME_WEEKDAY: Preference = {
     {
       applicableDays: "weekday",
       arriveByLocalTime: "19:00",
+      showFromLocalTime: "17:30",
     },
   ],
 };
@@ -112,10 +114,12 @@ const B_STUDIO: Preference = {
     {
       applicableDays: ["tue", "thu"],
       arriveByLocalTime: "10:00",
+      showFromLocalTime: "08:00",
     },
     {
       applicableDays: ["sat"],
       arriveByLocalTime: "13:00",
+      showFromLocalTime: "10:30",
       // Saturday is sleepier — let the late tail stretch.
       windowLateTailMinutesOverride: 30,
     },

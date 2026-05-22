@@ -1,17 +1,27 @@
 // ScheduleEvaluator — pure date math.
 //
 // Given a `Schedule` (array of `ScheduleRule`s), a `Preference`, and the
-// current instant, returns the next `(arriveByDate, applicableRule)` pair, or
-// `null` if no rule fires within 7 days.
+// current instant, returns the next `(arriveByDate, showFromDate,
+// applicableRule)` resolution, or `null` if no rule fires within 7 days.
 //
 // Walks every rule across the next 7 days in `Europe/Berlin`, materialises the
-// concrete `arriveByDate` for each `(day, rule)` pair, and returns the soonest
-// future moment. Ties between rules are broken by rule order — the rule that
-// appears first in the schedule wins. Wall-clock times are interpreted via
-// `Intl.DateTimeFormat` so DST forward and backward transitions resolve
-// correctly: `09:30` always means 09:30 local in `Europe/Berlin`.
+// concrete `arriveByDate` and `showFromDate` for each `(day, rule)` pair, and
+// returns the soonest. A rule stays current through its late tail: it is
+// skipped only once `arriveByDate + windowLateTailMinutes` (its `closesAt`)
+// has passed, not the moment `arriveByDate` does — so the board stays lit
+// while late-but-still-catchable options exist. Ties between rules are broken
+// by rule order — the rule that appears first in the schedule wins. Wall-clock
+// times are interpreted via `Intl.DateTimeFormat` so DST forward and backward
+// transitions resolve correctly: `09:30` always means 09:30 local in
+// `Europe/Berlin`.
 
-import { type Preference, type ScheduleRule, TIMEZONE, type Weekday } from "./preference.ts";
+import {
+  type Preference,
+  resolveTunables,
+  type ScheduleRule,
+  TIMEZONE,
+  type Weekday,
+} from "./preference.ts";
 
 const TZ = TIMEZONE;
 
@@ -96,12 +106,15 @@ function parseTimeOfDay(t: string): { hour: number; minute: number } {
 
 export type ScheduleResolution = {
   arriveByDate: Date;
+  // The rule's `showFromLocalTime` resolved to an absolute instant on the same
+  // day as `arriveByDate` — the board uses it as the window's `opensAt`.
+  showFromDate: Date;
   applicableRule: ScheduleRule;
 };
 
 export function nextApplicableArriveBy(
   schedule: readonly ScheduleRule[],
-  _preference: Preference,
+  preference: Preference,
   now: Date,
 ): ScheduleResolution | null {
   let best: ScheduleResolution | null = null;
@@ -111,18 +124,29 @@ export function nextApplicableArriveBy(
     const parts = berlinParts(probe);
     for (const rule of schedule) {
       if (!dayMatches(rule, parts.weekday)) continue;
-      const { hour, minute } = parseTimeOfDay(rule.arriveByLocalTime);
-      const candidate = berlinWallClockToInstant(
+      const arriveBy = parseTimeOfDay(rule.arriveByLocalTime);
+      const arriveByDate = berlinWallClockToInstant(
         parts.year,
         parts.month,
         parts.day,
-        hour,
-        minute,
+        arriveBy.hour,
+        arriveBy.minute,
       );
-      if (candidate.getTime() <= now.getTime()) continue;
-      if (!best || candidate < best.arriveByDate) {
-        best = { arriveByDate: candidate, applicableRule: rule };
-      }
+      // Stay current through the late tail: skip the rule only once its
+      // `closesAt` (arrive-by + the resolved late tail) is in the past.
+      const lateTailMs = resolveTunables(preference, rule).windowLateTailMinutes * 60_000;
+      if (arriveByDate.getTime() + lateTailMs <= now.getTime()) continue;
+      // Soonest arrive-by wins; ties keep the earlier rule (strict `<`).
+      if (best && arriveByDate.getTime() >= best.arriveByDate.getTime()) continue;
+      const showFrom = parseTimeOfDay(rule.showFromLocalTime);
+      const showFromDate = berlinWallClockToInstant(
+        parts.year,
+        parts.month,
+        parts.day,
+        showFrom.hour,
+        showFrom.minute,
+      );
+      best = { arriveByDate, showFromDate, applicableRule: rule };
     }
     if (best) return best;
   }
