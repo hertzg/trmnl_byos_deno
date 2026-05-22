@@ -3,8 +3,8 @@ import type { DeviceReport } from "../../src/plugin/plugin.ts";
 import { BatteryIndicator } from "../ds/BatteryIndicator.tsx";
 import { Content } from "../ds/Content.tsx";
 import { Layout } from "../ds/Layout.tsx";
+import { Page } from "../ds/Page.tsx";
 import { StatusBar } from "../ds/StatusBar.tsx";
-import { Styles } from "../ds/Styles.tsx";
 import type { Board } from "./bvg/board_assembler.ts";
 import BoardView from "./bvg/Board.tsx";
 import { formatKaDate } from "./bvg/time.ts";
@@ -36,29 +36,21 @@ export default function DefaultTemplate({ board, device, t }: FrameData) {
   // e-ink panel to repaint every cycle for no information gain — battery
   // drain. Pure static chrome now; rows carry their own timestamps.
   return (
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>trmnl-byos-deno</title>
-        <Styles />
-        <link rel="stylesheet" href="/assets/style.css" />
-      </head>
-      <body>
-        <Layout>
-          <Content>
-            <BoardView board={board} />
-          </Content>
-          <StatusBar position="bottom">
-            <span class="title-bar__title">trmnl-byos-deno</span>
-            <span class="title-bar__date">{formatDate(t)}</span>
-            <span class="title-bar__instance">ტრანსპორტი</span>
-            <BatteryIndicator
-              value={device?.batteryPercent ?? null}
-              voltage={device?.batteryVoltage}
-            />
-          </StatusBar>
-        </Layout>
-      </body>
-    </html>
+    <Page title="trmnl-byos-deno" stylesheet="/assets/style.css">
+      <Layout>
+        <Content>
+          <BoardView board={board} />
+        </Content>
+        <StatusBar position="bottom">
+          <span class="title-bar__title">trmnl-byos-deno</span>
+          <span class="title-bar__date">{formatDate(t)}</span>
+          <span class="title-bar__instance">ტრანსპორტი</span>
+          <BatteryIndicator
+            value={device?.batteryPercent ?? null}
+            voltage={device?.batteryVoltage}
+          />
+        </StatusBar>
+      </Layout>
+    </Page>
   );
 }
