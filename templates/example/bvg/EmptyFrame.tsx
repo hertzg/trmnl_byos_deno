@@ -11,7 +11,7 @@
 // number stays fresh against `now` — the assembler's `fetchedAt` and the
 // caller's render `now` may differ.
 
-import { EmptyState } from "../../ds/EmptyState.tsx";
+import { EmptyState } from "@ds";
 import type { Board } from "./board_assembler.ts";
 import { formatHHMM, formatKaWeekday } from "./time.ts";
 

@@ -13,6 +13,8 @@
   "unstable": ["raw-imports"],
   "imports": {
     "@astral/astral": "jsr:@astral/astral@^0.5.4",
+    "@ds": "./templates/ds/mod.ts",
+    "@ds/": "./templates/ds/",
     "@hertzg/crc": "jsr:@hertzg/crc@^0.2.0",
     "@img/png": "jsr:@img/png@^0.1.6",
     "@std/assert": "jsr:@std/assert@^1.0.0",

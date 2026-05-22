@@ -6,7 +6,7 @@ import { Content } from "./Content.tsx";
 import { Grid } from "./Grid.tsx";
 import { Flex } from "./Flex.tsx";
 import { Columns } from "./Columns.tsx";
-import { Styles } from "./Styles.tsx";
+import { Styles } from "../styles/Styles.tsx";
 
 Deno.test("Layout default has ds-layout, no bleed modifier, no inline padding", () => {
   const html = renderToString(<Layout>x</Layout>);

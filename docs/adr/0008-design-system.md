@@ -41,8 +41,11 @@ assets" shape.
 ## Decision
 
 Build a **DesignSystem** at `templates/ds/`. TS-native JSX components + plain CSS,
-framework-_informed_ but not framework-_adopted_. Every component is its own import; styles ship via
-a `<Styles />` component the Plugin author renders explicitly in `<head>`.
+framework-_informed_ but not framework-_adopted_. Components are grouped into per-area folders
+(`layout/`, `typography/`, `item/`, `chrome/`, `page/`, `styles/`); each is still its own import,
+and a `templates/ds/mod.ts` barrel re-exports them all under the `@ds` import-map alias so a Plugin
+can treat the DesignSystem as a single importable package. Styles ship via a `<Styles />` component
+the Plugin author renders explicitly in `<head>`.
 
 ### Surface
 
