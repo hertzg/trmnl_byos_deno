@@ -9,8 +9,8 @@ general-purpose product. Before doing substantive work in this repository, read:
   Conductor, Renderer, Image, Current Result, Current Image) and how the terms relate.
 - [docs/adr/](docs/adr/) — architectural decisions in their current target form. Clean-slate; old
   ADRs are superseded.
-- [docs/migration.md](docs/migration.md) — what's moving from the older `template`/`onDisplay`
-  shape to the **Plugin**/`run`/`Result` model.
+- [docs/migration.md](docs/migration.md) — what's moving from the older `template`/`onDisplay` shape
+  to the **Plugin**/`run`/`Result` model.
 - [docs/plugin-authoring.md](docs/plugin-authoring.md) — practical guide for writing a Plugin
   (factory pattern, two mental modes for `run`, common traps, worked example, composition layout).
 
