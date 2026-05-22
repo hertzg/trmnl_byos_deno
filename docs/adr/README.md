@@ -21,5 +21,5 @@ Each ADR follows:
 - **Decision** — what we're doing.
 - **Consequences** — what becomes true / easier / harder as a result.
 
-ADRs in this project reflect current intent. When intent shifts, the relevant ADR is rewritten
-and the prior version stays in git history.
+ADRs in this project reflect current intent. When intent shifts, the relevant ADR is rewritten and
+the prior version stays in git history.

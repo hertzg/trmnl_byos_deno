@@ -35,6 +35,7 @@
   "fmt": {
     "lineWidth": 100,
     "indentWidth": 2,
-    "singleQuote": false
+    "singleQuote": false,
+    "exclude": ["**/*.html", "templates/example/assets/"]
   }
 }

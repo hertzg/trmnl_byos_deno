@@ -1,9 +1,5 @@
 import type { Plugin, Result, RunContext } from "../../src/plugin/plugin.ts";
-import {
-  type Board,
-  boardValidForSeconds,
-  createBoardAssembler,
-} from "./bvg/board_assembler.ts";
+import { type Board, boardValidForSeconds, createBoardAssembler } from "./bvg/board_assembler.ts";
 import { ROUTES } from "./bvg/routes.ts";
 import DefaultTemplate, { type FrameData } from "./root.tsx";
 

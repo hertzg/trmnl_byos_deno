@@ -1,12 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import { collectWindow, mapJourneysResponse } from "./journey_client.ts";
-import type {
-  Candidate,
-  FeedError,
-  FetchPage,
-  JourneyPage,
-  PageAnchor,
-} from "./journey_client.ts";
+import type { Candidate, FeedError, FetchPage, JourneyPage, PageAnchor } from "./journey_client.ts";
 
 // Minimal HAFAS journeys fixture: one journey with one transit leg (S5).
 // Captured shape from https://v6.bvg.transport.rest/journeys

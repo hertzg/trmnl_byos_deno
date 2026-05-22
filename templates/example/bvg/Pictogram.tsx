@@ -40,9 +40,7 @@ function TransitBadge({ leg }: { leg: TransitLeg }) {
 export default function Pictogram({ legs }: { legs: readonly Leg[] }) {
   // Drop zero-minute walking legs — typical for back-to-back same-station
   // transfers in BVG's response. A 0-minute walk is visual noise.
-  const visibleLegs = legs.filter((l) =>
-    l.kind !== "walking" || l.durationMinutes > 0
-  );
+  const visibleLegs = legs.filter((l) => l.kind !== "walking" || l.durationMinutes > 0);
   if (visibleLegs.length === 0) return <span class="row__pictogram" />;
 
   // Walking-only special case: render a single figure + N badge.
