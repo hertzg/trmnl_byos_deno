@@ -254,13 +254,20 @@ Deno.test("mapJourneysResponse: walking leg carries an empty realtime annotation
 // the whole visibility window. These tests drive that walk with a scripted
 // `FetchPage` — no network.
 
-// `collectWindow` only reads `departure` / `arrival`; an empty leg list keeps
-// these fixtures focused on the pagination walk itself.
-function candidate(departureIso: string, arrivalIso: string): Candidate {
+// `collectWindow` only reads `departure` / `arrival` / `refreshToken`; an empty
+// leg list keeps these fixtures focused on the pagination walk itself.
+// `refreshToken` is optional — omit it to exercise the departure+arrival
+// fallback dedup key, pass it to exercise the stable-identity dedup key.
+function candidate(
+  departureIso: string,
+  arrivalIso: string,
+  refreshToken?: string,
+): Candidate {
   return {
     legs: [],
     departure: new Date(departureIso),
     arrival: new Date(arrivalIso),
+    refreshToken,
   };
 }
 
@@ -345,6 +352,8 @@ Deno.test("collectWindow keeps earlier pages when a later page fails", async () 
   assertEquals(result.length, 1);
 });
 
+// These fixtures carry no `refreshToken`, so this exercises the
+// departure+arrival fallback dedup key.
 Deno.test("collectWindow dedupes a journey that straddles a page boundary", async () => {
   const shared = candidate("2026-05-25T08:00:00+02:00", "2026-05-25T08:50:00+02:00");
   const { fetchPage } = scriptedPages([
@@ -354,6 +363,33 @@ Deno.test("collectWindow dedupes a journey that straddles a page boundary", asyn
       shared,
     ),
     page(null, shared, candidate("2026-05-25T06:55:00+02:00", "2026-05-25T07:40:00+02:00")),
+  ]);
+  const result = await collectWindow(fetchPage, CLOSES_AT, NOW);
+  assert(Array.isArray(result));
+  assertEquals(result.length, 3); // the shared journey is counted once
+});
+
+Deno.test("collectWindow dedupes by refreshToken when realtime times shift across pages", async () => {
+  // Same journey on two adjacent pages, but its realtime-adjusted departure
+  // shifted between the two `/journeys` fetches (a delay landed). The
+  // departure+arrival key would differ; `refreshToken` still collapses them.
+  const onPage1 = candidate(
+    "2026-05-25T08:00:00+02:00",
+    "2026-05-25T08:50:00+02:00",
+    "T$journey-42",
+  );
+  const onPage2 = candidate(
+    "2026-05-25T08:03:00+02:00",
+    "2026-05-25T08:53:00+02:00",
+    "T$journey-42",
+  );
+  const { fetchPage } = scriptedPages([
+    page(
+      "ref-1",
+      candidate("2026-05-25T08:30:00+02:00", "2026-05-25T09:25:00+02:00"),
+      onPage1,
+    ),
+    page(null, onPage2, candidate("2026-05-25T06:55:00+02:00", "2026-05-25T07:40:00+02:00")),
   ]);
   const result = await collectWindow(fetchPage, CLOSES_AT, NOW);
   assert(Array.isArray(result));

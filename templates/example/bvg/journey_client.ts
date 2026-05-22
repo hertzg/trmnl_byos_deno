@@ -22,7 +22,7 @@ const FETCH_TIMEOUT_MS = 10_000;
 // just nudges each page slightly fuller.
 const RESULTS_PER_REQUEST = 10;
 
-// Safety cap on backward pagination. At ≈6 journeys/page this still reaches
+// Safety cap on backward pagination. At ≈3–6 journeys/page this still reaches
 // several hours back — far past any realistic visibility window — so hitting
 // it means the feed is misbehaving, not that the window is genuinely large.
 const MAX_PAGES = 12;
@@ -101,6 +101,11 @@ export type Candidate = {
   // Convenience: first leg's departure / last leg's arrival.
   departure: Date;
   arrival: Date;
+  // HAFAS's stable per-journey identity. Used to dedup a journey that
+  // surfaces on two adjacent pages even if its realtime times shifted
+  // between the fetches. Absent on candidates not sourced from HAFAS
+  // (e.g. test fixtures) — dedup falls back to departure+arrival then.
+  refreshToken?: string;
 };
 
 export type FeedError = {
@@ -146,6 +151,9 @@ type HafasLeg = {
 
 type HafasJourney = {
   legs?: HafasLeg[];
+  // HAFAS's stable per-journey identity, opaque to us. Carried onto the
+  // mapped `Candidate` so cross-page dedup survives realtime time shifts.
+  refreshToken?: string | null;
 };
 
 type HafasJourneysResponse = {
@@ -238,6 +246,7 @@ function mapJourney(raw: HafasJourney): Candidate | null {
     legs,
     departure: legs[0].departure,
     arrival: legs[legs.length - 1].arrival,
+    refreshToken: raw.refreshToken ?? undefined,
   };
 }
 
@@ -301,8 +310,10 @@ export async function collectWindow(
 ): Promise<Candidate[] | FeedError> {
   const collected: Candidate[] = [];
   // Pagination pages are non-overlapping by design, but a journey straddling a
-  // page boundary can surface twice. First-leg departure + last-leg arrival
-  // identifies a journey closely enough for the board's purposes.
+  // page boundary can surface twice. HAFAS's `refreshToken` is the primary
+  // dedup key — a stable per-journey identity that survives realtime time
+  // shifts between the two fetches. Candidates without one (e.g. test
+  // fixtures) fall back to first-leg departure + last-leg arrival.
   const seen = new Set<string>();
   let anchor: PageAnchor = { kind: "arrival", date: latestArrivalDate };
 
@@ -316,7 +327,8 @@ export async function collectWindow(
     let pageEarliestDeparture = Infinity;
     for (const c of result.candidates) {
       pageEarliestDeparture = Math.min(pageEarliestDeparture, c.departure.getTime());
-      const key = `${c.departure.toISOString()}|${c.arrival.toISOString()}`;
+      const key = c.refreshToken ??
+        `${c.departure.toISOString()}|${c.arrival.toISOString()}`;
       if (seen.has(key)) continue;
       seen.add(key);
       collected.push(c);
