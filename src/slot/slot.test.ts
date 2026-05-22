@@ -105,6 +105,19 @@ Deno.test("clear() returns the slot to empty (display and image both null again)
   assertEquals(await slot.image("abc123"), null);
 });
 
+Deno.test("display() surfaces the entry's cachedAt unchanged", () => {
+  const slot = createSlot({ now: fixedNow });
+  const cachedAt = fixedNow().subtract(Temporal.Duration.from({ hours: 1 }));
+  slot.put(makeEntry({
+    cachedAt,
+    bundle: makeBundle(Temporal.Duration.from({ hours: 2 })),
+  }));
+
+  const display = slot.display();
+
+  assertEquals(display?.cachedAt.toString(), cachedAt.toString());
+});
+
 Deno.test("multiple image(id) calls share the stored promise (no re-render)", async () => {
   const slot = createSlot({ now: fixedNow });
   const bytes = new Uint8Array([1, 2, 3]);
