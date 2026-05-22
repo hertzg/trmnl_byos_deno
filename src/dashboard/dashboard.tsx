@@ -19,6 +19,10 @@ export type TimelineState = {
 
 export type DashboardProps = {
   now: Temporal.ZonedDateTime;
+  // The instant the page is currently viewing — seeds the "jump to t" input.
+  // On a plain GET / it equals `now`; on a ?t= / ?date= load it is the
+  // resolved viewed instant, which may differ from the real clock.
+  displayed: Temporal.ZonedDateTime;
   // `null` when the Slot is empty after a refill attempt (e.g. the
   // Conductor's error path itself failed) — the page surfaces that state
   // instead of embedding a broken /image URL.
@@ -726,7 +730,7 @@ function TraceStrip({ trace }: { trace: RenderTrace | null }) {
 }
 
 export default function Dashboard(props: DashboardProps) {
-  const { now, identity, refreshIn, trace, timeline } = props;
+  const { now, displayed, identity, refreshIn, trace, timeline } = props;
   // Embed the timeline state for the client script. `<` is escaped so a tz
   // id or identity can never break out of the inline <script>.
   const stateJson = JSON.stringify(timeline).replace(/</g, "\\u003c");
@@ -770,7 +774,7 @@ export default function Dashboard(props: DashboardProps) {
               <input
                 type="text"
                 name="t"
-                value={toScrubInputValue(now)}
+                value={toScrubInputValue(displayed)}
                 size={42}
               />
               <button type="submit">go</button>

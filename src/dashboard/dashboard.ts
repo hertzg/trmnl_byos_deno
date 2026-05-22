@@ -44,13 +44,14 @@ export function createDashboard(deps: DashboardDeps): Hono {
         scrubMs: instant.epochMilliseconds,
         cache: display === null ? null : {
           cachedAtMs: display.cachedAt.epochMilliseconds,
-          expiresMs: display.cachedAt.add(display.refreshIn).epochMilliseconds,
+          expiresMs: now.add(display.refreshIn).epochMilliseconds,
           identity: display.identity,
         },
       };
       const page = renderToString(
         Dashboard({
-          now: instant,
+          now,
+          displayed: instant,
           identity: display?.identity ?? null,
           refreshIn: display?.refreshIn ?? null,
           trace: deps.telemetry.latest(),

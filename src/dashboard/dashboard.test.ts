@@ -549,6 +549,33 @@ Deno.test("GET / with a primed Slot embeds a non-null __DASH__.cache", async () 
   assertEquals(cache!.identity, "cache-id-xyz");
 });
 
+Deno.test("GET / embeds the cached window's true expiry (cachedAt + validity), not the shrinking remaining time", async () => {
+  // refreshIn shrinks as the page ages; expiresMs must stay pinned to the
+  // entry's absolute expiry (cachedAt + validity), not cachedAt + refreshIn.
+  let clock = T0;
+  const { app } = wire({
+    now: () => clock,
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+  });
+  // Cold-fill the Slot at T0 — the entry's cachedAt is T0, expiry T0 + 5 min.
+  await (await app.request("/api/display")).body?.cancel();
+  // Two minutes pass; the entry is still valid (expiry is 5 min out).
+  clock = clock.add(Temporal.Duration.from({ minutes: 2 }));
+
+  const html = await (await app.request("/")).text();
+  const dash = extractDash(html);
+  const cache = dash.cache as Record<string, unknown>;
+
+  assertEquals(cache.cachedAtMs, T0.epochMilliseconds);
+  assertEquals(
+    cache.expiresMs,
+    T0.add(fiveMin).epochMilliseconds,
+    "expiresMs must be cachedAt + validity, independent of how long ago it was cached",
+  );
+});
+
 Deno.test("GET / with an empty Slot embeds __DASH__.cache as null", async () => {
   // The no-op conductorApp never fills the Slot, so display() stays null
   // and the timeline state reflects that with cache: null.
