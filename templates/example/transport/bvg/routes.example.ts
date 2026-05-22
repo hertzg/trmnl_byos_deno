@@ -1,7 +1,7 @@
 // Starter template for the gitignored `routes.ts`. Copy this file to
 // `routes.ts` and edit it for your own commute:
 //
-//   cp templates/example/bvg/routes.example.ts templates/example/bvg/routes.ts
+//   cp templates/example/transport/bvg/routes.example.ts templates/example/transport/bvg/routes.ts
 //
 // Each `Preference` describes one commute intent (who, where, when). The
 // configuration is a list of preferences that share the screen — interleaved
