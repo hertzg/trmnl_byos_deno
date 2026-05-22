@@ -77,6 +77,16 @@ Deno.test("pickPhoto: mid-interval t stays on the same photo as the boundary sta
   assertEquals(pickPhoto(PHOTOS, zdt(INTERVAL_MS + midInterval)), PHOTOS[1]);
 });
 
+Deno.test("pickPhoto: negative epoch returns a valid PHOTOS member (Euclidean modulo)", () => {
+  // slot for t=-1: Math.floor(-1 / INTERVAL_MS) = -1
+  // Euclidean index: ((-1 % 3) + 3) % 3 = ((-1) + 3) % 3 = 2 % 3 = 2 → PHOTOS[2]
+  assertEquals(pickPhoto(PHOTOS, zdt(-1)), PHOTOS[2]);
+
+  // slot for t=-INTERVAL_MS: Math.floor(-INTERVAL_MS / INTERVAL_MS) = -1
+  // Euclidean index: same as above → PHOTOS[2]
+  assertEquals(pickPhoto(PHOTOS, zdt(-INTERVAL_MS)), PHOTOS[2]);
+});
+
 // ---------------------------------------------------------------------------
 // rotationValidity
 // ---------------------------------------------------------------------------
@@ -123,4 +133,21 @@ Deno.test("rotationValidity: validity is always positive (> 0)", () => {
       );
     }
   }
+});
+
+Deno.test("rotationValidity: negative epoch one ms before boundary returns 1 ms", () => {
+  // t = -1: slot = Math.floor(-1 / INTERVAL_MS) = -1
+  // nextBoundaryMs = (-1 + 1) * INTERVAL_MS = 0
+  // msUntilNext = 0 - (-1) = 1
+  assertEquals(rotationValidity(zdt(-1)).total({ unit: "milliseconds" }), 1);
+});
+
+Deno.test("rotationValidity: negative epoch at exact boundary returns full interval", () => {
+  // t = -INTERVAL_MS: slot = Math.floor(-INTERVAL_MS / INTERVAL_MS) = -1
+  // nextBoundaryMs = (-1 + 1) * INTERVAL_MS = 0
+  // msUntilNext = 0 - (-INTERVAL_MS) = INTERVAL_MS
+  assertEquals(
+    rotationValidity(zdt(-INTERVAL_MS)).total({ unit: "milliseconds" }),
+    INTERVAL_MS,
+  );
 });

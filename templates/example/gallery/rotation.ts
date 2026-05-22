@@ -18,7 +18,11 @@ export function pickPhoto(
   t: Temporal.ZonedDateTime,
 ): string | null {
   if (photos.length === 0) return null;
-  const index = Math.floor(t.epochMilliseconds / intervalMs) % photos.length;
+  const n = photos.length;
+  // JS `%` is sign-preserving, so a negative epoch yields a negative remainder
+  // and an out-of-bounds index.  The `((x % n) + n) % n` form is a Euclidean
+  // modulo that keeps the index in [0, n) for any `t`, including pre-1970.
+  const index = ((Math.floor(t.epochMilliseconds / intervalMs) % n) + n) % n;
   return photos[index];
 }
 
@@ -26,8 +30,14 @@ export function pickPhoto(
  * How long the current photo is still the correct answer — the milliseconds
  * remaining until the next rotation boundary.  Carries as `Result.validity` so
  * the Slot stays warm until the swap instant and no sooner.
+ *
+ * Uses the next-boundary form so the result is always in (0, intervalMs] for
+ * any `t`, including pre-epoch (negative epochMilliseconds) values reachable
+ * via a dashboard scrub.
  */
 export function rotationValidity(t: Temporal.ZonedDateTime): Temporal.Duration {
-  const msUntilNext = intervalMs - (t.epochMilliseconds % intervalMs);
+  const slot = Math.floor(t.epochMilliseconds / intervalMs);
+  const nextBoundaryMs = (slot + 1) * intervalMs;
+  const msUntilNext = nextBoundaryMs - t.epochMilliseconds;
   return Temporal.Duration.from({ milliseconds: msUntilNext });
 }
