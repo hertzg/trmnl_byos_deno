@@ -1,5 +1,5 @@
 /** @jsxImportSource hono/jsx */
-import type { DeviceReport } from "../../src/plugin/plugin.ts";
+import type { DeviceReport } from "../../../src/plugin/plugin.ts";
 import { BatteryIndicator, Content, Layout, Page, StatusBar } from "@ds";
 import type { Board } from "./bvg/board_assembler.ts";
 import BoardView from "./bvg/Board.tsx";
