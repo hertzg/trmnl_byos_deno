@@ -86,11 +86,6 @@ const css = `
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
   }
   form button { font: inherit; padding: 6px 12px; border: 1px solid #111; background: #111; color: #fff; cursor: pointer; }
-  .image-frame {
-    background: #fff; border: 1px solid #ddd; padding: 12px;
-    display: inline-block; margin-bottom: 16px;
-  }
-  .image-frame img { display: block; max-width: 100%; image-rendering: pixelated; }
   table.meta {
     border-collapse: collapse; width: 100%; font-size: 13px;
     background: #fff; border: 1px solid #ddd; margin-bottom: 16px;
@@ -104,11 +99,6 @@ const css = `
   table.meta .muted { color: #888; font-family: inherit; font-style: italic; }
   p.head { margin: 8px 0 16px; font-size: 12px; color: #555; }
   p.head code { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #111; }
-  p.notice {
-    margin: 0 0 16px; padding: 8px 12px; font-size: 13px;
-    background: #fffbe6; border: 1px solid #f0c040; color: #663d00;
-  }
-  p.notice code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
   section.block { margin: 0 0 24px; }
   section.block > h2 {
     font-size: 14px; font-weight: 600; margin: 0 0 4px; color: #333;
@@ -270,13 +260,27 @@ const css = `
 
   /* ---- main preview — ephemeral render ---- */
   .preview-row { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
-  .preview-pane { position: relative; }
+  .preview-pane { position: relative; flex: 1 1 100%; }
   .preview-frame {
     position: relative; background: #fff; border: 1px solid #ddd; padding: 10px;
-    width: 460px; height: 276px; box-sizing: content-box;
+    box-sizing: border-box; min-height: 160px;
   }
   .preview-frame.stale { border-style: dashed; border-color: #bbb; }
-  .preview-frame img { display: block; width: 460px; height: 276px; image-rendering: pixelated; }
+  /* No fixed aspect — the rendered Image sizes the frame to its own
+     intrinsic ratio (the device profile's, e.g. trmnl-x 4:3). */
+  .preview-frame img {
+    display: block; width: 100%; height: auto;
+    image-rendering: pixelated; cursor: zoom-in;
+  }
+  /* Hover loupe — a floating window onto the rendered Image at its native
+     1:1 resolution, since the inline preview is downscaled to fit. */
+  .preview-loupe {
+    position: fixed; display: none; z-index: 20; pointer-events: none;
+    width: 400px; height: 300px;
+    border: 1px solid #111; background-color: #fff; background-repeat: no-repeat;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); image-rendering: pixelated;
+  }
+  .preview-loupe.shown { display: block; }
   .spinner-veil {
     position: absolute; inset: 10px; background: #ffffffcc;
     display: none; place-items: center; flex-direction: column; gap: 9px;
@@ -379,7 +383,8 @@ const js = `
   var cacheZone = $("cache-zone"), cacheCap = $("cache-cap");
   var nowMark = $("now-mark"), nowLabel = $("now-label");
   var vBracket = $("valid-bracket"), vCap = $("valid-cap");
-  var previewFrame = $("preview-frame"), previewImg = $("preview-img");
+  var previewFrame = $("preview-frame"), previewImg = $("preview-img"),
+      loupe = $("preview-loupe");
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function spanMs() { return Math.min(SPAN_MS[state.spanKey], dayLen); }
@@ -670,6 +675,34 @@ const js = `
     doRender(state.scrubMs);
   });
 
+  // ---- preview loupe -------------------------------------------------
+  // Hovering the preview floats a fixed box showing the region under the
+  // cursor at the rendered Image's native 1:1 resolution. The inline
+  // preview is downscaled to fit the column, so the loupe is the only way
+  // to inspect the real e-ink dither pixel-for-pixel.
+  function moveLoupe(e) {
+    if (e.pointerType === "touch") return; // no hover affordance on touch
+    var nw = previewImg.naturalWidth, nh = previewImg.naturalHeight;
+    if (!nw) return; // nothing rendered yet
+    loupe.classList.add("shown"); // display:block so clientWidth is measurable
+    var lw = loupe.clientWidth, lh = loupe.clientHeight;
+    var fr = previewFrame.getBoundingClientRect();
+    var fx = clamp((e.clientX - fr.left - previewImg.offsetLeft) / previewImg.offsetWidth, 0, 1);
+    var fy = clamp((e.clientY - fr.top - previewImg.offsetTop) / previewImg.offsetHeight, 0, 1);
+    // 1:1 native pixels; background-position centres the cursor's point.
+    loupe.style.backgroundImage = "url(" + previewImg.src + ")";
+    loupe.style.backgroundSize = nw + "px " + nh + "px";
+    loupe.style.backgroundPosition =
+      (lw / 2 - fx * nw) + "px " + (lh / 2 - fy * nh) + "px";
+    // Float just off the cursor, clamped to stay on screen.
+    loupe.style.left = clamp(e.clientX + 24, 8, window.innerWidth - lw - 8) + "px";
+    loupe.style.top = clamp(e.clientY + 24, 8, window.innerHeight - lh - 8) + "px";
+  }
+  previewFrame.addEventListener("pointermove", moveLoupe);
+  previewFrame.addEventListener("pointerleave", function () {
+    loupe.classList.remove("shown");
+  });
+
   // ---- boot ----------------------------------------------------------
   state.winStart = state.scrubMs - spanMs() / 2;
   relayout();
@@ -848,6 +881,7 @@ export default function Dashboard(props: DashboardProps) {
                   <span id="preview-error-text">render failed</span>
                 </div>
               </div>
+              <div class="preview-loupe" id="preview-loupe"></div>
             </div>
             <div class="preview-meta">
               <div class="pm-row">
@@ -884,17 +918,6 @@ export default function Dashboard(props: DashboardProps) {
         <form method="post" action="/dashboard/clear">
           <button type="submit">clear cache</button>
         </form>
-        {identity !== null
-          ? (
-            <div class="image-frame">
-              <img src={`/image/${identity}.png`} alt="current Image" />
-            </div>
-          )
-          : (
-            <p class="notice">
-              Slot is empty — Conductor refill failed. Try reloading the page.
-            </p>
-          )}
         <table class="meta">
           <tbody>
             <tr>
