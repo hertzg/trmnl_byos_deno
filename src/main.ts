@@ -1,27 +1,15 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
-import {
-  ACTIVE_PROFILE,
-  CDP_URL,
-  FRIENDLY_ID,
-  LOOPBACK_HOST,
-  PLUGIN_DIR,
-  PLUGIN_SEED_DIR,
-  PORT,
-} from "./config.ts";
+import { ACTIVE_PROFILE, CDP_URL, FRIENDLY_ID, LOOPBACK_HOST, PLUGIN_DIR, PORT } from "./config.ts";
 import { createConductor } from "./conductor/conductor.ts";
 import ErrorView from "./conductor/error-view.tsx";
 import { createDashboard } from "./dashboard/dashboard.ts";
 import { createFetchPngFromUrl, createRenderer } from "./render/renderer.ts";
-import { seedPluginDir } from "./plugin/loader.ts";
 import { createPluginManager } from "./plugin/plugin-manager.ts";
 import { createSlot } from "./slot/slot.ts";
 import { createTelemetry } from "./telemetry/telemetry.ts";
 
 async function main() {
-  if (PLUGIN_SEED_DIR) {
-    await seedPluginDir(PLUGIN_DIR, PLUGIN_SEED_DIR);
-  }
   const pluginManager = await createPluginManager({ pluginDir: PLUGIN_DIR });
   console.log(`[plugin] loaded from ${PLUGIN_DIR}`);
 

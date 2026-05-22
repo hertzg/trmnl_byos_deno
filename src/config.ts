@@ -20,11 +20,6 @@ export const LOOPBACK_HOST = env("LOOPBACK_HOST", "host.docker.internal");
 
 export const PLUGIN_DIR = resolve(env("PLUGIN_DIR", "./templates/example"));
 
-// Optional bundled-seed dir (baked into the Docker image). When set and
-// PLUGIN_DIR is empty, the seed is copied in before loading.
-const seedRaw = env("PLUGIN_SEED_DIR", "");
-export const PLUGIN_SEED_DIR = seedRaw ? resolve(seedRaw) : "";
-
 export const DEVICE_ID = env("DEVICE_ID", "trmnl-x");
 
 export const ACTIVE_PROFILE: DeviceProfile = (() => {

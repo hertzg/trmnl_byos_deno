@@ -26,10 +26,8 @@ services:
       - "127.0.0.1:9222:9222"
     volumes:
       - ./src:/app/src:cached
-      # Bind-mount the in-repo example as the runtime template. Already populated, so the
-      # boot-time seeder is a no-op here. Swap the host side to point at your own template
-      # dir (empty dirs get auto-seeded with the bundled example on first start).
-      - ./templates/example:/app/template:cached
+      # Bind-mount the bundled Plugin + DesignSystem so dev edits hot-reload.
+      - ./templates:/app/templates:cached
     environment:
       PUBLIC_URL_ORIGIN: "${PUBLIC_URL_ORIGIN:-http://127.0.0.1:3000}"
       # CDP shares this container's network namespace, so localhost reaches it.
@@ -46,7 +44,7 @@ services:
       - deno
       - run
       - --allow-all
-      - --watch=src,/app/template
+      - --watch=src,templates
       - src/main.ts
 
   chrome:
