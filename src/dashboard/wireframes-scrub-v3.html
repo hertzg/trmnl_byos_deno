@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>dashboard scrub — wireframe v3 · slimmed down</title>
+    <style>
+      /* ----------------------------------------------------------------
+         WIREFRAME — static mockup, not wired to the Server. Vanilla JS.
+         v3: slimmed down — monochrome marks, slim playhead, render on
+         release only. The cached band keeps one colour to convey state.
+         ---------------------------------------------------------------- */
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: #f4f4f4; color: #111;
+        font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+        padding: 28px; max-width: 1080px; margin: 0 auto;
+      }
+      h1 { font-size: 20px; margin: 0 0 6px; letter-spacing: -0.01em; }
+      p.lead { color: #555; margin: 0 0 8px; max-width: 86ch; font-size: 13px; }
+      p.note { color: #777; margin: 0 0 16px; font-size: 12px; }
+      code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+      p.lead code, p.note code { color: #111; }
+
+      /* ---- control bar ---- */
+      .wf-controls {
+        display: flex; gap: 22px; flex-wrap: wrap; align-items: center;
+        background: #ececec; border: 1px solid #ddd; padding: 10px 14px;
+        border-radius: 5px 5px 0 0; font-size: 13px;
+      }
+      .wf-controls .grp { display: flex; align-items: center; gap: 6px; }
+      .wf-controls .grp > span { color: #888; margin-right: 2px; }
+      .wf-controls button {
+        font: inherit; padding: 4px 10px; border: 1px solid #bbb;
+        background: #fff; color: #333; cursor: pointer; border-radius: 4px;
+      }
+      .wf-controls button.on { background: #111; color: #fff; border-color: #111; }
+      .wf-controls input[type="date"] {
+        font: inherit; padding: 3px 6px; border: 1px solid #bbb; border-radius: 4px;
+        background: #fff; color: #111;
+      }
+
+      /* ---- dashboard mock (matches src/dashboard/dashboard.tsx) ---- */
+      .dash-card {
+        background: #fff; border: 1px solid #ddd; border-top: 0;
+        padding: 22px; border-radius: 0 0 5px 5px;
+      }
+      .dash-card h2.dash-title { margin: 0 0 4px; font-size: 19px; }
+      p.head { margin: 0 0 18px; font-size: 12px; color: #555; }
+      p.head code { color: #111; }
+      .tag {
+        display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+        text-transform: uppercase; padding: 1px 5px; border-radius: 3px; vertical-align: 2px;
+        background: #ededed; color: #888;
+      }
+      section.block { margin: 0 0 22px; }
+      section.block > h3 {
+        font-size: 12px; font-weight: 600; margin: 0 0 4px; color: #333;
+        letter-spacing: 0.02em; text-transform: uppercase;
+      }
+      .sub { font-size: 12px; color: #999; margin: 0 0 8px; }
+
+      /* ===================== day overview strip ===================== */
+      .overview {
+        position: relative; height: 34px; margin: 2px 4px 0;
+        cursor: grab; touch-action: none; user-select: none;
+      }
+      .overview.grabbing { cursor: grabbing; }
+      .ov-rail { position: absolute; left: 0; right: 0; top: 18px; height: 1px; background: #ccc; }
+      .ov-tick { position: absolute; top: 15px; width: 1px; height: 7px; background: #e0e0e0; }
+      .ov-tick-label {
+        position: absolute; top: 23px; font-size: 9px; color: #c4c4c4;
+        transform: translateX(-50%); white-space: nowrap;
+      }
+      .ov-now { position: absolute; top: 12px; height: 13px; width: 1.5px; background: #111; }
+      .ov-cache {
+        position: absolute; top: 14px; height: 9px; background: #f0dcb0;
+        border: 1px solid #c2913a; box-sizing: border-box;
+      }
+      .ov-viewport {
+        position: absolute; top: 8px; height: 21px; box-sizing: border-box;
+        background: #1118; opacity: 0.08; pointer-events: none;
+      }
+      .ov-viewport-frame {
+        position: absolute; top: 8px; height: 21px; box-sizing: border-box;
+        border: 1px solid #888; pointer-events: none;
+      }
+
+      /* ===================== detail scrub track ===================== */
+      .timeline-wrap { position: relative; height: 150px; margin: 4px 4px 0; user-select: none; }
+      .track {
+        position: absolute; left: 0; right: 0; top: 30px; height: 92px;
+        cursor: pointer; touch-action: none;
+      }
+      .rail { position: absolute; left: 0; right: 0; top: 36px; height: 1.5px; background: #111; }
+      .rail-cap { position: absolute; top: 31px; width: 1.5px; height: 11px; background: #111; }
+      .rail-cap.l { left: 0; }
+      .rail-cap.r { right: 0; }
+
+      .hour-tick { position: absolute; top: 32px; width: 1px; height: 9px; background: #ccc; }
+      .hour-label {
+        position: absolute; top: 72px; font-size: 10px; color: #aaa;
+        font-variant-numeric: tabular-nums; transform: translateX(-50%); white-space: nowrap;
+      }
+      .edge-label {
+        position: absolute; top: 110px; font-size: 11px; color: #888;
+        font-variant-numeric: tabular-nums; white-space: nowrap;
+      }
+      .edge-label.l { left: 0; }
+      .edge-label.r { right: 0; }
+      .span-label {
+        position: absolute; top: 110px; left: 50%; transform: translateX(-50%);
+        font-size: 11px; color: #bbb;
+      }
+
+      /* cached window — the one coloured band (conveys "cached") */
+      .cache-zone {
+        position: absolute; top: 30px; height: 12px; box-sizing: border-box;
+        background: #f0dcb0; border: 1px solid #c2913a;
+      }
+      .cache-zone.empty { display: none; }
+      .cache-cap {
+        position: absolute; top: 17px; font-size: 10px; color: #9a7320;
+        white-space: nowrap; transform: translateX(-50%);
+      }
+      .cache-cap.empty { display: none; }
+
+      /* now — fixed; a small solid square distinguishes it from the head */
+      .now-mark { position: absolute; top: 20px; bottom: 14px; width: 1.5px; background: #111; }
+      .now-mark::after {
+        content: ""; position: absolute; top: -5px; left: 50%; transform: translateX(-50%);
+        width: 6px; height: 6px; background: #111;
+      }
+      .now-mark.off { display: none; }
+      .now-label {
+        position: absolute; top: 2px; font-size: 10px; color: #999;
+        transform: translateX(-50%); white-space: nowrap;
+      }
+      .now-label.off { display: none; }
+
+      /* projected validity — a thin dashed underline, no fill */
+      .valid-bracket {
+        position: absolute; top: 44px; height: 8px; box-sizing: border-box;
+        border: 1px dashed #888; border-top: 0;
+      }
+      /* validity runs past the visible window — e.g. a quiet/static period */
+      .valid-bracket.beyond { border-right: 0; }
+      .valid-bracket.beyond::after {
+        content: ""; position: absolute; right: -7px; top: 0;
+        border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+        border-left: 6px solid #888;
+      }
+      .valid-cap {
+        position: absolute; top: 54px; font-size: 10px; color: #888;
+        white-space: nowrap; transform: translateX(-50%);
+      }
+
+      /* scrub head — slim playhead */
+      .scrub-head { position: absolute; top: 20px; bottom: 10px; width: 1.5px;
+        background: #111; cursor: grab; }
+      .scrub-head.grabbing { cursor: grabbing; }
+      .scrub-grip {
+        position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+        width: 0; height: 0; border-left: 6px solid transparent;
+        border-right: 6px solid transparent; border-top: 9px solid #111;
+      }
+      .scrub-label {
+        position: absolute; top: -17px; left: 50%; transform: translateX(-50%);
+        font-size: 10px; font-weight: 700; color: #111; background: #fff;
+        border: 1px solid #111; padding: 1px 4px; white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .tl-actions { margin: 8px 4px 0; display: flex; gap: 10px; align-items: center;
+        font-size: 12px; color: #999; }
+      .tl-actions button {
+        font: inherit; padding: 3px 9px; border: 1px solid #bbb; background: #fff;
+        color: #333; cursor: pointer; border-radius: 4px;
+      }
+      .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; color: #888;
+        margin: 10px 4px 0; }
+      .legend > div { display: flex; align-items: center; gap: 6px; }
+      .legend .sw { width: 20px; height: 10px; display: inline-block; box-sizing: border-box; }
+      .legend .sw.cache { background: #f0dcb0; border: 1px solid #c2913a; }
+      .legend .sw.valid { border: 1px dashed #888; border-top: 0; height: 7px; }
+      .legend .sw.now { width: 1.5px; background: #111; }
+      .legend .sw.scrub { width: 1.5px; background: #111; }
+
+      /* ---- main preview — ephemeral render ---- */
+      .preview-row { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+      .preview-pane { position: relative; }
+      .preview-frame {
+        position: relative; background: #fff; border: 1px solid #ddd; padding: 10px;
+        width: 460px; height: 276px; box-sizing: content-box;
+      }
+      .preview-frame.stale { border-style: dashed; border-color: #bbb; }
+      .preview-frame img { display: block; width: 460px; height: 276px; image-rendering: pixelated; }
+      .spinner-veil {
+        position: absolute; inset: 10px; background: #ffffffcc;
+        display: none; place-items: center; flex-direction: column; gap: 9px;
+      }
+      .preview-frame.busy .spinner-veil { display: grid; }
+      .spinner {
+        width: 26px; height: 26px; border: 3px solid #ddd; border-top-color: #111;
+        border-radius: 50%; animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .spinner-veil span { font-size: 12px; color: #888; }
+      .stale-chip {
+        position: absolute; top: 18px; left: 18px; display: none;
+        background: #444; color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 3px;
+      }
+      .preview-frame.stale .stale-chip { display: block; }
+
+      .preview-meta { font-size: 13px; min-width: 250px; }
+      .preview-meta .pm-row { margin: 0 0 8px; }
+      .preview-meta .pm-k { color: #999; font-size: 11px; text-transform: uppercase;
+        letter-spacing: 0.04em; }
+      .preview-meta .pm-v { font-family: ui-monospace, Menlo, monospace; color: #111; font-size: 13px; }
+      .preview-meta .pm-v.big { font-size: 14px; font-weight: 700; }
+      .badge {
+        display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 3px;
+        margin-top: 2px; border: 1px solid #ccc; background: #f3f3f3; color: #666;
+      }
+      .badge.match { border-color: #111; background: #fff; color: #111; font-weight: 700; }
+
+      /* ---- projected /api/display response ---- */
+      .api-resp {
+        margin: 0; background: #f6f6f6; border: 1px solid #ddd; padding: 12px 14px;
+        font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: #222;
+        white-space: pre; overflow-x: auto; line-height: 1.5; display: inline-block;
+        min-width: 360px;
+      }
+
+      /* ---- existing chrome ---- */
+      hr.div { border: 0; border-top: 1px dashed #ccc; margin: 22px 0; }
+      form { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+      form label { font-size: 13px; color: #555; }
+      form input[type="text"] {
+        font: inherit; padding: 6px 8px; border: 1px solid #bbb; background: #fff;
+        font-family: ui-monospace, Menlo, monospace;
+      }
+      form button {
+        font: inherit; padding: 6px 12px; border: 1px solid #111; background: #111;
+        color: #fff; cursor: pointer;
+      }
+      .image-frame {
+        background: #fff; border: 1px solid #ddd; padding: 10px;
+        display: inline-block; margin-bottom: 14px;
+      }
+      .image-frame img { display: block; width: 250px; height: 150px; image-rendering: pixelated; }
+      p.notice {
+        margin: 0 0 14px; padding: 8px 12px; font-size: 13px; display: inline-block;
+        background: #f6f6f6; border: 1px solid #ddd; color: #555;
+      }
+      table.meta {
+        border-collapse: collapse; width: 100%; font-size: 13px;
+        background: #fff; border: 1px solid #ddd; margin-bottom: 14px;
+      }
+      table.meta th, table.meta td { padding: 6px 12px; text-align: left; vertical-align: top; }
+      table.meta tbody th {
+        width: max-content; color: #555; font-weight: normal; white-space: nowrap;
+        border-right: 1px solid #eee;
+      }
+      table.meta tbody td { font-family: ui-monospace, Menlo, monospace; }
+      table.meta .muted { color: #888; font-family: inherit; font-style: italic; }
+      section.trace h3.trace-h {
+        font-size: 12px; font-weight: 600; margin: 0 0 8px; color: #333;
+        letter-spacing: 0.02em; text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>dashboard scrub — wireframe <em>v3</em></h1>
+    <p class="lead">
+      Slimmed down from v2. The preview is an <strong>ephemeral render</strong> at the exact
+      scrubbed instant (never serves the cached Image). Timeframe is a tunable <strong>span</strong>;
+      the scrub render's <strong>variable validity</strong> is the dashed underline. Render is
+      <strong>on release</strong>. Latency faked (<code>200–800&nbsp;ms</code>).
+    </p>
+    <p class="note">
+      Open: which <strong>span</strong> reads best (flip 1 h … 24 h). Scrub between the night and
+      a daytime shift to feel validity vary — a quiet period renders one long validity, marked
+      <strong>▸</strong> when it runs past the view. &nbsp;·&nbsp; ⚠ first client-side JS on the dashboard.
+    </p>
+
+    <!-- ============================ controls ============================ -->
+    <div class="wf-controls">
+      <div class="grp">
+        <span>date</span>
+        <input type="date" id="date-input" value="2026-05-22">
+      </div>
+      <div class="grp" id="grp-span">
+        <span>span</span>
+        <button data-v="1">1 h</button>
+        <button data-v="3" class="on">3 h</button>
+        <button data-v="6">6 h</button>
+        <button data-v="12">12 h</button>
+        <button data-v="24">24 h</button>
+      </div>
+      <div class="grp" id="grp-scenario">
+        <span>cache</span>
+        <button data-v="wide" class="on">wide</button>
+        <button data-v="sliver">sliver</button>
+        <button data-v="stale">stale</button>
+      </div>
+    </div>
+
+    <!-- ============================ dashboard mock ============================ -->
+    <div class="dash-card">
+      <h2 class="dash-title">dashboard</h2>
+      <p class="head">now: <code id="now-stamp">—</code> · timezone: <code>Europe/Berlin</code></p>
+
+      <!-- NEW: scrub timeline -->
+      <section class="block">
+        <h3>scrub timeline <span class="tag">new</span></h3>
+        <p class="sub" id="ov-sub">day overview — drag to move the detail window within the day</p>
+        <div class="overview" id="overview">
+          <div class="ov-rail"></div>
+          <div class="ov-cache" id="ov-cache"></div>
+          <div class="ov-now" id="ov-now"></div>
+          <div class="ov-viewport" id="ov-viewport"></div>
+          <div class="ov-viewport-frame" id="ov-viewport-frame"></div>
+        </div>
+
+        <p class="sub">detail — drag to scrub; the preview renders at the playhead on release</p>
+        <div class="timeline-wrap" id="tl">
+          <div class="track" id="track">
+            <div class="rail"></div>
+            <div class="rail-cap l"></div>
+            <div class="rail-cap r"></div>
+            <!-- hour ticks injected by JS -->
+            <div class="cache-zone" id="cache-zone"></div>
+            <div class="cache-cap" id="cache-cap"></div>
+            <div class="now-mark" id="now-mark"></div>
+            <div class="now-label" id="now-label">now</div>
+            <div class="valid-bracket" id="valid-bracket"></div>
+            <div class="valid-cap" id="valid-cap"></div>
+            <div class="scrub-head" id="scrub">
+              <div class="scrub-label" id="scrub-label">—</div>
+              <div class="scrub-grip"></div>
+            </div>
+          </div>
+          <div class="edge-label l" id="edge-l">—</div>
+          <div class="span-label" id="span-label">—</div>
+          <div class="edge-label r" id="edge-r">—</div>
+        </div>
+        <div class="tl-actions">
+          <button id="snap-now">↩ snap to now</button>
+          <span id="tl-hint"></span>
+        </div>
+        <div class="legend">
+          <div><span class="sw now"></span> now (fixed)</div>
+          <div><span class="sw scrub"></span> scrub playhead</div>
+          <div><span class="sw cache"></span> cached window — the Slot entry</div>
+          <div><span class="sw valid"></span> projected validity of the scrub render</div>
+        </div>
+      </section>
+
+      <!-- NEW: ephemeral preview -->
+      <section class="block">
+        <h3>main preview — ephemeral render at the playhead <span class="tag">new</span></h3>
+        <p class="sub">
+          Every scrub position renders fresh, as if the cache were invalidated at that instant.
+          The Slot is never touched.
+        </p>
+        <div class="preview-row">
+          <div class="preview-pane">
+            <div class="preview-frame" id="preview-frame">
+              <img id="preview-img" alt="ephemeral preview render">
+              <div class="stale-chip">release to render</div>
+              <div class="spinner-veil">
+                <div class="spinner"></div>
+                <span id="spinner-text">rasterizing…</span>
+              </div>
+            </div>
+          </div>
+          <div class="preview-meta">
+            <div class="pm-row">
+              <div class="pm-k">rendered at t</div>
+              <div class="pm-v big" id="pv-time">—</div>
+            </div>
+            <div class="pm-row">
+              <div class="pm-k">projected validity</div>
+              <div class="pm-v" id="pv-validity">—</div>
+            </div>
+            <div class="pm-row">
+              <div class="pm-k">render identity</div>
+              <div class="pm-v" id="pv-id">—</div>
+            </div>
+            <div class="pm-row">
+              <div class="pm-k">rasterize</div>
+              <div class="pm-v" id="pv-latency">—</div>
+            </div>
+            <div class="pm-row">
+              <span class="badge" id="pv-badge">transient render</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NEW: projected /api/display response -->
+      <section class="block">
+        <h3>GET /api/display — projected response <span class="tag">new</span></h3>
+        <p class="sub">
+          The JSON the Server would answer a Device poll at the scrub head — identity,
+          image URL, and refresh_rate (the render's validity in seconds). Ephemeral: this
+          poll is not actually performed.
+        </p>
+        <pre class="api-resp" id="api-resp">—</pre>
+      </section>
+
+      <hr class="div">
+
+      <!-- EXISTING chrome -->
+      <section class="block">
+        <h3>existing controls <span class="tag">existing</span></h3>
+        <form id="scrub-form" autocomplete="off">
+          <label for="t">t</label>
+          <input type="text" id="t" name="t" size="42" value="">
+          <button type="submit">scrub</button>
+        </form>
+        <form id="clear-form"><button type="submit">clear cache</button></form>
+      </section>
+
+      <section class="block">
+        <h3>current Image — what the Device sees <span class="tag">existing</span></h3>
+        <div id="current-image-host">
+          <div class="image-frame"><img id="current-img" alt="current Image"></div>
+        </div>
+        <table class="meta">
+          <tbody>
+            <tr><th scope="row">identity</th><td id="meta-identity">—</td></tr>
+            <tr><th scope="row">refresh in</th><td id="meta-refresh">—</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="trace block">
+        <h3 class="trace-h">last render trace <span class="tag">existing</span></h3>
+        <table class="meta">
+          <tbody>
+            <tr><th scope="row">identity</th><td id="tr-identity">—</td></tr>
+            <tr><th scope="row">ran at</th><td id="tr-ranat">—</td></tr>
+            <tr><th scope="row">plugin run</th><td id="tr-plugin">—</td></tr>
+            <tr><th scope="row">identity hash</th><td id="tr-idhash">—</td></tr>
+            <tr><th scope="row">rasterize</th><td id="tr-raster">—</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <script>
+      "use strict";
+      /* =================================================================
+         Wireframe v3 — vanilla JS, no build step, no Server.
+         Domain model (faithful to CONTEXT.md): a render at instant t yields
+         a Result whose `validity` is variable — content changes at discrete
+         interval boundaries, so a render is valid until the next one and
+         rendering later in an interval yields a shorter validity. identity
+         is stable within an interval. Scrubbing is ephemeral: it renders
+         fresh at t and never writes the Slot.
+         ================================================================= */
+      var DAY = 24 * 3600 * 1000, MIN = 60 * 1000, HOUR = 3600 * 1000;
+
+      var NOW = new Date(2026, 4, 22, 15, 20, 0).getTime();
+      var TODAY_START = new Date(2026, 4, 22, 0, 0, 0).getTime();
+
+      var SCENARIOS = {
+        wide:   { cachedAt: [14, 55, 0] },
+        sliver: { cachedAt: [15, 19, 30] },
+        stale:  { cachedAt: [14, 0, 0] },
+      };
+      var AFTERNOON = {
+        wide:   [[13,0],[13,40],[14,10],[14,50],[15,35],[16,10],[16,50]],
+        sliver: [[13,0],[13,45],[14,30],[15,0],[15,19],[15,21],[15,55],[16,30]],
+        stale:  [[13,0],[13,35],[13,55],[14,30],[15,30],[16,15],[16,55]],
+      };
+      var SPAN_MS = { 1: HOUR, 3: 3 * HOUR, 6: 6 * HOUR, 12: 12 * HOUR, 24: DAY };
+
+      var state = {
+        spanKey: 3, scenario: "wide", dateStart: TODAY_START,
+        winStart: 0, scrubMs: NOW, renderGen: 0, dragScrub: false, dragPan: false,
+      };
+
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6D2B79F5) | 0;
+          var t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      // Mock plugin's interval structure for a day. Activity varies by hour:
+      // long quiet intervals at night, frequent ones during the day. The
+      // dashboard can't know this ahead of time — it's revealed by scrubbing.
+      function buildEvents(dayStart, scenario) {
+        var ev = [dayStart];
+        var rnd = mulberry32(Math.round(dayStart / DAY) ^ 0x51ed);
+        var t = dayStart;
+        while (t < dayStart + DAY) {
+          var hour = (t - dayStart) / HOUR;
+          var gap;
+          if (hour < 6 || hour >= 22) gap = 60 + rnd() * 130;    // quiet night
+          else if (hour < 9 || hour >= 18) gap = 8 + rnd() * 18; // shoulder
+          else gap = 5 + rnd() * 26;                             // active day
+          t += gap * MIN;
+          ev.push(t);
+        }
+        var carveLo = dayStart + 13 * HOUR, carveHi = dayStart + 17 * HOUR;
+        ev = ev.filter(function (x) { return x < carveLo || x > carveHi; });
+        AFTERNOON[scenario].forEach(function (hm) {
+          ev.push(dayStart + hm[0] * HOUR + hm[1] * MIN);
+        });
+        ev.push(dayStart + DAY);
+        ev.sort(function (a, b) { return a - b; });
+        var out = [ev[0]];
+        for (var i = 1; i < ev.length; i++) if (ev[i] !== out[out.length - 1]) out.push(ev[i]);
+        return out;
+      }
+
+      var viewEvents, todayEvents;
+      var cachedAtMs, cachedExpiresMs, cachedValidityMs, cachedInterval, hasCache;
+
+      function dayIndexOf(dayStart) { return Math.round(dayStart / DAY); }
+      function intervalIndexOf(events, t) {
+        var lo = 0, hi = events.length - 1;
+        if (t <= events[0]) return 0;
+        if (t >= events[hi]) return hi - 1;
+        while (lo < hi) {
+          var mid = (lo + hi + 1) >> 1;
+          if (events[mid] <= t) lo = mid; else hi = mid - 1;
+        }
+        return lo;
+      }
+      function fakeIdentity(n) {
+        var x = Math.imul(n, 2654435761) >>> 0;
+        x ^= x >>> 15; x = Math.imul(x, 0x85ebca6b) >>> 0; x ^= x >>> 13;
+        return (x >>> 0).toString(16).padStart(8, "0");
+      }
+      function identityFor(dayStart, interval) {
+        return fakeIdentity(dayIndexOf(dayStart) * 1009 + interval);
+      }
+      function recomputeCache() {
+        todayEvents = buildEvents(TODAY_START, state.scenario);
+        var ca = SCENARIOS[state.scenario].cachedAt;
+        cachedAtMs = TODAY_START + ca[0] * HOUR + ca[1] * MIN + (ca[2] || 0) * 1000;
+        cachedInterval = intervalIndexOf(todayEvents, cachedAtMs);
+        cachedExpiresMs = todayEvents[cachedInterval + 1];
+        cachedValidityMs = cachedExpiresMs - cachedAtMs;
+        hasCache = true;
+      }
+      function cachedIdentity() { return identityFor(TODAY_START, cachedInterval); }
+      function recomputeView() { viewEvents = buildEvents(state.dateStart, state.scenario); }
+
+      var WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      var MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      function p2(n) { return n < 10 ? "0" + n : "" + n; }
+      function fmtHM(ms) { var d = new Date(ms); return p2(d.getHours()) + ":" + p2(d.getMinutes()); }
+      function fmtHMS(ms) {
+        var d = new Date(ms);
+        return p2(d.getHours()) + ":" + p2(d.getMinutes()) + ":" + p2(d.getSeconds());
+      }
+      function fmtDate(ms) {
+        var d = new Date(ms); return WD[d.getDay()] + " " + MO[d.getMonth()] + " " + d.getDate();
+      }
+      function isToday(dayStart) { return dayStart === TODAY_START; }
+      function fmtDur(ms) {
+        var s = Math.round(ms / 1000);
+        if (s < 90) return s + "s";
+        var m = Math.floor(s / 60), rs = s % 60;
+        if (m < 90) return rs ? m + "m " + rs + "s" : m + "m";
+        var h = Math.floor(m / 60);
+        return h + "h " + (m % 60) + "m";
+      }
+
+      var einkCache = {};
+      function einkURL(dayStart, interval) {
+        var key = dayStart + ":" + interval;
+        if (einkCache[key]) return einkCache[key];
+        var cv = document.createElement("canvas");
+        cv.width = 240; cv.height = 144;
+        var ctx = cv.getContext("2d");
+        var repMs = buildEvents(dayStart, state.scenario)[interval];
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 240, 144);
+        ctx.fillStyle = "#111"; ctx.fillRect(0, 0, 240, 18);
+        ctx.fillStyle = "#fff";
+        ctx.font = '700 10px ui-monospace, Menlo, monospace';
+        ctx.textBaseline = "middle"; ctx.textAlign = "left";
+        ctx.fillText("TRMNL", 8, 10);
+        ctx.textAlign = "right";
+        var hd = new Date(repMs);
+        ctx.fillText(WD[hd.getDay()] + " " + hd.getDate(), 232, 10);
+        ctx.fillStyle = "#111"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.font = '800 38px ui-sans-serif, system-ui, sans-serif';
+        ctx.fillText(fmtHM(repMs), 14, 66);
+        ctx.fillStyle = "#666"; ctx.font = '11px ui-sans-serif, system-ui';
+        ctx.fillText("mock plugin render", 16, 84);
+        var rnd = mulberry32((dayIndexOf(dayStart) * 1009 + interval) >>> 0);
+        for (var i = 0; i < 3; i++) {
+          var y = 94 + i * 15;
+          ctx.fillStyle = "#111"; ctx.fillRect(16, y, 22, 10);
+          ctx.fillStyle = "#9a9a9a";
+          ctx.fillRect(44, y + 1, 70 + Math.floor(rnd() * 110), 8);
+          ctx.fillStyle = "#111"; ctx.fillRect(214, y + 1, 10, 8);
+        }
+        ctx.fillStyle = "#aaa"; ctx.font = '9px ui-monospace, Menlo, monospace';
+        ctx.fillText("id " + identityFor(dayStart, interval), 16, 140);
+        var url = cv.toDataURL();
+        einkCache[key] = url;
+        return url;
+      }
+
+      var $ = function (id) { return document.getElementById(id); };
+      var overview = $("overview"), ovViewport = $("ov-viewport"),
+          ovViewportFrame = $("ov-viewport-frame"), ovNow = $("ov-now"), ovCache = $("ov-cache");
+      var track = $("track"), scrub = $("scrub"), scrubLabel = $("scrub-label");
+      var cacheZone = $("cache-zone"), cacheCap = $("cache-cap");
+      var nowMark = $("now-mark"), nowLabel = $("now-label");
+      var vBracket = $("valid-bracket"), vCap = $("valid-cap");
+      var previewFrame = $("preview-frame"), previewImg = $("preview-img");
+
+      function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+      function spanMs() { return SPAN_MS[state.spanKey]; }
+      function winEnd() { return state.winStart + spanMs(); }
+      function dayEnd() { return state.dateStart + DAY; }
+      function clampWindow() {
+        var sp = spanMs();
+        if (sp >= DAY) { state.winStart = state.dateStart; return; }
+        state.winStart = clamp(state.winStart, state.dateStart, dayEnd() - sp);
+      }
+      function fracDetail(ms) { return (ms - state.winStart) / spanMs(); }
+      function detailAt(frac) { return state.winStart + frac * spanMs(); }
+      function fracDay(ms) { return (ms - state.dateStart) / DAY; }
+
+      var ovTickEls = [];
+      function layoutOverview() {
+        ovTickEls.forEach(function (e) { e.remove(); });
+        ovTickEls = [];
+        for (var h = 0; h <= 24; h += 3) {
+          var f = h / 24;
+          var tk = document.createElement("div");
+          tk.className = "ov-tick"; tk.style.left = (f * 100) + "%";
+          overview.appendChild(tk); ovTickEls.push(tk);
+          if (h % 6 === 0 && h < 24) {
+            var lb = document.createElement("div");
+            lb.className = "ov-tick-label"; lb.style.left = (f * 100) + "%";
+            lb.textContent = p2(h) + ":00";
+            overview.appendChild(lb); ovTickEls.push(lb);
+          }
+        }
+        if (isToday(state.dateStart)) {
+          ovNow.style.display = "block";
+          ovNow.style.left = (fracDay(NOW) * 100) + "%";
+        } else ovNow.style.display = "none";
+        if (hasCache && isToday(state.dateStart)) {
+          ovCache.style.display = "block";
+          var cl = clamp(fracDay(cachedAtMs), 0, 1) * 100;
+          var cr = clamp(fracDay(cachedExpiresMs), 0, 1) * 100;
+          ovCache.style.left = cl + "%";
+          ovCache.style.width = Math.max(cr - cl, 0.3) + "%";
+        } else ovCache.style.display = "none";
+        var vl = fracDay(state.winStart) * 100, vw = spanMs() / DAY * 100;
+        ovViewport.style.left = vl + "%"; ovViewport.style.width = vw + "%";
+        ovViewportFrame.style.left = vl + "%"; ovViewportFrame.style.width = vw + "%";
+      }
+
+      var hourEls = [];
+      function tickStep() {
+        var sp = spanMs();
+        if (sp <= HOUR) return 10 * MIN;
+        if (sp <= 3 * HOUR) return 30 * MIN;
+        if (sp <= 6 * HOUR) return HOUR;
+        if (sp <= 12 * HOUR) return 2 * HOUR;
+        return 3 * HOUR;
+      }
+      function buildHourTicks() {
+        hourEls.forEach(function (e) { e.remove(); });
+        hourEls = [];
+        var step = tickStep();
+        var first = Math.ceil(state.winStart / step) * step;
+        for (var t = first; t < winEnd(); t += step) {
+          var f = fracDetail(t);
+          var tick = document.createElement("div");
+          tick.className = "hour-tick"; tick.style.left = (f * 100) + "%";
+          var lab = document.createElement("div");
+          lab.className = "hour-label"; lab.style.left = (f * 100) + "%";
+          lab.textContent = fmtHM(t);
+          track.appendChild(tick); track.appendChild(lab);
+          hourEls.push(tick, lab);
+        }
+      }
+
+      function layoutDetail() {
+        var nf = fracDetail(NOW);
+        var nowIn = isToday(state.dateStart) && nf >= 0 && nf <= 1;
+        nowMark.classList.toggle("off", !nowIn);
+        nowLabel.classList.toggle("off", !nowIn);
+        if (nowIn) {
+          nowMark.style.left = (nf * 100) + "%";
+          nowLabel.style.left = (nf * 100) + "%";
+          nowLabel.textContent = "now " + fmtHM(NOW);
+        }
+        var showCache = hasCache && isToday(state.dateStart) &&
+          cachedExpiresMs > state.winStart && cachedAtMs < winEnd();
+        cacheZone.classList.toggle("empty", !showCache);
+        cacheCap.classList.toggle("empty", !showCache);
+        if (showCache) {
+          var cl = clamp(fracDetail(cachedAtMs), 0, 1) * 100;
+          var cr = clamp(fracDetail(cachedExpiresMs), 0, 1) * 100;
+          cacheZone.style.left = cl + "%";
+          cacheZone.style.width = (cr - cl) + "%";
+          cacheCap.style.left = ((cl + cr) / 2) + "%";
+          cacheCap.textContent = "cached · valid " + fmtDur(cachedValidityMs);
+        }
+        $("edge-l").textContent = fmtHM(state.winStart);
+        $("edge-r").textContent = fmtHM(winEnd());
+        $("span-label").textContent = "◄ " + state.spanKey + " h ►";
+        layoutScrub();
+      }
+
+      function layoutScrub() {
+        var sf = clamp(fracDetail(state.scrubMs), 0, 1);
+        scrub.style.left = (sf * 100) + "%";
+        scrubLabel.textContent = fmtHM(state.scrubMs);
+        var iv = intervalIndexOf(viewEvents, state.scrubMs);
+        var validity = viewEvents[iv + 1] - state.scrubMs;
+        var endMs = state.scrubMs + validity;
+        var rawEf = fracDetail(endMs);
+        var beyond = rawEf > 1;
+        var ef = clamp(rawEf, 0, 1);
+        vBracket.style.left = (sf * 100) + "%";
+        vBracket.style.width = ((ef - sf) * 100) + "%";
+        vBracket.classList.toggle("beyond", beyond);
+        vCap.style.left = ((sf + ef) / 2 * 100) + "%";
+        vCap.textContent = "valid " + fmtDur(validity);
+        $("pv-time").textContent = fmtDate(state.scrubMs) + " · " + fmtHMS(state.scrubMs);
+        $("pv-validity").textContent = fmtDur(validity) + "  (until " + fmtHM(endMs) + ")";
+      }
+
+      function doRender(tMs) {
+        var gen = ++state.renderGen;
+        previewFrame.classList.remove("stale");
+        previewFrame.classList.add("busy");
+        var latency = Math.round(200 + Math.random() * 600);
+        $("spinner-text").textContent = "rasterizing… (" + latency + " ms)";
+        setTimeout(function () {
+          if (gen !== state.renderGen) return;
+          previewFrame.classList.remove("busy");
+          var iv = intervalIndexOf(viewEvents, tMs);
+          var id = identityFor(state.dateStart, iv);
+          previewImg.src = einkURL(state.dateStart, iv);
+          $("pv-id").textContent = id;
+          $("pv-latency").textContent = latency + " ms";
+          var match = isToday(state.dateStart) && hasCache && id === cachedIdentity();
+          var badge = $("pv-badge");
+          badge.className = match ? "badge match" : "badge";
+          badge.textContent = match
+            ? "≡ would match cached Image — " + id
+            : (hasCache ? "transient — distinct from cached " + cachedIdentity()
+                        : "transient render (Slot empty)");
+          var validity = viewEvents[iv + 1] - tMs;
+          $("api-resp").textContent =
+            "GET /api/display          200 OK · application/json\n\n" +
+            "{\n" +
+            '  "image_url": "/image/' + id + '.png",\n' +
+            '  "filename": "' + id + '",\n' +
+            '  "refresh_rate": ' + Math.round(validity / 1000) + "\n" +
+            "}";
+        }, latency);
+      }
+
+      // ---- detail-track drag = scrub (render on release) --------------
+      function scrubFromEvent(e) {
+        var r = track.getBoundingClientRect();
+        var f = clamp((e.clientX - r.left) / r.width, 0, 1);
+        state.scrubMs = detailAt(f);
+        layoutScrub();
+        previewFrame.classList.add("stale"); // preview re-renders only on release
+      }
+      track.addEventListener("pointerdown", function (e) {
+        e.preventDefault();
+        track.setPointerCapture(e.pointerId);
+        state.dragScrub = true;
+        scrub.classList.add("grabbing");
+        scrubFromEvent(e);
+      });
+      track.addEventListener("pointermove", function (e) {
+        if (state.dragScrub) scrubFromEvent(e);
+      });
+      function endScrub() {
+        if (!state.dragScrub) return;
+        state.dragScrub = false;
+        scrub.classList.remove("grabbing");
+        doRender(state.scrubMs);
+      }
+      track.addEventListener("pointerup", endScrub);
+      track.addEventListener("pointercancel", endScrub);
+
+      // ---- overview-strip drag = pan the detail window ----------------
+      function panFromEvent(e) {
+        var r = overview.getBoundingClientRect();
+        var f = clamp((e.clientX - r.left) / r.width, 0, 1);
+        state.winStart = (state.dateStart + f * DAY) - spanMs() / 2;
+        clampWindow();
+        state.scrubMs = clamp(state.scrubMs, state.winStart, winEnd());
+        buildHourTicks();
+        layoutOverview();
+        layoutDetail();
+      }
+      overview.addEventListener("pointerdown", function (e) {
+        if (spanMs() >= DAY) return;
+        e.preventDefault();
+        overview.setPointerCapture(e.pointerId);
+        state.dragPan = true;
+        overview.classList.add("grabbing");
+        panFromEvent(e);
+      });
+      overview.addEventListener("pointermove", function (e) {
+        if (state.dragPan) panFromEvent(e);
+      });
+      function endPan() {
+        if (!state.dragPan) return;
+        state.dragPan = false;
+        overview.classList.remove("grabbing");
+        doRender(state.scrubMs);
+      }
+      overview.addEventListener("pointerup", endPan);
+      overview.addEventListener("pointercancel", endPan);
+
+      function paintChrome() {
+        var host = $("current-image-host");
+        if (hasCache) {
+          host.innerHTML = '<div class="image-frame"><img id="current-img" alt="current Image"></div>';
+          $("current-img").src = einkURL(TODAY_START, cachedInterval);
+          $("meta-identity").textContent = cachedIdentity();
+          var refreshMs = cachedExpiresMs - NOW;
+          $("meta-refresh").innerHTML = refreshMs > 0
+            ? fmtDur(refreshMs)
+            : '<span class="muted">(expired — next poll re-renders)</span>';
+        } else {
+          host.innerHTML = '<p class="notice">Slot is empty — cache cleared.</p>';
+          $("meta-identity").innerHTML = '<span class="muted">(none)</span>';
+          $("meta-refresh").innerHTML = '<span class="muted">(unknown)</span>';
+        }
+        $("tr-identity").textContent = hasCache ? cachedIdentity() : "—";
+        $("tr-ranat").textContent = hasCache ? fmtHMS(cachedAtMs) : "—";
+        $("tr-plugin").textContent = "9ms";
+        $("tr-idhash").textContent = "0.42ms";
+        $("tr-raster").textContent = "512ms";
+      }
+
+      function relayout() {
+        clampWindow();
+        buildHourTicks();
+        layoutOverview();
+        layoutDetail();
+      }
+
+      function wireGroup(groupId, key, cast, onChange) {
+        var grp = $(groupId);
+        grp.addEventListener("click", function (e) {
+          var btn = e.target.closest("button");
+          if (!btn) return;
+          [].forEach.call(grp.querySelectorAll("button"), function (b) {
+            b.classList.toggle("on", b === btn);
+          });
+          state[key] = cast ? cast(btn.dataset.v) : btn.dataset.v;
+          onChange();
+        });
+      }
+      wireGroup("grp-span", "spanKey", Number, function () {
+        state.winStart = state.scrubMs - spanMs() / 2;
+        relayout();
+        $("tl-hint").textContent = spanMs() >= DAY
+          ? "24 h — whole day in view; nothing to pan" : "";
+        doRender(state.scrubMs);
+      });
+      wireGroup("grp-scenario", "scenario", null, function () {
+        einkCache = {};
+        recomputeCache();
+        recomputeView();
+        relayout();
+        paintChrome();
+        doRender(state.scrubMs);
+      });
+
+      $("date-input").addEventListener("change", function (e) {
+        var parts = e.target.value.split("-");
+        if (parts.length !== 3) return;
+        var ds = new Date(+parts[0], +parts[1] - 1, +parts[2], 0, 0, 0).getTime();
+        if (isNaN(ds)) return;
+        var oldTod = state.scrubMs - state.dateStart;
+        var oldWinTod = state.winStart - state.dateStart;
+        state.dateStart = ds;
+        state.scrubMs = ds + oldTod;
+        state.winStart = ds + oldWinTod;
+        einkCache = {};
+        recomputeView();
+        relayout();
+        doRender(state.scrubMs);
+      });
+
+      $("snap-now").addEventListener("click", function () {
+        state.dateStart = TODAY_START;
+        $("date-input").value = "2026-05-22";
+        state.scrubMs = NOW;
+        state.winStart = NOW - spanMs() / 2;
+        recomputeView();
+        relayout();
+        doRender(state.scrubMs);
+      });
+
+      $("scrub-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var m = $("t").value.trim().match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (!m) return;
+        var target = state.dateStart + (+m[1]) * HOUR + (+m[2]) * MIN + (+(m[3] || 0)) * 1000;
+        state.winStart = target - spanMs() / 2;
+        clampWindow();
+        state.scrubMs = clamp(target, state.winStart, winEnd());
+        relayout();
+        doRender(state.scrubMs);
+      });
+
+      $("clear-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        hasCache = false;
+        relayout();
+        paintChrome();
+        doRender(state.scrubMs);
+      });
+
+      // ---- boot --------------------------------------------------------
+      $("now-stamp").textContent = "2026-05-22 " + fmtHMS(NOW);
+      $("t").value = "2026-05-22T" + fmtHMS(NOW) + "+02:00[Europe/Berlin]";
+      recomputeCache();
+      recomputeView();
+      state.winStart = NOW - spanMs() / 2;
+      relayout();
+      paintChrome();
+      doRender(state.scrubMs);
+    </script>
+  </body>
+</html>
