@@ -12,6 +12,7 @@ Each ADR captures a single decision with its context and consequences.
 | [0006](0006-non-features.md)         | Explicit non-features                                                                                  | Accepted  |
 | [0007](0007-prerender-scheduling.md) | Prerender warm-up ahead of Device wake                                                                 | Withdrawn |
 | [0008](0008-design-system.md)        | Project-native design system, framework-informed                                                       | Accepted  |
+| [0009](0009-composition-assets.md)   | Super-Plugin asset composition: a single merged `assets/` tree                                          | Accepted  |
 
 ## Format
 
