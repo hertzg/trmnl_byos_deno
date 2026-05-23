@@ -1,6 +1,8 @@
 /** @jsxImportSource hono/jsx */
 
 import type { RenderTrace } from "../telemetry/telemetry.ts";
+import type { LogEntry } from "../device-state.ts";
+import type { DeviceReport } from "../plugin/plugin.ts";
 
 // State the client-side scrub timeline needs, embedded into the page as
 // `window.__DASH__`. All wall-clock math on the client is pure epoch-ms
@@ -30,6 +32,10 @@ export type DashboardProps = {
   refreshIn: Temporal.Duration | null;
   trace: RenderTrace | null;
   timeline: TimelineState;
+  // Latest parsed DeviceReport (null until the Device has polled at least
+  // once this process) plus an oldest-first slice of recent /api/log bodies.
+  device: DeviceReport | null;
+  logs: readonly LogEntry[];
 };
 
 function fmtTime(t: Temporal.ZonedDateTime): string {
@@ -350,6 +356,32 @@ const css = `
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
     white-space: pre-wrap; word-break: break-word;
   }
+
+  /* ---- device section ---- */
+  .device-empty { margin: 0; font-size: 12px; color: #999; font-style: italic; }
+  .logs { margin-top: 22px; padding-top: 16px; border-top: 1px solid #ececec; }
+  .logs-head {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+    text-transform: uppercase; color: #aaa; margin-bottom: 10px;
+  }
+  .logs ol {
+    margin: 0; padding: 0; list-style: none;
+    background: #f6f6f6; border: 1px solid #ddd;
+    max-height: 260px; overflow: auto;
+  }
+  .logs li {
+    display: grid; grid-template-columns: max-content max-content 1fr;
+    gap: 0 12px; padding: 4px 12px; font-size: 12px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    border-top: 1px solid #ececec;
+  }
+  .logs li:first-child { border-top: 0; }
+  .logs li .ts { color: #999; }
+  .logs li .id { color: #666; }
+  .logs li .body {
+    color: #222; white-space: pre-wrap; word-break: break-word;
+  }
+  .logs .empty { padding: 10px 12px; font-style: italic; color: #999; }
 `;
 
 // The scrub timeline — the dashboard's only client-side JavaScript. Adapted
@@ -735,6 +767,104 @@ const js = `
 })();
 `;
 
+// "12s ago" / "4m ago" / "2h ago" / "3d ago" — server-side, computed at
+// render time. The page already reloads on data-changing actions, so a
+// frozen relative label is fine; no client tick needed.
+function fmtAgo(then: Temporal.ZonedDateTime, now: Temporal.ZonedDateTime): string {
+  const secs = Math.max(0, Math.round(now.since(then).total({ unit: "seconds" })));
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+function DeviceSection(
+  { device, logs, now }: {
+    device: DeviceReport | null;
+    logs: readonly LogEntry[];
+    now: Temporal.ZonedDateTime;
+  },
+) {
+  // Logs come oldest-first from the ring; render newest-first so the most
+  // recent line sits at the top of the scrollable list.
+  const reversed = logs.slice().reverse();
+  return (
+    <>
+      {device === null
+        ? <p class="device-empty">no Device poll received yet</p>
+        : (
+          <div class="facts">
+            <div class="fact">
+              <span class="k">id</span>
+              <span class="v">{device.id}</span>
+            </div>
+            <div class="fact">
+              <span class="k">model</span>
+              <span class="v">{device.model ?? "—"}</span>
+            </div>
+            <div class="fact">
+              <span class="k">firmware</span>
+              <span class="v">{device.fwVersion ?? "—"}</span>
+            </div>
+            <div class="fact">
+              <span class="k">battery</span>
+              <span class="v">
+                {device.batteryPercent !== null ? `${device.batteryPercent}%` : "—"}
+                {device.batteryVoltage !== null
+                  ? `  (${device.batteryVoltage.toFixed(2)} V)`
+                  : ""}
+              </span>
+            </div>
+            <div class="fact">
+              <span class="k">rssi</span>
+              <span class="v">
+                {device.rssi !== null ? `${device.rssi} dBm` : "—"}
+              </span>
+            </div>
+            <div class="fact">
+              <span class="k">dimensions</span>
+              <span class="v">
+                {device.width !== null && device.height !== null
+                  ? `${device.width} × ${device.height}`
+                  : "—"}
+              </span>
+            </div>
+            <div class="fact">
+              <span class="k">refresh rate</span>
+              <span class="v">
+                {device.refreshRate !== null ? `${device.refreshRate}s` : "—"}
+              </span>
+            </div>
+            <div class="fact">
+              <span class="k">last seen</span>
+              <span class="v">
+                {fmtTime(device.lastSeenAt)} ({fmtAgo(device.lastSeenAt, now)})
+              </span>
+            </div>
+          </div>
+        )}
+      <div class="logs">
+        <div class="logs-head">recent logs · since process start ({logs.length})</div>
+        {reversed.length === 0
+          ? <div class="empty">no logs received yet</div>
+          : (
+            <ol>
+              {reversed.map((entry) => (
+                <li>
+                  <span class="ts">{fmtTime(entry.receivedAt)}</span>
+                  <span class="id">{entry.id}</span>
+                  <span class="body">{entry.body}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+      </div>
+    </>
+  );
+}
+
 function TraceStrip({ trace }: { trace: RenderTrace | null }) {
   return (
     <div class="trace">
@@ -781,7 +911,7 @@ function TraceStrip({ trace }: { trace: RenderTrace | null }) {
 }
 
 export default function Dashboard(props: DashboardProps) {
-  const { now, displayed, identity, refreshIn, trace, timeline } = props;
+  const { now, displayed, identity, refreshIn, trace, timeline, device, logs } = props;
   // Embed the timeline state for the client script. `<` is escaped so a tz
   // id or identity can never break out of the inline <script>.
   const stateJson = JSON.stringify(timeline).replace(/</g, "\\u003c");
@@ -950,6 +1080,13 @@ export default function Dashboard(props: DashboardProps) {
             </form>
           </div>
           <TraceStrip trace={trace} />
+        </section>
+
+        <section class="panel">
+          <h2>
+            device <span class="cap">— what the Device last reported</span>
+          </h2>
+          <DeviceSection device={device} logs={logs} now={now} />
         </section>
         <script dangerouslySetInnerHTML={{ __html: `window.__DASH__ = ${stateJson};` }} />
         <script dangerouslySetInnerHTML={{ __html: js }} />

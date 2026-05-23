@@ -8,6 +8,7 @@ import { createFetchPngFromUrl, createRenderer } from "./render/renderer.ts";
 import { createPluginManager } from "./plugin/plugin-manager.ts";
 import { createSlot } from "./slot/slot.ts";
 import { createTelemetry } from "./telemetry/telemetry.ts";
+import { createDeviceState } from "./device-state.ts";
 
 async function main() {
   const pluginManager = await createPluginManager({ pluginDir: PLUGIN_DIR });
@@ -16,8 +17,6 @@ async function main() {
   const now = () => Temporal.Now.zonedDateTimeISO();
   const errorView = (err: Error) => ErrorView(err);
   const errorValidity = Temporal.Duration.from({ seconds: 30 });
-  const onDeviceLog = (id: string, body: string) =>
-    console.log(`[device-log] ${id.toUpperCase()}: ${body}`);
 
   const renderer = createRenderer({
     fetchPngFromUrl: createFetchPngFromUrl({ cdpUrl: CDP_URL, ...ACTIVE_PROFILE }),
@@ -30,22 +29,30 @@ async function main() {
 
   const slot = createSlot({ now });
   const telemetry = createTelemetry();
+  // Mirror /api/log bodies to stdout so `docker logs` keeps surfacing them;
+  // the in-memory ring backs the dashboard's device section.
+  const deviceState = createDeviceState({
+    now,
+    onLog: (entry) =>
+      console.log(`[device-log] ${entry.id.toUpperCase()}: ${entry.body}`),
+  });
 
   const conductor = createConductor({
     pluginManager,
     renderer,
     slot,
     telemetry,
+    deviceState,
     errorView,
     errorValidity,
     friendlyId: FRIENDLY_ID,
-    onDeviceLog,
     now,
   });
 
   const dashboard = createDashboard({
     slot,
     telemetry,
+    deviceState,
     conductorApp: conductor.app,
     pluginManager,
     renderer,

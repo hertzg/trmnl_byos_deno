@@ -1,10 +1,11 @@
 import { Hono } from "hono";
-import type { DeviceReport, RunContext } from "../plugin/plugin.ts";
+import type { RunContext } from "../plugin/plugin.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
 import type { Slot, SlotDisplay } from "../slot/slot.ts";
 import type { RenderTrace, Telemetry } from "../telemetry/telemetry.ts";
+import type { DeviceState } from "../device-state.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 
@@ -20,8 +21,8 @@ export type ConductorDeps = {
   errorView: (err: Error) => unknown;
   errorValidity: Temporal.Duration;
   telemetry: Telemetry;
+  deviceState: DeviceState;
   friendlyId: string;
-  onDeviceLog?: (id: string, body: string) => void;
   now: () => Temporal.ZonedDateTime;
 };
 
@@ -30,7 +31,6 @@ export type Conductor = {
 };
 
 export function createConductor(deps: ConductorDeps): Conductor {
-  let latestDevice: DeviceReport | null = null;
   // Single-flight: a cache miss runs the Plugin at most once even under
   // burst load (Device poll racing the Dashboard's in-process refill).
   let pendingRefill: Promise<void> | null = null;
@@ -107,7 +107,11 @@ export function createConductor(deps: ConductorDeps): Conductor {
   async function ensureDisplay(intent: RunContext["intent"]): Promise<SlotDisplay> {
     const cached = deps.slot.display();
     if (cached !== null) return cached;
-    const ctx: RunContext = { t: deps.now(), intent, device: latestDevice };
+    const ctx: RunContext = {
+      t: deps.now(),
+      intent,
+      device: deps.deviceState.latestDevice(),
+    };
     await refillSlot(ctx);
     const display = deps.slot.display();
     if (display === null) {
@@ -129,7 +133,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
       }))
     .get("/api/display", async (c) => {
       const report = parseDeviceHeaders(c.req.raw.headers, deps.now);
-      if (report) latestDevice = report;
+      if (report) deps.deviceState.reportDevice(report);
       const display = await ensureDisplay("poll");
       const refreshRate = Math.max(
         1,
@@ -144,7 +148,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
         update_firmware: false,
         firmware_url: "",
         special_function: "none",
-        maximum_compatibility: true,
+        temperature_profile: "a"
       });
     })
     .get("/image/:id{.+\\.png}", async (c) => {
@@ -160,7 +164,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
     .post("/api/log", async (c) => {
       const body = await c.req.text();
       const id = c.req.raw.headers.get("id") ?? c.req.raw.headers.get("ID") ?? "(none)";
-      deps.onDeviceLog?.(id, body);
+      deps.deviceState.appendLog(id, body);
       return c.body(null, 204);
     });
 

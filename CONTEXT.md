@@ -82,23 +82,30 @@ invalidates. Slot has no Renderer or PluginManager dep — it stores what caller
 cache (the unqualified word).
 
 **Conductor**: The facade for the **Device** path. Hosts the BYOS surface (`/api/setup`,
-`/api/display`, `/api/log`) and the `/image/<identity>.png` route. Owns `latestDevice` (the last
-parsed DeviceReport) and orchestrates each cycle: parse Device headers → call PluginManager → call
-Renderer.identity → start Renderer.rasterize → push the trio into the Slot → return identity. On a
-caught throw anywhere in that loop, the same loop re-runs with a fabricated error Bundle. _Avoid_:
-pipeline, manager.
+`/api/display`, `/api/log`) and the `/image/<identity>.png` route. Orchestrates each cycle: parse
+Device headers → report into DeviceState → call PluginManager → call Renderer.identity → start
+Renderer.rasterize → push the trio into the Slot → return identity. On a caught throw anywhere in
+that loop, the same loop re-runs with a fabricated error Bundle. _Avoid_: pipeline, manager.
 
 **Dashboard**: The debug/observe add-on. Three routes: `GET /` (admin page showing the current
-Image, the render trace, and the scrub timeline), `GET /dashboard/preview.png?t=...` (transient
-preview render at arbitrary `t`, bypasses the Slot; returns the render's identity and validity as
-response headers alongside the PNG), `POST /dashboard/clear` (invalidates the Slot). Dashboard reads
-Telemetry to render the trace, reads the Slot's `display()` to know the current Image identity and
-cached window, and uses the same `/image/<identity>.png` URL the Device uses to show the current
-Image. _Avoid_: admin, UI.
+Image, the render trace, the scrub timeline, and the device section), `GET /dashboard/preview.png?t=...`
+(transient preview render at arbitrary `t`, bypasses the Slot; returns the render's identity and
+validity as response headers alongside the PNG), `POST /dashboard/clear` (invalidates the Slot).
+Dashboard reads Telemetry to render the trace, reads the Slot's `display()` to know the current
+Image identity and cached window, reads DeviceState to surface the latest DeviceReport + recent
+`/api/log` bodies, and uses the same `/image/<identity>.png` URL the Device uses to show the
+current Image. _Avoid_: admin, UI.
 
 **Telemetry**: The singleton that holds the most-recent render trace — durations of plugin-run,
 identity, and rasterize; the resulting identity; the error if one occurred. Conductor records;
 Dashboard reads. One entry; replaced each render. _Avoid_: metrics, log.
+
+**DeviceState**: The singleton that holds what the Device has reported about itself this process —
+the latest parsed DeviceReport (so the next Plugin.run carries it forward across header-less polls)
+and a small ring of recent `/api/log` bodies. Conductor writes both (`reportDevice` on
+`/api/display`, `appendLog` on `/api/log`); Dashboard reads both for the device section. In-process
+only — "since process start" is the honest framing; the server has no way to know when the Device
+itself rebooted. _Avoid_: device session, device store.
 
 **Image**: The PNG bytes the Server hands to the Device. The Slot caches one Image at a time, keyed
 by `identity` (a hash of the Bundle's rendered HTML + asset bytes). The Device's firmware-side

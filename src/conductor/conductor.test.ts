@@ -7,6 +7,7 @@ import type { Renderer } from "../render/renderer.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import { createSlot } from "../slot/slot.ts";
 import { createTelemetry } from "../telemetry/telemetry.ts";
+import { createDeviceState } from "../device-state.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
@@ -43,7 +44,7 @@ function defaults(
   overrides: Partial<ConductorDeps> = {},
 ): Pick<
   ConductorDeps,
-  "errorView" | "errorValidity" | "friendlyId" | "now" | "slot" | "telemetry"
+  "errorView" | "errorValidity" | "friendlyId" | "now" | "slot" | "telemetry" | "deviceState"
 > {
   const now = overrides.now ?? (() => T0);
   return {
@@ -53,6 +54,7 @@ function defaults(
     now,
     slot: createSlot({ now }),
     telemetry: createTelemetry(),
+    deviceState: createDeviceState({ now }),
     ...overrides,
   };
 }
@@ -103,10 +105,10 @@ Deno.test("GET /api/setup returns BYOS setup JSON with friendlyId and a placehol
   assertEquals(body.image_url, "http://localhost/image/setup.png");
 });
 
-Deno.test("POST /api/log returns 204 and invokes onDeviceLog with the id header + body", async () => {
-  const onDeviceLog = spy((_id: string, _body: string) => {});
+Deno.test("POST /api/log returns 204 and appends the id header + body to deviceState", async () => {
+  const deviceState = createDeviceState({ now: () => T0 });
   const conductor = createConductor({
-    ...defaults({ onDeviceLog }),
+    ...defaults({ deviceState }),
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
     }),
@@ -121,7 +123,10 @@ Deno.test("POST /api/log returns 204 and invokes onDeviceLog with the id header 
   await res.body?.cancel();
 
   assertEquals(res.status, 204);
-  assertEquals(onDeviceLog.calls[0].args, ["AA:BB:CC", "hello"]);
+  const logs = deviceState.recentLogs();
+  assertEquals(logs.length, 1);
+  assertEquals(logs[0].id, "AA:BB:CC");
+  assertEquals(logs[0].body, "hello");
 });
 
 Deno.test("GET /assets/<anything> returns 404 — Plugin assets travel inside the Bundle to Renderer's loopback only", async () => {

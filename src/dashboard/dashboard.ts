@@ -5,6 +5,7 @@ import type { Renderer } from "../render/renderer.ts";
 import type { RunContext } from "../plugin/plugin.ts";
 import type { Slot } from "../slot/slot.ts";
 import type { Telemetry } from "../telemetry/telemetry.ts";
+import type { DeviceState } from "../device-state.ts";
 import Dashboard, { type TimelineState } from "./dashboard.tsx";
 
 // Dashboard at /. Debug surface. See ADR-0005.
@@ -12,6 +13,7 @@ import Dashboard, { type TimelineState } from "./dashboard.tsx";
 export type DashboardDeps = {
   slot: Slot;
   telemetry: Telemetry;
+  deviceState: DeviceState;
   // The Conductor's sub-app. Used in-process to refill an empty Slot
   // through the same render path the Device hits — no shortcut.
   conductorApp: Hono;
@@ -56,6 +58,8 @@ export function createDashboard(deps: DashboardDeps): Hono {
           refreshIn: display?.refreshIn ?? null,
           trace: deps.telemetry.latest(),
           timeline,
+          device: deps.deviceState.latestDevice(),
+          logs: deps.deviceState.recentLogs(),
         }),
       );
       return c.html("<!DOCTYPE html>" + page, 200, { "cache-control": "no-store" });
