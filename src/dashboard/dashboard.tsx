@@ -1,7 +1,7 @@
 /** @jsxImportSource hono/jsx */
 
 import type { RenderTrace } from "../telemetry/telemetry.ts";
-import type { LogEntry } from "../device-state.ts";
+import type { LogEntry, PollHeaders } from "../device-state.ts";
 import type { DeviceReport } from "../plugin/plugin.ts";
 
 // State the client-side scrub timeline needs, embedded into the page as
@@ -35,6 +35,10 @@ export type DashboardProps = {
   // Latest parsed DeviceReport (null until the Device has polled at least
   // once this process) plus an oldest-first slice of recent /api/log bodies.
   device: DeviceReport | null;
+  // Raw Headers entries from the last poll that carried an ID — surfaced
+  // in the device section's hover popover so the operator can see every
+  // header firmware sent, not just the ones we parse into DeviceReport.
+  rawHeaders: PollHeaders | null;
   logs: readonly LogEntry[];
 };
 
@@ -382,6 +386,42 @@ const css = `
     color: #222; white-space: pre-wrap; word-break: break-word;
   }
   .logs .empty { padding: 10px 12px; font-style: italic; color: #999; }
+
+  /* ---- raw-headers hover popover ---- */
+  /* Positioned at the right edge of the device section heading. The
+     trigger is keyboard-focusable so the popover is reachable without a
+     mouse — :hover and :focus-within both show the panel. */
+  .headers-pop { position: relative; display: inline-block; margin-left: 10px; }
+  .headers-pop .trigger {
+    font: inherit; font-size: 11px; padding: 1px 7px;
+    border: 1px solid #bbb; border-radius: 3px; background: #fff;
+    color: #555; cursor: help; letter-spacing: 0;
+    text-transform: none; font-weight: 400;
+  }
+  .headers-pop .trigger:focus { outline: 1px solid #111; }
+  .headers-pop .panel {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0;
+    z-index: 10; min-width: 380px; max-width: min(600px, 90vw);
+    background: #fff; border: 1px solid #111; box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+    padding: 10px 12px;
+  }
+  .headers-pop:hover .panel,
+  .headers-pop:focus-within .panel { display: block; }
+  .headers-pop .panel-head {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+    text-transform: uppercase; color: #aaa; margin-bottom: 6px;
+  }
+  .headers-pop table {
+    border-collapse: collapse; width: 100%;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+  }
+  .headers-pop td {
+    padding: 3px 8px 3px 0; vertical-align: top;
+    border-top: 1px solid #ececec;
+  }
+  .headers-pop tr:first-child td { border-top: 0; }
+  .headers-pop td.name { color: #666; white-space: nowrap; }
+  .headers-pop td.value { color: #222; word-break: break-word; }
 `;
 
 // The scrub timeline — the dashboard's only client-side JavaScript. Adapted
@@ -911,7 +951,7 @@ function TraceStrip({ trace }: { trace: RenderTrace | null }) {
 }
 
 export default function Dashboard(props: DashboardProps) {
-  const { now, displayed, identity, refreshIn, trace, timeline, device, logs } = props;
+  const { now, displayed, identity, refreshIn, trace, timeline, device, rawHeaders, logs } = props;
   // Embed the timeline state for the client script. `<` is escaped so a tz
   // id or identity can never break out of the inline <script>.
   const stateJson = JSON.stringify(timeline).replace(/</g, "\\u003c");
@@ -1085,6 +1125,26 @@ export default function Dashboard(props: DashboardProps) {
         <section class="panel">
           <h2>
             device <span class="cap">— what the Device last reported</span>
+            {rawHeaders !== null && rawHeaders.length > 0
+              ? (
+                <span class="headers-pop">
+                  <button type="button" class="trigger">raw headers</button>
+                  <div class="panel">
+                    <div class="panel-head">last poll · {rawHeaders.length} headers</div>
+                    <table>
+                      <tbody>
+                        {rawHeaders.map(([name, value]) => (
+                          <tr>
+                            <td class="name">{name}</td>
+                            <td class="value">{value}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </span>
+              )
+              : null}
           </h2>
           <DeviceSection device={device} logs={logs} now={now} />
         </section>

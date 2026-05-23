@@ -133,7 +133,13 @@ export function createConductor(deps: ConductorDeps): Conductor {
       }))
     .get("/api/display", async (c) => {
       const report = parseDeviceHeaders(c.req.raw.headers, deps.now);
-      if (report) deps.deviceState.reportDevice(report);
+      if (report) {
+        // Capture the full Headers entries alongside the parsed report so
+        // the dashboard can surface anything firmware sent that we don't
+        // model yet (User-Agent, Access-Token, future headers, …).
+        const rawHeaders = [...c.req.raw.headers.entries()];
+        deps.deviceState.reportDevice(report, rawHeaders);
+      }
       const display = await ensureDisplay("poll");
       const refreshRate = Math.max(
         1,

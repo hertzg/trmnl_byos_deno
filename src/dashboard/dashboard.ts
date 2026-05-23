@@ -59,6 +59,7 @@ export function createDashboard(deps: DashboardDeps): Hono {
           trace: deps.telemetry.latest(),
           timeline,
           device: deps.deviceState.latestDevice(),
+          rawHeaders: deps.deviceState.latestPollHeaders(),
           logs: deps.deviceState.recentLogs(),
         }),
       );

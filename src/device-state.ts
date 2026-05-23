@@ -13,9 +13,17 @@ export type LogEntry = {
   body: string;
 };
 
+// Raw request headers from the last /api/display poll that carried an ID,
+// preserved as an entries array (lower-cased names, in `Headers.entries()`
+// order). The dashboard surfaces these on hover so the operator can see
+// everything the firmware sent — including headers we don't parse into
+// DeviceReport yet — without consulting logs.
+export type PollHeaders = ReadonlyArray<readonly [string, string]>;
+
 export type DeviceState = {
-  reportDevice(report: DeviceReport): void;
+  reportDevice(report: DeviceReport, rawHeaders?: PollHeaders): void;
   latestDevice(): DeviceReport | null;
+  latestPollHeaders(): PollHeaders | null;
   appendLog(id: string, body: string): void;
   recentLogs(): readonly LogEntry[];
 };
@@ -34,14 +42,19 @@ export type DeviceStateDeps = {
 export function createDeviceState(deps: DeviceStateDeps): DeviceState {
   const ringSize = deps.logRingSize ?? 100;
   let latest: DeviceReport | null = null;
+  let latestHeaders: PollHeaders | null = null;
   // Newest entries pushed to the end; the dashboard renders bottom-up.
   const logs: LogEntry[] = [];
   return {
-    reportDevice(report) {
+    reportDevice(report, rawHeaders) {
       latest = report;
+      if (rawHeaders) latestHeaders = rawHeaders;
     },
     latestDevice() {
       return latest;
+    },
+    latestPollHeaders() {
+      return latestHeaders;
     },
     appendLog(id, body) {
       const entry: LogEntry = { receivedAt: deps.now(), id, body };
