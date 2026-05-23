@@ -154,7 +154,14 @@ export function createConductor(deps: ConductorDeps): Conductor {
         update_firmware: false,
         firmware_url: "",
         special_function: "none",
-        temperature_profile: "a"
+        // "a" forces CLEAR_SLOW on TRMNL X's FastEPD path (4-pass B/W/B/W
+        // ghost-erase vs CLEAR_FAST's 2-pass), eliminating visible ghosting
+        // on dense imagery. Per-refresh cost is negligible at our cadence,
+        // so it's hardcoded rather than driven per-Plugin via Result.hints.
+        // See firmware PR usetrmnl/trmnl-firmware#357 + the `iTempProfile > 0`
+        // branch at display.cpp:1738. `maximum_compatibility` is intentionally
+        // absent — FastEPD ignores it (only honored on BB_EPAPER hardware).
+        temperature_profile: "a",
       });
     })
     .get("/image/:id{.+\\.png}", async (c) => {
