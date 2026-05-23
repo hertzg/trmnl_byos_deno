@@ -13,3 +13,7 @@ deno.lock
 # out of version control.
 templates/**/routes.ts
 !templates/**/routes.example.ts
+
+
+templates/example/assets/gallery/*
+!templates/example/assets/gallery/.gitkeep
