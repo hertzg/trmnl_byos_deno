@@ -399,11 +399,21 @@ const css = `
     text-transform: none; font-weight: 400;
   }
   .headers-pop .trigger:focus { outline: 1px solid #111; }
+  /* Open upward — the device section is the last on the page, so a
+     downward panel would extend body scrollHeight, trigger a scrollbar,
+     reflow the page, and flicker on every hover. Opening above the
+     trigger keeps the panel inside the existing layout box. The visual
+     gap is rendered via padding-bottom + background-clip so the hover
+     surface stays contiguous and the cursor can't pass through a dead
+     zone between trigger and panel. max-height + overflow caps any
+     accidental tallness rather than letting the panel grow off-screen. */
   .headers-pop .panel {
-    display: none; position: absolute; top: calc(100% + 6px); right: 0;
+    display: none; position: absolute; bottom: 100%; right: 0;
     z-index: 10; min-width: 380px; max-width: min(600px, 90vw);
+    max-height: min(60vh, 420px); overflow: auto;
     background: #fff; border: 1px solid #111; box-shadow: 0 6px 20px rgba(0,0,0,0.18);
-    padding: 10px 12px;
+    padding: 10px 12px 16px;
+    background-clip: padding-box;
   }
   .headers-pop:hover .panel,
   .headers-pop:focus-within .panel { display: block; }
