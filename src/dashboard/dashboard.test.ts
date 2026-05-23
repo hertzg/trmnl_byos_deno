@@ -9,6 +9,7 @@ import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import { createTelemetry } from "../telemetry/telemetry.ts";
+import { createDeviceState } from "../device-state.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
@@ -38,7 +39,7 @@ function conductorDefaults(
   overrides: Partial<ConductorDeps> = {},
 ): Pick<
   ConductorDeps,
-  "errorView" | "errorValidity" | "friendlyId" | "now" | "slot" | "telemetry"
+  "errorView" | "errorValidity" | "friendlyId" | "now" | "slot" | "telemetry" | "deviceState"
 > {
   return {
     errorView: (_err: Error) => "",
@@ -47,6 +48,7 @@ function conductorDefaults(
     now,
     slot: createSlot({ now }),
     telemetry: createTelemetry(),
+    deviceState: createDeviceState({ now }),
     ...overrides,
   };
 }
@@ -59,6 +61,7 @@ function wire(conductorDeps: Partial<ConductorDeps>) {
   const now = conductorDeps.now ?? (() => T0);
   const slot = conductorDeps.slot ?? createSlot({ now });
   const telemetry = conductorDeps.telemetry ?? createTelemetry();
+  const deviceState = conductorDeps.deviceState ?? createDeviceState({ now });
   const renderer = conductorDeps.renderer ?? defaultRenderer();
   const pluginManager = conductorDeps.pluginManager ?? managerFor({
     run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
@@ -70,10 +73,12 @@ function wire(conductorDeps: Partial<ConductorDeps>) {
     renderer,
     slot,
     telemetry,
+    deviceState,
   } as ConductorDeps);
   const dashboard = createDashboard({
     slot,
     telemetry,
+    deviceState,
     conductorApp: conductor.app,
     pluginManager,
     renderer,
@@ -83,6 +88,7 @@ function wire(conductorDeps: Partial<ConductorDeps>) {
     app: new Hono().route("/", conductor.app).route("/", dashboard),
     slot,
     telemetry,
+    deviceState,
   };
 }
 
@@ -126,6 +132,7 @@ Deno.test("GET / still renders against an empty Slot (no Conductor wiring)", asy
   const dashboard = createDashboard({
     slot,
     telemetry,
+    deviceState: createDeviceState({ now }),
     conductorApp: noopApp,
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
@@ -188,6 +195,7 @@ Deno.test("GET / renders a placeholder trace block when telemetry.latest() is nu
   const dashboard = createDashboard({
     slot,
     telemetry,
+    deviceState: createDeviceState({ now }),
     conductorApp: noopApp,
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
@@ -572,6 +580,7 @@ Deno.test("GET / with an empty Slot embeds __DASH__.cache as null", async () => 
   const dashboard = createDashboard({
     slot,
     telemetry,
+    deviceState: createDeviceState({ now }),
     conductorApp: noopApp,
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
