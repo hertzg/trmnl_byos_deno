@@ -2,6 +2,7 @@ import { join } from "@std/path";
 import type { Bundle } from "./bundle.ts";
 import { loadPlugin } from "./loader.ts";
 import type { RunContext } from "./plugin.ts";
+import { timed } from "../telemetry/spans.ts";
 
 // Owns the Plugin's lifecycle: loads the module and its `assets/` folder
 // once at construction, then attaches the same asset map to every Bundle
@@ -24,7 +25,9 @@ export async function createPluginManager(
 
   return {
     async run(ctx) {
-      const result = await plugin.run(ctx);
+      // `plugin.run` may be sync or async (see Plugin contract); the async
+      // arrow lifts both cases to a Promise so `timed` can wrap it uniformly.
+      const result = await timed("pluginRun", async () => plugin.run(ctx));
       return { result, assets };
     },
   };
