@@ -81,7 +81,7 @@ export function createRenderer(deps: RendererDeps): Renderer {
 
   return {
     identity(bundle) {
-      return hashBundle(bundle);
+      return timed("identity", () => hashBundle(bundle));
     },
     rasterize(bundle) {
       const next = timed("rasterize", () =>

@@ -91,9 +91,11 @@ export async function renderUrl(opts: RenderOptions): Promise<Uint8Array<ArrayBu
 
     return Uint8Array.fromBase64(data);
   } finally {
-    // Close only the Page; the Browser is owned by the caller and survives
-    // many renders. Closes the per-render tab and frees its memory in Chrome
-    // — does not affect the WS connection or other concurrent pages.
-    await timed("closePage", () => page.close());
+    // Fire-and-forget. We don't `await` because the next render's `newPage`
+    // is faster when Chrome has had a moment to actually tear the previous
+    // tab down — and the caller's dither pass (~200 ms) provides exactly
+    // that gap concurrently. `.catch(() => {})` swallows close errors on
+    // an already-disconnected browser; a stale page is harmless either way.
+    page.close().catch(() => {});
   }
 }
