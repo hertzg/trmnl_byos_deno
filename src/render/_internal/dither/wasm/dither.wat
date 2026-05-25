@@ -252,25 +252,9 @@
      call $src/render/_internal/dither/wasm/dither.as/lumaRow
     else
      local.get $2
-     local.tee $0
+     i32.const 0
      local.get $15
-     i32.add
-     local.set $3
-     loop $while-continue|1
-      local.get $0
-      local.get $3
-      i32.lt_u
-      if
-       local.get $0
-       i32.const 0
-       i32.store16
-       local.get $0
-       i32.const 2
-       i32.add
-       local.set $0
-       br $while-continue|1
-      end
-     end
+     memory.fill
     end
     i32.const 0
     local.set $9
@@ -286,7 +270,7 @@
     local.set $0
     i32.const 0
     local.set $8
-    loop $for-loop|2
+    loop $for-loop|1
      local.get $4
      local.get $8
      i32.gt_s
@@ -366,7 +350,7 @@
       i32.const 1
       i32.add
       local.set $8
-      br $for-loop|2
+      br $for-loop|1
      end
     end
     local.get $0
