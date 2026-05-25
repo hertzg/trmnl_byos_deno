@@ -1,11 +1,11 @@
 import { assert, assertEquals } from "@std/assert";
 import { filterGrayLuminance } from "../luminance/luminance.ts";
 import { ditherFloydSteinberg } from "../floyd-steinberg/floyd-steinberg.ts";
-import { ditherRgba as wasm } from "./dither.wasm.ts";
+import { ditherRgb as wasm } from "./dither.wasm.ts";
 
-// Seeded RGBA buffer — deterministic across runs without a PRNG dep.
-function makeRgba(pixels: number, seed: number): Uint8Array {
-  const out = new Uint8Array(pixels * 4);
+// Seeded RGB buffer — deterministic across runs without a PRNG dep.
+function makeRgb(pixels: number, seed: number): Uint8Array {
+  const out = new Uint8Array(pixels * 3);
   let s = seed >>> 0;
   for (let i = 0; i < out.length; i++) {
     s = (s * 2654435761 + 1) >>> 0;
@@ -14,8 +14,8 @@ function makeRgba(pixels: number, seed: number): Uint8Array {
   return out;
 }
 
-function nativePipeline(rgba: Uint8Array, width: number, height: number, bitDepth: number) {
-  const grays = filterGrayLuminance(rgba);
+function nativePipeline(rgb: Uint8Array, width: number, height: number, bitDepth: number) {
+  const grays = filterGrayLuminance(rgb);
   return ditherFloydSteinberg(grays, { width, height, bitDepth });
 }
 
@@ -52,9 +52,9 @@ function assertVisuallyEqual(
 }
 
 function assertParity(width: number, height: number, bitDepth: number, seed: number) {
-  const rgba = makeRgba(width * height, seed);
-  const n = nativePipeline(rgba, width, height, bitDepth);
-  const w = wasm(rgba, { width, height, bitDepth });
+  const rgb = makeRgb(width * height, seed);
+  const n = nativePipeline(rgb, width, height, bitDepth);
+  const w = wasm(rgb, { width, height, bitDepth });
   assertVisuallyEqual(w, n, width, height);
 }
 
@@ -74,29 +74,29 @@ Deno.test("fused wasm matches native pipeline (visually): 4bpp 1872x1404 (TRMNL 
   assertParity(1872, 1404, 4, 4);
 });
 
-Deno.test("fused wasm matches native pipeline: all-zero RGBA", () => {
+Deno.test("fused wasm matches native pipeline: all-zero RGB", () => {
   // Flat inputs hit no rounding boundaries — should be bit-exact even with f32.
   const w = 64, h = 32, bitDepth = 4;
-  const rgba = new Uint8Array(w * h * 4);
-  const n = nativePipeline(rgba, w, h, bitDepth);
-  const ws = wasm(rgba, { width: w, height: h, bitDepth });
+  const rgb = new Uint8Array(w * h * 3);
+  const n = nativePipeline(rgb, w, h, bitDepth);
+  const ws = wasm(rgb, { width: w, height: h, bitDepth });
   assertEquals(ws, n);
 });
 
-Deno.test("fused wasm matches native pipeline: all-255 RGBA", () => {
+Deno.test("fused wasm matches native pipeline: all-255 RGB", () => {
   const w = 64, h = 32, bitDepth = 4;
-  const rgba = new Uint8Array(w * h * 4).fill(255);
-  const n = nativePipeline(rgba, w, h, bitDepth);
-  const ws = wasm(rgba, { width: w, height: h, bitDepth });
+  const rgb = new Uint8Array(w * h * 3).fill(255);
+  const n = nativePipeline(rgb, w, h, bitDepth);
+  const ws = wasm(rgb, { width: w, height: h, bitDepth });
   assertEquals(ws, n);
 });
 
 Deno.test("fused wasm matches native pipeline (visually): each channel isolated", () => {
   // Verifies Rec. 709 coefficient order: pure red, pure green, pure blue luminance differ.
-  const rgba = new Uint8Array([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255]);
+  const rgb = new Uint8Array([255, 0, 0, 0, 255, 0, 0, 0, 255]);
   const w = 3, h = 1, bitDepth = 4;
-  const n = nativePipeline(rgba, w, h, bitDepth);
-  const ws = wasm(rgba, { width: w, height: h, bitDepth });
+  const n = nativePipeline(rgb, w, h, bitDepth);
+  const ws = wasm(rgb, { width: w, height: h, bitDepth });
   assertVisuallyEqual(ws, n, w, h);
 });
 
@@ -104,10 +104,10 @@ Deno.test("fused wasm: back-to-back calls don't leak border error", () => {
   // Determinism check: re-zeroing the padded border inside the kernel must produce identical
   // output on the second call. Compares wasm-to-wasm so f32 drift vs the JS reference is moot.
   const w = 257, h = 129, bitDepth = 4;
-  const rgba = makeRgba(w * h, 42);
-  const first = wasm(rgba, { width: w, height: h, bitDepth });
+  const rgb = makeRgb(w * h, 42);
+  const first = wasm(rgb, { width: w, height: h, bitDepth });
   // Snapshot before the second call grows/reuses memory under the view.
   const firstCopy = new Uint8Array(first);
-  const second = wasm(rgba, { width: w, height: h, bitDepth });
+  const second = wasm(rgb, { width: w, height: h, bitDepth });
   assertEquals(second, firstCopy);
 });

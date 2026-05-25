@@ -1,4 +1,4 @@
-import { decodePNG } from "@img/png";
+import { decodePngCdp } from "./dither/png-decode.ts";
 import { timed } from "../../telemetry/spans.ts";
 import { filterGrayLuminance } from "./dither/luminance/luminance.ts";
 import { ditherFloydSteinberg } from "./dither/floyd-steinberg/floyd-steinberg.ts";
@@ -7,7 +7,7 @@ import { ditherSierra3 } from "./dither/sierra3.ts";
 import { ditherBayer4 } from "./dither/bayer.ts";
 import { ditherNone } from "./dither/none.ts";
 import { encodePng } from "./dither/encode-png.ts";
-import { ditherRgba as ditherRgbaWasm } from "./dither/wasm/dither.wasm.ts";
+import { ditherRgb as ditherRgbWasm } from "./dither/wasm/dither.wasm.ts";
 
 // Output is grayscale PNG (color type 0). bitDepth must be 1, 2, 4, or 8 per the PNG spec.
 export type DitherMode = "floyd-steinberg" | "atkinson" | "sierra3" | "bayer" | "none";
@@ -31,24 +31,24 @@ export async function dither(
     );
   }
 
-  const { header, body } = await timed("decode", () => decodePNG(input));
+  const { header, body } = await timed("decode", () => decodePngCdp(input));
   const { width, height } = header;
 
   const indices = impl === "wasm"
-    ? await timed("lumaDither", () => ditherRgbaWasm(body, { width, height, bitDepth }))
+    ? await timed("lumaDither", () => ditherRgbWasm(body, { width, height, bitDepth }))
     : await timed("lumaDither", () => nativePipeline(body, width, height, bitDepth, mode));
 
   return await timed("encode", () => encodePng(indices, width, height, bitDepth));
 }
 
 function nativePipeline(
-  rgba: Uint8Array,
+  rgb: Uint8Array,
   width: number,
   height: number,
   bitDepth: number,
   mode: DitherMode,
 ): Uint8Array {
-  const grays = filterGrayLuminance(rgba);
+  const grays = filterGrayLuminance(rgb);
   switch (mode) {
     case "floyd-steinberg":
       return ditherFloydSteinberg(grays, { width, height, bitDepth });
