@@ -27,9 +27,9 @@ export function drainSpans(): readonly Span[] {
   return als.getStore()?.spans ?? [];
 }
 
-// Record a labeled span around an async step. Returns the resolved value so
+// Record a labeled span around a step (sync or async). Returns the resolved value so
 // call sites stay assignment-shaped: `const x = await timed("...", () => ...)`.
-export async function timed<T>(name: string, fn: () => Promise<T>): Promise<T> {
+export async function timed<T>(name: string, fn: () => T | Promise<T>): Promise<T> {
   const start = performance.now();
   const store = als.getStore();
   const parent = store ? (store.stack[store.stack.length - 1] ?? null) : null;

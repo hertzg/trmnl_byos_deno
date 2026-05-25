@@ -3,8 +3,10 @@
     "dev": "deno run --allow-all --watch=src,templates src/main.ts",
     "start": "deno run --allow-all src/main.ts",
     "test": "deno test --allow-all",
+    "bench": "deno bench --allow-all",
     "fmt": "deno fmt",
-    "lint": "deno lint"
+    "lint": "deno lint",
+    "wasm": "deno run -A scripts/build-wasm.ts"
   },
   "compilerOptions": {
     "jsx": "precompile",
@@ -21,6 +23,7 @@
     "@std/bytes": "jsr:@std/bytes@^1.0.6",
     "@std/cache": "jsr:@std/cache@^0.2.3",
     "@std/encoding": "jsr:@std/encoding@^1.0.10",
+    "@std/fs": "jsr:@std/fs@^1.0.0",
     "@std/math": "jsr:@std/math@^0.0.0",
     "@std/media-types": "jsr:@std/media-types@^1.0.0",
     "@std/path": "jsr:@std/path@^1.0.0",
