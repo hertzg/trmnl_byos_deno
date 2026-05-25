@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
-import { filterGrayLuminance } from "../luminance/luminance.ts";
-import { ditherFloydSteinberg } from "../floyd-steinberg/floyd-steinberg.ts";
+import { filterGrayLuminance } from "../luminance.ts";
+import { ditherFloydSteinberg } from "../floyd-steinberg.ts";
 import { ditherRgb as wasm } from "./dither.wasm.ts";
 
 // Seeded RGB buffer — deterministic across runs without a PRNG dep.

@@ -8,8 +8,8 @@
 // Subtracting (copy-in) from (fused wasm) ≈ kernel+overhead-of-view; comparing (kernel only)
 // against (fused wasm) tells us how much of the round-trip is buffer traffic vs hot loop.
 
-import { filterGrayLuminance } from "../luminance/luminance.ts";
-import { ditherFloydSteinberg } from "../floyd-steinberg/floyd-steinberg.ts";
+import { filterGrayLuminance } from "../luminance.ts";
+import { ditherFloydSteinberg } from "../floyd-steinberg.ts";
 import { ditherRgb } from "./dither.wasm.ts";
 import { ditherFromRgb, memory } from "./dither.wasm";
 
