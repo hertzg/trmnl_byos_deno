@@ -19,10 +19,11 @@ export function ditherRgb(
   opts: { width: number; height: number; bitDepth: number },
 ): Uint8Array {
   const { width, height, bitDepth } = opts;
-  // +32 readahead pad: the luma SIMD chunk does two overlapping v128 loads (at p and p+16).
-  // On the last chunk of the last row the second load can extend 16 bytes past the last pixel;
-  // 32 bytes of pad is enough to stay safely inside this segment for any width.
-  const rgbBytes = align16(width * height * 3 + 32);
+  // The luma SIMD chunk does three back-to-back v128 loads at p, p+16, p+32 (48 bytes total)
+  // and the loop only enters when 48 bytes remain readable, so it never reads past the last
+  // RGB byte. We still pad to a 16-byte boundary so the staging segment that follows starts
+  // aligned for its own v128 stores.
+  const rgbBytes = align16(width * height * 3);
   const stagingBytes = align16((width + 2) * 2); // i16 cells
   const outBytes = align16(width * height);
   const totalBytes = rgbBytes + stagingBytes * 2 + outBytes;

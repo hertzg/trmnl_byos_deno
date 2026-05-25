@@ -31,7 +31,7 @@ for (let y = 0; y < H; y++) {
 // Pre-grow wasm memory once so the per-phase benches don't time memory.grow().
 const PAGE_BYTES = 65536;
 const align16 = (n: number) => (n + 15) & ~15;
-const rgbBytes = align16(W * H * 3 + 32);
+const rgbBytes = align16(W * H * 3);
 const stagingBytes = align16((W + 2) * 2);
 const outBytes = align16(W * H);
 const totalBytes = rgbBytes + stagingBytes * 2 + outBytes;

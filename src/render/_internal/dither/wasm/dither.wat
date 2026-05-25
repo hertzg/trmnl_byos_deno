@@ -5,7 +5,14 @@
  (export "ditherFromRgb" (func $src/render/_internal/dither/wasm/dither.as/ditherFromRgb))
  (export "memory" (memory $0))
  (func $src/render/_internal/dither/wasm/dither.as/lumaRow (param $0 i32) (param $1 i32) (param $2 i32)
-  (local $3 v128)
+  (local $3 i32)
+  (local $4 v128)
+  (local $5 v128)
+  (local $6 v128)
+  (local $7 v128)
+  (local $8 v128)
+  (local $9 v128)
+  (local $10 v128)
   local.get $1
   i32.const 0
   i32.store16
@@ -21,7 +28,7 @@
   local.get $1
   i32.const 2
   i32.add
-  local.set $1
+  local.set $3
   local.get $0
   local.get $2
   i32.const 3
@@ -29,73 +36,118 @@
   i32.add
   local.set $2
   loop $while-continue|0
-   local.get $0
-   i32.const 28
-   i32.add
    local.get $2
-   i32.le_u
+   local.get $0
+   i32.const 48
+   i32.add
+   local.tee $1
+   i32.ge_u
    if
-    local.get $1
-    v128.const i32x4 0x3e59b3d0 0x3e59b3d0 0x3e59b3d0 0x3e59b3d0
+    local.get $3
     local.get $0
     v128.load
-    local.tee $3
-    v128.const i32x4 0x00000000 0x00000000 0x00000000 0x00000000
-    i8x16.shuffle 0 16 16 16 3 16 16 16 6 16 16 16 9 16 16 16
-    f32x4.convert_i32x4_s
-    f32x4.mul
-    v128.const i32x4 0x3f371759 0x3f371759 0x3f371759 0x3f371759
-    local.get $3
-    v128.const i32x4 0x00000000 0x00000000 0x00000000 0x00000000
-    i8x16.shuffle 1 16 16 16 4 16 16 16 7 16 16 16 10 16 16 16
-    f32x4.convert_i32x4_s
-    f32x4.mul
-    f32x4.add
-    v128.const i32x4 0x3d93dd98 0x3d93dd98 0x3d93dd98 0x3d93dd98
-    local.get $3
-    v128.const i32x4 0x00000000 0x00000000 0x00000000 0x00000000
-    i8x16.shuffle 2 16 16 16 5 16 16 16 8 16 16 16 11 16 16 16
-    f32x4.convert_i32x4_s
-    f32x4.mul
-    f32x4.add
-    v128.const i32x4 0x3f000000 0x3f000000 0x3f000000 0x3f000000
-    f32x4.add
-    i32x4.trunc_sat_f32x4_s
-    v128.const i32x4 0x3e59b3d0 0x3e59b3d0 0x3e59b3d0 0x3e59b3d0
+    local.tee $6
     local.get $0
-    v128.load offset=12
-    local.tee $3
-    v128.const i32x4 0x00000000 0x00000000 0x00000000 0x00000000
-    i8x16.shuffle 0 16 16 16 3 16 16 16 6 16 16 16 9 16 16 16
-    f32x4.convert_i32x4_s
-    f32x4.mul
-    v128.const i32x4 0x3f371759 0x3f371759 0x3f371759 0x3f371759
-    local.get $3
-    v128.const i32x4 0x00000000 0x00000000 0x00000000 0x00000000
-    i8x16.shuffle 1 16 16 16 4 16 16 16 7 16 16 16 10 16 16 16
-    f32x4.convert_i32x4_s
-    f32x4.mul
-    f32x4.add
-    v128.const i32x4 0x3d93dd98 0x3d93dd98 0x3d93dd98 0x3d93dd98
-    local.get $3
-    v128.const i32x4 0x00000000 0x00000000 0x00000000 0x00000000
-    i8x16.shuffle 2 16 16 16 5 16 16 16 8 16 16 16 11 16 16 16
-    f32x4.convert_i32x4_s
-    f32x4.mul
-    f32x4.add
-    v128.const i32x4 0x3f000000 0x3f000000 0x3f000000 0x3f000000
-    f32x4.add
-    i32x4.trunc_sat_f32x4_s
+    v128.load offset=16
+    local.tee $7
+    i8x16.shuffle 0 3 6 9 12 15 18 21 24 27 30 0 0 0 0 0
+    local.get $0
+    v128.load offset=32
+    local.tee $5
+    i8x16.shuffle 0 1 2 3 4 5 6 7 8 9 10 17 20 23 26 29
+    local.tee $8
+    i16x8.extend_low_i8x16_u
+    local.tee $9
+    v128.const i32x4 0x1b361b36 0x1b361b36 0x1b361b36 0x1b361b36
+    i32x4.extmul_low_i16x8_u
+    local.get $6
+    local.get $7
+    i8x16.shuffle 1 4 7 10 13 16 19 22 25 28 31 0 0 0 0 0
+    local.get $5
+    i8x16.shuffle 0 1 2 3 4 5 6 7 8 9 10 18 21 24 27 30
+    local.tee $10
+    i16x8.extend_low_i8x16_u
+    local.tee $4
+    v128.const i32x4 0x5b8c5b8c 0x5b8c5b8c 0x5b8c5b8c 0x5b8c5b8c
+    i32x4.extmul_low_i16x8_u
+    i32x4.add
+    local.get $6
+    local.get $7
+    i8x16.shuffle 2 5 8 11 14 17 20 23 26 29 0 0 0 0 0 0
+    local.get $5
+    i8x16.shuffle 0 1 2 3 4 5 6 7 8 9 16 19 22 25 28 31
+    local.tee $5
+    i16x8.extend_low_i8x16_u
+    local.tee $6
+    v128.const i32x4 0x093e093e 0x093e093e 0x093e093e 0x093e093e
+    i32x4.extmul_low_i16x8_u
+    i32x4.add
+    v128.const i32x4 0x00004000 0x00004000 0x00004000 0x00004000
+    i32x4.add
+    i32.const 15
+    i32x4.shr_s
+    local.get $9
+    v128.const i32x4 0x1b361b36 0x1b361b36 0x1b361b36 0x1b361b36
+    i32x4.extmul_high_i16x8_u
+    local.get $4
+    v128.const i32x4 0x5b8c5b8c 0x5b8c5b8c 0x5b8c5b8c 0x5b8c5b8c
+    i32x4.extmul_high_i16x8_u
+    i32x4.add
+    local.get $6
+    v128.const i32x4 0x093e093e 0x093e093e 0x093e093e 0x093e093e
+    i32x4.extmul_high_i16x8_u
+    i32x4.add
+    v128.const i32x4 0x00004000 0x00004000 0x00004000 0x00004000
+    i32x4.add
+    i32.const 15
+    i32x4.shr_s
     i16x8.narrow_i32x4_s
     v128.store
-    local.get $0
-    i32.const 24
-    i32.add
-    local.set $0
+    local.get $3
+    local.get $8
+    i16x8.extend_high_i8x16_u
+    local.tee $4
+    v128.const i32x4 0x1b361b36 0x1b361b36 0x1b361b36 0x1b361b36
+    i32x4.extmul_low_i16x8_u
+    local.get $10
+    i16x8.extend_high_i8x16_u
+    local.tee $6
+    v128.const i32x4 0x5b8c5b8c 0x5b8c5b8c 0x5b8c5b8c 0x5b8c5b8c
+    i32x4.extmul_low_i16x8_u
+    i32x4.add
+    local.get $5
+    i16x8.extend_high_i8x16_u
+    local.tee $5
+    v128.const i32x4 0x093e093e 0x093e093e 0x093e093e 0x093e093e
+    i32x4.extmul_low_i16x8_u
+    i32x4.add
+    v128.const i32x4 0x00004000 0x00004000 0x00004000 0x00004000
+    i32x4.add
+    i32.const 15
+    i32x4.shr_s
+    local.get $4
+    v128.const i32x4 0x1b361b36 0x1b361b36 0x1b361b36 0x1b361b36
+    i32x4.extmul_high_i16x8_u
+    local.get $6
+    v128.const i32x4 0x5b8c5b8c 0x5b8c5b8c 0x5b8c5b8c 0x5b8c5b8c
+    i32x4.extmul_high_i16x8_u
+    i32x4.add
+    local.get $5
+    v128.const i32x4 0x093e093e 0x093e093e 0x093e093e 0x093e093e
+    i32x4.extmul_high_i16x8_u
+    i32x4.add
+    v128.const i32x4 0x00004000 0x00004000 0x00004000 0x00004000
+    i32x4.add
+    i32.const 15
+    i32x4.shr_s
+    i16x8.narrow_i32x4_s
+    v128.store offset=16
     local.get $1
-    i32.const 16
+    local.set $0
+    local.get $3
+    i32.const 32
     i32.add
-    local.set $1
+    local.set $3
     br $while-continue|0
    end
   end
@@ -104,7 +156,7 @@
    local.get $2
    i32.lt_u
    if
-    local.get $1
+    local.get $3
     local.get $0
     i32.load8_u
     f32.convert_i32_u
@@ -130,10 +182,10 @@
     i32.const 3
     i32.add
     local.set $0
-    local.get $1
+    local.get $3
     i32.const 2
     i32.add
-    local.set $1
+    local.set $3
     br $while-continue|1
    end
   end
