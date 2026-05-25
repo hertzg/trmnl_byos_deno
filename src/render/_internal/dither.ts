@@ -2,6 +2,7 @@ import { decodePNG } from "@img/png";
 import { crc32 } from "@hertzg/crc";
 import { concat } from "@std/bytes";
 import { clamp } from "@std/math";
+import { timed } from "../../telemetry/spans.ts";
 
 // Output is grayscale PNG (color type 0). bitDepth must be 1, 2, 4, or 8 per the PNG spec.
 export type DitherMode = "floyd-steinberg" | "atkinson" | "sierra3" | "bayer" | "none";
@@ -17,10 +18,16 @@ export async function ditherNative(
 ): Promise<Uint8Array<ArrayBuffer>> {
   const bitDepth = opts.bitDepth ?? 4;
   const mode = opts.mode ?? "floyd-steinberg";
-  const { header, body } = await decodePNG(input);
-  const grays = filterGrayLumiance(body);
-  const indices = ditherGrays(grays, header.width, header.height, bitDepth, mode);
-  return await encodePng(indices, header.width, header.height, bitDepth);
+  const { header, body } = await timed("decode", () => decodePNG(input));
+  const grays = await timed("luma", async () => filterGrayLumiance(body));
+  const indices = await timed(
+    "quantize",
+    async () => ditherGrays(grays, header.width, header.height, bitDepth, mode),
+  );
+  return await timed(
+    "encode",
+    () => encodePng(indices, header.width, header.height, bitDepth),
+  );
 }
 
 // Rec. 709 luminance into a Float32 buffer so error diffusion can spill out of [0, 255].
