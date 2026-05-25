@@ -6,7 +6,7 @@ import type { Bundle } from "../plugin/bundle.ts";
 import { hashBundle } from "../hash.ts";
 import type { DeviceProfile } from "./profiles.ts";
 import { connect } from "@astral/astral";
-import { type Browser, renderUrl, resolveCdpEndpoint } from "./_internal/cdp.ts";
+import { initPage, type Page, renderUrl, resolveCdpEndpoint } from "./_internal/cdp.ts";
 import { dither } from "./_internal/dither.ts";
 import { timed } from "../telemetry/spans.ts";
 
@@ -112,32 +112,36 @@ export type FetchPngFromUrlConfig = {
 } & DeviceProfile;
 
 export function createFetchPngFromUrl(config: FetchPngFromUrlConfig): FetchPngFromUrl {
-  // Resolve the endpoint and open the Astral Browser once. The connection
-  // lives for the Renderer's lifetime; every render reuses it via newPage.
-  // Memoized as a Promise so concurrent first-call requests share the same
-  // in-flight connect. If Chrome restarts, the cached Browser becomes invalid
-  // and subsequent renders throw — restart the Deno process to recover.
-  let browserPromise: Promise<Browser> | undefined;
+  // Resolve the endpoint, open the Astral Browser, and open a Page once.
+  // Both live for the Renderer's lifetime; every render reuses the same Page
+  // by `goto`-ing to the new URL. Memoized as a Promise so concurrent
+  // first-call requests share the same in-flight connect. If Chrome restarts,
+  // the cached Page becomes invalid and subsequent renders throw — restart
+  // the Deno process to recover.
+  //
+  // Safe to reuse one Page because `rasterize` serialises calls through its
+  // chain; the device-metrics + lifecycle setup is sticky across navigations,
+  // and each `goto` fires a fresh FCP for the new loaderId.
+  let pagePromise: Promise<Page> | undefined;
 
   return async (url) => {
-    const browser = await timed(
-      "browser",
-      () => (browserPromise ??= (async () => {
+    const page = await timed(
+      "page",
+      () => (pagePromise ??= (async () => {
         const endpoint = await resolveCdpEndpoint(config.cdpUrl);
-        return await connect({ endpoint });
+        const browser = await connect({ endpoint });
+        return await initPage({
+          browser,
+          deviceWidth: config.width,
+          deviceHeight: config.height,
+          // TRMNL framework CSS handles CSS-to-physical scaling via
+          // `transform: scale(--pixel-ratio)`, so CDP renders at native res / DPR=1.
+          deviceScaleFactor: 1,
+        });
       })()),
     );
 
-    const raw = await timed("renderUrl", () =>
-      renderUrl({
-        browser,
-        url,
-        deviceWidth: config.width,
-        deviceHeight: config.height,
-        // TRMNL framework CSS handles CSS-to-physical scaling via
-        // `transform: scale(--pixel-ratio)`, so CDP renders at native res / DPR=1.
-        deviceScaleFactor: 1,
-      }));
+    const raw = await timed("renderUrl", () => renderUrl({ page, url }));
     return await timed("dither", () =>
       dither(raw, {
         bitDepth: config.bitDepth,
