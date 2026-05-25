@@ -32,12 +32,14 @@
 //      bit-deterministic given the same input. The mid-pass rounding constants (`+8` before
 //      `>>4`, `+halfStep` before `/step`) implement round-half-up to match JS Math.round.
 //
-//   5. Luma SIMD widened to 8 px/chunk. RGB stride means a 24-byte chunk doesn't align with a
-//      v128.load (16 bytes), so the chunk uses two v128 loads at p (pixels 0..3) and p+12
-//      (pixels 4..7). Each load straddles 4 RGB pixels in its first 12 bytes — the SAME byte
-//      layout — so both halves share one shuffle pattern. Crucially, this keeps the RGBA-era
-//      trick of sourcing zero bytes from a second shuffle input (`zero` v128) to free-extend
-//      each i8 sample to i32. No AND mask needed.
+//   5. Luma SIMD is planar at 16 px/chunk. Three back-to-back v128 loads (48 bytes, every byte
+//      consumed — no overlap, no waste) feed a 2-stage i8x16.shuffle deinterleave into vR/vG/vB
+//      byte planes. Each plane is zero-extended to two i16x8 (low/high 8 pixels), then luma is
+//      computed in Q15 fixed-point: i32x4.extmul_*_i16x8_u(channel, coef_q15) yields the per-
+//      channel i32 contribution, three of which sum into a single i32x4 accumulator BEFORE the
+//      round-and-shift. One round, one shift, four pack-and-store ops cover all 16 pixels.
+//      Throughput: ~2.94 SIMD ops/pixel vs ~3.75 in the prior 8-px-per-chunk overlapping-load
+//      design.
 //
 // Range analysis: |err| ≤ step/2 ≤ 128 (worst case is bitDepth=1). The widest intermediate is
 // `dlPrev + err·3` = up to 6·128 + 3·128 = 1152, all comfortably inside i16 (±32767), and the
@@ -66,12 +68,13 @@ export function ditherFromRgb(
   const rgbRowBytes: usize = widthBytes * 3;
   const stagingBytes: usize = <usize> (width + 2) << 1;
 
-  // SIMD constants for the luma pass.
-  const cRv: v128 = f32x4.splat(<f32> 0.2126);
-  const cGv: v128 = f32x4.splat(<f32> 0.7152);
-  const cBv: v128 = f32x4.splat(<f32> 0.0722);
-  const halfV: v128 = f32x4.splat(<f32> 0.5);
-  const zero: v128 = i8x16.splat(0);
+  // SIMD constants for the luma pass. Q15 fixed-point Rec.709 coefficients:
+  //   0.2126 × 32768 ≈ 6966   0.7152 × 32768 ≈ 23436   0.0722 × 32768 ≈ 2366
+  // Sum = 32768, so a pure-white pixel quantises to exactly 255 after the +0x4000 round.
+  const cRv: v128 = i16x8.splat(<i16> 6966);
+  const cGv: v128 = i16x8.splat(<i16> 23436);
+  const cBv: v128 = i16x8.splat(<i16> 2366);
+  const roundV: v128 = i32x4.splat(<i32> 0x4000);
 
   // FS integer constants.
   const maxLevel: i32 = (1 << bitDepth) - 1;
@@ -79,7 +82,7 @@ export function ditherFromRgb(
   const halfStep: i32 = step >> 1;
 
   // Prime row 0's luma into stagingA so the row loop can read from it on iteration y=0.
-  lumaRow(rgbPtr, stagingAPtr, width, cRv, cGv, cBv, halfV, zero);
+  lumaRow(rgbPtr, stagingAPtr, width, cRv, cGv, cBv, roundV);
 
   let current: usize = stagingAPtr;
   let next: usize = stagingBPtr;
@@ -90,7 +93,7 @@ export function ditherFromRgb(
     // Pre-load row y+1's luma into `next` (or zero `next` on the last row so the FS commits
     // don't read garbage when the staging buffers are reused next frame).
     if (y + 1 < height) {
-      lumaRow(rgbRowPtr + rgbRowBytes, next, width, cRv, cGv, cBv, halfV, zero);
+      lumaRow(rgbRowPtr + rgbRowBytes, next, width, cRv, cGv, cBv, roundV);
     } else {
       let p: usize = next;
       const end: usize = next + stagingBytes;
@@ -161,12 +164,17 @@ export function ditherFromRgb(
   }
 }
 
-// Write one row's luma into stagingPtr as i16 (round-half-up to nearest integer), plus the
-// 1-cell zero borders on each side. SIMD body processes 8 RGB pixels per chunk: 2× v128 loads
-// at p (pixels 0..3 in bytes 0..11) and p+12 (pixels 4..7 in bytes 0..11), shuffle each channel
-// byte into the low byte of an i32 lane (free zero-extension via `zero` as second shuffle source),
-// MAC with weights, round-and-pack two i32x4 → one i16x8 store. Both halves share one shuffle
-// pattern because p+12 starts on a pixel boundary. Tail handles width % 8 in scalar.
+// Write one row's luma into stagingPtr as i16, plus the 1-cell zero borders on each side.
+//
+// SIMD body processes 16 RGB pixels per chunk via three back-to-back v128 loads (48 bytes,
+// every input byte consumed exactly once). A two-stage i8x16.shuffle deinterleave splits the
+// stream into vR/vG/vB byte planes (16 channel samples per plane). Each plane is then zero-
+// extended into two i16x8 (low/high 8 pixels), and luma is computed in Q15 fixed-point:
+// i32x4.extmul_*_i16x8_u(channel, coef) yields i32 per-channel contributions, three of which
+// sum into a single i32x4 accumulator BEFORE the round-and-shift — one rounding per pixel,
+// matching JS Math.round (+0x4000 then >>15) so the kernel stays bit-deterministic.
+//
+// Scalar tail handles width % 16 (empty for 800/1872/3840-wide TRMNL inputs).
 function lumaRow(
   rgbPtr: usize,
   stagingPtr: usize,
@@ -174,8 +182,7 @@ function lumaRow(
   cRv: v128,
   cGv: v128,
   cBv: v128,
-  halfV: v128,
-  zero: v128,
+  roundV: v128,
 ): void {
   store<i16>(stagingPtr, 0); // left border
   store<i16>(stagingPtr + (<usize> (width + 1) << 1), 0); // right border
@@ -184,89 +191,103 @@ function lumaRow(
   let stP: usize = stagingPtr + 2; // first real cell
   const rgbEnd: usize = rgbPtr + (<usize> width) * 3;
 
-  // SIMD chunks: need 28 readable bytes from rgbP (load at p+12 reads p+12..p+27).
-  // Stop when fewer than 28 bytes remain; the scalar tail picks up the leftover.
-  while (rgbP + 28 <= rgbEnd) {
-    const px0: v128 = v128.load(rgbP);
-    const px1: v128 = v128.load(rgbP + 12);
+  // SIMD chunks: 48 bytes per iteration, no overlap. Stop when fewer than 48 bytes remain.
+  while (rgbP + 48 <= rgbEnd) {
+    // Three aligned-stride loads cover bytes [0..47] = 16 RGB pixels.
+    //   ld0: R0 G0 B0 R1 G1 B1 R2 G2 B2 R3 G3 B3 R4 G4 B4 R5
+    //   ld1: G5 B5 R6 G6 B6 R7 G7 B7 R8 G8 B8 R9 G9 B9 R10 G10
+    //   ld2: B10 R11 G11 B11 R12 G12 B12 R13 G13 B13 R14 G14 B14 R15 G15 B15
+    const ld0: v128 = v128.load(rgbP);
+    const ld1: v128 = v128.load(rgbP + 16);
+    const ld2: v128 = v128.load(rgbP + 32);
 
-    // Both halves share one shuffle pattern. Each v128 holds 4 RGB pixels in its first 12 bytes:
-    //   R: bytes 0, 3, 6, 9      G: bytes 1, 4, 7, 10      B: bytes 2, 5, 8, 11
-    // Selecting from `zero` as the second source (indices 16+) gives free zero bytes for the
-    // high 3 bytes of each i32 lane.
+    // Two-stage planar deinterleave (2 shuffles per channel). Stage 1 collects bytes from
+    // (ld0, ld1); stage 2 brings in the rest from ld2. Pad bytes are zeros — overwritten
+    // by the second shuffle so their value doesn't matter.
+    //
+    // R indices: ld0={0,3,6,9,12,15}, ld1={2,5,8,11,14}→+16, ld2={1,4,7,10,13}→+16.
     // deno-fmt-ignore
-    const r0: v128 = i8x16.shuffle(px0, zero,
-       0, 16, 16, 16,
-       3, 16, 16, 16,
-       6, 16, 16, 16,
-       9, 16, 16, 16,
+    const tempR: v128 = i8x16.shuffle(ld0, ld1,
+       0,  3,  6,  9, 12, 15,         // R0..R5 from ld0
+      18, 21, 24, 27, 30,             // R6..R10 from ld1
+       0,  0,  0,  0,  0,             // pad
     );
     // deno-fmt-ignore
-    const g0: v128 = i8x16.shuffle(px0, zero,
-       1, 16, 16, 16,
-       4, 16, 16, 16,
-       7, 16, 16, 16,
-      10, 16, 16, 16,
-    );
-    // deno-fmt-ignore
-    const b0: v128 = i8x16.shuffle(px0, zero,
-       2, 16, 16, 16,
-       5, 16, 16, 16,
-       8, 16, 16, 16,
-      11, 16, 16, 16,
-    );
-    const lum0: v128 = f32x4.add(
-      f32x4.add(
-        f32x4.mul(cRv, f32x4.convert_i32x4_s(r0)),
-        f32x4.mul(cGv, f32x4.convert_i32x4_s(g0)),
-      ),
-      f32x4.mul(cBv, f32x4.convert_i32x4_s(b0)),
+    const vR: v128 = i8x16.shuffle(tempR, ld2,
+       0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10,   // R0..R10 from tempR
+      17, 20, 23, 26, 29,                            // R11..R15 from ld2
     );
 
-    // Pixels 4..7 — same shuffle indices on px1 since the load shifted by 12 lands pixel 4 at
-    // byte 0 of px1.
+    // G indices: ld0={1,4,7,10,13}, ld1={0,3,6,9,12,15}→+16, ld2={2,5,8,11,14}→+16.
     // deno-fmt-ignore
-    const r1: v128 = i8x16.shuffle(px1, zero,
-       0, 16, 16, 16,
-       3, 16, 16, 16,
-       6, 16, 16, 16,
-       9, 16, 16, 16,
+    const tempG: v128 = i8x16.shuffle(ld0, ld1,
+       1,  4,  7, 10, 13,             // G0..G4 from ld0
+      16, 19, 22, 25, 28, 31,         // G5..G10 from ld1
+       0,  0,  0,  0,  0,             // pad
     );
     // deno-fmt-ignore
-    const g1: v128 = i8x16.shuffle(px1, zero,
-       1, 16, 16, 16,
-       4, 16, 16, 16,
-       7, 16, 16, 16,
-      10, 16, 16, 16,
-    );
-    // deno-fmt-ignore
-    const b1: v128 = i8x16.shuffle(px1, zero,
-       2, 16, 16, 16,
-       5, 16, 16, 16,
-       8, 16, 16, 16,
-      11, 16, 16, 16,
-    );
-    const lum1: v128 = f32x4.add(
-      f32x4.add(
-        f32x4.mul(cRv, f32x4.convert_i32x4_s(r1)),
-        f32x4.mul(cGv, f32x4.convert_i32x4_s(g1)),
-      ),
-      f32x4.mul(cBv, f32x4.convert_i32x4_s(b1)),
+    const vG: v128 = i8x16.shuffle(tempG, ld2,
+       0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10,   // G0..G10 from tempG
+      18, 21, 24, 27, 30,                            // G11..G15 from ld2
     );
 
-    // Round-to-nearest via (+0.5 then trunc), saturate to i32, pack two i32x4 into one i16x8.
-    // The narrow is saturating, but lum ∈ [0, ~255] never gets near the i16 range so no clamp
-    // ever fires.
-    const i0: v128 = i32x4.trunc_sat_f32x4_s(f32x4.add(lum0, halfV));
-    const i1: v128 = i32x4.trunc_sat_f32x4_s(f32x4.add(lum1, halfV));
-    v128.store(stP, i16x8.narrow_i32x4_s(i0, i1));
+    // B indices: ld0={2,5,8,11,14}, ld1={1,4,7,10,13}→+16, ld2={0,3,6,9,12,15}→+16.
+    // deno-fmt-ignore
+    const tempB: v128 = i8x16.shuffle(ld0, ld1,
+       2,  5,  8, 11, 14,             // B0..B4 from ld0
+      17, 20, 23, 26, 29,             // B5..B9 from ld1
+       0,  0,  0,  0,  0,  0,         // pad
+    );
+    // deno-fmt-ignore
+    const vB: v128 = i8x16.shuffle(tempB, ld2,
+       0,  1,  2,  3,  4,  5,  6,  7,  8,  9,       // B0..B9 from tempB
+      16, 19, 22, 25, 28, 31,                        // B10..B15 from ld2
+    );
 
-    rgbP += 24;
-    stP += 16;
+    // Zero-extend each i8x16 channel plane into two i16x8 (low/high 8 pixels).
+    const rLo: v128 = i16x8.extend_low_i8x16_u(vR);
+    const rHi: v128 = i16x8.extend_high_i8x16_u(vR);
+    const gLo: v128 = i16x8.extend_low_i8x16_u(vG);
+    const gHi: v128 = i16x8.extend_high_i8x16_u(vG);
+    const bLo: v128 = i16x8.extend_low_i8x16_u(vB);
+    const bHi: v128 = i16x8.extend_high_i8x16_u(vB);
+
+    // Q15 fixed-point luma. extmul_low/high give the 4-lane i32 product of an i16x8 against
+    // the Q15 coefficient splat — equivalent to channel × coef without overflow (max
+    // 255 × 23436 = ~6M, comfortably in i32). Four i32x4 accumulators cover all 16 pixels.
+    // Sums happen in i32 BEFORE the single round-and-shift, so rounding error vs the f32
+    // reference is bounded by ~½ ULP per pixel (well under the test's ±1 tolerance).
+    let acc0: v128 = i32x4.extmul_low_i16x8_u(rLo, cRv);
+    let acc1: v128 = i32x4.extmul_high_i16x8_u(rLo, cRv);
+    let acc2: v128 = i32x4.extmul_low_i16x8_u(rHi, cRv);
+    let acc3: v128 = i32x4.extmul_high_i16x8_u(rHi, cRv);
+
+    acc0 = i32x4.add(acc0, i32x4.extmul_low_i16x8_u(gLo, cGv));
+    acc1 = i32x4.add(acc1, i32x4.extmul_high_i16x8_u(gLo, cGv));
+    acc2 = i32x4.add(acc2, i32x4.extmul_low_i16x8_u(gHi, cGv));
+    acc3 = i32x4.add(acc3, i32x4.extmul_high_i16x8_u(gHi, cGv));
+
+    acc0 = i32x4.add(acc0, i32x4.extmul_low_i16x8_u(bLo, cBv));
+    acc1 = i32x4.add(acc1, i32x4.extmul_high_i16x8_u(bLo, cBv));
+    acc2 = i32x4.add(acc2, i32x4.extmul_low_i16x8_u(bHi, cBv));
+    acc3 = i32x4.add(acc3, i32x4.extmul_high_i16x8_u(bHi, cBv));
+
+    // Round (+0x4000) and shift down 15 → luma in [0, 255]. narrow_i32x4_s saturates, but
+    // values stay in u8 range so no clamp ever fires.
+    acc0 = i32x4.shr_s(i32x4.add(acc0, roundV), 15);
+    acc1 = i32x4.shr_s(i32x4.add(acc1, roundV), 15);
+    acc2 = i32x4.shr_s(i32x4.add(acc2, roundV), 15);
+    acc3 = i32x4.shr_s(i32x4.add(acc3, roundV), 15);
+
+    v128.store(stP, i16x8.narrow_i32x4_s(acc0, acc1));
+    v128.store(stP + 16, i16x8.narrow_i32x4_s(acc2, acc3));
+
+    rgbP += 48;
+    stP += 32;
   }
 
-  // Scalar tail: any remaining pixels (always < 16 px because the SIMD loop stops as soon as
-  // fewer than 32 bytes are readable; for the common width=1872 case the tail is empty).
+  // Scalar tail keeps the f32 form for fidelity with the JS reference on partial chunks
+  // (the difference vs the Q15 path is ≤1 ULP and the tail is at most 15 pixels per row).
   while (rgbP < rgbEnd) {
     const r: f32 = <f32> load<u8>(rgbP);
     const g: f32 = <f32> load<u8>(rgbP + 1);
