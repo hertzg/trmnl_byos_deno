@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
+import { setMetric, timing } from "hono/timing";
+import { drainSpans, withSpans } from "./telemetry/spans.ts";
 import { ACTIVE_PROFILE, CDP_URL, FRIENDLY_ID, LOOPBACK_HOST, PLUGIN_DIR, PORT } from "./config.ts";
 import { createConductor } from "./conductor/conductor.ts";
 import ErrorView from "./conductor/error-view.tsx";
@@ -33,8 +35,7 @@ async function main() {
   // the in-memory ring backs the dashboard's device section.
   const deviceState = createDeviceState({
     now,
-    onLog: (entry) =>
-      console.log(`[device-log] ${entry.id.toUpperCase()}: ${entry.body}`),
+    onLog: (entry) => console.log(`[device-log] ${entry.id.toUpperCase()}: ${entry.body}`),
   });
 
   const conductor = createConductor({
@@ -60,6 +61,21 @@ async function main() {
   });
 
   const app = new Hono()
+    .use(timing())
+    // Open an ALS span buffer for every request, then drain anything
+    // `timed(...)` recorded down the async tree into Server-Timing. Visible
+    // in DevTools' Network panel next to the rest of the timing breakdown.
+    .use(async (c, next) => {
+      await withSpans(async () => {
+        await next();
+        // Server-Timing is flat; we encode each span's immediate parent in
+        // the entry's `desc` field so DevTools shows the relationship inline.
+        // Top-level spans get no desc.
+        for (const s of drainSpans()) {
+          setMetric(c, s.name, s.ms, s.parent ?? undefined);
+        }
+      });
+    })
     .use(logger())
     .onError((err, c) => {
       console.error("[handler]", err);

@@ -5,8 +5,10 @@ import { extname } from "@std/path";
 import type { Bundle } from "../plugin/bundle.ts";
 import { hashBundle } from "../hash.ts";
 import type { DeviceProfile } from "./profiles.ts";
-import { renderUrl, resolveCdpEndpoint } from "./_internal/cdp.ts";
+import { connect } from "@astral/astral";
+import { type Browser, renderUrl, resolveCdpEndpoint } from "./_internal/cdp.ts";
 import { ditherNative } from "./_internal/dither.ts";
+import { timed } from "../telemetry/spans.ts";
 
 // Renderer: Bundle → Image. See ADR-0003 / CONTEXT.md.
 // Owns a loopback HTTP origin that serves the mounted Bundle's HTML +
@@ -82,16 +84,17 @@ export function createRenderer(deps: RendererDeps): Renderer {
       return hashBundle(bundle);
     },
     rasterize(bundle) {
-      const next = chain
-        .catch(() => {})
-        .then(async () => {
-          mounted = bundle;
-          try {
-            return await deps.fetchPngFromUrl(`${origin}${INDEX_PATH}`);
-          } finally {
-            mounted = null;
-          }
-        });
+      const next = timed("rasterize", () =>
+        chain
+          .catch(() => {})
+          .then(async () => {
+            mounted = bundle;
+            try {
+              return await deps.fetchPngFromUrl(`${origin}${INDEX_PATH}`);
+            } finally {
+              mounted = null;
+            }
+          }));
       chain = next;
       return next;
     },
@@ -109,20 +112,36 @@ export type FetchPngFromUrlConfig = {
 } & DeviceProfile;
 
 export function createFetchPngFromUrl(config: FetchPngFromUrlConfig): FetchPngFromUrl {
+  // Resolve the endpoint and open the Astral Browser once. The connection
+  // lives for the Renderer's lifetime; every render reuses it via newPage.
+  // Memoized as a Promise so concurrent first-call requests share the same
+  // in-flight connect. If Chrome restarts, the cached Browser becomes invalid
+  // and subsequent renders throw — restart the Deno process to recover.
+  let browserPromise: Promise<Browser> | undefined;
+
   return async (url) => {
-    const endpoint = await resolveCdpEndpoint(config.cdpUrl);
-    const raw = await renderUrl({
-      endpoint,
-      url,
-      deviceWidth: config.width,
-      deviceHeight: config.height,
-      // TRMNL framework CSS handles CSS-to-physical scaling via
-      // `transform: scale(--pixel-ratio)`, so CDP renders at native res / DPR=1.
-      deviceScaleFactor: 1,
-    });
-    return await ditherNative(raw, {
-      bitDepth: config.bitDepth,
-      mode: config.dither,
-    });
+    const browser = await timed(
+      "browser",
+      () => (browserPromise ??= (async () => {
+        const endpoint = await resolveCdpEndpoint(config.cdpUrl);
+        return await connect({ endpoint });
+      })()),
+    );
+
+    const raw = await timed("renderUrl", () =>
+      renderUrl({
+        browser,
+        url,
+        deviceWidth: config.width,
+        deviceHeight: config.height,
+        // TRMNL framework CSS handles CSS-to-physical scaling via
+        // `transform: scale(--pixel-ratio)`, so CDP renders at native res / DPR=1.
+        deviceScaleFactor: 1,
+      }));
+    return await timed("dither", () =>
+      ditherNative(raw, {
+        bitDepth: config.bitDepth,
+        mode: config.dither,
+      }));
   };
 }
