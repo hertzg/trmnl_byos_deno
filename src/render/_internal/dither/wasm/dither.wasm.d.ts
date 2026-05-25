@@ -1,7 +1,8 @@
 export const memory: WebAssembly.Memory;
 export function ditherFromRgba(
   rgbaPtr: number,
-  paddedPtr: number,
+  stagingAPtr: number,
+  stagingBPtr: number,
   outPtr: number,
   width: number,
   height: number,
