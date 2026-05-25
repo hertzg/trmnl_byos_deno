@@ -1,6 +1,6 @@
 export const memory: WebAssembly.Memory;
-export function ditherFromRgba(
-  rgbaPtr: number,
+export function ditherFromRgb(
+  rgbPtr: number,
   stagingAPtr: number,
   stagingBPtr: number,
   outPtr: number,
