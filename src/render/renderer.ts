@@ -142,7 +142,6 @@ export function createFetchPngFromUrl(config: FetchPngFromUrlConfig): FetchPngFr
       dither(raw, {
         bitDepth: config.bitDepth,
         mode: config.dither,
-        impl: "wasm"
       }));
   };
 }
