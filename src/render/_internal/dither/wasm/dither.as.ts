@@ -1,27 +1,49 @@
-// Fused Rec. 709 luminance + Floyd-Steinberg error diffusion. Reads RGBA bytes from `rgbaPtr`,
-// writes one u8 index per pixel to `outPtr`. Uses `paddedPtr` as a (width+2) × (height+1) f32
-// scratch buffer whose 1-cell border absorbs FS boundary writes — the real-pixel cells are
-// overwritten by the luma pass every call, but the border cells must be re-zeroed because the
-// previous frame's diffusion writes linger there. JS owns memory layout + growth.
+// Fused Rec. 709 luminance + Floyd-Steinberg dither, integer arithmetic, two-row staging.
 //
-// Numerics: all arithmetic runs in f32. The "visually identical" parity contract (see
-// dither.wasm.test.ts) tolerates ±1 quantization drift on a small fraction of pixels — f32 sums
-// can diverge from the JS f64 reference by <1 ULP per op, which never propagates past a single
-// round-to-nearest in practice.
+// Memory layout (JS-owned):
+//   rgbaPtr      : u8  × W·H·4         input
+//   stagingAPtr  : i16 × (W+2)         row buffer A
+//   stagingBPtr  : i16 × (W+2)         row buffer B
+//   outPtr       : u8  × W·H           output (one quantized index per pixel)
 //
-// Hot-path tricks vs the naive form (cumulative kernel speedup ≈ 2.6× over the baseline f64 form):
-//   - One reciprocal hoisted out of the loop: `invStep = maxLevel/255` replaces `/ step`.
-//   - Strength-reduced FS weights: precomputed `stepX7_16`, `wDown`, `stepDown` constants —
-//     no per-pixel divides at all.
-//   - SIMD luma pass (f32x4): one v128 load (4 RGBA pixels) → channel shuffles → f32x4 MAC.
-//   - SIMD fused diffusion write for nextRow (pDL, pD, pDR are contiguous): one v128 load +
-//     two f32x4 muls + add/sub + one v128 store. Fourth lane is masked to 0 so the store is a
-//     no-op on nextRow[i+2].
-//   - Inter-pixel critical chain shortened: pR write reformulated as
-//     `(pR_old + old*w7_16) - qf*stepX7_16` so the `pR_old + old*w7_16` half runs in parallel
-//     with the qf chain. Drops two ops off the load→store→load chain that feeds the next pixel.
-//   - Branchless clamp in f32 space: `f32.nearest` + `f32.min`/`f32.max`. Kills the
-//     trunc→clamp→convert round-trip through i32 the obvious form leaves in the chain.
+// Per row, the FS pass reads from `current` (luma + diffused error inherited from prev row) and
+// writes diffused error into `next` (which was pre-seeded with the next row's raw luma). After
+// each row the two pointers swap. Total staging working set: ~2·(W+2)·2 ≈ 7 KB for TRMNL X,
+// which sits comfortably in L1.
+//
+// Why this is faster than the previous f32 (W+2)·(H+1) padded-arena form:
+//
+//   1. Two-row layout. Old kernel streamed a ~1.5 MB f32 arena through L2 twice (luma writes,
+//      FS reads). New kernel keeps two ~3.6 KB rows resident in L1, and the next row's luma is
+//      computed lazily one row ahead of the FS reader.
+//
+//   2. Accumulator pipeline on the down-row error. Old kernel wrote three contiguous f32 cells
+//      (pDL, pD, pDR) per pixel via v128 load+store. New kernel keeps the un-divided down-row
+//      contributions in two scalar i32 registers (`dlPrev`, `dlPrevPrev`) and commits ONE i16
+//      cell per pixel — the 16× down-row bandwidth reduction.
+//
+//   3. Deferred /16. The three contributions to any next-row cell (1·err(x-2) + 5·err(x-1) +
+//      3·err(x)) are summed un-divided in `dlPrev`, then divided once at commit. One arithmetic
+//      shift instead of three, AND no per-contribution floor bias.
+//
+//   4. Integer throughout. f32 → i16 in the luma pass (via i32x4.trunc_sat + i16x8.narrow);
+//      everything downstream is i32 arithmetic + i16 storage. No ULP drift, no round-half-even
+//      vs round-half-up disagreement between WASM and the JS reference — the kernel is now
+//      bit-deterministic given the same input. The mid-pass rounding constants (`+8` before
+//      `>>4`, `+halfStep` before `/step`) implement round-half-up to match JS Math.round.
+//
+//   5. Luma SIMD widened to 8 px/chunk. Old kernel produced 4 f32 luma values per chunk and
+//      stored as v128 f32. New kernel produces two f32x4 lanes, rounds each to i32x4, packs to
+//      i16x8 via i16x8.narrow_i32x4_s, and stores as one v128. Same SIMD shuffle-extend trick
+//      for the channel extraction; the only addition is the round-and-pack tail.
+//
+// Range analysis: |err| ≤ step/2 ≤ 128 (worst case is bitDepth=1). The widest intermediate is
+// `dlPrev + err·3` = up to 6·128 + 3·128 = 1152, all comfortably inside i16 (±32767), and the
+// accumulators themselves live in i32. The staging cell value (raw luma + accumulated diffused
+// error) stays within roughly [-72, 327] in the worst case — easily i16.
+//
+// The kernel assumes bitDepth ∈ {1, 2, 4, 8} so that step = 255/maxLevel is exact in integer
+// arithmetic. The JS wrapper should enforce this.
 //
 // Kernel:
 //
@@ -31,207 +53,217 @@
 
 export function ditherFromRgba(
   rgbaPtr: usize,
-  paddedPtr: usize,
+  stagingAPtr: usize,
+  stagingBPtr: usize,
   outPtr: usize,
   width: i32,
   height: i32,
   bitDepth: i32,
 ): void {
-  const padW: i32 = width + 2;
-  const padRowBytes: usize = <usize> padW << 2;
   const widthBytes: usize = <usize> width;
   const rgbaRowBytes: usize = widthBytes << 2;
+  const stagingBytes: usize = <usize> (width + 2) << 1;
 
-  // Pass 1: luma → padded (f32). Zero the left/right border cells of each real row so stale FS
-  // error from a previous frame doesn't leak into pDL / pR. Inner loop runs 4-px chunks via
-  // wasm SIMD: one v128 load (16 RGBA bytes) → shuffles for R/G/B lanes → f32x4 MAC → v128
-  // store. Scalar tail handles widths that aren't a multiple of 4.
-  const cR: f32 = <f32> 0.2126;
-  const cG: f32 = <f32> 0.7152;
-  const cB: f32 = <f32> 0.0722;
-  const cRv: v128 = f32x4.splat(cR);
-  const cGv: v128 = f32x4.splat(cG);
-  const cBv: v128 = f32x4.splat(cB);
+  // SIMD constants for the luma pass.
+  const cRv: v128 = f32x4.splat(<f32> 0.2126);
+  const cGv: v128 = f32x4.splat(<f32> 0.7152);
+  const cBv: v128 = f32x4.splat(<f32> 0.0722);
+  const halfV: v128 = f32x4.splat(<f32> 0.5);
   const zero: v128 = i8x16.splat(0);
 
-  let rgbaRow: usize = rgbaPtr;
-  let padRow: usize = paddedPtr;
-  const simdChunks: i32 = width >> 2;
-  for (let y: i32 = 0; y < height; y++) {
-    store<f32>(padRow, 0); // left border
-    let rgbaP: usize = rgbaRow;
-    let padP: usize = padRow + 4;
-
-    // Vector body: 4 RGBA pixels (16 bytes) → 4 f32 luminance values (16 bytes).
-    for (let c: i32 = 0; c < simdChunks; c++) {
-      const px: v128 = v128.load(rgbaP);
-      // Shuffle each channel byte into the low byte of a 4-byte lane; remaining 3 lane bytes are
-      // zero, so the i32x4 lane = the u8 channel value (no sign extension needed).
-      const rb: v128 = i8x16.shuffle(
-        px,
-        zero,
-        0,
-        16,
-        16,
-        16,
-        4,
-        16,
-        16,
-        16,
-        8,
-        16,
-        16,
-        16,
-        12,
-        16,
-        16,
-        16,
-      );
-      const gb: v128 = i8x16.shuffle(
-        px,
-        zero,
-        1,
-        16,
-        16,
-        16,
-        5,
-        16,
-        16,
-        16,
-        9,
-        16,
-        16,
-        16,
-        13,
-        16,
-        16,
-        16,
-      );
-      const bb: v128 = i8x16.shuffle(
-        px,
-        zero,
-        2,
-        16,
-        16,
-        16,
-        6,
-        16,
-        16,
-        16,
-        10,
-        16,
-        16,
-        16,
-        14,
-        16,
-        16,
-        16,
-      );
-      const rf: v128 = f32x4.convert_i32x4_s(rb);
-      const gf: v128 = f32x4.convert_i32x4_s(gb);
-      const bf: v128 = f32x4.convert_i32x4_s(bb);
-      const lum: v128 = f32x4.add(
-        f32x4.add(f32x4.mul(cRv, rf), f32x4.mul(cGv, gf)),
-        f32x4.mul(cBv, bf),
-      );
-      v128.store(padP, lum);
-      rgbaP += 16;
-      padP += 16;
-    }
-
-    // Scalar tail: width % 4 leftover pixels.
-    const padEnd: usize = padRow + 4 + rgbaRowBytes;
-    while (padP < padEnd) {
-      const r: f32 = <f32> load<u8>(rgbaP);
-      const g: f32 = <f32> load<u8>(rgbaP + 1);
-      const b: f32 = <f32> load<u8>(rgbaP + 2);
-      store<f32>(padP, cR * r + cG * g + cB * b);
-      rgbaP += 4;
-      padP += 4;
-    }
-    store<f32>(padP, 0); // right border
-
-    rgbaRow += rgbaRowBytes;
-    padRow += padRowBytes;
-  }
-  // Bottom border row.
-  const bottomEnd: usize = padRow + padRowBytes;
-  let p: usize = padRow;
-  while (p < bottomEnd) {
-    store<f32>(p, 0);
-    p += 4;
-  }
-
-  // Pass 2: Floyd-Steinberg diffusion. f32 throughout; one reciprocal + one /16 per call. The
-  // three down-row diffusion writes (pDL, pD, pDR) are contiguous f32 cells, so we fuse them
-  // into one v128 load + f32x4 fmadd + v128 store; the 4th lane is masked to 0 so it preserves
-  // nextRow[i+2] (which the next pixel needs intact for its own pDR add). The right-neighbor
-  // write (pR) stays scalar because it lives on the current row.
+  // FS integer constants.
   const maxLevel: i32 = (1 << bitDepth) - 1;
-  const maxLevelF: f32 = <f32> maxLevel;
-  const step: f32 = <f32> 255.0 / maxLevelF;
-  const invStep: f32 = maxLevelF / <f32> 255.0;
-  const inv16: f32 = <f32> (1.0 / 16.0);
-  const w7_16: f32 = <f32> 7 * inv16;
-  // The critical inter-pixel chain runs from load(old) → ... → store(pR) → load(next_old). To
-  // shorten it, factor out the `err`: pR_new = pR_old + (old - qf*step)*7/16 expands to
-  // (pR_old + old*7/16) - qf*stepX7_16. The `pR_old + old*7/16` half computes in parallel with
-  // the qf chain, removing one mul and one sub from the chain. Same trick for the down-row writes.
-  const stepX7_16: f32 = step * w7_16;
-  // Weights for nextRow [DL, D, DR, _unused_]. Last lane MUST be 0 so the SIMD store is a no-op
-  // on nextRow[i+2].
-  const wDown: v128 = f32x4(
-    <f32> 3 * inv16,
-    <f32> 5 * inv16,
-    <f32> 1 * inv16,
-    <f32> 0,
-  );
-  const stepDown: v128 = f32x4(
-    step * <f32> 3 * inv16,
-    step * <f32> 5 * inv16,
-    step * <f32> 1 * inv16,
-    <f32> 0,
-  );
+  const step: i32 = 255 / maxLevel;
+  const halfStep: i32 = step >> 1;
 
-  let inRowPtr: usize = paddedPtr + 4; // first real pixel = padded col 1
+  // Prime row 0's luma into stagingA so the row loop can read from it on iteration y=0.
+  lumaRow(rgbaPtr, stagingAPtr, width, cRv, cGv, cBv, halfV, zero);
+
+  let current: usize = stagingAPtr;
+  let next: usize = stagingBPtr;
+  let rgbaRowPtr: usize = rgbaPtr;
   let outRowPtr: usize = outPtr;
 
   for (let y: i32 = 0; y < height; y++) {
-    let inPtr: usize = inRowPtr;
-    let outCol: usize = outRowPtr;
-    const inEnd: usize = inPtr + rgbaRowBytes;
-    while (inPtr < inEnd) {
-      const old: f32 = load<f32>(inPtr);
-
-      // Round-to-nearest, then clamp in f32 space so the err computation avoids a round-trip
-      // through i32 (no convert_i32_s in the critical chain). f32.nearest is round-half-to-even;
-      // the JS reference's Math.round is round-half-up, so a .5 tie can differ — the "visually
-      // identical" parity tolerance covers it. f32.min/max enforce the [0, maxLevel] bound
-      // branchlessly.
-      const qf: f32 = Mathf.min(Mathf.max(f32.nearest(old * invStep), <f32> 0), maxLevelF);
-      store<u8>(outCol, <u8> <i32> qf);
-
-      // Scalar right-neighbor write on current row. Factored form: chain is qf → mul → sub → store,
-      // and the `pR_old + old*w7_16` add runs in parallel with the qf chain.
-      const pR: usize = inPtr + 4;
-      store<f32>(pR, load<f32>(pR) + old * w7_16 - qf * stepX7_16);
-
-      // SIMD fused write for the three contiguous next-row neighbors. Same factoring as pR but
-      // off the critical chain — splat(old)*wDown + splat(qf) into the same vector arithmetic.
-      const pDL: usize = inPtr + padRowBytes - 4;
-      const oldV: v128 = f32x4.splat(old);
-      const qfV: v128 = f32x4.splat(qf);
-      const oldDown: v128 = v128.load(pDL);
-      // new = oldDown + old*wDown - qf*stepDown. The 4th lane is 0 in both wDown and stepDown,
-      // so it lands at `oldDown lane3 + 0 - 0 = oldDown lane3` — preserves nextRow[i+2].
-      const sum: v128 = f32x4.add(oldDown, f32x4.mul(oldV, wDown));
-      const sub: v128 = f32x4.sub(sum, f32x4.mul(qfV, stepDown));
-      v128.store(pDL, sub);
-
-      inPtr += 4;
-      outCol += 1;
+    // Pre-load row y+1's luma into `next` (or zero `next` on the last row so the FS commits
+    // don't read garbage when the staging buffers are reused next frame).
+    if (y + 1 < height) {
+      lumaRow(rgbaRowPtr + rgbaRowBytes, next, width, cRv, cGv, cBv, halfV, zero);
+    } else {
+      let p: usize = next;
+      const end: usize = next + stagingBytes;
+      while (p < end) {
+        store<i16>(p, 0);
+        p += 2;
+      }
     }
-    inRowPtr += padRowBytes;
+
+    // Scalar FS pass. Three accumulators carry error across the row:
+    //   rightErr   — 7/16 of the previous pixel's error, divided immediately (single contribution).
+    //   dlPrev     — un-divided sum (1·err(x-2) + 5·err(x-1)). Combines with the current pixel's
+    //                3·err(x) at commit time, then divided ONCE.
+    //   dlPrevPrev — un-divided err(x-1). Rotates into dlPrev next iteration.
+    let rightErr: i32 = 0;
+    let dlPrev: i32 = 0;
+    let dlPrevPrev: i32 = 0;
+
+    let inPtr: usize = current + 2; // skip left-border cell
+    const nextBase: usize = next;
+
+    for (let x: i32 = 0; x < width; x++) {
+      const old: i32 = <i32> load<i16>(inPtr) + rightErr;
+
+      // Quantize: round-half-up + clamp to [0, maxLevel]. The `if` branches collapse to cmov on
+      // any modern backend; we keep them explicit because the clamp also normalises out-of-range
+      // values from FS overflow on saturated input regions.
+      let qi: i32 = (old + halfStep) / step;
+      if (qi < 0) qi = 0;
+      else if (qi > maxLevel) qi = maxLevel;
+      store<u8>(outRowPtr + <usize> x, <u8> qi);
+
+      const err: i32 = old - qi * step;
+
+      // Right neighbour: single contribution, must be divided immediately so it can be added to
+      // `old` next iteration (which is in scale-1, not scale-16).
+      rightErr = (err * 7 + 8) >> 4;
+
+      // Down-row commit. Combines this iteration's 3·err with the (1·err(x-2) + 5·err(x-1))
+      // accumulated in dlPrev. One read-modify-write per pixel, one division.
+      const cellAddr: usize = nextBase + (<usize> x << 1);
+      const dlCommit: i32 = (dlPrev + err * 3 + 8) >> 4;
+      store<i16>(cellAddr, <i16> (<i32> load<i16>(cellAddr) + dlCommit));
+
+      // Rotate. After this, when iteration x+1 reads dlPrev it sees (1·err(x-1) + 5·err(x)),
+      // and dlPrevPrev holds err(x) ready to become the "1·" contribution two iterations from now.
+      dlPrev = dlPrevPrev + err * 5;
+      dlPrevPrev = err;
+
+      inPtr += 2;
+    }
+
+    // The loop wrote stagingNext[0..width-1]. Pixel width-1's D contribution (5·err) and
+    // pixel width-2's DR contribution (1·err) still need to land in stagingNext[width] — that's
+    // exactly what dlPrev holds. Pixel width-1's DR would land in the right border cell; we
+    // drop it (it would be zeroed next row anyway), matching the Python reference's behaviour.
+    const flushAddr: usize = nextBase + (<usize> width << 1);
+    store<i16>(flushAddr, <i16> (<i32> load<i16>(flushAddr) + ((dlPrev + 8) >> 4)));
+
+    // Swap buffers: this row's `next` (now carrying diffused error) becomes the next row's
+    // `current`. The old `current` is recycled to receive row y+2's luma.
+    const tmp: usize = current;
+    current = next;
+    next = tmp;
+
+    rgbaRowPtr += rgbaRowBytes;
     outRowPtr += widthBytes;
+  }
+}
+
+// Write one row's luma into stagingPtr as i16 (round-half-up to nearest integer), plus the
+// 1-cell zero borders on each side. SIMD body processes 8 RGBA pixels per chunk: 2× v128 loads
+// (32 bytes) → two f32x4 luma vectors → round + pack to one i16x8 → 1× v128 store (16 bytes).
+function lumaRow(
+  rgbaPtr: usize,
+  stagingPtr: usize,
+  width: i32,
+  cRv: v128,
+  cGv: v128,
+  cBv: v128,
+  halfV: v128,
+  zero: v128,
+): void {
+  store<i16>(stagingPtr, 0); // left border
+  store<i16>(stagingPtr + (<usize> (width + 1) << 1), 0); // right border
+
+  let rgbaP: usize = rgbaPtr;
+  let stP: usize = stagingPtr + 2; // first real cell
+  const rgbaEnd: usize = rgbaPtr + (<usize> width << 2);
+  const simdChunks: i32 = width >> 3;
+
+  for (let c: i32 = 0; c < simdChunks; c++) {
+    const px0: v128 = v128.load(rgbaP);
+    const px1: v128 = v128.load(rgbaP + 16);
+
+    // Pixels 0..3: shuffle each channel byte into the low byte of an i32 lane (high 3 bytes
+    // sourced from `zero` so we get free zero-extension), convert to f32, MAC with weights.
+    // deno-fmt-ignore
+    const rb0: v128 = i8x16.shuffle(px0, zero,
+       0, 16, 16, 16,
+       4, 16, 16, 16,
+       8, 16, 16, 16,
+      12, 16, 16, 16,
+    );
+    // deno-fmt-ignore
+    const gb0: v128 = i8x16.shuffle(px0, zero,
+       1, 16, 16, 16,
+       5, 16, 16, 16,
+       9, 16, 16, 16,
+      13, 16, 16, 16,
+    );
+    // deno-fmt-ignore
+    const bb0: v128 = i8x16.shuffle(px0, zero,
+       2, 16, 16, 16,
+       6, 16, 16, 16,
+      10, 16, 16, 16,
+      14, 16, 16, 16,
+    );
+    const lum0: v128 = f32x4.add(
+      f32x4.add(
+        f32x4.mul(cRv, f32x4.convert_i32x4_s(rb0)),
+        f32x4.mul(cGv, f32x4.convert_i32x4_s(gb0)),
+      ),
+      f32x4.mul(cBv, f32x4.convert_i32x4_s(bb0)),
+    );
+
+    // Pixels 4..7 from the second v128 load.
+    // deno-fmt-ignore
+    const rb1: v128 = i8x16.shuffle(px1, zero,
+       0, 16, 16, 16,
+       4, 16, 16, 16,
+       8, 16, 16, 16,
+      12, 16, 16, 16,
+    );
+    // deno-fmt-ignore
+    const gb1: v128 = i8x16.shuffle(px1, zero,
+       1, 16, 16, 16,
+       5, 16, 16, 16,
+       9, 16, 16, 16,
+      13, 16, 16, 16,
+    );
+    // deno-fmt-ignore
+    const bb1: v128 = i8x16.shuffle(px1, zero,
+       2, 16, 16, 16,
+       6, 16, 16, 16,
+      10, 16, 16, 16,
+      14, 16, 16, 16,
+    );
+    const lum1: v128 = f32x4.add(
+      f32x4.add(
+        f32x4.mul(cRv, f32x4.convert_i32x4_s(rb1)),
+        f32x4.mul(cGv, f32x4.convert_i32x4_s(gb1)),
+      ),
+      f32x4.mul(cBv, f32x4.convert_i32x4_s(bb1)),
+    );
+
+    // Round-to-nearest via (+0.5 then trunc), saturate to i32, pack two i32x4 into one i16x8.
+    // The narrow is saturating, but lum ∈ [0, ~255] never gets near the i16 range so no clamp
+    // ever fires.
+    const i0: v128 = i32x4.trunc_sat_f32x4_s(f32x4.add(lum0, halfV));
+    const i1: v128 = i32x4.trunc_sat_f32x4_s(f32x4.add(lum1, halfV));
+    v128.store(stP, i16x8.narrow_i32x4_s(i0, i1));
+
+    rgbaP += 32;
+    stP += 16;
+  }
+
+  // Scalar tail: width % 8 leftover pixels.
+  while (rgbaP < rgbaEnd) {
+    const r: f32 = <f32> load<u8>(rgbaP);
+    const g: f32 = <f32> load<u8>(rgbaP + 1);
+    const b: f32 = <f32> load<u8>(rgbaP + 2);
+    const lum: f32 = <f32> 0.2126 * r + <f32> 0.7152 * g + <f32> 0.0722 * b;
+    store<i16>(stP, <i16> <i32> (lum + <f32> 0.5));
+    rgbaP += 4;
+    stP += 2;
   }
 }

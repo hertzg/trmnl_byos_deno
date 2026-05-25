@@ -31,17 +31,19 @@ for (let y = 0; y < H; y++) {
 
 // Pre-grow wasm memory once so the per-phase benches don't time memory.grow().
 const PAGE_BYTES = 65536;
-const rgbaBytes = W * H * 4;
-const paddedBytes = (W + 2) * (H + 1) * 4;
-const outBytes = W * H;
-const totalBytes = rgbaBytes + paddedBytes + outBytes;
+const align16 = (n: number) => (n + 15) & ~15;
+const rgbaBytes = align16(W * H * 4);
+const stagingBytes = align16((W + 2) * 2);
+const outBytes = align16(W * H);
+const totalBytes = rgbaBytes + stagingBytes * 2 + outBytes;
 {
   const have = memory.buffer.byteLength;
   if (totalBytes > have) memory.grow(Math.ceil((totalBytes - have) / PAGE_BYTES));
 }
 const rgbaPtr = 0;
-const paddedPtr = rgbaBytes;
-const outPtr = paddedPtr + paddedBytes;
+const stagingAPtr = rgbaPtr + rgbaBytes;
+const stagingBPtr = stagingAPtr + stagingBytes;
+const outPtr = stagingBPtr + stagingBytes;
 
 Deno.bench({ name: "native", group: GROUP, baseline: true }, () => {
   const grays = filterGrayLuminance(rgba);
@@ -53,7 +55,7 @@ Deno.bench({ name: "copy-in only", group: GROUP }, () => {
 });
 
 Deno.bench({ name: "kernel only", group: GROUP }, () => {
-  ditherFromRgba(rgbaPtr, paddedPtr, outPtr, W, H, BIT_DEPTH);
+  ditherFromRgba(rgbaPtr, stagingAPtr, stagingBPtr, outPtr, W, H, BIT_DEPTH);
 });
 
 Deno.bench({ name: "fused wasm", group: GROUP }, () => {
