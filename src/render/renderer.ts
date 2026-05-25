@@ -7,7 +7,7 @@ import { hashBundle } from "../hash.ts";
 import type { DeviceProfile } from "./profiles.ts";
 import { connect } from "@astral/astral";
 import { type Browser, renderUrl, resolveCdpEndpoint } from "./_internal/cdp.ts";
-import { ditherNative } from "./_internal/dither.ts";
+import { dither } from "./_internal/dither.ts";
 import { timed } from "../telemetry/spans.ts";
 
 // Renderer: Bundle → Image. See ADR-0003 / CONTEXT.md.
@@ -139,9 +139,10 @@ export function createFetchPngFromUrl(config: FetchPngFromUrlConfig): FetchPngFr
         deviceScaleFactor: 1,
       }));
     return await timed("dither", () =>
-      ditherNative(raw, {
+      dither(raw, {
         bitDepth: config.bitDepth,
         mode: config.dither,
+        impl: "wasm"
       }));
   };
 }
