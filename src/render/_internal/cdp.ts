@@ -2,12 +2,9 @@ import { connect } from "@astral/astral";
 import { timed } from "../../telemetry/spans.ts";
 
 export type Browser = Awaited<ReturnType<typeof connect>>;
+export type Page = Awaited<ReturnType<Browser["newPage"]>>;
 
-type Cdp = ReturnType<
-  Awaited<
-    ReturnType<Browser["newPage"]>
-  >["unsafelyGetCelestialBindings"]
->;
+type Cdp = ReturnType<Page["unsafelyGetCelestialBindings"]>;
 
 // Wait for a specific CDP Page.lifecycleEvent (e.g. "firstContentfulPaint", "networkIdle").
 function waitForLifecycleEvent(cdp: Cdp, name: string): Promise<void> {
@@ -21,15 +18,21 @@ function waitForLifecycleEvent(cdp: Cdp, name: string): Promise<void> {
   });
 }
 
-export interface RenderOptions {
+export interface InitPageOptions {
   // A connected Astral Browser owned by the caller. We never close it here —
   // its lifetime is process-scoped (held across many renders).
   browser: Browser;
-  url: string;
 
   deviceWidth: number;
   deviceHeight: number;
   deviceScaleFactor: number;
+}
+
+export interface RenderOptions {
+  // A Page initialised via `initPage`, held across many renders. We never
+  // close it here — its lifetime is process-scoped, same as the Browser.
+  page: Page;
+  url: string;
 }
 
 // Resolves a CDP HTTP base (e.g. http://browser:9222) to its per-process WebSocket endpoint.
@@ -41,6 +44,27 @@ export async function resolveCdpEndpoint(cdpUrl: string | URL): Promise<string> 
     throw new Error("CDP /json/version missing webSocketDebuggerUrl");
   }
   return webSocketDebuggerUrl;
+}
+
+// Open a fresh tab and apply the per-renderer one-time setup: device metrics
+// and lifecycle events. Both stick across navigations on the same target, so
+// subsequent `renderUrl` calls just need to wire FCP + goto + screenshot.
+//
+// setViewportSize hardcodes deviceScaleFactor=0; go direct to set our DPR.
+export async function initPage(opts: InitPageOptions): Promise<Page> {
+  const { browser, deviceWidth, deviceHeight, deviceScaleFactor } = opts;
+  const page = await browser.newPage(undefined, {});
+  const cdp = page.unsafelyGetCelestialBindings();
+  await Promise.all([
+    cdp.Emulation.setDeviceMetricsOverride({
+      width: deviceWidth,
+      height: deviceHeight,
+      deviceScaleFactor,
+      mobile: false,
+    }),
+    cdp.Page.setLifecycleEventsEnabled({ enabled: true }),
+  ]);
+  return page;
 }
 
 // Navigates the headless browser to `url` (typically our own server's render endpoint),
@@ -55,47 +79,25 @@ export async function resolveCdpEndpoint(cdpUrl: string | URL): Promise<string> 
 // Per-step durations land on the request's ALS span buffer (see telemetry/spans.ts)
 // and surface as Server-Timing entries when invoked inside the Hono pipeline.
 export async function renderUrl(opts: RenderOptions): Promise<Uint8Array<ArrayBuffer>> {
-  const { browser, url, deviceWidth, deviceHeight, deviceScaleFactor } = opts;
+  const { page, url } = opts;
+  const cdp = page.unsafelyGetCelestialBindings();
 
-  const page = await timed("newPage", () => browser.newPage(undefined, {}));
-  try {
-    // setViewportSize hardcodes deviceScaleFactor=0; go direct to set our DPR.
-    const cdp = page.unsafelyGetCelestialBindings();
+  // Wire the FCP listener BEFORE goto so we don't miss the event. Each goto
+  // creates a new loaderId, so FCP fires fresh per navigation. We deliberately
+  // do not await networkIdle (Chrome's "0 in-flight for 500 ms" definition): our
+  // loopback origin serves assets from memory, so the graph is settled by FCP and
+  // the quiet-period wait would just add ~500 ms of dead air per render.
+  const fcp = waitForLifecycleEvent(cdp, "firstContentfulPaint");
+  await timed("goto", () => page.goto(url, { waitUntil: "none" }));
+  await timed("fcp", () => fcp);
 
-    await timed("setup", () =>
-      Promise.all([
-        cdp.Emulation.setDeviceMetricsOverride({
-          width: deviceWidth,
-          height: deviceHeight,
-          deviceScaleFactor,
-          mobile: false,
-        }),
-        cdp.Page.setLifecycleEventsEnabled({ enabled: true }),
-      ]));
+  const { data } = await timed("screenshot", () =>
+    cdp.Page.captureScreenshot({
+      format: "png",
+      // ~25 ms saved on a 2.6 Mpx render — Chrome calls zlib with Z_BEST_SPEED.
+      // Lossless: same pixels, larger wire payload (loopback, free).
+      optimizeForSpeed: true,
+    }));
 
-    // Wire the FCP listener BEFORE goto so we don't miss the event. We deliberately
-    // do not await networkIdle (Chrome's "0 in-flight for 500 ms" definition): our
-    // loopback origin serves assets from memory, so the graph is settled by FCP and
-    // the quiet-period wait would just add ~500 ms of dead air per render.
-    const fcp = waitForLifecycleEvent(cdp, "firstContentfulPaint");
-    await timed("goto", () => page.goto(url, { waitUntil: "none" }));
-    await timed("fcp", () => fcp);
-
-    const { data } = await timed("screenshot", () =>
-      cdp.Page.captureScreenshot({
-        format: "png",
-        // ~25 ms saved on a 2.6 Mpx render — Chrome calls zlib with Z_BEST_SPEED.
-        // Lossless: same pixels, larger wire payload (loopback, free).
-        optimizeForSpeed: true,
-      }));
-
-    return Uint8Array.fromBase64(data);
-  } finally {
-    // Fire-and-forget. We don't `await` because the next render's `newPage`
-    // is faster when Chrome has had a moment to actually tear the previous
-    // tab down — and the caller's dither pass (~200 ms) provides exactly
-    // that gap concurrently. `.catch(() => {})` swallows close errors on
-    // an already-disconnected browser; a stale page is harmless either way.
-    page.close().catch(() => {});
-  }
+  return Uint8Array.fromBase64(data);
 }
