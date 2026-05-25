@@ -95,12 +95,7 @@ export function ditherFromRgb(
     if (y + 1 < height) {
       lumaRow(rgbRowPtr + rgbRowBytes, next, width, cRv, cGv, cBv, roundV);
     } else {
-      let p: usize = next;
-      const end: usize = next + stagingBytes;
-      while (p < end) {
-        store<i16>(p, 0);
-        p += 2;
-      }
+      memory.fill(next, 0, stagingBytes);
     }
 
     // Scalar FS pass. Three accumulators carry error across the row:
