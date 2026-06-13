@@ -10,6 +10,17 @@
 # after the next restart (adding a plugin is a deploy) — acceptable per the ADR.
 set -e
 
+# Seed each live <name>.ts from its committed <name>.example.ts starter when the
+# live file is missing, so a fresh mount materializes real, editable config and
+# webproc lists it on first boot instead of an empty editor. An already-edited
+# live file is never clobbered. The compose-only variant (*.compose.example.ts)
+# is applied via an explicit bind-mount, not seeded here.
+# shellcheck disable=SC2044  # config paths are controlled and contain no spaces
+for ex in $(find config -type f -name '*.example.ts' ! -name '*.compose.example.ts'); do
+  live="${ex%.example.ts}.ts"
+  [ -e "$live" ] || { cp "$ex" "$live"; echo "entrypoint: seeded $live from $ex" >&2; }
+done
+
 args=""
 # shellcheck disable=SC2044  # config paths are controlled and contain no spaces
 for f in $(find config -type f -name '*.ts' ! -name '*.example.ts'); do
