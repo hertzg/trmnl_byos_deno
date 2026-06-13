@@ -9,12 +9,10 @@
 }
 
 .ds-status-bar--bottom {
-  border-top: 0.4rem solid #000;
   padding-top: 1.6rem;
 }
 
 .ds-status-bar--top {
-  border-bottom: 0.4rem solid #000;
   padding-bottom: 1.6rem;
 }
 
