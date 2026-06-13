@@ -8,11 +8,12 @@
 # The Deno server is supervised by jpillora/webproc (ADR-0010), which serves a
 # browser editor for the mounted config/ files on :8080 and restarts Deno on save.
 #
-# Pinned to the version dev/CI runs (2.8.0). The dither pipeline imports the wasm
-# kernel via a raw import (`unstable: ["raw-imports"]` in deno.jsonc); older Deno
-# (e.g. 2.1.4) doesn't know that flag — it warns "'raw-imports' isn't a valid
-# unstable feature" and the import fails to load, crashing the boot with exit 1.
-FROM denoland/deno:debian-2.8.0
+# Unversioned :debian tag — tracks the latest Deno. The dither pipeline imports
+# the wasm kernel via a raw import (`unstable: ["raw-imports"]` in deno.jsonc), so
+# the base must stay recent enough to know that flag; older Deno (e.g. 2.1.4)
+# warns "'raw-imports' isn't a valid unstable feature" and crash-loops the boot.
+# Latest always satisfies it.
+FROM denoland/deno:debian
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
