@@ -4,6 +4,9 @@
     "jsxImportSource": "hono/jsx"
   },
   "imports": {
+    // Mounted config tree (ADR-0010): plugins import their runtime config from
+    // config/plugins/<plugin>/ via this alias, not a brittle ../../config/ path.
+    "@config/": "../../config/plugins/",
     "@ds": "../ds/mod.ts",
     "@ds/": "../ds/",
     "@std/cache": "jsr:@std/cache@^0.2.3",

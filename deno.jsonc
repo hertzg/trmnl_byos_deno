@@ -19,6 +19,11 @@
   "exclude": ["src/**/*.as.ts"],
   "imports": {
     "@astral/astral": "jsr:@astral/astral@^0.5.4",
+    // Mounted config tree (ADR-0010): plugins import their runtime config from
+    // config/plugins/<plugin>/ via this alias instead of a relative path.
+    // Mirrored in templates/example/deno.json (like @ds) so the alias resolves
+    // whether the program is checked from the repo root or that nested config.
+    "@config/": "./config/plugins/",
     "@ds": "./templates/ds/mod.ts",
     "@ds/": "./templates/ds/",
     "@hertzg/crc": "jsr:@hertzg/crc@^0.2.0",
@@ -32,6 +37,10 @@
     "@std/media-types": "jsr:@std/media-types@^1.0.0",
     "@std/path": "jsr:@std/path@^1.0.0",
     "@std/testing": "jsr:@std/testing@^1.0.0",
+    // Transport plugin source root. Lets the relocated config/plugins/transport/
+    // routes files (which resolve via this root map) import the in-place
+    // preference schema once they live outside templates/ (ADR-0010).
+    "@transport/": "./templates/example/transport/",
     "hono": "jsr:@hono/hono@^4",
     "hono/deno": "jsr:@hono/hono@^4/deno",
     "hono/logger": "jsr:@hono/hono@^4/logger",
