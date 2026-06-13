@@ -1,7 +1,7 @@
 // Starter template for the gitignored `routes.ts`. Copy this file to
 // `routes.ts` and edit it for your own commute:
 //
-//   cp templates/example/transport/bvg/routes.example.ts templates/example/transport/bvg/routes.ts
+//   cp config/plugins/transport/routes.example.ts config/plugins/transport/routes.ts
 //
 // Each `Preference` describes one commute intent (who, where, when). The
 // configuration is a list of preferences that share the screen — interleaved
@@ -15,7 +15,7 @@
 // Omit a tunable to inherit; set it to override. See `preference.ts` for
 // the full schema, default values, and the resolution rules.
 
-import type { Preference, RoutesConfig } from "./preference.ts";
+import type { Preference, RoutesConfig } from "@transport/bvg/preference.ts";
 
 // ─── stops you reuse across preferences ─────────────────────────────────────
 
