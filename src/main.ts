@@ -18,7 +18,9 @@ const ACTIVE_PROFILE: DeviceProfile = (() => {
   const p = getProfile(system.deviceId);
   if (!p) {
     throw new Error(
-      `unknown DEVICE_ID="${system.deviceId}". Known ids: ${profileIds().join(", ")}`,
+      `unknown deviceId "${system.deviceId}" in config/system.ts. Known ids: ${
+        profileIds().join(", ")
+      }`,
     );
   }
   return p;
@@ -38,7 +40,7 @@ async function main() {
   });
   const bindNote = system.loopbackHost === "127.0.0.1"
     ? ""
-    : ` (bound on 0.0.0.0 because LOOPBACK_HOST=${system.loopbackHost})`;
+    : ` (bound on 0.0.0.0 because loopbackHost=${system.loopbackHost})`;
   console.log(`[renderer] loopback origin ${renderer.origin()}${bindNote}`);
 
   const slot = createSlot({ now });
