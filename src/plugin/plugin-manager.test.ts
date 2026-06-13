@@ -152,6 +152,41 @@ Deno.test("a file inside a nested subdirectory keeps its full sub-path", async (
   );
 });
 
+Deno.test("extraAssetRoots merge a folder's files under their declared urlPrefix", async () => {
+  // The Gallery's drop-folder lives outside pluginDir/assets/ (ADR-0010). An
+  // extra root makes its bytes reachable at the same /assets/gallery/<name>
+  // URL the Gallery view points at, without those files sitting in the plugin.
+  const dir = await writePluginDir({ "main.ts": trivialPluginSource });
+  const gallery = await writePluginDir({
+    "sunset.jpg": "PHOTO",
+    "beach.png": "BEACH",
+  });
+
+  const manager = await createPluginManager({
+    pluginDir: dir,
+    extraAssetRoots: [{ dir: gallery, urlPrefix: "/assets/gallery/" }],
+  });
+  const bundle = await manager.run(ctx());
+
+  assertEquals(
+    new Set(Object.keys(bundle.assets)),
+    new Set(["/assets/gallery/sunset.jpg", "/assets/gallery/beach.png"]),
+  );
+  assertEquals(new TextDecoder().decode(bundle.assets["/assets/gallery/sunset.jpg"]), "PHOTO");
+});
+
+Deno.test("extraAssetRoots: an absent drop-folder contributes nothing (empty-state)", async () => {
+  const dir = await writePluginDir({ "main.ts": trivialPluginSource });
+
+  const manager = await createPluginManager({
+    pluginDir: dir,
+    extraAssetRoots: [{ dir: "/no/such/drop/folder", urlPrefix: "/assets/gallery/" }],
+  });
+  const bundle = await manager.run(ctx());
+
+  assertEquals(bundle.assets, {});
+});
+
 Deno.test("a PluginManager loaded from disk drives /api/display end-to-end through the Conductor", async () => {
   // Hermetic smoke test: write a Plugin to a temp dir, construct the
   // PluginManager + Conductor like main.ts does, hit /api/display, and
