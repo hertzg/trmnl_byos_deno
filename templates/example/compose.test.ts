@@ -25,12 +25,6 @@ function board(emptyReason: Board["emptyReason"]): Board {
   return { emptyReason } as Board;
 }
 
-// A fixed instant for fixtures — composeResult never reads state.t, but a
-// complete FrameData keeps the fixture honest (no cast hiding a missing field).
-const FIXTURE_T = Temporal.Instant.fromEpochMilliseconds(0).toZonedDateTimeISO(
-  "UTC",
-);
-
 /**
  * Fabricate a Result<FrameData> with an identity-testable view function.
  * Only `state.board.emptyReason`, `validity`, and `view` matter to composeResult.
@@ -42,8 +36,6 @@ function makeTransportResult(
 ): Result<FrameData> {
   const state: FrameData = {
     board: board(emptyReason),
-    device: null,
-    t: FIXTURE_T,
   };
   return {
     state,

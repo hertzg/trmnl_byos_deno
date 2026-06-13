@@ -1,5 +1,9 @@
 import type { Plugin, Result, RunContext } from "../../../src/plugin/plugin.ts";
-import { type Board, boardValidForSeconds, createBoardAssembler } from "./bvg/board_assembler.ts";
+import {
+  type Board,
+  boardValidForSeconds,
+  createBoardAssembler,
+} from "./bvg/board_assembler.ts";
 import { ROUTES } from "@config/transport/routes.ts";
 import DefaultTemplate, { type FrameData } from "./root.tsx";
 
@@ -78,7 +82,7 @@ export default (() => {
         boardValidForSeconds(here, tToDate(ctx.t)),
       );
       return {
-        state: { board: here, device: ctx.device, t: ctx.t },
+        state: { board: here },
         validity: Temporal.Duration.from({ seconds: validSeconds }),
         view: DefaultTemplate,
       };
