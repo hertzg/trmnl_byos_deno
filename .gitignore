@@ -14,6 +14,10 @@ deno.lock
 templates/**/routes.ts
 !templates/**/routes.example.ts
 
+# Live system config; the committed system.example.ts is the starter.
+config/system.ts
+!config/system.example.ts
+
 
 templates/example/assets/gallery/*
 !templates/example/assets/gallery/.gitkeep
