@@ -38,7 +38,7 @@ export default function Gallery({ src }: GalleryState) {
     <Page title="gallery">
       <EmptyState
         big="No photos"
-        sub="Add images to templates/example/assets/gallery/"
+        sub="Add images to config/plugins/gallery/images/"
       />
     </Page>
   );

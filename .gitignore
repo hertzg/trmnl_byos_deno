@@ -24,5 +24,7 @@ config/plugins/**/routes.ts
 !config/plugins/**/routes.example.ts
 
 
-templates/example/assets/gallery/*
-!templates/example/assets/gallery/.gitkeep
+# Gallery drop-folder (ADR-0010): mounted photos are large binaries kept out of
+# version control; the empty folder ships via .gitkeep.
+config/plugins/gallery/images/*
+!config/plugins/gallery/images/.gitkeep

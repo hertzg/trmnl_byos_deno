@@ -27,7 +27,7 @@ Deno.test("Gallery with src=null renders the EmptyState", () => {
   const html = render(null);
   assertStringIncludes(html, "ds-empty-state");
   assertStringIncludes(html, "No photos");
-  assertStringIncludes(html, "templates/example/assets/gallery/");
+  assertStringIncludes(html, "config/plugins/gallery/images/");
 });
 
 Deno.test("Gallery with src=null renders via Page (has html/head/body skeleton)", () => {
