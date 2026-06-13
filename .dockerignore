@@ -1,0 +1,24 @@
+# Build-context hygiene + keep live (gitignored) config and secrets OUT of the
+# image. Only the committed *.example.ts starters get baked; the live *.ts files
+# are mounted at runtime (ADR-0010).
+.git
+.gitignore
+.worktrees
+.idea
+.vscode
+.claude
+*.log
+.DS_Store
+deno.lock
+docs
+
+# Live system config (the example starters are kept).
+config/system.ts
+config/system.compose.ts
+
+# Live plugin config (per-plugin routes copies).
+config/plugins/**/routes.ts
+
+# Gallery drop-folder: mounted binaries, never baked.
+config/plugins/gallery/images/*
+!config/plugins/gallery/images/.gitkeep
