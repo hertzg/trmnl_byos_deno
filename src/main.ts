@@ -2,7 +2,9 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { setMetric, timing } from "hono/timing";
 import { drainSpans, withSpans } from "./telemetry/spans.ts";
-import { ACTIVE_PROFILE, CDP_URL, FRIENDLY_ID, LOOPBACK_HOST, PLUGIN_DIR, PORT } from "./config.ts";
+import { system } from "../config/system.ts";
+import { getProfile, profileIds } from "./render/profiles.ts";
+import type { DeviceProfile } from "./render/profiles.ts";
 import { createConductor } from "./conductor/conductor.ts";
 import ErrorView from "./conductor/error-view.tsx";
 import { createDashboard } from "./dashboard/dashboard.ts";
@@ -12,21 +14,31 @@ import { createSlot } from "./slot/slot.ts";
 import { createTelemetry } from "./telemetry/telemetry.ts";
 import { createDeviceState } from "./device-state.ts";
 
+const ACTIVE_PROFILE: DeviceProfile = (() => {
+  const p = getProfile(system.deviceId);
+  if (!p) {
+    throw new Error(
+      `unknown DEVICE_ID="${system.deviceId}". Known ids: ${profileIds().join(", ")}`,
+    );
+  }
+  return p;
+})();
+
 async function main() {
-  const pluginManager = await createPluginManager({ pluginDir: PLUGIN_DIR });
-  console.log(`[plugin] loaded from ${PLUGIN_DIR}`);
+  const pluginManager = await createPluginManager({ pluginDir: system.pluginDir });
+  console.log(`[plugin] loaded from ${system.pluginDir}`);
 
   const now = () => Temporal.Now.zonedDateTimeISO();
   const errorView = (err: Error) => ErrorView(err);
   const errorValidity = Temporal.Duration.from({ seconds: 30 });
 
   const renderer = createRenderer({
-    fetchPngFromUrl: createFetchPngFromUrl({ cdpUrl: CDP_URL, ...ACTIVE_PROFILE }),
-    loopbackHost: LOOPBACK_HOST,
+    fetchPngFromUrl: createFetchPngFromUrl({ cdpUrl: system.cdpUrl, ...ACTIVE_PROFILE }),
+    loopbackHost: system.loopbackHost,
   });
-  const bindNote = LOOPBACK_HOST === "127.0.0.1"
+  const bindNote = system.loopbackHost === "127.0.0.1"
     ? ""
-    : ` (bound on 0.0.0.0 because LOOPBACK_HOST=${LOOPBACK_HOST})`;
+    : ` (bound on 0.0.0.0 because LOOPBACK_HOST=${system.loopbackHost})`;
   console.log(`[renderer] loopback origin ${renderer.origin()}${bindNote}`);
 
   const slot = createSlot({ now });
@@ -46,7 +58,7 @@ async function main() {
     deviceState,
     errorView,
     errorValidity,
-    friendlyId: FRIENDLY_ID,
+    friendlyId: system.friendlyId,
     now,
   });
 
@@ -84,8 +96,8 @@ async function main() {
     .route("/", conductor.app)
     .route("/", dashboard);
 
-  console.log(`trmnl-byos-deno on :${PORT}`);
-  await Deno.serve({ port: PORT, hostname: "0.0.0.0" }, app.fetch).finished;
+  console.log(`trmnl-byos-deno on :${system.port}`);
+  await Deno.serve({ port: system.port, hostname: "0.0.0.0" }, app.fetch).finished;
 }
 
 await main();
