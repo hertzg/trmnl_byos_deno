@@ -18,6 +18,11 @@ templates/**/routes.ts
 config/system.ts
 !config/system.example.ts
 
+# Mounted config tree (ADR-0010): same committed-example / gitignored-live split,
+# at the relocated config/plugins/<plugin>/ home.
+config/plugins/**/routes.ts
+!config/plugins/**/routes.example.ts
+
 
 templates/example/assets/gallery/*
 !templates/example/assets/gallery/.gitkeep

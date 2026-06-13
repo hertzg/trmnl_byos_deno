@@ -1,6 +1,6 @@
 import type { Plugin, Result, RunContext } from "../../../src/plugin/plugin.ts";
 import { type Board, boardValidForSeconds, createBoardAssembler } from "./bvg/board_assembler.ts";
-import { ROUTES } from "./bvg/routes.ts";
+import { ROUTES } from "@config/transport/routes.ts";
 import DefaultTemplate, { type FrameData } from "./root.tsx";
 
 // Dev-only "fake now" override. Set BVG_FAKE_NOW to an ISO timestamp (e.g.
