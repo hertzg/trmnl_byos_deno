@@ -8,8 +8,21 @@ import { timed } from "../telemetry/spans.ts";
 // once at construction, then attaches the same asset map to every Bundle
 // it returns. See ADR-0002.
 
+// An author-owned folder that lives outside the Plugin's own `assets/` tree but
+// whose bytes must still be served. Its files are merged into the same asset map
+// under `urlPrefix`, so a view's `<img src="${urlPrefix}name">` resolves. Used
+// for the Gallery's mounted drop-folder (ADR-0010); the prefix is declared
+// explicitly at the wiring site, not scanned implicitly from config/.
+export type AssetRoot = {
+  dir: string;
+  // URL prefix the folder's files are keyed under, e.g. "/assets/gallery/".
+  // A trailing slash is added if missing.
+  urlPrefix: string;
+};
+
 export type PluginManagerDeps = {
   pluginDir: string;
+  extraAssetRoots?: AssetRoot[];
 };
 
 export type PluginManager = {
@@ -20,8 +33,15 @@ export async function createPluginManager(
   deps: PluginManagerDeps,
 ): Promise<PluginManager> {
   const plugin = await loadPlugin(deps.pluginDir);
-  const assetsDir = join(deps.pluginDir, "assets");
-  const assets = await readAssetsDir(assetsDir);
+
+  // The served asset map: the Plugin's own `assets/` tree, plus any explicitly
+  // declared extra roots (e.g. the Gallery drop-folder). All read once here.
+  const assets: Record<string, Uint8Array<ArrayBuffer>> = {};
+  await collectAssetRoot(join(deps.pluginDir, "assets"), "/assets/", assets);
+  for (const root of deps.extraAssetRoots ?? []) {
+    const prefix = root.urlPrefix.endsWith("/") ? root.urlPrefix : `${root.urlPrefix}/`;
+    await collectAssetRoot(root.dir, prefix, assets);
+  }
 
   return {
     async run(ctx) {
@@ -33,31 +53,35 @@ export async function createPluginManager(
   };
 }
 
-// Recursive walk keyed by `/assets/<path>`. Empty map if the dir doesn't
-// exist — a Plugin without assets is valid.
-async function readAssetsDir(dir: string): Promise<Record<string, Uint8Array<ArrayBuffer>>> {
-  const assets: Record<string, Uint8Array<ArrayBuffer>> = {};
+// Recursively walk `dir`, keying each file as `${keyPrefix}<sub/path>` into
+// `out`. A missing dir contributes nothing — a Plugin without assets, or an
+// empty/absent drop-folder, is valid.
+async function collectAssetRoot(
+  dir: string,
+  keyPrefix: string,
+  out: Record<string, Uint8Array<ArrayBuffer>>,
+): Promise<void> {
   try {
     await Deno.stat(dir);
   } catch {
-    return assets;
+    return;
   }
-  await collectFiles(dir, "", assets);
-  return assets;
+  await collectFiles(dir, "", keyPrefix, out);
 }
 
 async function collectFiles(
   root: string,
   relativePrefix: string,
+  keyPrefix: string,
   out: Record<string, Uint8Array<ArrayBuffer>>,
 ): Promise<void> {
   for await (const entry of Deno.readDir(join(root, relativePrefix))) {
     const childRelative = relativePrefix === "" ? entry.name : `${relativePrefix}/${entry.name}`;
     if (entry.isDirectory) {
-      await collectFiles(root, childRelative, out);
+      await collectFiles(root, childRelative, keyPrefix, out);
     } else if (entry.isFile) {
       const bytes = await Deno.readFile(join(root, childRelative));
-      out[`/assets/${childRelative}`] = bytes;
+      out[`${keyPrefix}${childRelative}`] = bytes;
     }
   }
 }
