@@ -1,0 +1,49 @@
+# Production stack for the Pi (ADR-0010). Published to ghcr as an OCI artifact by
+# .github/workflows/docker.yml, so it can be pulled and run without the repo:
+#
+#   docker compose -f oci://ghcr.io/hertzg/trmnl_byos_deno:latest-stack up -d
+#
+# Unlike docker-compose.yml (local dev: `build: .`, source bind-mounts), this runs
+# the published image and mounts only ./config. You still need a ./config dir in
+# the working directory holding the committed *.example.ts starters — the image's
+# entrypoint seeds the live config from them on first boot and webproc lists it on
+# :8080. Drop gallery photos into ./config/plugins/gallery/images/.
+#
+# Networking (slice #51): chrome shares the deno container's network namespace
+# (`network_mode: service:trmnl-byos`) so it reaches the Renderer's loopback origin
+# at 127.0.0.1:<ephemeral>. That requires loopbackHost=127.0.0.1 (not the
+# host.docker.internal default that `deno task dev` wants), so we bind-mount the
+# committed config/system.compose.example.ts onto the container's config/system.ts.
+services:
+  trmnl-byos:
+    image: ghcr.io/hertzg/trmnl_byos_deno:latest
+    container_name: trmnl-byos
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      # webproc editor — local-only at the host; basic auth as a second layer.
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # Mounted config tree (ADR-0010): webproc-editable, survives image updates.
+      - ./config:/app/config
+      # loopbackHost override for the shared-netns topology: see the note above.
+      - ./config/system.compose.example.ts:/app/config/system.ts
+    environment:
+      TZ: "${TZ:-Etc/UTC}"
+      # Basic auth for the webproc editor (:8080) — optional, off by default. Set
+      # both (host env or a compose override) to enable it; the editor is already
+      # bound local-only at 127.0.0.1:8080.
+      WEBPROC_USER: "${WEBPROC_USER:-}"
+      WEBPROC_PASS: "${WEBPROC_PASS:-}"
+
+  chrome:
+    image: cloakhq/cloakbrowser
+    container_name: trmnl-byos-chrome
+    command: cloakserve
+    restart: unless-stopped
+    # Share the deno container's network namespace so chrome can fetch the
+    # Renderer's loopback origin at 127.0.0.1:<ephemeral> (slice #51).
+    network_mode: "service:trmnl-byos"
+    depends_on:
+      trmnl-byos:
+        condition: service_started
