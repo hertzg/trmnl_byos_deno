@@ -41,10 +41,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      # Publish the production stack (compose.stack.yaml) as an OCI artifact, so
-      # the Pi can run it without the repo:
-      #   docker compose -f oci://ghcr.io/<owner>/<repo>:latest-stack up -d
-      - name: Publish stack compose
-        if: github.ref == 'refs/heads/main'
-        run: docker compose -f compose.stack.yaml publish ghcr.io/${{ github.repository }}:latest-stack -y

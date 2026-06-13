@@ -1,13 +1,14 @@
-# Production stack for the Pi (ADR-0010). Published to ghcr as an OCI artifact by
-# .github/workflows/docker.yml, so it can be pulled and run without the repo:
+# Production stack for the Pi (ADR-0010): runs the published image
+# ghcr.io/hertzg/trmnl_byos_deno:latest (no local build), supervised by webproc.
+# Unlike docker-compose.yml (local dev: `build: .` + source bind-mounts), this
+# mounts only ./config. Deploy by fetching this file alongside the committed
+# config/*.example.ts starters (simplest: `git clone --depth 1` the repo), then:
 #
-#   docker compose -f oci://ghcr.io/hertzg/trmnl_byos_deno:latest-stack up -d
+#   docker compose -f compose.stack.yaml up -d
 #
-# Unlike docker-compose.yml (local dev: `build: .`, source bind-mounts), this runs
-# the published image and mounts only ./config. You still need a ./config dir in
-# the working directory holding the committed *.example.ts starters — the image's
-# entrypoint seeds the live config from them on first boot and webproc lists it on
-# :8080. Drop gallery photos into ./config/plugins/gallery/images/.
+# The entrypoint seeds the live config/*.ts from the *.example.ts starters on first
+# boot and webproc lists them on :8080. Drop gallery photos into
+# ./config/plugins/gallery/images/.
 #
 # Networking (slice #51): chrome shares the deno container's network namespace
 # (`network_mode: service:trmnl-byos`) so it reaches the Renderer's loopback origin
