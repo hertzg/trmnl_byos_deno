@@ -39,7 +39,7 @@ config/                          # single mounted volume; mirrors templates/exam
 Ownership is encoded in the path: `config/plugins/transport/routes.ts` mirrors
 `templates/example/transport/`, so the consumer is obvious from the location. Leaf plugins get
 folders; the root Super-Plugin is the bare `plugins/composition.ts`; `system.ts` sits at the config
-root *because* it configures the Server, not a plugin. No empty `composition.ts` is created up front
+root _because_ it configures the Server, not a plugin. No empty `composition.ts` is created up front
 — the convention is reserved and the file appears the day composition gets its first knob.
 
 The config files are gitignored and copied from committed `*.example.ts` starters, the same pattern
@@ -51,16 +51,16 @@ each environment's own mounted `system.ts`, not in code branches.
 `src/config.ts` (the `env()` helper, the `parseInt`/default boilerplate, the exported constants) is
 deleted. The app imports `config/system.ts` directly as a typed object; `ACTIVE_PROFILE` becomes
 `getProfile(system.deviceId)` at wiring time in `main.ts`. Configuration is no longer sourced from
-environment variables. The device-profile registry (`src/render/profiles.ts`, ADR-0006) is
-unchanged — only the *source* of `deviceId` and the Server knobs moves from env to `system.ts`.
+environment variables. The device-profile registry (`src/render/profiles.ts`, ADR-0006) is unchanged
+— only the _source_ of `deviceId` and the Server knobs moves from env to `system.ts`.
 
 ### Plugins keep importing their own config
 
-The transport plugin imports `config/plugins/transport/routes.ts` directly (via an import-map alias, which also keeps
-its type imports resolving once the file leaves `templates/`). No config blob is threaded through the
-plugin contract; **ADR-0002's "the plugin receives nothing" stands** — config arrives by `import`,
-as it always did. "Pass config into a plugin factory" was rejected as a contract change that adds
-work without simplifying anything.
+The transport plugin imports `config/plugins/transport/routes.ts` directly (via an import-map alias,
+which also keeps its type imports resolving once the file leaves `templates/`). No config blob is
+threaded through the plugin contract; **ADR-0002's "the plugin receives nothing" stands** — config
+arrives by `import`, as it always did. "Pass config into a plugin factory" was rejected as a
+contract change that adds work without simplifying anything.
 
 ### Editing and apply are delegated to webproc
 
@@ -73,9 +73,14 @@ wraps the Deno process, serves a browser editor for `config/system.ts` and
   crash log in its own UI for in-place fixing, rather than crash-looping.
 - webproc is the supervisor, so no separate Docker restart policy is needed for app crashes.
 
-The container command is roughly:
-`webproc -c config/system.ts -c config/plugins/transport/routes.ts -- deno run --allow-all src/main.ts`
-(a `-c` entry is added per editable plugin config file as plugins are added).
+webproc's `-c` takes individual file paths only — no directory, no glob, no auto-discovery — so a
+container entrypoint script (`docker/entrypoint.sh`) discovers the editable set at start: it globs
+every `*.ts` under `config/` (minus the committed `*.example.ts` starters) into `-c` flags, then
+`exec`s webproc supervising the Deno process. The `CMD` never needs editing as plugins are added; a
+newly added config file becomes editable on the next restart (adding a plugin is a deploy).
+`config/plugins/gallery/images/` is binaries, not `*.ts`, so it falls outside the glob for free. The
+resulting invocation is roughly:
+`webproc -c config/system.ts -c config/plugins/transport/routes.ts … --on-save restart --on-exit ignore -- deno run --allow-all src/main.ts`.
 
 ### Two web surfaces, no proxy
 
