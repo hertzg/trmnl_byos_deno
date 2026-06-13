@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import GalleryPlugin, { discoverPhotos } from "./main.ts";
 import Gallery from "./Gallery.tsx";
 import type { RunContext } from "../../../src/plugin/plugin.ts";
@@ -56,15 +56,23 @@ Deno.test("GalleryPlugin.run validity is a Temporal.Duration (positive)", async 
   }
 });
 
-// The committed `config/plugins/gallery/images/` drop-folder holds only
-// `.gitkeep` (a non-image, filtered out), so the module-load discovery list is
-// empty and `pickPhoto` returns null. The non-empty rotation path (index
-// selection, modulo wraparound) is exercised by rotation.test.ts, and the
-// discovery scan itself by the `discoverPhotos` tests above with temp dirs —
-// testing it again here would require shipping real image files.
-Deno.test("GalleryPlugin.run state.src is null with an empty drop-folder", async () => {
+// `run` closes over the module-load snapshot of the live, gitignored
+// `config/plugins/gallery/images/` drop-folder, whose contents are
+// machine-specific (empty on CI / a fresh checkout, populated on the
+// operator's deployment). So this asserts only what holds regardless of those
+// contents: `run` wired discovery → `pickPhoto`, picking one of the discovered
+// photos, or null when there are none. The empty→null path is covered without
+// this coupling by the `discoverPhotos returns []` tests above (temp dirs) and
+// `pickPhoto: empty array → null` in rotation.test.ts; the non-empty rotation
+// path (index selection, modulo wraparound) likewise lives in rotation.test.ts.
+Deno.test("GalleryPlugin.run state.src is consistent with the discovered photos", async () => {
+  const photos = discoverPhotos(); // same source run() snapshotted at module load
   const result = await GalleryPlugin.run(makeCtx(0));
-  assertEquals(result.state.src, null);
+  if (photos.length === 0) {
+    assertEquals(result.state.src, null);
+  } else {
+    assert(photos.includes(result.state.src!)); // run picked one of the real photos
+  }
 });
 
 Deno.test("GalleryPlugin.run is a pure function of ctx.t — same t yields same state", async () => {
