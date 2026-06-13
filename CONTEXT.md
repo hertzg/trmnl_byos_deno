@@ -88,13 +88,13 @@ Renderer.rasterize → push the trio into the Slot → return identity. On a cau
 that loop, the same loop re-runs with a fabricated error Bundle. _Avoid_: pipeline, manager.
 
 **Dashboard**: The debug/observe add-on. Three routes: `GET /` (admin page showing the current
-Image, the render trace, the scrub timeline, and the device section), `GET /dashboard/preview.png?t=...`
-(transient preview render at arbitrary `t`, bypasses the Slot; returns the render's identity and
-validity as response headers alongside the PNG), `POST /dashboard/clear` (invalidates the Slot).
-Dashboard reads Telemetry to render the trace, reads the Slot's `display()` to know the current
-Image identity and cached window, reads DeviceState to surface the latest DeviceReport + recent
-`/api/log` bodies, and uses the same `/image/<identity>.png` URL the Device uses to show the
-current Image. _Avoid_: admin, UI.
+Image, the render trace, the scrub timeline, and the device section),
+`GET /dashboard/preview.png?t=...` (transient preview render at arbitrary `t`, bypasses the Slot;
+returns the render's identity and validity as response headers alongside the PNG),
+`POST /dashboard/clear` (invalidates the Slot). Dashboard reads Telemetry to render the trace, reads
+the Slot's `display()` to know the current Image identity and cached window, reads DeviceState to
+surface the latest DeviceReport + recent `/api/log` bodies, and uses the same
+`/image/<identity>.png` URL the Device uses to show the current Image. _Avoid_: admin, UI.
 
 **Telemetry**: The singleton that holds the most-recent render trace — durations of plugin-run,
 identity, and rasterize; the resulting identity; the error if one occurred. Conductor records;
@@ -133,6 +133,12 @@ composing **Super-Plugin** shows the Gallery whenever **Transport** is schedule-
 `min(Gallery, Transport)` (then floored at 5 minutes — see **Super-Plugin**) so an opening commute
 window is woken into. Renders edge-to-edge, no chrome. _Avoid_: screensaver, slideshow, picture.
 
+**Ghosting**: The faint residual image a value-stable dark region leaves behind on the **Device**
+after it has been held in place for a long time; severity scales with darkness × area × dwell-time.
+On this long-dwell Device the firmware wipe is already maxed (`CLEAR_SLOW` every update), so content
+is the only lever — avoiding it is the paramount interface constraint (see ADR-0011). _Avoid_:
+burn-in (implies permanence; e-ink ghosting is not permanent), image retention.
+
 ## Relationships
 
 - One Server orchestrates exactly one Plugin and serves exactly one Device.
@@ -158,6 +164,10 @@ window is woken into. Renders edge-to-edge, no chrome. _Avoid_: screensaver, sli
   **Server**, **Renderer**, and **PluginManager** never inject styles, scripts, or assets behind the
   scenes. The **DesignSystem** is opt-in the same way: the Plugin imports and renders `<Styles />`
   explicitly (see ADR-0008).
+- **Ghosting** avoidance is the paramount constraint on every **Plugin** view and **DesignSystem**
+  component: no large solid-dark persistent surfaces, chrome minimal and preferably
+  conditional/transient, gray/dither reserved for photographic content. **Transport** is chrome-free
+  for this reason; the **DesignSystem** cannot emit a heavy solid-dark bar (see ADR-0011).
 
 ## Lifecycle (Device poll)
 
