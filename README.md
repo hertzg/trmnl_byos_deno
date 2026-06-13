@@ -44,6 +44,19 @@ docker compose up -d
 
 The image is published to `ghcr.io/hertzg/trmnl_byos_deno:latest` on every push to `main`.
 
+### Deploy to a Raspberry Pi
+
+`compose.stack.yaml` runs the published image (no local build), supervised by webproc. Clone the repo
+for the file plus the committed `config/*.example.ts` starters, then bring it up:
+
+```sh
+git clone --depth 1 https://github.com/hertzg/trmnl_byos_deno && cd trmnl_byos_deno
+docker compose -f compose.stack.yaml up -d
+```
+
+The entrypoint seeds the live `config/*.ts` from the example starters on first boot; edit them in the
+webproc editor at `http://127.0.0.1:8080` and drop gallery photos into `config/plugins/gallery/images/`.
+
 ## Local dev
 
 The Server talks to a CloakBrowser CDP container. Run the browser as a sidecar and point the app at
