@@ -41,44 +41,6 @@ body {
   font-family: "Inter", "Noto Sans Georgian", ui-sans-serif, system-ui, sans-serif;
 }
 
-/* ----- shared header ----- */
-
-.head {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  border-bottom: 0.4rem solid #000;
-  padding-bottom: 1.2rem;
-  margin-bottom: 2.4rem;
-}
-
-.head__row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1.6rem;
-}
-
-.head__title {
-  font-size: 3.8rem;
-  font-weight: 900;
-  letter-spacing: 0.03em;
-}
-
-.head__stamp {
-  font-size: 2.2rem;
-  font-weight: 500;
-  color: #555;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.head__sub {
-  font-size: 2.2rem;
-  font-weight: 500;
-  color: #444;
-}
-
 /* ----- BVG line tag (mode glyph + line code badge) ----- */
 
 .line-tag {
@@ -359,20 +321,6 @@ body {
   margin-bottom: 1rem;
 }
 
-/* ----- title-bar text helpers (StatusBar children) ----- */
-
-.title-bar__title {
-  font-weight: 700;
-}
-
-.title-bar__date {
-  color: #444;
-}
-
-.title-bar__instance {
-  color: #444;
-}
-
 /* ===== journey board ===== */
 
 /* Row list fills the slot. */
@@ -581,20 +529,4 @@ body {
 
 .cancel-strip__text {
   letter-spacing: 0.03em;
-}
-
-/* Clip-summary footnote — appears at the bottom when overflow tail is dropped. */
-.footnote {
-  font-size: 2.4rem;
-  color: #555;
-  padding-top: 1.6rem;
-  border-top: 0.2rem solid #ddd;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.8rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.footnote__chunk {
-  white-space: nowrap;
 }

@@ -25,7 +25,12 @@ const ROW: Row = {
       arrival: new Date("2025-11-10T08:12:00Z"),
       line: { name: "S5", product: "suburban" },
       direction: "Strausberg",
-      realtime: { delaySeconds: 0, cancelled: false, hasRealtime: false, remarks: [] },
+      realtime: {
+        delaySeconds: 0,
+        cancelled: false,
+        hasRealtime: false,
+        remarks: [],
+      },
     },
   ],
   alerts: [],
@@ -33,7 +38,7 @@ const ROW: Row = {
   graceExpiresAt: new Date("2025-11-10T07:57:00Z"),
 };
 
-Deno.test("Board renders head and the row list", () => {
+Deno.test("Board renders the row list", () => {
   const board: BoardData = {
     rows: [ROW],
     emptyReason: "none",
@@ -95,42 +100,6 @@ Deno.test("Board renders feedUnreachable empty frame with age sub-text", () => {
   const html = renderToString(<Board board={board} /> as any);
   assertStringIncludes(html, "მონაცემები მიუწვდომელია");
   assertStringIncludes(html, "10 წთ-ის წინანდელი");
-});
-
-Deno.test("Board renders footnote when clipSummary present", () => {
-  const board: BoardData = {
-    rows: [ROW],
-    emptyReason: "none",
-    fetchedAt: new Date("2025-11-10T07:00:00Z"),
-    windows: [],
-    clipSummary: {
-      perIcon: [{
-        icon: "A",
-        label: "Office",
-        count: 2,
-        nextLeaveBys: [new Date("2025-11-10T08:37:00Z")],
-      }],
-    },
-  };
-  // deno-lint-ignore no-explicit-any
-  const html = renderToString(<Board board={board} /> as any);
-  assertStringIncludes(html, "+2 მოგვიანებით");
-  assertStringIncludes(html, "footnote");
-});
-
-Deno.test("Board omits footnote when clipSummary is null", () => {
-  const board: BoardData = {
-    rows: [ROW],
-    emptyReason: "none",
-    fetchedAt: new Date("2025-11-10T07:00:00Z"),
-    windows: [],
-    clipSummary: null,
-  };
-  // deno-lint-ignore no-explicit-any
-  const html = renderToString(<Board board={board} /> as any);
-  if (html.includes("footnote")) {
-    throw new Error(`expected no footnote, got: ${html}`);
-  }
 });
 
 Deno.test("Board renders next-anchor hint inside the noScheduleApplicable frame", () => {
