@@ -16,20 +16,15 @@ for f in $(find config -type f -name '*.ts' ! -name '*.example.ts'); do
   args="$args -c $f"
 done
 
-# Basic auth for webproc's editor. The surface is kept local-only at the host
-# (compose publishes 127.0.0.1:8080:8080), with auth as a second layer. webproc
-# itself must bind 0.0.0.0 *inside* the container so Docker's port publish can
-# forward to it.
-#
-# Basic auth is mandatory (ADR-0010): webproc's editor can write any config
-# file and restart the process, so refuse to start it unauthenticated. Creds
-# are injected via env (never baked into the image); compose supplies
-# overridable defaults.
-if [ -z "$WEBPROC_USER" ] || [ -z "$WEBPROC_PASS" ]; then
-  echo "entrypoint: WEBPROC_USER and WEBPROC_PASS must both be set — the webproc editor requires basic auth" >&2
-  exit 1
+# Basic auth for webproc's editor — optional. The surface is kept local-only at
+# the host (compose publishes 127.0.0.1:8080:8080); auth is a second layer added
+# only when both creds are present (compose supplies overridable defaults). Creds
+# are injected via env, never baked into the image. webproc itself must bind
+# 0.0.0.0 *inside* the container so Docker's port publish can forward to it.
+auth=""
+if [ -n "$WEBPROC_USER" ] && [ -n "$WEBPROC_PASS" ]; then
+  auth="--user $WEBPROC_USER --pass $WEBPROC_PASS"
 fi
-auth="--user $WEBPROC_USER --pass $WEBPROC_PASS"
 
 # --on-save restart : a save bounces Deno; the new config is read on boot.
 # --on-exit ignore  : a bad edit crashes the boot; webproc surfaces the log for
