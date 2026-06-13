@@ -1,7 +1,36 @@
 import { assertEquals } from "@std/assert";
-import GalleryPlugin from "./main.ts";
+import GalleryPlugin, { discoverPhotos } from "./main.ts";
 import Gallery from "./Gallery.tsx";
 import type { RunContext } from "../../../src/plugin/plugin.ts";
+
+async function writeImagesDir(names: string[]): Promise<string> {
+  const dir = await Deno.makeTempDir({ prefix: "gallery-images-test-" });
+  for (const name of names) await Deno.writeTextFile(`${dir}/${name}`, "x");
+  return dir;
+}
+
+Deno.test("discoverPhotos maps image files in the drop-folder to /assets/gallery/<name>, sorted", async () => {
+  const dir = await writeImagesDir(["b.jpg", "a.png", "c.webp"]);
+  assertEquals(discoverPhotos(dir), [
+    "/assets/gallery/a.png",
+    "/assets/gallery/b.jpg",
+    "/assets/gallery/c.webp",
+  ]);
+});
+
+Deno.test("discoverPhotos ignores non-image files (e.g. .gitkeep, README)", async () => {
+  const dir = await writeImagesDir([".gitkeep", "README.md", "ok.jpg"]);
+  assertEquals(discoverPhotos(dir), ["/assets/gallery/ok.jpg"]);
+});
+
+Deno.test("discoverPhotos returns [] for an empty drop-folder", async () => {
+  const dir = await writeImagesDir([]);
+  assertEquals(discoverPhotos(dir), []);
+});
+
+Deno.test("discoverPhotos returns [] when the drop-folder is absent", () => {
+  assertEquals(discoverPhotos("/no/such/gallery/dir"), []);
+});
 
 // Minimal RunContext sufficient for a synchronous, scrub-intent call.
 function makeCtx(epochMs: number): RunContext {
