@@ -1,51 +1,49 @@
-# Local dev compose: bind-mount source, deno --watch reload, dev-friendly env defaults.
-# Run with: docker compose up --build
-# For a device on your LAN to reach the server, set PUBLIC_URL_ORIGIN to the host's LAN IP, e.g.:
-#   PUBLIC_URL_ORIGIN=http://192.168.1.10:3000 docker compose up
+# Local dev compose — now mirrors the Pi deployment (ADR-0010): the image's
+# webproc entrypoint supervises the Deno server and serves a config editor on
+# :8080. Run with: docker compose up --build
+#
+# Config comes from the mounted ./config volume, not env vars (env-var config
+# loading was removed in ADR-0010). The only genuine runtime env knob left is TZ;
+# WEBPROC_USER/WEBPROC_PASS gate the :8080 editor and are injectable.
+#
+# Hot reload: editing config/ files through the webproc editor (:8080) bounces
+# Deno on save (--on-save restart). Code edits under src/ and templates/ are
+# bind-mounted but no longer deno-watched (webproc owns supervision now); pick
+# them up with `docker compose restart trmnl-byos-dev`.
 #
 # Networking note (slice #51): the Renderer owns a loopback HTTP origin on
-# <loopback-host>:<ephemeral> that CDP fetches the Bundle (HTML + assets)
-# from. In compose mode chrome shares the deno container's network namespace
+# <loopbackHost>:<ephemeral> that CDP fetches the Bundle (HTML + assets) from.
+# In compose mode chrome shares the deno container's network namespace
 # (`network_mode: service:trmnl-byos-dev`) so 127.0.0.1 resolves to the deno
-# process — and that's exactly the value we pin LOOPBACK_HOST to below, so
-# the Renderer binds the ephemeral port on the loopback interface only and
-# nothing outside the container can reach it. The CDP HTTP port (9222) is
-# reached via the same shared loopback at http://localhost:9222.
-#
-# Why the explicit pin: the production default is "host.docker.internal" so
-# the `deno task dev` workflow (deno on the host, chrome in docker) Just
-# Works without env overrides. Compose mode is the opposite case and opts
-# out by setting LOOPBACK_HOST=127.0.0.1 in the environment block.
+# process. The production default in config/system.example.ts is
+# "host.docker.internal" (for the `deno task dev` flow: deno on the host, chrome
+# in docker). Compose needs the opposite, and env overrides are gone — so we
+# bind-mount the committed config/system.compose.example.ts (loopbackHost =
+# 127.0.0.1) directly onto the container's config/system.ts, overriding just
+# that file. The deno-task-dev / Pi config/system.ts is untouched.
 services:
   trmnl-byos-dev:
     build: .
     container_name: trmnl-byos-dev
     ports:
       - "3000:3000"
+      # webproc editor — local-only at the host; basic auth as a second layer.
+      - "127.0.0.1:8080:8080"
       # Exposed on the host so a non-Docker workflow can also point at CDP.
       - "127.0.0.1:9222:9222"
     volumes:
       - ./src:/app/src:cached
-      # Bind-mount the bundled Plugin + DesignSystem so dev edits hot-reload.
+      # Bundled Plugin + DesignSystem; bind-mounted so edits survive a restart.
       - ./templates:/app/templates:cached
+      # Mounted config tree (ADR-0010): webproc-editable, survives rebuilds.
+      - ./config:/app/config:cached
+      # Compose-mode loopbackHost override: see the networking note above.
+      - ./config/system.compose.example.ts:/app/config/system.ts:cached
     environment:
-      PUBLIC_URL_ORIGIN: "${PUBLIC_URL_ORIGIN:-http://127.0.0.1:3000}"
-      # CDP shares this container's network namespace, so localhost reaches it.
-      CDP_URL: "http://localhost:9222"
-      # Compose-mode pin: see the networking note at the top of this file.
-      # Production default is "host.docker.internal" for the deno-task-dev
-      # workflow; here we keep the ephemeral loopback port bound on the
-      # container's loopback interface only.
-      LOOPBACK_HOST: "127.0.0.1"
-      FRIENDLY_ID: "DEV"
-      DEVICE_ID: "trmnl-x"
       TZ: "${TZ:-Etc/UTC}"
-    command:
-      - deno
-      - run
-      - --allow-all
-      - --watch=src,templates
-      - src/main.ts
+      # Basic auth for the webproc editor (:8080). Overridable via host env.
+      WEBPROC_USER: "${WEBPROC_USER:-admin}"
+      WEBPROC_PASS: "${WEBPROC_PASS:-trmnl}"
 
   chrome:
     image: cloakhq/cloakbrowser
