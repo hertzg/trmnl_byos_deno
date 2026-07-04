@@ -11,16 +11,7 @@
 // discrimination is decided here, so the rest of the pipeline only ever sees
 // clean discriminated unions.
 
-import { createClient } from "hafas-client";
-import { profile as bvgProfile } from "hafas-client/p/bvg/index.js";
 import type { Place } from "./preference.ts";
-
-// One client for the module's lifetime. Constructing it performs no I/O — the
-// user-agent string just identifies this project to BVG on each request.
-const client = createClient(
-  bvgProfile,
-  "trmnl-byos-deno (https://github.com/hertzg/trmnl-byos-deno)",
-);
 
 // Hard ceiling on one whole journeys fetch (all pages). The board's refresh
 // cadence is in the 30–300s range (see DEFAULTS), so anything slower than
@@ -68,7 +59,8 @@ export type Remark = {
 // annotation (`hasRealtime: false`, `delaySeconds: 0`, no remarks). Transit
 // legs carry whatever BVG returned: `delaySeconds` from `departureDelay`,
 // `cancelled` from the leg's `cancelled` flag, `hasRealtime` from the
-// presence of `prognosisType` (live data signal).
+// presence of `departurePrognosisType` (hafas-client's live-data signal; see
+// `mapTransitRealtime` for the tolerated legacy spellings).
 export type RealtimeAnnotation = {
   delaySeconds: number;
   cancelled: boolean;
@@ -125,6 +117,24 @@ export type FeedError = {
   kind: "feed-error";
   message: string;
 };
+
+// A pagination walk that ended before covering the whole window — a later
+// page failed or the MAX_PAGES cap was hit — so `candidates` holds only the
+// late-tail pages that did arrive. Distinct from a plain `Candidate[]` so
+// callers can't mistake a truncated window for a complete one (the board
+// assembler's keep-last-good cache must merge it, not be clobbered by it).
+export type PartialWindow = {
+  kind: "partial-window";
+  candidates: Candidate[];
+};
+
+// Dedup key for one candidate: HAFAS's stable per-journey `refreshToken`
+// when present (it survives realtime time shifts between fetches), else
+// first-leg departure + last-leg arrival. Shared by `collectWindow`'s
+// cross-page dedup and the board assembler's partial-window merge.
+export function candidateKey(c: Candidate): string {
+  return c.refreshToken ?? `${c.departure.toISOString()}|${c.arrival.toISOString()}`;
+}
 
 // ─── HAFAS shape (only fields we read) ──────────────────────────────────────
 
@@ -293,7 +303,7 @@ export type FetchCandidates = (
   // pagination stops once a page reaches journeys departing at or before this
   // — anything earlier is already uncatchable and gets dropped downstream.
   earliestDepartureDate: Date,
-) => Promise<Candidate[] | FeedError>;
+) => Promise<Candidate[] | PartialWindow | FeedError>;
 
 // One fetched-and-mapped page of `/journeys` results, plus the cursor for the
 // page chronologically before it (`null` when HAFAS offers none).
@@ -319,19 +329,20 @@ function isFeedError(v: JourneyPage | FeedError): v is FeedError {
 // Pages backward from `latestArrivalDate` until a page reaches departures at or
 // before `earliestDepartureDate`, HAFAS runs out of earlier pages, or
 // `MAX_PAGES` is hit. A FeedError on the first page propagates; a FeedError on
-// a later page returns whatever earlier pages already yielded, so a mid-walk
-// hiccup still shows the late tail rather than a `feedUnreachable` screen.
+// a later page (and the `MAX_PAGES` cap) returns whatever earlier pages
+// already yielded, marked as a `PartialWindow` — a mid-walk hiccup still
+// shows the late tail rather than a `feedUnreachable` screen, without passing
+// the truncated window off as a complete one.
 export async function collectWindow(
   fetchPage: FetchPage,
   latestArrivalDate: Date,
   earliestDepartureDate: Date,
-): Promise<Candidate[] | FeedError> {
+): Promise<Candidate[] | PartialWindow | FeedError> {
   const collected: Candidate[] = [];
   // Pagination pages are non-overlapping by design, but a journey straddling a
-  // page boundary can surface twice. HAFAS's `refreshToken` is the primary
-  // dedup key — a stable per-journey identity that survives realtime time
-  // shifts between the two fetches. Candidates without one (e.g. test
-  // fixtures) fall back to first-leg departure + last-leg arrival.
+  // page boundary can surface twice. `candidateKey` prefers HAFAS's stable
+  // `refreshToken` identity, falling back to departure+arrival for candidates
+  // without one (e.g. test fixtures).
   const seen = new Set<string>();
   let anchor: PageAnchor = { kind: "arrival", date: latestArrivalDate };
 
@@ -339,29 +350,31 @@ export async function collectWindow(
     const result = await fetchPage(anchor);
     if (isFeedError(result)) {
       if (collected.length === 0) return result;
-      break;
+      return { kind: "partial-window", candidates: collected };
     }
 
     let pageEarliestDeparture = Infinity;
     for (const c of result.candidates) {
       pageEarliestDeparture = Math.min(pageEarliestDeparture, c.departure.getTime());
-      const key = c.refreshToken ??
-        `${c.departure.toISOString()}|${c.arrival.toISOString()}`;
+      const key = candidateKey(c);
       if (seen.has(key)) continue;
       seen.add(key);
       collected.push(c);
     }
 
-    // Stop once this page reaches the render instant (it still includes the
-    // straddling journeys departing just before it), or HAFAS offers no
+    // Complete once this page reaches the render instant (it still includes
+    // the straddling journeys departing just before it), or HAFAS offers no
     // earlier page, or the page came back empty.
-    if (result.candidates.length === 0) break;
-    if (pageEarliestDeparture <= earliestDepartureDate.getTime()) break;
-    if (!result.earlierRef) break;
+    if (result.candidates.length === 0) return collected;
+    if (pageEarliestDeparture <= earliestDepartureDate.getTime()) return collected;
+    if (!result.earlierRef) return collected;
     anchor = { kind: "earlier", ref: result.earlierRef };
   }
 
-  return collected;
+  // Cap exhausted without reaching the render instant — the feed is
+  // misbehaving (see MAX_PAGES) and the window's early part is missing, so
+  // this is a truncation like a mid-walk failure, not a complete window.
+  return { kind: "partial-window", candidates: collected };
 }
 
 // `journeys()` accepts either a bare HAFAS stop id string or an FPTF
@@ -376,6 +389,38 @@ function toHafasLocation(place: Place): string | Record<string, unknown> {
     latitude: place.latitude,
     longitude: place.longitude,
   };
+}
+
+// hafas-client ships no TypeScript typings; this declares the one method we
+// call. `journeys()` resolves to the same HAFAS shape the mapper consumes.
+type HafasClient = {
+  journeys(
+    from: string | Record<string, unknown>,
+    to: string | Record<string, unknown>,
+    options: Record<string, unknown>,
+  ): Promise<HafasJourneysResponse>;
+};
+
+// hafas-client (via its `debug` dependency) reads `process.env` during module
+// evaluation, so a static import would make merely importing this file demand
+// env permission — breaking permission-less `deno test` runs of the pure
+// mapper and pagination tests. Import it lazily on the first real fetch
+// instead, memoised for the module's lifetime. Constructing the client
+// performs no I/O — the user-agent string just identifies this project to
+// BVG on each request.
+let clientPromise: Promise<HafasClient> | undefined;
+
+function getClient(): Promise<HafasClient> {
+  clientPromise ??= Promise.all([
+    import("hafas-client"),
+    import("hafas-client/p/bvg/index.js"),
+  ]).then(([{ createClient }, { profile }]) =>
+    createClient(
+      profile,
+      "trmnl-byos-deno (https://github.com/hertzg/trmnl-byos-deno)",
+    )
+  );
+  return clientPromise;
 }
 
 // Races a hafas-client call against the shared wall-clock deadline.
@@ -417,10 +462,11 @@ function hafasFetchPage(
       ? { arrival: anchor.date, results: RESULTS_PER_REQUEST, language: "en" }
       : { earlierThan: anchor.ref, results: RESULTS_PER_REQUEST, language: "en" };
     try {
+      const client = await getClient();
       const body = await withDeadline(
         client.journeys(from, to, options),
         remainingMs,
-      ) as HafasJourneysResponse;
+      );
       return {
         candidates: mapJourneysResponse(body),
         earlierRef: body.earlierRef ?? null,
