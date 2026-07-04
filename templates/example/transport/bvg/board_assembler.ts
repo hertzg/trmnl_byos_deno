@@ -16,6 +16,7 @@
 
 import {
   type Candidate,
+  candidateKey,
   type FetchCandidates,
   fetchCandidates as defaultFetch,
 } from "./journey_client.ts";
@@ -192,14 +193,22 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
         ),
       );
 
-      // Step 2a — update last-successful-fetch cache. Any successful (non
-      // FeedError) result counts as success for cache purposes; partial
-      // success still refreshes the timestamp.
+      // Step 2a — update last-successful-fetch cache. Any result that carried
+      // candidates counts as success for cache purposes; a PartialWindow
+      // still refreshes the timestamp, but its mid-walk hiccup ALSO counts as
+      // a feed error, so a board whose rows all aged out reads
+      // feedUnreachable rather than a quiet schedule.
       let anySuccess = false;
       let anyFeedError = false;
       for (const result of fetched) {
-        if (Array.isArray(result)) anySuccess = true;
-        else anyFeedError = true;
+        if (Array.isArray(result)) {
+          anySuccess = true;
+        } else if (result.kind === "partial-window") {
+          anySuccess = true;
+          anyFeedError = true;
+        } else {
+          anyFeedError = true;
+        }
       }
       if (anySuccess) lastSuccessfulFetchAt = now;
 
@@ -217,6 +226,17 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
         if (Array.isArray(result)) {
           candidates = result;
           lastGoodCandidates.set(preference.preferenceKey, result);
+        } else if (result.kind === "partial-window") {
+          // Truncated walk: the fresh candidates cover only the window's late
+          // tail. Rendering them alone would drop the imminent rows, and
+          // caching them would clobber a complete snapshot — merge fresh over
+          // cached instead and cache the merged set; stale entries age out
+          // via classification like any keep-last-good fallback.
+          candidates = mergeCandidates(
+            result.candidates,
+            lastGoodCandidates.get(preference.preferenceKey) ?? [],
+          );
+          lastGoodCandidates.set(preference.preferenceKey, candidates);
         } else {
           candidates = lastGoodCandidates.get(preference.preferenceKey) ?? [];
         }
@@ -278,6 +298,23 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
       return board;
     },
   };
+}
+
+// Union of a truncated fetch's fresh candidates and the previous cached
+// snapshot. Fresh entries win dedup collisions (they carry newer realtime
+// times); cached entries fill in the earlier part of the window the walk
+// never reached.
+function mergeCandidates(
+  fresh: readonly Candidate[],
+  cached: readonly Candidate[],
+): readonly Candidate[] {
+  const seen = new Set(fresh.map(candidateKey));
+  const merged = [...fresh];
+  for (const c of cached) {
+    if (seen.has(candidateKey(c))) continue;
+    merged.push(c);
+  }
+  return merged;
 }
 
 // Walk every preference's schedule, materialise its next applicable arrive-by,

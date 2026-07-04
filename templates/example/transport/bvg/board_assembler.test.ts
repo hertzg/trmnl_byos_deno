@@ -779,6 +779,69 @@ Deno.test("keep-last-good: a later successful fetch replaces the cached candidat
   assertEquals(board.emptyReason, "none");
 });
 
+Deno.test("keep-last-good: a partial window merges with the cache instead of clobbering it", async () => {
+  // The motivating flap: cycle 1 caches a complete snapshot (imminent row +
+  // late tail); cycle 2's walk is cut short and carries ONLY the late tail;
+  // cycle 3 fails entirely. The imminent row must survive all three cycles —
+  // if the partial window had replaced the cache, cycles 2 and 3 would show
+  // just the late tail.
+  const nows = [
+    new Date("2025-11-10T07:30:00Z"),
+    new Date("2025-11-10T07:31:00Z"),
+    new Date("2025-11-10T07:32:00Z"),
+  ];
+  // Imminent: dep 08:45 Berlin, walk-out 8m → leave-by 07:37Z.
+  const imminent = transitCandidateFor(
+    HBF,
+    ALEX,
+    "2025-11-10T08:45:00+01:00",
+    "2025-11-10T08:57:00+01:00",
+  );
+  // Late tail: dep 09:15 Berlin → leave-by 08:07Z, arrival 09:27 ≤ closesAt 09:45.
+  const lateTail = transitCandidateFor(
+    HBF,
+    ALEX,
+    "2025-11-10T09:15:00+01:00",
+    "2025-11-10T09:27:00+01:00",
+  );
+
+  const completeFetch: FetchCandidates = () => Promise.resolve([imminent, lateTail]);
+  const partialFetch: FetchCandidates = () =>
+    Promise.resolve({ kind: "partial-window" as const, candidates: [lateTail] });
+
+  const assembler = createBoardAssembler();
+  const first = await assembler.assembleBoard(CONFIG, nows[0], { fetchCandidates: completeFetch });
+  assertEquals(first.rows.length, 2);
+
+  // Cycle 2: partial window — the board still shows BOTH rows (fresh late
+  // tail merged over the cached imminent row).
+  const second = await assembler.assembleBoard(CONFIG, nows[1], { fetchCandidates: partialFetch });
+  assertEquals(second.rows.length, 2);
+  assertEquals(second.rows[0].leaveByDate.toISOString(), "2025-11-10T07:37:00.000Z");
+
+  // Cycle 3: total outage — the fallback serves the merged cache, so the
+  // imminent row is still there.
+  const third = await assembler.assembleBoard(CONFIG, nows[2], { fetchCandidates: ERR_FETCH });
+  assertEquals(third.rows.length, 2);
+  assertEquals(third.rows[0].leaveByDate.toISOString(), "2025-11-10T07:37:00.000Z");
+});
+
+Deno.test("keep-last-good: an all-aged-out partial window still reads feedUnreachable", async () => {
+  // A partial window counts as BOTH success (candidates arrived, timestamp
+  // refreshes) and a feed hiccup — so when nothing survives classification,
+  // the empty board reports the outage instead of a quiet schedule.
+  const now = new Date("2025-11-10T07:30:00Z");
+  const partialEmpty: FetchCandidates = () =>
+    Promise.resolve({ kind: "partial-window" as const, candidates: [] });
+  const board = await createBoardAssembler().assembleBoard(CONFIG, now, {
+    fetchCandidates: partialEmpty,
+  });
+  assertEquals(board.rows.length, 0);
+  assertEquals(board.emptyReason, "feedUnreachable");
+  // The timestamp DID refresh — the partial fetch carried (zero) candidates.
+  assertEquals(board.lastSuccessfulFetchAt?.toISOString(), now.toISOString());
+});
+
 Deno.test("assembleBoard: noScheduleApplicable carries soonest nextAnchor across preferences", async () => {
   // Two preferences: OFFICE (mon-fri 09:30) and STUDIO (mon-fri 09:30). With
   // no rules applicable on a Saturday, both schedules' next anchor is
