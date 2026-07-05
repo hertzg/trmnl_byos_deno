@@ -75,7 +75,13 @@ export function createDashboard(deps: DashboardDeps): Hono {
       };
       const bundle = await deps.pluginManager.run(ctx);
       const identity = await deps.renderer.identity(bundle);
-      const png = await deps.renderer.rasterize(bundle);
+      // Undocumented debug knob (not exposed in the dashboard UI): ?bitDepth=
+      // overrides the profile's PNG bit depth for this one preview render, so
+      // panel depths can be eyeballed without editing config. Anything but
+      // 1/2/4/8 is ignored.
+      const png = await deps.renderer.rasterize(bundle, {
+        bitDepth: parseBitDepth(c.req.query("bitDepth")),
+      });
       const validity = String(bundle.result.validity.total({ unit: "seconds" }));
 
       return c.body(png, 200, {
@@ -129,6 +135,13 @@ function resolveDisplayed(
   }
 
   return { instant, dayStart, dayEnd: dayStart.add({ days: 1 }) };
+}
+
+function parseBitDepth(raw: string | undefined): 1 | 2 | 4 | 8 | undefined {
+  if (raw === "1" || raw === "2" || raw === "4" || raw === "8") {
+    return Number(raw) as 1 | 2 | 4 | 8;
+  }
+  return undefined;
 }
 
 function parseScrubTime(

@@ -7,7 +7,7 @@ import { hashBundle } from "../hash.ts";
 import type { DeviceProfile } from "./profiles.ts";
 import { connect } from "@astral/astral";
 import { initPage, type Page, renderUrl, resolveCdpEndpoint } from "./_internal/cdp.ts";
-import { dither } from "./_internal/dither.ts";
+import { dither, type DitherEngine } from "./_internal/dither.ts";
 import { timed } from "../telemetry/spans.ts";
 
 // Renderer: Bundle → Image. See ADR-0003 / CONTEXT.md.
@@ -15,14 +15,24 @@ import { timed } from "../telemetry/spans.ts";
 // assets to CDP during rasterize; never reachable through the outward
 // HTTP layer.
 
+// Per-call overrides for one rasterize, on top of the configured DeviceProfile.
+// Debug-only surface — the Device path never sets these; the dashboard preview
+// threads them through from its query string.
+export type RasterizeOverrides = {
+  bitDepth?: 1 | 2 | 4 | 8;
+};
+
 export type Renderer = {
   identity(bundle: Bundle): Promise<string>;
-  rasterize(bundle: Bundle): Promise<Uint8Array<ArrayBuffer>>;
+  rasterize(bundle: Bundle, overrides?: RasterizeOverrides): Promise<Uint8Array<ArrayBuffer>>;
   origin(): string;
   close(): Promise<void>;
 };
 
-export type FetchPngFromUrl = (url: string) => Promise<Uint8Array<ArrayBuffer>>;
+export type FetchPngFromUrl = (
+  url: string,
+  overrides?: RasterizeOverrides,
+) => Promise<Uint8Array<ArrayBuffer>>;
 
 export type RendererDeps = {
   fetchPngFromUrl: FetchPngFromUrl;
@@ -83,14 +93,14 @@ export function createRenderer(deps: RendererDeps): Renderer {
     identity(bundle) {
       return timed("identity", () => hashBundle(bundle));
     },
-    rasterize(bundle) {
+    rasterize(bundle, overrides) {
       const next = timed("rasterize", () =>
         chain
           .catch(() => {})
           .then(async () => {
             mounted = bundle;
             try {
-              return await deps.fetchPngFromUrl(`${origin}${INDEX_PATH}`);
+              return await deps.fetchPngFromUrl(`${origin}${INDEX_PATH}`, overrides);
             } finally {
               mounted = null;
             }
@@ -109,6 +119,9 @@ export function createRenderer(deps: RendererDeps): Renderer {
 
 export type FetchPngFromUrlConfig = {
   cdpUrl: string;
+  // Omitted → the dither default ("wasm"). Config-selectable so the native
+  // pipeline can be A/B'd on the Pi without rebuilding the image.
+  ditherEngine?: DitherEngine;
 } & DeviceProfile;
 
 export function createFetchPngFromUrl(config: FetchPngFromUrlConfig): FetchPngFromUrl {
@@ -124,7 +137,7 @@ export function createFetchPngFromUrl(config: FetchPngFromUrlConfig): FetchPngFr
   // and each `goto` fires a fresh FCP for the new loaderId.
   let pagePromise: Promise<Page> | undefined;
 
-  return async (url) => {
+  return async (url, overrides) => {
     const page = await timed(
       "page",
       () => (pagePromise ??= (async () => {
@@ -144,8 +157,9 @@ export function createFetchPngFromUrl(config: FetchPngFromUrlConfig): FetchPngFr
     const raw = await timed("renderUrl", () => renderUrl({ page, url }));
     return await timed("dither", () =>
       dither(raw, {
-        bitDepth: config.bitDepth,
+        bitDepth: overrides?.bitDepth ?? config.bitDepth,
         mode: config.dither,
+        engine: config.ditherEngine,
       }));
   };
 }

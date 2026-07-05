@@ -6,7 +6,7 @@ import { createDashboard } from "./dashboard.ts";
 import { createSlot } from "../slot/slot.ts";
 import type { Plugin, RunContext } from "../plugin/plugin.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
-import type { Renderer } from "../render/renderer.ts";
+import type { RasterizeOverrides, Renderer } from "../render/renderer.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import { createTelemetry } from "../telemetry/telemetry.ts";
 import { createDeviceState } from "../device-state.ts";
@@ -728,4 +728,32 @@ Deno.test("GET /preview returns 404 — no public HTML route", async () => {
   await res.body?.cancel();
 
   assertEquals(res.status, 404);
+});
+
+// ─── GET /dashboard/preview.png?bitDepth= — per-render override ────────────
+
+Deno.test("GET /dashboard/preview.png?bitDepth=2 passes the parsed override to renderer.rasterize", async () => {
+  const rasterize = spy((_b: Bundle, _o?: RasterizeOverrides) =>
+    Promise.resolve(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))
+  );
+  const { app } = wire({ renderer: defaultRenderer({ rasterize }) });
+
+  await (await app.request("/dashboard/preview.png?bitDepth=2")).arrayBuffer();
+
+  assertSpyCalls(rasterize, 1);
+  assertEquals(rasterize.calls[0].args[1], { bitDepth: 2 });
+});
+
+Deno.test("GET /dashboard/preview.png ignores a bitDepth that is not 1/2/4/8", async () => {
+  const rasterize = spy((_b: Bundle, _o?: RasterizeOverrides) =>
+    Promise.resolve(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))
+  );
+  const { app } = wire({ renderer: defaultRenderer({ rasterize }) });
+
+  await (await app.request("/dashboard/preview.png?bitDepth=3")).arrayBuffer();
+  await (await app.request("/dashboard/preview.png")).arrayBuffer();
+
+  assertSpyCalls(rasterize, 2);
+  assertEquals(rasterize.calls[0].args[1], { bitDepth: undefined });
+  assertEquals(rasterize.calls[1].args[1], { bitDepth: undefined });
 });

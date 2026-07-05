@@ -38,9 +38,14 @@ async function main() {
   const errorValidity = Temporal.Duration.from({ seconds: 30 });
 
   const renderer = createRenderer({
-    fetchPngFromUrl: createFetchPngFromUrl({ cdpUrl: system.cdpUrl, ...ACTIVE_PROFILE }),
+    fetchPngFromUrl: createFetchPngFromUrl({
+      cdpUrl: system.cdpUrl,
+      ditherEngine: system.ditherEngine,
+      ...ACTIVE_PROFILE,
+    }),
     loopbackHost: system.loopbackHost,
   });
+  console.log(`[renderer] dither engine ${system.ditherEngine ?? "wasm"}`);
   const bindNote = system.loopbackHost === "127.0.0.1"
     ? ""
     : ` (bound on 0.0.0.0 because loopbackHost=${system.loopbackHost})`;

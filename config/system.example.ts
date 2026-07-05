@@ -15,6 +15,9 @@ export type SystemConfig = {
   plugin: Plugin<unknown>;
   pluginAssetsDir: string;
   deviceId: string;
+  // Luma+dither implementation. Optional — an older live system.ts without
+  // this field keeps working and means "wasm".
+  ditherEngine?: "wasm" | "native";
 };
 
 export const system = {
@@ -35,4 +38,8 @@ export const system = {
   pluginAssetsDir: resolve("./plugins/home/assets"),
 
   deviceId: "trmnl-x",
+
+  // "wasm" (fused SIMD kernel, default) or "native" (plain-TypeScript
+  // reference pipeline). Visually equivalent; the switch is for A/B'ing.
+  ditherEngine: "wasm",
 } satisfies SystemConfig;
