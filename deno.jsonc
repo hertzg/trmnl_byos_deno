@@ -5,6 +5,10 @@
   // "./plugins/*" globs every plugin member: adding a plugin is creating a
   // folder with a deno.jsonc — no edit here, none in the Dockerfile.
   "workspace": ["./server", "./ds", "./plugins/*", "./config"],
+  // no-slow-types demands explicitly-written types on every export of a named
+  // package so JSR can skip the type checker. These packages are never
+  // published (ADR-0001 single-user posture) — the ceremony buys nothing.
+  "lint": { "rules": { "exclude": ["no-slow-types"] } },
   "tasks": {
     "dev": "deno run --allow-all --watch=server,ds,plugins,config server/src/main.ts",
     "start": "deno run --allow-all server/src/main.ts",

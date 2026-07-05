@@ -1,6 +1,5 @@
 /** @jsxImportSource hono/jsx */
 import type { Child } from "hono/jsx";
-import type { JSX } from "hono/jsx/jsx-runtime";
 
 export type FlexAlign = "start" | "center" | "end" | "baseline" | "stretch";
 export type FlexJustify = "start" | "center" | "end" | "space-between" | "space-around";
@@ -33,7 +32,7 @@ const justifyMap: Record<FlexJustify, string> = {
 
 export function Flex(
   { direction = "row", gap, align, justify, wrap, children }: FlexProps,
-): JSX.Element {
+) {
   const classes = ["ds-flex", direction === "col" ? "ds-flex--col" : "ds-flex--row"];
   if (wrap) classes.push("ds-flex--wrap");
 

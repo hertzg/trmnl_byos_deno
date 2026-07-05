@@ -1,12 +1,11 @@
 /** @jsxImportSource hono/jsx */
-import type { JSX } from "hono/jsx/jsx-runtime";
 
 export type BatteryIndicatorProps = {
   value: number | null | undefined;
   voltage?: number | null;
 };
 
-export function BatteryIndicator({ value, voltage }: BatteryIndicatorProps): JSX.Element | null {
+export function BatteryIndicator({ value, voltage }: BatteryIndicatorProps) {
   if (value == null) return null;
   // Spread title conditionally — hono/jsx renders `title={undefined}` as a stray attribute slot
   // (`<span class="ds-battery" >`), so omit the key entirely when voltage is absent.

@@ -16,7 +16,7 @@ export interface LabelProps {
   children?: JSX.Element | JSX.Element[] | string | number | null;
 }
 
-export function Label({ size = "base", muted, children }: LabelProps): JSX.Element {
+export function Label({ size = "base", muted, children }: LabelProps) {
   const classes = ["ds-label"];
   if (size !== "base") classes.push(`ds-label--${size}`);
   if (muted) classes.push("ds-label--muted");

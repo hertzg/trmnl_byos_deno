@@ -39,7 +39,7 @@ const BACKGROUND_REFRESH_MS = 30_000;
 // top-level factory function. Importing this module starts the background
 // refresh timer; that is intentional — the timer's lifecycle is bound to
 // the Plugin's lifecycle.
-const transport: Plugin<FrameData> = (() => {
+export default (() => {
   // ─── World-knowledge layer ────────────────────────────────────────────
   // One assembler instance, kept in the export-site closure so its internal
   // caches (lastSuccessfulFetchAt, observed travel times) survive across
@@ -92,4 +92,3 @@ const transport: Plugin<FrameData> = (() => {
     },
   } satisfies Plugin<FrameData>;
 })();
-export default transport;

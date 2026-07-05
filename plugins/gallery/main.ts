@@ -61,7 +61,7 @@ function extOf(name: string): string {
 }
 
 // ADR-0002 module shape: default-export a Plugin object directly.
-const GalleryPlugin: Plugin<GalleryState> = {
+export default {
   run(ctx: RunContext): Result<GalleryState> {
     return {
       state: { src: pickPhoto(photos, ctx.t) },
@@ -69,5 +69,4 @@ const GalleryPlugin: Plugin<GalleryState> = {
       view: Gallery,
     };
   },
-};
-export default GalleryPlugin;
+} satisfies Plugin<GalleryState>;

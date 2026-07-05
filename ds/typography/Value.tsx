@@ -22,7 +22,7 @@ export interface ValueProps {
   children?: JSX.Element | JSX.Element[] | string | number | null;
 }
 
-export function Value({ size = "base", tnums, children }: ValueProps): JSX.Element {
+export function Value({ size = "base", tnums, children }: ValueProps) {
   const classes = ["ds-value"];
   if (size !== "base") classes.push(`ds-value--${size}`);
   if (tnums) classes.push("ds-value--tnums");

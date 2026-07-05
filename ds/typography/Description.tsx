@@ -15,7 +15,7 @@ export interface DescriptionProps {
   children?: JSX.Element | JSX.Element[] | string | number | null;
 }
 
-export function Description({ size = "base", children }: DescriptionProps): JSX.Element {
+export function Description({ size = "base", children }: DescriptionProps) {
   const className = size === "base" ? "ds-description" : `ds-description ds-description--${size}`;
   return <span class={className}>{children}</span>;
 }

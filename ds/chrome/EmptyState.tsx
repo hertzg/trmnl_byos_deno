@@ -8,7 +8,7 @@ export type EmptyStateProps = {
   sub?: Slot;
 };
 
-export function EmptyState({ big, sub }: EmptyStateProps): JSX.Element {
+export function EmptyState({ big, sub }: EmptyStateProps) {
   return (
     <div class="ds-empty-state">
       <div class="ds-empty-state__big">{big}</div>

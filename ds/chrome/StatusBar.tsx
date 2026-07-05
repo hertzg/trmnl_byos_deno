@@ -6,7 +6,7 @@ export type StatusBarProps = {
   children?: JSX.Element | JSX.Element[] | string | number | null;
 };
 
-export function StatusBar({ position = "bottom", children }: StatusBarProps): JSX.Element {
+export function StatusBar({ position = "bottom", children }: StatusBarProps) {
   const className = `ds-status-bar ds-status-bar--${position}`;
   if (position === "top") {
     return <header class={className}>{children}</header>;

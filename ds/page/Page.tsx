@@ -1,6 +1,5 @@
 /** @jsxImportSource hono/jsx */
 import type { Child } from "hono/jsx";
-import type { JSX } from "hono/jsx/jsx-runtime";
 import { Styles } from "../styles/Styles.tsx";
 
 export type PageProps = {
@@ -10,7 +9,7 @@ export type PageProps = {
   children?: Child;
 };
 
-export function Page({ title, stylesheet, lang, children }: PageProps): JSX.Element {
+export function Page({ title, stylesheet, lang, children }: PageProps) {
   return (
     <html lang={lang}>
       <head>

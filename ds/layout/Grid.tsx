@@ -1,6 +1,5 @@
 /** @jsxImportSource hono/jsx */
 import type { Child } from "hono/jsx";
-import type { JSX } from "hono/jsx/jsx-runtime";
 
 export type GridProps = {
   cols?: number | string;
@@ -8,7 +7,7 @@ export type GridProps = {
   children?: Child;
 };
 
-export function Grid({ cols, gap, children }: GridProps): JSX.Element {
+export function Grid({ cols, gap, children }: GridProps) {
   const style: Record<string, string> = {};
   if (cols !== undefined) {
     style["grid-template-columns"] = typeof cols === "number" ? `repeat(${cols}, 1fr)` : cols;

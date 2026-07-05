@@ -17,9 +17,8 @@ import type { Plugin, Result, RunContext } from "@hztrmnl/server/plugin";
 import type { FrameData } from "@hztrmnl/transport";
 import type { GalleryState } from "@hztrmnl/gallery";
 
-const home: Plugin<FrameData | GalleryState> = {
+export default {
   async run(ctx: RunContext): Promise<Result<FrameData | GalleryState>> {
     return composeResult(await transport.run(ctx), () => gallery.run(ctx));
   },
-};
-export default home;
+} satisfies Plugin<FrameData | GalleryState>;

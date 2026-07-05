@@ -15,7 +15,7 @@ export interface TitleProps {
   children?: JSX.Element | JSX.Element[] | string | number | null;
 }
 
-export function Title({ size = "base", children }: TitleProps): JSX.Element {
+export function Title({ size = "base", children }: TitleProps) {
   const className = size === "base" ? "ds-title" : `ds-title ds-title--${size}`;
   return <span class={className}>{children}</span>;
 }

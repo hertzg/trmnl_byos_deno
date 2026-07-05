@@ -12,7 +12,7 @@ export interface ItemProps {
   emphasis?: ItemEmphasis;
 }
 
-export function Item({ meta, content, icon, emphasis }: ItemProps): JSX.Element {
+export function Item({ meta, content, icon, emphasis }: ItemProps) {
   const className = emphasis === "meta" ? "ds-item ds-item--meta-emphasis" : "ds-item";
 
   return (
