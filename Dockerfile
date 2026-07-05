@@ -9,10 +9,9 @@
 # browser editor for the mounted config/live/ files on :8080 and restarts Deno on save.
 #
 # Unversioned :debian tag — tracks the latest Deno. The dither pipeline imports
-# the wasm kernel via a raw import (`unstable: ["raw-imports"]` in deno.jsonc), so
-# the base must stay recent enough to know that flag; older Deno (e.g. 2.1.4)
-# warns "'raw-imports' isn't a valid unstable feature" and crash-loops the boot.
-# Latest always satisfies it.
+# the wasm kernel as a Wasm module (stable since Deno 2.1), and the workspace
+# layout needs Deno 2.x member resolution; latest satisfies both. (A pinned
+# 2.1.4 once crash-looped on a now-removed unstable flag — see git history.)
 FROM denoland/deno:debian
 
 RUN apt-get update \
