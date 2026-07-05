@@ -15,6 +15,7 @@ import DebugPage from "./debug.tsx";
 // the panel, not the pipeline.
 
 export type DebugDisplayConfig = {
+  imageSource: "pattern" | "custom";
   pattern: string;
   refreshRate: number;
   status: number;
@@ -23,12 +24,28 @@ export type DebugDisplayConfig = {
   resetFirmware: boolean;
   updateFirmware: boolean;
   firmwareUrl: string;
+  responseOverride: Record<string, unknown> | null;
+  proxyEnabled: boolean;
+  proxyTarget: string;
+};
+
+export type DebugCustomImageInfo = {
+  filename: string;
+  mediaType: string;
+  byteLength: number;
+  uploadedAt: Temporal.ZonedDateTime;
+  version: number;
+};
+
+type DebugCustomImage = DebugCustomImageInfo & {
+  bytes: Uint8Array<ArrayBuffer>;
 };
 
 // Matches the Conductor's normal response where a field has a fixed value
 // (status 0, temperature_profile "a") so entering debug mode changes nothing
 // until the operator edits a field. 60 s refresh keeps iteration tight.
 const DEFAULTS: DebugDisplayConfig = {
+  imageSource: "pattern",
   pattern: "wedge",
   refreshRate: 60,
   status: 0,
@@ -37,6 +54,9 @@ const DEFAULTS: DebugDisplayConfig = {
   resetFirmware: false,
   updateFirmware: false,
   firmwareUrl: "",
+  responseOverride: null,
+  proxyEnabled: false,
+  proxyTarget: "",
 };
 
 export type DebugDeps = {
@@ -44,10 +64,16 @@ export type DebugDeps = {
   deviceState: DeviceState;
   friendlyId: string;
   now: () => Temporal.ZonedDateTime;
+  fetch?: typeof fetch;
 };
 
 export function createDebugApp(deps: DebugDeps): Hono {
   let cfg: DebugDisplayConfig = { ...DEFAULTS };
+  let customImage: DebugCustomImage | null = null;
+  let customImageVersion = 0;
+  let responseJsonError: string | null = null;
+  let proxyError: string | null = null;
+  const fetchImpl = deps.fetch ?? fetch;
 
   // Patterns are deterministic per (name, profile), and the profile is fixed
   // for the process — render each once, lazily.
@@ -61,13 +87,33 @@ export function createDebugApp(deps: DebugDeps): Hono {
     return png;
   }
 
-  function displayResponse(origin: string): Record<string, unknown> {
+  function customImageId(image: DebugCustomImage): string {
+    return `debug-custom-${image.version}`;
+  }
+
+  function customImageInfo(): DebugCustomImageInfo | null {
+    if (!customImage) return null;
+    const { bytes: _bytes, ...info } = customImage;
+    return info;
+  }
+
+  function imageRef(origin: string): { imageUrl: string; filename: string } {
+    if (cfg.imageSource === "custom" && customImage) {
+      const filename = customImageId(customImage);
+      return { imageUrl: `${origin}/image/${filename}.png`, filename };
+    }
+    const filename = `debug-${cfg.pattern}`;
+    return { imageUrl: `${origin}/image/${filename}.png`, filename };
+  }
+
+  function generatedDisplayResponse(origin: string): Record<string, unknown> {
+    const image = imageRef(origin);
     return {
       status: cfg.status,
-      image_url: `${origin}/image/debug-${cfg.pattern}.png`,
+      image_url: image.imageUrl,
       // The pattern name keys the filename, so switching patterns always
       // reads as a new image to the firmware.
-      filename: `debug-${cfg.pattern}`,
+      filename: image.filename,
       refresh_rate: cfg.refreshRate,
       reset_firmware: cfg.resetFirmware,
       update_firmware: cfg.updateFirmware,
@@ -77,6 +123,10 @@ export function createDebugApp(deps: DebugDeps): Hono {
     };
   }
 
+  function displayResponse(origin: string): Record<string, unknown> {
+    return cfg.responseOverride ?? generatedDisplayResponse(origin);
+  }
+
   return new Hono()
     .get("/", (c) => {
       const page = renderToString(
@@ -84,6 +134,10 @@ export function createDebugApp(deps: DebugDeps): Hono {
           now: deps.now(),
           cfg,
           response: displayResponse(publicOrigin(c)),
+          generatedResponse: generatedDisplayResponse(publicOrigin(c)),
+          responseJsonError,
+          proxyError,
+          customImage: customImageInfo(),
           device: deps.deviceState.latestDevice(),
           rawHeaders: deps.deviceState.latestPollHeaders(),
           logs: deps.deviceState.recentLogs(),
@@ -101,9 +155,29 @@ export function createDebugApp(deps: DebugDeps): Hono {
         const n = Number(raw);
         return Number.isSafeInteger(n) ? n : undefined;
       };
+      const uploaded = body["customImage"];
       const pattern = str("pattern");
+      let imageSource = cfg.imageSource;
+      let nextPattern = cfg.pattern;
+      if (uploaded instanceof File && uploaded.size > 0) {
+        customImage = {
+          filename: uploaded.name || "custom",
+          mediaType: uploaded.type || "application/octet-stream",
+          byteLength: uploaded.size,
+          uploadedAt: deps.now(),
+          version: ++customImageVersion,
+          bytes: new Uint8Array(await uploaded.arrayBuffer()),
+        };
+        imageSource = "custom";
+      } else if (pattern === "custom" && customImage) {
+        imageSource = "custom";
+      } else if (pattern !== undefined && isPattern(pattern)) {
+        imageSource = "pattern";
+        nextPattern = pattern;
+      }
       cfg = {
-        pattern: pattern !== undefined && isPattern(pattern) ? pattern : cfg.pattern,
+        imageSource,
+        pattern: nextPattern,
         refreshRate: Math.max(1, int("refreshRate") ?? cfg.refreshRate),
         status: int("status") ?? cfg.status,
         temperatureProfile: str("temperatureProfile") ?? cfg.temperatureProfile,
@@ -113,9 +187,62 @@ export function createDebugApp(deps: DebugDeps): Hono {
         resetFirmware: body["resetFirmware"] !== undefined,
         updateFirmware: body["updateFirmware"] !== undefined,
         firmwareUrl: str("firmwareUrl") ?? cfg.firmwareUrl,
+        responseOverride: null,
+        proxyEnabled: cfg.proxyEnabled,
+        proxyTarget: cfg.proxyTarget,
       };
+      responseJsonError = null;
       // 303 turns the browser's next request into a GET.
       return c.redirect("/", 303);
+    })
+    .post("/debug/response", async (c) => {
+      const body = await c.req.parseBody();
+      const raw = typeof body["responseJson"] === "string" ? body["responseJson"] : "";
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        if (!isRecord(parsed)) throw new Error("response JSON must be an object");
+        cfg = { ...cfg, responseOverride: parsed };
+        responseJsonError = null;
+      } catch (err) {
+        responseJsonError = err instanceof Error ? err.message : String(err);
+      }
+      return c.redirect("/", 303);
+    })
+    .post("/debug/response/reset", (c) => {
+      cfg = { ...cfg, responseOverride: null };
+      responseJsonError = null;
+      return c.redirect("/", 303);
+    })
+    .post("/debug/proxy", async (c) => {
+      const body = await c.req.parseBody();
+      const target = typeof body["proxyTarget"] === "string" ? body["proxyTarget"].trim() : "";
+      const enabled = body["proxyEnabled"] !== undefined;
+      if (!enabled) {
+        cfg = { ...cfg, proxyEnabled: false, proxyTarget: target };
+        proxyError = null;
+        return c.redirect("/", 303);
+      }
+      try {
+        cfg = { ...cfg, proxyEnabled: true, proxyTarget: normalizeProxyTarget(target) };
+        proxyError = null;
+      } catch (err) {
+        cfg = { ...cfg, proxyEnabled: false, proxyTarget: target };
+        proxyError = err instanceof Error ? err.message : String(err);
+      }
+      return c.redirect("/", 303);
+    })
+    .use("*", async (c, next) => {
+      const pathname = new URL(c.req.url).pathname;
+      if (cfg.proxyEnabled && !isDebugControlPath(pathname)) {
+        recordDeviceSideEffects(c.req.raw, deps);
+        if (pathname === "/api/log") {
+          const body = await c.req.raw.clone().text();
+          const id = c.req.raw.headers.get("id") ?? c.req.raw.headers.get("ID") ?? "(none)";
+          deps.deviceState.appendLog(id, body);
+        }
+        return await proxyRequest(c.req.raw, cfg.proxyTarget, fetchImpl);
+      }
+      await next();
     })
     .get("/api/setup", (c) =>
       c.json({
@@ -126,14 +253,17 @@ export function createDebugApp(deps: DebugDeps): Hono {
         message: "Welcome (debug mode)",
       }))
     .get("/api/display", (c) => {
-      const report = parseDeviceHeaders(c.req.raw.headers, deps.now);
-      if (report) {
-        deps.deviceState.reportDevice(report, [...c.req.raw.headers.entries()]);
-      }
+      recordDeviceSideEffects(c.req.raw, deps);
       return c.json(displayResponse(publicOrigin(c)));
     })
     .get("/image/:id{.+\\.png}", async (c) => {
       const id = c.req.param("id").replace(/\.png$/, "");
+      if (customImage && id === customImageId(customImage)) {
+        return c.body(customImage.bytes, 200, {
+          "content-type": customImage.mediaType,
+          "cache-control": "no-store",
+        });
+      }
       const name = id.replace(/^debug-/, "");
       if (name === id || !isPattern(name)) return c.notFound();
       return c.body(await patternPng(name), 200, {
@@ -147,4 +277,76 @@ export function createDebugApp(deps: DebugDeps): Hono {
       deps.deviceState.appendLog(id, body);
       return c.body(null, 204);
     });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function recordDeviceSideEffects(req: Request, deps: DebugDeps): void {
+  const pathname = new URL(req.url).pathname;
+  if (pathname !== "/api/display") return;
+  const report = parseDeviceHeaders(req.headers, deps.now);
+  if (report) deps.deviceState.reportDevice(report, [...req.headers.entries()]);
+}
+
+function isDebugControlPath(pathname: string): boolean {
+  return pathname === "/" || pathname === "/debug" || pathname.startsWith("/debug/");
+}
+
+function normalizeProxyTarget(raw: string): string {
+  if (raw === "") throw new Error("proxy target URL is required");
+  const url = new URL(raw);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("proxy target must start with http:// or https://");
+  }
+  url.hash = "";
+  return url.toString();
+}
+
+function proxyTargetUrl(targetRaw: string, requestRaw: string): URL {
+  const target = new URL(targetRaw);
+  const incoming = new URL(requestRaw);
+  const basePath = target.pathname.replace(/\/$/, "");
+  target.pathname = `${basePath}${incoming.pathname}`;
+  target.search = incoming.search;
+  target.hash = "";
+  return target;
+}
+
+async function proxyRequest(
+  req: Request,
+  targetRaw: string,
+  fetchImpl: typeof fetch,
+): Promise<Response> {
+  const target = proxyTargetUrl(targetRaw, req.url);
+  const headers = new Headers(req.headers);
+  headers.delete("host");
+  headers.delete("content-length");
+  headers.delete("accept-encoding");
+
+  const method = req.method.toUpperCase();
+  const init: RequestInit = {
+    method,
+    headers,
+    redirect: "manual",
+  };
+  if (method !== "GET" && method !== "HEAD") init.body = await req.arrayBuffer();
+
+  try {
+    const upstream = await fetchImpl(target, init);
+    const responseHeaders = new Headers(upstream.headers);
+    responseHeaders.delete("transfer-encoding");
+    return new Response(upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: responseHeaders,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return new Response(`debug proxy failed: ${message}`, {
+      status: 502,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
 }

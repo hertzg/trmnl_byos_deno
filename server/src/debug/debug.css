@@ -41,7 +41,13 @@
   border-color: #2b6cb0;
   box-shadow: 0 0 0 2px rgba(43, 108, 176, 0.25);
 }
-.pattern-card input[type="radio"] {
+.pattern-card.is-selected {
+  border-color: #2b6cb0;
+  box-shadow: 0 0 0 2px rgba(43, 108, 176, 0.25);
+}
+.pattern-card input[type="radio"],
+.pattern-card-radio,
+.custom-file-input {
   position: absolute;
   opacity: 0;
   pointer-events: none;
@@ -53,6 +59,22 @@
   border: 1px solid #e3e3e3;
   background: #fff;
   image-rendering: pixelated;
+}
+.pattern-card--custom {
+  border-style: dashed;
+}
+.custom-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 1px solid #e3e3e3;
+  background: #fafafa;
+  color: #999;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 .pattern-card .t {
   font-size: 12px;
@@ -98,6 +120,35 @@
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   width: 90px;
 }
+.dbg-fields input[type="text"],
+.dbg-fields input[type="url"] {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background: #fff;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.dbg-note,
+.dbg-error {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.dbg-note {
+  border: 1px solid #c9d8ea;
+  background: #f1f6fb;
+  color: #34516f;
+}
+.dbg-error {
+  border: 1px solid #e0a8a8;
+  background: #fff2f2;
+  color: #8a2f2f;
+}
 
 /* exact-response preview */
 .dbg-json {
@@ -110,6 +161,41 @@
   font-size: 12px;
   line-height: 1.6;
   overflow-x: auto;
+}
+.dbg-response-form {
+  margin: 0 0 10px;
+}
+.dbg-response-form textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 260px;
+  margin: 0 0 10px;
+  padding: 12px 14px;
+  border: 1px solid #e3e3e3;
+  border-radius: 6px;
+  background: #fff;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.dbg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.dbg-reset-form {
+  margin: 0;
+}
+.dbg-generated {
+  margin: 12px 0 0;
+}
+.dbg-generated summary {
+  cursor: pointer;
+  color: #777;
+  font-size: 12px;
 }
 
 /* raw headers of the last poll, inline (no popover in debug mode) */

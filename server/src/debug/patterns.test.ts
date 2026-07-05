@@ -29,6 +29,29 @@ Deno.test("isPattern accepts every listed pattern and nothing else", () => {
   assert(!isPattern(""));
 });
 
+Deno.test("pattern catalog covers the main e-ink probes", () => {
+  const names = new Set(PATTERNS.map((p) => p.name));
+  for (
+    const name of [
+      "wedge",
+      "ramp",
+      "checker",
+      "frame",
+      "grid",
+      "fine-lines",
+      "diagonal",
+      "palette",
+      "ghosting",
+      "text-density",
+      "noise",
+      "black",
+      "white",
+    ]
+  ) {
+    assert(names.has(name), name);
+  }
+});
+
 Deno.test("unknown pattern name rejects", async () => {
   let threw = false;
   await renderPattern("nope", { width: 8, height: 8, bitDepth: 4 }).catch(() => {

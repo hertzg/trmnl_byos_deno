@@ -13,13 +13,14 @@ const profile: DeviceProfile = {
   dither: "floyd-steinberg",
 };
 
-function makeApp() {
+function makeApp(overrides: { fetch?: typeof fetch } = {}) {
   const deviceState = createDeviceState({ now: fixedNow });
   const app = createDebugApp({
     profile,
     deviceState,
     friendlyId: "TRMNL",
     now: fixedNow,
+    ...overrides,
   });
   return { app, deviceState };
 }
@@ -76,6 +77,117 @@ Deno.test("POST /debug/config ignores an unknown pattern and clamps refresh", as
   assertEquals(json.refresh_rate, 1);
 });
 
+Deno.test("POST /debug/response replaces /api/display with exact editable JSON", async () => {
+  const { app } = makeApp();
+  const exact = {
+    status: 202,
+    image_url: "https://example.test/custom.png",
+    filename: "manual",
+    refresh_rate: 5,
+    extra: { nested: true },
+  };
+  const post = await app.request("/debug/response", {
+    method: "POST",
+    body: new URLSearchParams({ responseJson: JSON.stringify(exact) }),
+  });
+  assertEquals(post.status, 303);
+  assertEquals(await (await app.request("/api/display")).json(), exact);
+});
+
+Deno.test("POST /debug/config clears the exact JSON override", async () => {
+  const { app } = makeApp();
+  await app.request("/debug/response", {
+    method: "POST",
+    body: new URLSearchParams({
+      responseJson: JSON.stringify({ status: 418, refresh_rate: 1 }),
+    }),
+  });
+  await app.request("/debug/config", {
+    method: "POST",
+    body: new URLSearchParams({ pattern: "ramp", refreshRate: "90" }),
+  });
+
+  const json = await (await app.request("/api/display")).json();
+  assert(String(json.image_url).endsWith("/image/debug-ramp.png"));
+  assertEquals(json.filename, "debug-ramp");
+  assertEquals(json.refresh_rate, 90);
+});
+
+Deno.test("POST /debug/config stores a custom upload in memory and selects it", async () => {
+  const { app } = makeApp();
+  const uploaded = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+  const form = new FormData();
+  form.set("refreshRate", "45");
+  form.set("customImage", new File([uploaded], "panel.png", { type: "image/png" }));
+
+  const post = await app.request("/debug/config", { method: "POST", body: form });
+  assertEquals(post.status, 303);
+
+  const json = await (await app.request("/api/display")).json();
+  assert(String(json.image_url).endsWith("/image/debug-custom-1.png"));
+  assertEquals(json.filename, "debug-custom-1");
+  assertEquals(json.refresh_rate, 45);
+
+  const img = await app.request("/image/debug-custom-1.png");
+  assertEquals(img.status, 200);
+  assertEquals(img.headers.get("content-type"), "image/png");
+  assertEquals(new Uint8Array(await img.arrayBuffer()), uploaded);
+});
+
+Deno.test("proxy mode forwards device-facing requests to the configured URL prefix", async () => {
+  const seen: Array<{ url: string; method: string; body: string }> = [];
+  const fetchStub: typeof fetch = (input, init) => {
+    const body = init?.body instanceof ArrayBuffer ? new TextDecoder().decode(init.body) : "";
+    seen.push({
+      url: String(input),
+      method: init?.method ?? "GET",
+      body,
+    });
+    return Promise.resolve(
+      new Response(JSON.stringify({ proxied: true }), {
+        status: 207,
+        headers: { "content-type": "application/json", "x-upstream": "yes" },
+      }),
+    );
+  };
+  const { app, deviceState } = makeApp({ fetch: fetchStub });
+
+  const post = await app.request("/debug/proxy", {
+    method: "POST",
+    body: new URLSearchParams({
+      proxyEnabled: "on",
+      proxyTarget: "http://127.0.0.1:2300/local-prefix",
+    }),
+  });
+  assertEquals(post.status, 303);
+
+  const display = await app.request("/api/display?slot=1", {
+    headers: { ID: "AA:BB:CC", RSSI: "-55" },
+  });
+  assertEquals(display.status, 207);
+  assertEquals(display.headers.get("x-upstream"), "yes");
+  assertEquals(await display.json(), { proxied: true });
+  assertEquals(seen[0], {
+    url: "http://127.0.0.1:2300/local-prefix/api/display?slot=1",
+    method: "GET",
+    body: "",
+  });
+  assertEquals(deviceState.latestDevice()?.id, "AA:BB:CC");
+
+  const log = await app.request("/api/log", {
+    method: "POST",
+    headers: { ID: "AA:BB:CC" },
+    body: "hello through proxy",
+  });
+  assertEquals(log.status, 207);
+  assertEquals(seen[1], {
+    url: "http://127.0.0.1:2300/local-prefix/api/log",
+    method: "POST",
+    body: "hello through proxy",
+  });
+  assertEquals(deviceState.recentLogs()[0].body, "hello through proxy");
+});
+
 Deno.test("/image serves debug patterns and 404s everything else", async () => {
   const { app } = makeApp();
   const ok = await app.request("/image/debug-checker.png");
@@ -121,5 +233,8 @@ Deno.test("the control panel page renders", async () => {
   const html = await res.text();
   assert(html.includes("debug mode"));
   assert(html.includes("/image/debug-wedge.png"));
+  assert(html.includes('name="responseJson"'));
+  assert(html.includes('name="customImage"'));
+  assert(html.includes('name="proxyTarget"'));
   assert(html.includes("debug: false"));
 });
