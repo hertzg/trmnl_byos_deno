@@ -61,9 +61,10 @@ COPY config/ ./config/
 
 # Seed build-time live config so the module graph resolves for `deno cache`.
 # These files are never mounted and exist only during the build layer.
-RUN mkdir -p config/live/plugins/transport \
+RUN mkdir -p config/live/plugins/transport config/live/plugins/gallery \
     && cp config/system.example.ts config/live/system.ts \
-    && cp config/plugins/transport/routes.example.ts config/live/plugins/transport/routes.ts
+    && cp config/plugins/transport/routes.example.ts config/live/plugins/transport/routes.ts \
+    && cp config/plugins/gallery/album.example.ts config/live/plugins/gallery/album.ts
 
 # Cache the full graph from the workspace entrypoint. With config/system.ts
 # statically importing @hztrmnl/home → @hztrmnl/transport → hafas-client, a
