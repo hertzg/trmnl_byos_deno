@@ -57,35 +57,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
       pluginRunEnd = deps.now();
       identity = await deps.renderer.identity(bundle);
       identityEnd = deps.now();
-      // Reuse check (Result.hints, see plugin.ts): an unchanged identity or a
-      // held-over identity means the Device would draw the same filename it
-      // already has, so skip Chrome entirely and keep the last image on the
-      // glass. The new bundle still governs validity — only image + identity
-      // carry over from the Slot's last entry.
-      //
-      // `hold` is a plugin-declared *identity string* (e.g. "photo:abc"),
-      // the same kind of value `hints.identity` carries — never the already-
-      // hashed Slot identity. It must go through the identical
-      // renderer.identity() pipeline before comparing against `last.identity`
-      // (which is always a hash), so it's hashed via a throwaway Bundle that
-      // carries nothing but that string as `hints.identity`.
-      const last = deps.slot.last();
-      const hold = bundle.result.hints?.holdIdentity;
-      const heldIdentity = typeof hold === "string"
-        ? await deps.renderer.identity({
-          result: { ...bundle.result, hints: { identity: hold } },
-          assets: {},
-        })
-        : null;
-      if (
-        last !== null &&
-        (last.identity === identity || (heldIdentity !== null && heldIdentity === last.identity))
-      ) {
-        identity = last.identity;
-        image = last.image;
-      } else {
-        image = deps.renderer.rasterize(bundle);
-      }
+      image = deps.renderer.rasterize(bundle);
     } catch (err) {
       // Error path: re-enter the same loop with a fabricated error Bundle
       // (ADR-0003). Empty assets — error view renders self-contained HTML.

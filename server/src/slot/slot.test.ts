@@ -95,45 +95,6 @@ Deno.test("image(id) returns null once the entry's validity has elapsed, even on
   assertEquals(await slot.image("abc123"), null);
 });
 
-Deno.test("last() returns null when the slot is empty", () => {
-  const slot = createSlot({ now: fixedNow });
-
-  assertEquals(slot.last(), null);
-});
-
-Deno.test("last() returns the stored entry after put()", () => {
-  const slot = createSlot({ now: fixedNow });
-  const entry = makeEntry({ identity: "abc123" });
-  slot.put(entry);
-
-  assertEquals(slot.last(), entry);
-});
-
-Deno.test("last() keeps returning the entry after its validity has elapsed (unlike display())", () => {
-  let clock = Temporal.ZonedDateTime.from(`2026-05-17T12:00[${zone}]`);
-  const slot = createSlot({ now: () => clock });
-  const entry = makeEntry({
-    identity: "abc123",
-    bundle: makeBundle(Temporal.Duration.from({ minutes: 5 })),
-    cachedAt: clock,
-  });
-  slot.put(entry);
-
-  clock = clock.add(Temporal.Duration.from({ minutes: 5 }));
-
-  assertEquals(slot.display(), null);
-  assertEquals(slot.last(), entry);
-});
-
-Deno.test("last() returns null again after clear()", () => {
-  const slot = createSlot({ now: fixedNow });
-  slot.put(makeEntry({ identity: "abc123" }));
-
-  slot.clear();
-
-  assertEquals(slot.last(), null);
-});
-
 Deno.test("clear() returns the slot to empty (display and image both null again)", async () => {
   const slot = createSlot({ now: fixedNow });
   slot.put(makeEntry({ identity: "abc123" }));
