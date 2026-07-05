@@ -230,10 +230,10 @@ doesn't affect what the Device sees.
 
 ## Plugin packaging
 
-A Plugin is a workspace package (see ADR-0012): a `deno.json` with `name` (scope `@hztrmnl`) and
+A Plugin is a workspace package (see ADR-0012): a `deno.jsonc` with `name` (scope `@hztrmnl`) and
 `exports`, whose main export default-exports a `{ run }` object satisfying the Plugin contract.
 Packages import each other by bare name; there are no path aliases, and a Plugin's third-party
-dependencies live in its own `deno.json`.
+dependencies live in its own `deno.jsonc`.
 
 The deployed Plugin is chosen by `config/system.ts`, which imports it by name and hands the object
 to the Server — there is no `PLUGIN_DIR` and no path-based loading; a wrong Plugin shape is a

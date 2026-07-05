@@ -40,32 +40,32 @@ while the module graph stays acyclic.
 ```
 
 The plugin members are listed as a glob (`"./plugins/*"`), and the Dockerfile's manifest layer globs
-member `deno.json`s the same way (`COPY --parents`, BuildKit labs frontend) — adding a plugin is
-creating a folder; neither file is edited. Member manifests stay `deno.json` (Deno parses JSONC
-comments in them regardless of extension); the root keeps the `.jsonc` name it always had.
+member `deno.jsonc`s the same way (`COPY --parents`, BuildKit labs frontend) — adding a plugin is
+creating a folder; neither file is edited. Every manifest is `deno.jsonc`, root and members alike,
+so commentary is first-class everywhere.
 
-Members import each other by bare package name (`name` + `exports` in each member's `deno.json`). No
-path aliases anywhere; third-party deps live in the member that uses them (`hafas-client` in
+Members import each other by bare package name (`name` + `exports` in each member's `deno.jsonc`).
+No path aliases anywhere; third-party deps live in the member that uses them (`hafas-client` in
 `@hztrmnl/transport`, once). Leaves sit flat under `plugins/` — nesting inside the Super-Plugin is
 legal but buys nothing when imports are by name. `home` replaces the rejected "example" name;
 `templates/` dies. The root keeps `fmt`/`lint`/`unstable` and task definitions (members inherit
 them) but no `imports` — "no aliases at root" is the principle, not "no config at root".
 
 **2. Config is a package whose skeleton is code and whose content is mounted (ADR-0010 intact).**
-The package skeleton — `config/deno.json` (name + exports) and the committed `*.example.ts` starters
-— is baked into the image and never editable at runtime; workspace discovery never depends on mount
-content. All mutable content lives under `config/live/`, and _that_ is the bind-mount boundary
-(`./config/live:/app/config/live` — the host keeps live files under the same `config/live/` path the
-repo gitignores, so the clone-based deploy flow and the mount agree; mounting the whole `./config`
-dir would nest the committed skeleton and the live tree one level too deep inside the container).
-The public surface is explicit subpath exports, one line per module a consumer imports, pointing at
-live files (`"./system": "./live/system.ts"`) so consumers import `@hztrmnl/config/system` with no
-`live/` in the specifier; no barrel (a barrel would fuse `system.ts` and per-plugin config into one
-module-graph node and create a real ESM cycle through the plugin packages). Entrypoint seeding
-reduces to one rule: baked example → `live/<same-path>.ts` when missing. Wiring a _new_ config
-module costs one exports line — a code change riding a deploy, consistent with the existing "adding
-a plugin is a deploy" posture. Package-level circularity (config → plugin → config) is deliberate
-and harmless.
+The package skeleton — `config/deno.jsonc` (name + exports) and the committed `*.example.ts`
+starters — is baked into the image and never editable at runtime; workspace discovery never depends
+on mount content. All mutable content lives under `config/live/`, and _that_ is the bind-mount
+boundary (`./config/live:/app/config/live` — the host keeps live files under the same `config/live/`
+path the repo gitignores, so the clone-based deploy flow and the mount agree; mounting the whole
+`./config` dir would nest the committed skeleton and the live tree one level too deep inside the
+container). The public surface is explicit subpath exports, one line per module a consumer imports,
+pointing at live files (`"./system": "./live/system.ts"`) so consumers import
+`@hztrmnl/config/system` with no `live/` in the specifier; no barrel (a barrel would fuse
+`system.ts` and per-plugin config into one module-graph node and create a real ESM cycle through the
+plugin packages). Entrypoint seeding reduces to one rule: baked example → `live/<same-path>.ts` when
+missing. Wiring a _new_ config module costs one exports line — a code change riding a deploy,
+consistent with the existing "adding a plugin is a deploy" posture. Package-level circularity
+(config → plugin → config) is deliberate and harmless.
 
 **3. `PLUGIN_DIR` / `pluginDir` and `loader.ts` die.** `config/system.ts` imports the deployed
 Plugin package by name and hands the object to the Server (`system.plugin`). Choosing a Plugin is
@@ -88,10 +88,10 @@ config may add imports; that fails loud at boot, per ADR-0010.
 
 - The Server shrinks: `loader.ts`, `loader.test.ts`, and `isPlugin` duck-typing are deleted;
   `createPluginManager` takes `{ plugin, assetsDir, extraAssetRoots }`.
-- One dependency, one declaration: no more alias mirroring between root and nested `deno.json`s.
+- One dependency, one declaration: no more alias mirroring between root and nested manifests.
 - `deno check` / `deno test` at the root cover every member; each member is independently checkable
   by name resolution, no standalone alias copies.
-- The operator cannot break the config package: `deno.json` and the starters are image-owned; an
+- The operator cannot break the config package: `deno.jsonc` and the starters are image-owned; an
   empty mount boots into seeded starters. webproc lists only `config/live/**/*.ts` — the skeleton is
   plumbing, not config.
 - `.gitignore`/`.dockerignore` config entries collapse to one line each (`config/live/`), replacing

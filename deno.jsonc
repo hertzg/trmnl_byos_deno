@@ -3,7 +3,7 @@
   // "imports". Members resolve each other by bare @hztrmnl/* package name and
   // declare their own third-party deps, so nothing here needs mirroring.
   // "./plugins/*" globs every plugin member: adding a plugin is creating a
-  // folder with a deno.json — no edit here, none in the Dockerfile.
+  // folder with a deno.jsonc — no edit here, none in the Dockerfile.
   "workspace": ["./server", "./ds", "./plugins/*", "./config"],
   // The dither pipeline imports its wasm kernel via `with { type: "bytes" }`.
   "unstable": ["raw-imports"],

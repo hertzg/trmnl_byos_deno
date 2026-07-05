@@ -42,14 +42,14 @@ WORKDIR /app
 
 # Dependency layer: copy manifest files only so this layer is cache-stable
 # across source edits. The --parents glob (needs the 1-labs syntax frontend
-# above) picks up every member deno.json at its own path, so adding a plugin
+# above) picks up every member deno.jsonc at its own path, so adding a plugin
 # or moving a member never touches this file — the workspace root's
 # "./plugins/*" glob and this COPY discover members the same way.
 # deno.lock ships into the image (ADR-0012) so the build is reproducible;
 # --frozen enforces it: if the lock predates a new import the build fails
 # loud rather than resolving silently.
 COPY deno.jsonc deno.lock ./
-COPY --parents ./*/deno.json ./*/*/deno.json ./
+COPY --parents ./*/deno.jsonc ./*/*/deno.jsonc ./
 RUN deno install --frozen
 
 # Source layer: copy all workspace members (config/live/ is dockerignored).
