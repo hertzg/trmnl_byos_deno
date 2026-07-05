@@ -8,10 +8,12 @@
 # The Deno server is supervised by jpillora/webproc (ADR-0010), which serves a
 # browser editor for the mounted config/live/ files on :8080 and restarts Deno on save.
 #
-# Unversioned :debian tag — tracks the latest Deno. The dither pipeline imports
-# the wasm kernel as a Wasm module (stable since Deno 2.1), and the workspace
-# layout needs Deno 2.x member resolution; latest satisfies both. (A pinned
-# 2.1.4 once crash-looped on a now-removed unstable flag — see git history.)
+# Unversioned :debian tag — tracks the latest Deno. The base must be recent
+# enough for the DesignSystem's `with { type: "text" }` CSS imports
+# (ds/styles/Styles.tsx), which were unstable-flagged until Deno stabilized
+# raw text/bytes imports, and for the wasm-module import in the dither
+# pipeline (stable since 2.1). Latest satisfies both; a pinned 2.1.4 once
+# crash-looped here — see git history.
 FROM denoland/deno:debian
 
 RUN apt-get update \
