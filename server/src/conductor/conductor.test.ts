@@ -8,6 +8,7 @@ import type { Bundle } from "../plugin/bundle.ts";
 import { createSlot } from "../slot/slot.ts";
 import { createTelemetry } from "../telemetry/telemetry.ts";
 import { createDeviceState } from "../device-state.ts";
+import { hashBundle } from "../hash.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
@@ -667,4 +668,148 @@ Deno.test("Tier 1: repeated /api/display polls within validity reuse the Slot �
   assertSpyCalls(run, 1);
   assertSpyCalls(identity, 1);
   assertSpyCalls(rasterize, 1);
+});
+
+// ─── Reuse: Result.hints.identity/holdIdentity skip rasterize ─────────────
+
+Deno.test("doRefill reuse: matching identity skips rasterize and keeps the Slot's last image", async () => {
+  // The Plugin runs on every cycle (validity expired between polls), but the
+  // Renderer's identity comes back unchanged across the two runs — the
+  // reuse check must short-circuit before rasterize, even though a fresh
+  // Plugin run and a fresh identity computation both happened.
+  let clock = T0;
+  const now = () => clock;
+  let runCount = 0;
+  const rasterize = spy(() => Promise.resolve(new Uint8Array([0x11, 0x22])));
+  const identity = spy(() => Promise.resolve("stable-id"));
+  const conductor = createConductor({
+    ...defaults({ now, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: () => {
+        runCount++;
+        return {
+          state: { n: runCount },
+          validity: fiveMin,
+          view: (s: { n: number }) => `<p>${s.n}</p>`,
+          hints: { identity: "photo:abc" },
+        };
+      },
+    }),
+    renderer: fakeRenderer({ identity, rasterize }),
+  });
+
+  const first = await (await conductor.app.request("/api/display")).json();
+  clock = clock.add(fiveMin); // expire the entry so the next poll re-enters doRefill
+  const second = await (await conductor.app.request("/api/display")).json();
+
+  assertEquals(runCount, 2);
+  assertEquals(first.filename, "image-stable-id");
+  assertEquals(second.filename, "image-stable-id");
+  // Only the first cycle rasterized; the second reused the Slot's image.
+  assertSpyCalls(rasterize, 1);
+
+  // /image/stable-id.png still serves the FIRST cycle's bytes.
+  const res = await conductor.app.request("/image/stable-id.png");
+  assertEquals(new Uint8Array(await res.arrayBuffer()), new Uint8Array([0x11, 0x22]));
+});
+
+Deno.test("doRefill reuse: matching holdIdentity holds the Slot's last identity + image (failure hold-last)", async () => {
+  // First cycle succeeds with identity "photo:abc". Second cycle's Result
+  // has a DIFFERENT identity ("error:oops") but declares
+  // hints.holdIdentity: "photo:abc", matching the Slot's last identity —
+  // the Device keeps seeing "photo:abc", not the new error identity.
+  //
+  // Uses the real hashBundle (not a fake) as the Renderer's identity: `hold`
+  // is a raw identity string, same shape as `hints.identity`, and must be
+  // hashed through the identical pipeline before comparing against
+  // `last.identity` (always a hash) — a fake identity that echoes hints
+  // verbatim would mask a comparison that's hashed-vs-unhashed in production.
+  let clock = T0;
+  const now = () => clock;
+  let call = 0;
+  const rasterize = spy(() => Promise.resolve(new Uint8Array([0xaa])));
+  const conductor = createConductor({
+    ...defaults({ now, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: () => {
+        if (call++ === 0) {
+          return {
+            state: { src: "a" },
+            validity: fiveMin,
+            view: () => "<p>a</p>",
+            hints: { identity: "photo:abc" },
+          };
+        }
+        return {
+          state: { src: null },
+          validity: Temporal.Duration.from({ minutes: 15 }),
+          view: () => "<p>err</p>",
+          hints: { identity: "error:oops", holdIdentity: "photo:abc" },
+        };
+      },
+    }),
+    renderer: fakeRenderer({ identity: hashBundle, rasterize }),
+  });
+
+  const first = await (await conductor.app.request("/api/display")).json();
+  clock = clock.add(fiveMin);
+  const second = await (await conductor.app.request("/api/display")).json();
+
+  assertEquals(first.filename, second.filename);
+  assertSpyCalls(rasterize, 1);
+});
+
+Deno.test("doRefill reuse: mismatched identity with no hold renders normally — rasterize runs again", async () => {
+  let clock = T0;
+  const now = () => clock;
+  let n = 0;
+  const rasterize = spy(() => Promise.resolve(new Uint8Array([0x01])));
+  const identity = spy(() => Promise.resolve(`id-${++n}`));
+  const conductor = createConductor({
+    ...defaults({ now, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({ identity, rasterize }),
+  });
+
+  const first = await (await conductor.app.request("/api/display")).json();
+  clock = clock.add(fiveMin);
+  const second = await (await conductor.app.request("/api/display")).json();
+
+  assertEquals(first.filename, "image-id-1");
+  assertEquals(second.filename, "image-id-2");
+  assertSpyCalls(rasterize, 2);
+});
+
+Deno.test("doRefill reuse: no hints at all behaves exactly as before (each distinct identity rasterizes)", async () => {
+  // Result carries no `hints` whatsoever. The reuse check must not throw or
+  // misbehave on `bundle.result.hints?.holdIdentity` being undefined, and
+  // distinct identities across cycles must still rasterize every time —
+  // unchanged from pre-reuse Conductor behavior.
+  let clock = T0;
+  const now = () => clock;
+  let n = 0;
+  const rasterize = spy(() => Promise.resolve(new Uint8Array([0x03])));
+  const identity = spy(() => Promise.resolve(`plain-${++n}`));
+  const conductor = createConductor({
+    ...defaults({ now, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>plain</p>" }),
+    }),
+    renderer: fakeRenderer({ identity, rasterize }),
+  });
+
+  const first = await (await conductor.app.request("/api/display")).json();
+  clock = clock.add(fiveMin);
+  const second = await (await conductor.app.request("/api/display")).json();
+  clock = clock.add(fiveMin);
+  const third = await (await conductor.app.request("/api/display")).json();
+
+  assertEquals([first.filename, second.filename, third.filename], [
+    "image-plain-1",
+    "image-plain-2",
+    "image-plain-3",
+  ]);
+  assertSpyCalls(rasterize, 3);
 });

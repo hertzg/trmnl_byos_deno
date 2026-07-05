@@ -6,8 +6,10 @@ import type { Bundle } from "./plugin/bundle.ts";
 const LENGTH = 16;
 
 export async function hashBundle(bundle: Bundle): Promise<string> {
-  const html = renderHtml(bundle);
-  const payload = concatHtmlAndAssets(html, bundle.assets);
+  const identity = bundle.result.hints?.identity;
+  const payload = typeof identity === "string"
+    ? new TextEncoder().encode(identity)
+    : concatHtmlAndAssets(renderHtml(bundle), bundle.assets);
   const digest = await crypto.subtle.digest("SHA-256", payload);
   return encodeHex(new Uint8Array(digest)).slice(0, LENGTH);
 }

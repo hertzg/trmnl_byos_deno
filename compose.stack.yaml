@@ -8,8 +8,9 @@
 #
 # The entrypoint seeds live config from the baked *.example.ts starters on first
 # boot and webproc lists them on :8080. The host ./config/live/ dir holds only live
-# content (starters are image-owned). Drop gallery photos into
-# ./config/live/plugins/gallery/images/ on the host.
+# content (starters are image-owned). Point the Gallery at your iCloud Shared
+# Album by editing config/live/plugins/gallery/album.ts (seeded from
+# album.example.ts) on the host.
 #
 # Networking (slice #51): chrome shares the deno container's network namespace
 # (`network_mode: service:trmnl-byos`) so it reaches the Renderer's loopback origin

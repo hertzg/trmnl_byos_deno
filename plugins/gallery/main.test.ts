@@ -1,87 +1,149 @@
-import { assert, assertEquals } from "@std/assert";
-import GalleryPlugin, { discoverPhotos } from "./main.ts";
-import Gallery from "./Gallery.tsx";
+import { assertEquals, assertExists } from "@std/assert";
 import type { RunContext } from "@hztrmnl/server/plugin";
+import GalleryPlugin from "./main.ts";
 
-async function writeImagesDir(names: string[]): Promise<string> {
-  const dir = await Deno.makeTempDir({ prefix: "gallery-images-test-" });
-  for (const name of names) await Deno.writeTextFile(`${dir}/${name}`, "x");
-  return dir;
+// `run` is exercised end-to-end through the real album.ts client, with only
+// `fetch` mocked — "stubbing the client layer" here means intercepting the
+// iCloud HTTP boundary, since ESM named exports can't be reassigned/stubbed
+// (module namespace bindings are non-configurable).
+//
+// These tests share `main.ts`'s module-level `lastGoodGuid` and therefore
+// depend on running in declaration order (Deno's default within one file):
+// the first test asserts the fresh-boot state (no prior poll) before any
+// later test lets a successful poll set it.
+
+function zdt(offset: Temporal.DurationLike): Temporal.ZonedDateTime {
+  return Temporal.Instant.from("2026-01-01T00:00:00Z").add(offset).toZonedDateTimeISO("UTC");
 }
 
-Deno.test("discoverPhotos maps image files in the drop-folder to /assets/gallery/<name>, sorted", async () => {
-  const dir = await writeImagesDir(["b.jpg", "a.png", "c.webp"]);
-  assertEquals(discoverPhotos(dir), [
-    "/assets/gallery/a.png",
-    "/assets/gallery/b.jpg",
-    "/assets/gallery/c.webp",
-  ]);
-});
-
-Deno.test("discoverPhotos ignores non-image files (e.g. .gitkeep, README)", async () => {
-  const dir = await writeImagesDir([".gitkeep", "README.md", "ok.jpg"]);
-  assertEquals(discoverPhotos(dir), ["/assets/gallery/ok.jpg"]);
-});
-
-Deno.test("discoverPhotos returns [] for an empty drop-folder", async () => {
-  const dir = await writeImagesDir([]);
-  assertEquals(discoverPhotos(dir), []);
-});
-
-Deno.test("discoverPhotos returns [] when the drop-folder is absent", () => {
-  assertEquals(discoverPhotos("/no/such/gallery/dir"), []);
-});
-
-// Minimal RunContext sufficient for a synchronous, scrub-intent call.
-function makeCtx(epochMs: number): RunContext {
-  return {
-    t: new Temporal.Instant(BigInt(epochMs) * 1_000_000n).toZonedDateTimeISO(
-      "UTC",
-    ),
-    intent: "scrub",
-    device: null,
-  };
+function ctx(intent: RunContext["intent"]): RunContext {
+  return { t: zdt({ hours: 0 }), intent, device: null };
 }
 
-Deno.test("GalleryPlugin.run returns a Result whose view is the Gallery component", async () => {
-  const result = await GalleryPlugin.run(makeCtx(0));
-  assertEquals(result.view, Gallery);
+type FakePhoto = {
+  guid: string;
+  dateCreated?: string;
+  batchDateCreated?: string;
+  checksum: string;
+};
+
+// Answers the iCloud webstream/webasseturls contract with `photos`, enough of
+// the real shape for main.ts's control flow (album.test.ts covers the
+// client's own parsing/sorting in depth).
+function stubAlbum(photos: FakePhoto[]): Disposable {
+  const original = globalThis.fetch;
+  globalThis.fetch = ((input: string | URL) => {
+    const url = String(input);
+    if (url.includes("/sharedstreams/webstream")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            photos: photos.map((p) => ({
+              photoGuid: p.guid,
+              dateCreated: p.dateCreated ?? "2026-01-01T00:00:00Z",
+              batchDateCreated: p.batchDateCreated ?? "2026-01-01T00:00:00Z",
+              derivatives: {
+                "0": { checksum: p.checksum, fileSize: "1", width: "800", height: "600" },
+              },
+            })),
+          }),
+          { status: 200 },
+        ),
+      );
+    }
+    if (url.includes("/sharedstreams/webasseturls")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            items: Object.fromEntries(
+              photos.map((
+                p,
+              ) => [p.checksum, {
+                url_location: "cvws.icloud-content.com",
+                url_path: `/${p.checksum}`,
+              }]),
+            ),
+          }),
+          { status: 200 },
+        ),
+      );
+    }
+    return Promise.resolve(new Response("unexpected path", { status: 404 }));
+  }) as unknown as typeof fetch;
+  return { [Symbol.dispose]: () => (globalThis.fetch = original) };
+}
+
+function stubAlbumFailure(): Disposable {
+  const original = globalThis.fetch;
+  globalThis.fetch =
+    (() => Promise.resolve(new Response("boom", { status: 500 }))) as unknown as typeof fetch;
+  return { [Symbol.dispose]: () => (globalThis.fetch = original) };
+}
+
+// ---------------------------------------------------------------------------
+// 1. Fresh module state: a failure before any successful poll holds nothing.
+// ---------------------------------------------------------------------------
+
+Deno.test("run: album fetch failure with no prior poll omits holdIdentity", async () => {
+  using _s = stubAlbumFailure();
+  const result = await GalleryPlugin.run(ctx("poll"));
+  assertEquals(result.state.src, null);
+  assertEquals(result.state.note, "Album fetch failed: icloud webstream: HTTP 500");
+  assertEquals(result.hints?.identity, "error:icloud webstream: HTTP 500");
+  assertEquals(result.hints?.holdIdentity, undefined);
+  assertEquals(result.validity.total({ unit: "minutes" }), 15);
 });
 
-Deno.test("GalleryPlugin.run validity is a Temporal.Duration (positive)", async () => {
-  const result = await GalleryPlugin.run(makeCtx(0));
+// ---------------------------------------------------------------------------
+// 2. A successful poll sets state.src, identity, and (module-level) lastGoodGuid.
+// ---------------------------------------------------------------------------
+
+Deno.test("run: a successful poll returns identity photo:<guid> and a src", async () => {
+  using _s = stubAlbum([{ guid: "GOOD-GUID", checksum: "chk-good" }]);
+  const result = await GalleryPlugin.run(ctx("poll"));
+  assertEquals(result.hints?.identity, "photo:GOOD-GUID");
+  assertExists(result.state.src);
   assertEquals(result.validity instanceof Temporal.Duration, true);
-  if (result.validity.total({ unit: "milliseconds" }) <= 0) {
-    throw new Error("Expected a positive validity duration");
+});
+
+// ---------------------------------------------------------------------------
+// 3. A later failure holds the identity the prior poll set.
+// ---------------------------------------------------------------------------
+
+Deno.test("run: album fetch failure after a prior poll holds the last-good identity", async () => {
+  using _s = stubAlbumFailure();
+  const result = await GalleryPlugin.run(ctx("poll"));
+  assertEquals(result.hints?.holdIdentity, "photo:GOOD-GUID");
+});
+
+// ---------------------------------------------------------------------------
+// 4. A scrub never moves lastGoodGuid, even on success.
+// ---------------------------------------------------------------------------
+
+Deno.test("run: a scrub success does not move lastGoodGuid", async () => {
+  {
+    using _s = stubAlbum([{ guid: "SCRUB-ONLY-GUID", checksum: "chk-scrub" }]);
+    const result = await GalleryPlugin.run(ctx("scrub"));
+    assertEquals(result.hints?.identity, "photo:SCRUB-ONLY-GUID"); // scrub still renders correctly
+  }
+  {
+    using _s = stubAlbumFailure();
+    const result = await GalleryPlugin.run(ctx("poll"));
+    // Still the poll from test 2/3, not the scrub above.
+    assertEquals(result.hints?.holdIdentity, "photo:GOOD-GUID");
   }
 });
 
-// `run` closes over the module-load snapshot of the live, gitignored
-// `config/live/plugins/gallery/images/` drop-folder, whose contents are
-// machine-specific (empty on CI / a fresh checkout, populated on the
-// operator's deployment). So this asserts only what holds regardless of those
-// contents: `run` wired discovery → `pickPhoto`, picking one of the discovered
-// photos, or null when there are none. The empty→null path is covered without
-// this coupling by the `discoverPhotos returns []` tests above (temp dirs) and
-// `pickPhoto: empty array → null` in rotation.test.ts; the non-empty rotation
-// path (index selection, modulo wraparound) likewise lives in rotation.test.ts.
-Deno.test("GalleryPlugin.run state.src is consistent with the discovered photos", async () => {
-  const photos = discoverPhotos(); // same source run() snapshotted at module load
-  const result = await GalleryPlugin.run(makeCtx(0));
-  if (photos.length === 0) {
-    assertEquals(result.state.src, null);
-  } else {
-    assert(photos.includes(result.state.src!)); // run picked one of the real photos
-  }
-});
+// ---------------------------------------------------------------------------
+// 5. Empty album.
+// ---------------------------------------------------------------------------
 
-Deno.test("GalleryPlugin.run is a pure function of ctx.t — same t yields same state", async () => {
-  const ctx = makeCtx(42_000);
-  const first = await GalleryPlugin.run(ctx);
-  const second = await GalleryPlugin.run(ctx);
-  assertEquals(first.state.src, second.state.src);
-  assertEquals(
-    first.validity.total({ unit: "milliseconds" }),
-    second.validity.total({ unit: "milliseconds" }),
-  );
+Deno.test("run: an empty album returns identity empty, a note, and 15min validity", async () => {
+  using _s = stubAlbum([]);
+  const result = await GalleryPlugin.run(ctx("poll"));
+  assertEquals(result.state.src, null);
+  assertEquals(result.state.note, "The shared album is empty");
+  assertEquals(result.hints?.identity, "empty");
+  assertEquals(result.hints?.holdIdentity, undefined);
+  assertEquals(result.validity.total({ unit: "minutes" }), 15);
 });

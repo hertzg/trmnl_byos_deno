@@ -55,8 +55,8 @@ docker compose -f compose.stack.yaml up -d
 ```
 
 The entrypoint seeds the live `config/live/*.ts` from the baked example starters on first boot; edit
-them in the webproc editor at `http://127.0.0.1:8080` and drop gallery photos into
-`config/plugins/gallery/images/` on the host (mounted as `config/live/plugins/gallery/images/`).
+them in the webproc editor at `http://127.0.0.1:8080`, including the Gallery's iCloud Shared Album
+link in `config/live/plugins/gallery/album.ts`.
 
 ## Local dev
 

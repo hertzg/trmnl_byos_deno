@@ -24,10 +24,6 @@ for ex in $(find config -path config/live -prune -o -type f -name '*.example.ts'
   [ -e "$live" ] || { cp "$ex" "$live"; echo "entrypoint: seeded $live from $ex" >&2; }
 done
 
-# Ensure the gallery drop-folder exists so the plugin can scan it even when
-# the operator has not yet mounted or created photos.
-mkdir -p config/live/plugins/gallery/images
-
 args=""
 # shellcheck disable=SC2044  # config paths are controlled and contain no spaces
 for f in $(find config/live -type f -name '*.ts' ! -name '*.example.ts'); do

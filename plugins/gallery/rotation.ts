@@ -1,43 +1,67 @@
-// Sequential, time-indexed photo rotation — pure functions, no DOM, no I/O.
+// Anchored recency rotation — pure functions over AlbumPhoto[], no I/O, no DOM.
+//
+// `photos` is expected sorted newest-first, as `fetchAlbum` returns it: index
+// 0 is the most recently added photo, so its `batchDateCreated` anchors the
+// rotation lattice. Anchoring on the newest addition — rather than a fixed
+// epoch — means adding photos always re-derives the position to 0: a batch of
+// N new photos walks newest→oldest over the next N hours, and an unchanged
+// album degenerates to steady hourly rotation from wherever the lattice
+// already was. Both functions are pure in the photo list and `t`, so a
+// dashboard scrub at some `t` reproduces exactly what the Device would have
+// seen at that instant — no stored rotation position.
 
-// How long each photo stays on screen before the next one takes over.
-export const ROTATION_INTERVAL: Temporal.Duration = Temporal.Duration.from({
-  hours: 6,
-});
+import type { AlbumPhoto } from "./album.ts";
 
-const intervalMs: number = ROTATION_INTERVAL.total({ unit: "milliseconds" });
+// How long each photo stays up before the next slot takes over.
+export const ROTATION_INTERVAL: Temporal.Duration = Temporal.Duration.from({ hours: 1 });
+const intervalMs = ROTATION_INTERVAL.total({ unit: "milliseconds" });
 
-/**
- * Return the photo URL that is current at `t`, or `null` when there are no
- * photos.  Selection is sequential and time-indexed so the output is a pure
- * function of the photo list and `t` — the same inputs always produce the same
- * photo, whether called from a Device poll or a dashboard scrub.
- */
-export function pickPhoto(
-  photos: readonly string[],
-  t: Temporal.ZonedDateTime,
-): string | null {
-  if (photos.length === 0) return null;
-  const n = photos.length;
-  // JS `%` is sign-preserving, so a negative epoch yields a negative remainder
-  // and an out-of-bounds index.  The `((x % n) + n) % n` form is a Euclidean
-  // modulo that keeps the index in [0, n) for any `t`, including pre-1970.
-  const index = ((Math.floor(t.epochMilliseconds / intervalMs) % n) + n) % n;
-  return photos[index];
+// Ceiling on the validity this module ever returns: the retry validity on an
+// empty album, and the cap on the remaining-time-to-boundary otherwise. This
+// is the change-detection cadence — the Device only learns about an album
+// edit (new/removed photos) by polling again, so it bounds how fast an edit
+// on the phone reaches the glass.
+export const VALIDITY_CAP: Temporal.Duration = Temporal.Duration.from({ minutes: 15 });
+const capMs = VALIDITY_CAP.total({ unit: "milliseconds" });
+
+// JS `%` is sign-preserving, so a negative dividend yields a negative
+// remainder and an out-of-bounds index. This Euclidean form keeps the result
+// in [0, n) for any `a`, including `t` values before the anchor or pre-1970.
+function euclidMod(a: number, n: number): number {
+  return ((a % n) + n) % n;
+}
+
+function anchorMs(photos: readonly AlbumPhoto[]): number {
+  return Temporal.Instant.from(photos[0].batchDateCreated).epochMilliseconds;
 }
 
 /**
- * How long the current photo is still the correct answer — the milliseconds
- * remaining until the next rotation boundary.  Carries as `Result.validity` so
- * the Slot stays warm until the swap instant and no sooner.
- *
- * Uses the next-boundary form so the result is always in (0, intervalMs] for
- * any `t`, including pre-epoch (negative epochMilliseconds) values reachable
- * via a dashboard scrub.
+ * The photo current at `t`, or `null` for an empty album.
  */
-export function rotationValidity(t: Temporal.ZonedDateTime): Temporal.Duration {
-  const slot = Math.floor(t.epochMilliseconds / intervalMs);
-  const nextBoundaryMs = (slot + 1) * intervalMs;
-  const msUntilNext = nextBoundaryMs - t.epochMilliseconds;
-  return Temporal.Duration.from({ milliseconds: msUntilNext });
+export function pickPhoto(
+  photos: readonly AlbumPhoto[],
+  t: Temporal.ZonedDateTime,
+): AlbumPhoto | null {
+  const n = photos.length;
+  if (n === 0) return null;
+  const anchor = anchorMs(photos);
+  const slot = Math.floor((t.epochMilliseconds - anchor) / intervalMs);
+  return photos[euclidMod(slot, n)];
+}
+
+/**
+ * How long the current pick stays the correct answer: the remaining time to
+ * the next anchored slot boundary, capped at `VALIDITY_CAP` (also the value
+ * returned for an empty album).
+ */
+export function rotationValidity(
+  photos: readonly AlbumPhoto[],
+  t: Temporal.ZonedDateTime,
+): Temporal.Duration {
+  if (photos.length === 0) return VALIDITY_CAP;
+  const anchor = anchorMs(photos);
+  const slot = Math.floor((t.epochMilliseconds - anchor) / intervalMs);
+  const nextBoundaryMs = anchor + (slot + 1) * intervalMs;
+  const remainderMs = nextBoundaryMs - t.epochMilliseconds;
+  return Temporal.Duration.from({ milliseconds: Math.min(remainderMs, capMs) });
 }

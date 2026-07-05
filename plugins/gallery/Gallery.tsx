@@ -1,19 +1,22 @@
 /** @jsxImportSource hono/jsx */
 import { EmptyState, Page } from "@hztrmnl/ds";
 
-// Co-located with the view that owns the concept. Only the fields rendered
-// into HTML live here — nothing the rotation logic cares about, nothing the
-// Plugin state machine cares about beyond passing it through to the view.
+// Only what the HTML renders: the signed CDN URL for the photo currently up,
+// or null with a reason when there is nothing to show (empty album, or the
+// album fetch failed).
 export type GalleryState = {
-  // The chosen `/assets/gallery/…` URL, or null when the gallery is empty.
   src: string | null;
+  // Shown in the empty state so a dead album API is diagnosable from the
+  // dashboard rather than silently blank.
+  note?: string;
 };
 
-export default function Gallery({ src }: GalleryState) {
+export default function Gallery({ src, note }: GalleryState) {
   if (src !== null) {
-    // Edge-to-edge, no chrome. The inline style is plugin-author-written bytes
-    // (satisfies the "no implicit HTML injection" rule) — no separate CSS asset
-    // is needed for a three-rule reset.
+    // Edge-to-edge, center-cropped to fill (`object-fit: cover`, default
+    // 50/50 object-position). Deliberate: album photos are curated to keep
+    // the subject centered (and preferably landscape), which beats doing
+    // saliency math server-side for a single-user gallery.
     return (
       <html>
         <head>
@@ -22,7 +25,7 @@ export default function Gallery({ src }: GalleryState) {
           <style
             dangerouslySetInnerHTML={{
               __html:
-                "html,body{margin:0;padding:0;width:100%;height:100%}img{display:block;width:100%;height:100%;object-fit:cover}",
+                "html,body{margin:0;padding:0;width:100%;height:100%;background:#fff}img{display:block;width:100%;height:100%;object-fit:cover}",
             }}
           />
         </head>
@@ -33,13 +36,9 @@ export default function Gallery({ src }: GalleryState) {
     );
   }
 
-  // No photos yet. Tell the reader where to drop them.
   return (
     <Page title="gallery">
-      <EmptyState
-        big="No photos"
-        sub="Add images to config/live/plugins/gallery/images/"
-      />
+      <EmptyState big="No photo" sub={note ?? "The shared album is empty"} />
     </Page>
   );
 }

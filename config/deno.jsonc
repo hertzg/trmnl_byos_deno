@@ -5,7 +5,8 @@
   // per module a consumer imports — wildcard exports don't exist in Deno.
   "exports": {
     "./system": "./live/system.ts",
-    "./plugins/transport/routes": "./live/plugins/transport/routes.ts"
+    "./plugins/transport/routes": "./live/plugins/transport/routes.ts",
+    "./plugins/gallery/album": "./live/plugins/gallery/album.ts"
   },
   "imports": {
     "@std/path": "jsr:@std/path@^1.0.0"
