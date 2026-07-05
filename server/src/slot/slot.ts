@@ -23,6 +23,11 @@ export type Slot = {
   put(entry: SlotEntry): void;
   display(): SlotDisplay | null;
   image(id: string): Promise<Uint8Array<ArrayBuffer> | null>;
+  // The stored entry regardless of validity expiry — unlike display()/image(),
+  // which refuse an expired entry, this is for the Conductor's reuse check
+  // (Result.hints.identity/holdIdentity), where an expired-but-matching
+  // identity should still be reused rather than re-rendered.
+  last(): SlotEntry | null;
   clear(): void;
 };
 
@@ -56,6 +61,9 @@ export function createSlot(deps: SlotDeps): Slot {
       if (!isStillValid(entry, deps.now())) return null;
       if (entry.identity !== id) return null;
       return await entry.image;
+    },
+    last() {
+      return entry;
     },
     clear() {
       entry = null;

@@ -1,153 +1,148 @@
-import { assertEquals } from "@std/assert";
-import { pickPhoto, ROTATION_INTERVAL, rotationValidity } from "./rotation.ts";
+import { assertEquals, assertNotEquals } from "@std/assert";
+import { pickPhoto, ROTATION_INTERVAL, rotationValidity, VALIDITY_CAP } from "./rotation.ts";
+import type { AlbumPhoto } from "./album.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-// ROTATION_INTERVAL in milliseconds — kept local so tests don't import the
-// private `intervalMs` from the module under test.
 const INTERVAL_MS = ROTATION_INTERVAL.total({ unit: "milliseconds" });
+const CAP_MS = VALIDITY_CAP.total({ unit: "milliseconds" });
 
-/** Build a ZonedDateTime from an epoch-millisecond offset. */
-function zdt(epochMs: number): Temporal.ZonedDateTime {
-  return new Temporal.Instant(BigInt(epochMs) * 1_000_000n).toZonedDateTimeISO(
-    "UTC",
-  );
+// A fixed instant to anchor test fixtures on, expressed via Temporal duration
+// arithmetic rather than raw epoch numbers so intent stays readable.
+const ANCHOR = Temporal.Instant.from("2026-01-01T00:00:00Z");
+
+function at(offset: Temporal.DurationLike): Temporal.ZonedDateTime {
+  return ANCHOR.add(offset).toZonedDateTimeISO("UTC");
 }
 
-// Fake URL strings — no real files needed.
-const PHOTOS = [
-  "/assets/gallery/a.jpg",
-  "/assets/gallery/b.jpg",
-  "/assets/gallery/c.jpg",
-];
+function photo(
+  guid: string,
+  batchDateCreated: string,
+  dateCreated: string = batchDateCreated,
+): AlbumPhoto {
+  return {
+    guid,
+    dateCreated,
+    batchDateCreated,
+    width: 1536,
+    height: 1024,
+    checksum: `chk-${guid}`,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // pickPhoto
 // ---------------------------------------------------------------------------
 
-Deno.test("pickPhoto: empty array → null", () => {
-  const t = zdt(0);
-  assertEquals(pickPhoto([], t), null);
+Deno.test("pickPhoto: empty list → null", () => {
+  assertEquals(pickPhoto([], at({ hours: 0 })), null);
 });
 
-Deno.test("pickPhoto: single photo is always returned regardless of t", () => {
-  const single = ["/assets/gallery/only.jpg"];
-  assertEquals(pickPhoto(single, zdt(0)), "/assets/gallery/only.jpg");
-  assertEquals(
-    pickPhoto(single, zdt(INTERVAL_MS * 99)),
-    "/assets/gallery/only.jpg",
-  );
+Deno.test("pickPhoto: steady rotation walks newest→oldest hourly, then wraps", () => {
+  // Already sorted newest-first, as fetchAlbum returns it.
+  const photos = [
+    photo("P0", "2026-01-01T00:00:00Z"),
+    photo("P1", "2025-12-31T00:00:00Z"),
+    photo("P2", "2025-12-30T00:00:00Z"),
+  ];
+  assertEquals(pickPhoto(photos, at({ hours: 0 })), photos[0]);
+  assertEquals(pickPhoto(photos, at({ hours: 1 })), photos[1]);
+  assertEquals(pickPhoto(photos, at({ hours: 2 })), photos[2]);
+  // Wraps back to the newest after n=3 hours.
+  assertEquals(pickPhoto(photos, at({ hours: 3 })), photos[0]);
+  assertEquals(pickPhoto(photos, at({ hours: 4 })), photos[1]);
 });
 
-Deno.test("pickPhoto: at t=0 selects the first photo", () => {
-  assertEquals(pickPhoto(PHOTOS, zdt(0)), PHOTOS[0]);
+Deno.test("pickPhoto: mid-slot t stays on the same photo as the slot start", () => {
+  const photos = [photo("P0", "2026-01-01T00:00:00Z"), photo("P1", "2025-12-31T00:00:00Z")];
+  assertEquals(pickPhoto(photos, at({ minutes: 30 })), photos[0]);
+  assertEquals(pickPhoto(photos, at({ hours: 1, minutes: 30 })), photos[1]);
 });
 
-Deno.test("pickPhoto: advances to the next photo exactly at the interval boundary", () => {
-  // At exactly 1 interval, index = 1 % 3 = 1 → PHOTOS[1].
-  assertEquals(pickPhoto(PHOTOS, zdt(INTERVAL_MS)), PHOTOS[1]);
-  // At exactly 2 intervals, index = 2 % 3 = 2 → PHOTOS[2].
-  assertEquals(pickPhoto(PHOTOS, zdt(2 * INTERVAL_MS)), PHOTOS[2]);
+Deno.test("pickPhoto: adding a newer photo re-anchors the position to 0", () => {
+  // Before the add: two photos, mid-rotation on the older anchor.
+  const before = [photo("OLD0", "2025-12-31T00:00:00Z"), photo("OLD1", "2025-12-30T00:00:00Z")];
+  const midRotation = at({ hours: 5, minutes: 30 });
+  assertNotEquals(pickPhoto(before, midRotation), null);
+
+  // After sharing a new photo: it becomes index 0 with a newer
+  // batchDateCreated, which becomes the new anchor. At that exact instant the
+  // new photo shows immediately, regardless of where the old rotation was.
+  const newAnchorIso = "2026-01-01T05:30:00Z"; // == midRotation
+  const after = [photo("NEW", newAnchorIso), ...before];
+  assertEquals(pickPhoto(after, midRotation), after[0]);
 });
 
-Deno.test("pickPhoto: one millisecond before the boundary stays on the current photo", () => {
-  // At (INTERVAL_MS - 1) we are still in slot 0 → PHOTOS[0].
-  assertEquals(pickPhoto(PHOTOS, zdt(INTERVAL_MS - 1)), PHOTOS[0]);
-  // At (2 * INTERVAL_MS - 1) we are in slot 1 → PHOTOS[1].
-  assertEquals(pickPhoto(PHOTOS, zdt(2 * INTERVAL_MS - 1)), PHOTOS[1]);
+Deno.test("pickPhoto: a batch of N new photos walks all N newest→oldest before touching the rest", () => {
+  // Three photos shared in the same batch (identical batchDateCreated),
+  // tiebroken by capture time (dateCreated) descending, ahead of one older
+  // photo from a previous batch.
+  const photos = [
+    photo("B0", "2026-01-01T00:00:00Z", "2025-06-03T00:00:00Z"),
+    photo("B1", "2026-01-01T00:00:00Z", "2025-06-02T00:00:00Z"),
+    photo("B2", "2026-01-01T00:00:00Z", "2025-06-01T00:00:00Z"),
+    photo("OLD", "2025-01-01T00:00:00Z"),
+  ];
+  assertEquals(pickPhoto(photos, at({ hours: 0 })), photos[0]);
+  assertEquals(pickPhoto(photos, at({ hours: 1 })), photos[1]);
+  assertEquals(pickPhoto(photos, at({ hours: 2 })), photos[2]);
+  assertEquals(pickPhoto(photos, at({ hours: 3 })), photos[3]);
 });
 
-Deno.test("pickPhoto: modulo wraps back to the start after all photos shown", () => {
-  // After 3 intervals (n = PHOTOS.length), index = 3 % 3 = 0 → back to PHOTOS[0].
-  assertEquals(pickPhoto(PHOTOS, zdt(3 * INTERVAL_MS)), PHOTOS[0]);
-  // After 4 intervals → PHOTOS[1].
-  assertEquals(pickPhoto(PHOTOS, zdt(4 * INTERVAL_MS)), PHOTOS[1]);
-  // Large multiple — verify modulo continues to wrap correctly.
-  assertEquals(
-    pickPhoto(PHOTOS, zdt(100 * INTERVAL_MS)),
-    PHOTOS[100 % PHOTOS.length],
-  );
+Deno.test("pickPhoto: t before the anchor still resolves via Euclidean modulo", () => {
+  const photos = [photo("P0", "2026-01-01T00:00:00Z"), photo("P1", "2025-12-31T00:00:00Z")];
+  // slot = floor(-20min / 60min) = -1 → euclidMod(-1, 2) = 1.
+  assertEquals(pickPhoto(photos, at({ minutes: -20 })), photos[1]);
 });
 
-Deno.test("pickPhoto: mid-interval t stays on the same photo as the boundary start", () => {
-  const midInterval = Math.floor(INTERVAL_MS / 2);
-  assertEquals(pickPhoto(PHOTOS, zdt(midInterval)), PHOTOS[0]);
-  assertEquals(pickPhoto(PHOTOS, zdt(INTERVAL_MS + midInterval)), PHOTOS[1]);
-});
-
-Deno.test("pickPhoto: negative epoch returns a valid PHOTOS member (Euclidean modulo)", () => {
-  // slot for t=-1: Math.floor(-1 / INTERVAL_MS) = -1
-  // Euclidean index: ((-1 % 3) + 3) % 3 = ((-1) + 3) % 3 = 2 % 3 = 2 → PHOTOS[2]
-  assertEquals(pickPhoto(PHOTOS, zdt(-1)), PHOTOS[2]);
-
-  // slot for t=-INTERVAL_MS: Math.floor(-INTERVAL_MS / INTERVAL_MS) = -1
-  // Euclidean index: same as above → PHOTOS[2]
-  assertEquals(pickPhoto(PHOTOS, zdt(-INTERVAL_MS)), PHOTOS[2]);
+Deno.test("pickPhoto: pre-1970 t still resolves to a real list member", () => {
+  const photos = [
+    photo("P0", "2026-01-01T00:00:00Z"),
+    photo("P1", "2025-12-31T00:00:00Z"),
+    photo("P2", "2025-12-30T00:00:00Z"),
+  ];
+  const preEpoch = Temporal.Instant.from("1969-01-01T00:00:00Z").toZonedDateTimeISO("UTC");
+  const picked = pickPhoto(photos, preEpoch);
+  assertNotEquals(picked, null);
+  assertEquals(photos.includes(picked!), true);
 });
 
 // ---------------------------------------------------------------------------
 // rotationValidity
 // ---------------------------------------------------------------------------
 
-Deno.test("rotationValidity: at an exact boundary returns the full interval", () => {
-  // At t = INTERVAL_MS (the start of slot 1), the next boundary is exactly
-  // one full interval away.
-  const validity = rotationValidity(zdt(INTERVAL_MS));
-  assertEquals(validity.total({ unit: "milliseconds" }), INTERVAL_MS);
+Deno.test("rotationValidity: empty album → the validity cap", () => {
+  assertEquals(rotationValidity([], at({ hours: 0 })).total({ unit: "milliseconds" }), CAP_MS);
 });
 
-Deno.test("rotationValidity: at t=0 (exact boundary) returns the full interval", () => {
-  const validity = rotationValidity(zdt(0));
-  assertEquals(validity.total({ unit: "milliseconds" }), INTERVAL_MS);
+Deno.test("rotationValidity: at a slot boundary, the full remainder exceeds the cap → capped", () => {
+  const photos = [photo("P0", "2026-01-01T00:00:00Z"), photo("P1", "2025-12-31T00:00:00Z")];
+  // Remainder to next boundary is the full interval (1h) > 15min cap.
+  assertEquals(rotationValidity(photos, at({ hours: 0 })).total({ unit: "milliseconds" }), CAP_MS);
+  assertNotEquals(INTERVAL_MS, CAP_MS); // sanity: the cap really is tighter than the interval
 });
 
-Deno.test("rotationValidity: mid-interval returns the remaining half", () => {
-  const midInterval = Math.floor(INTERVAL_MS / 2);
-  const validity = rotationValidity(zdt(midInterval));
-  // Remaining = INTERVAL_MS - midInterval.
-  assertEquals(
-    validity.total({ unit: "milliseconds" }),
-    INTERVAL_MS - midInterval,
-  );
+Deno.test("rotationValidity: remainder under the cap wins uncapped", () => {
+  const photos = [photo("P0", "2026-01-01T00:00:00Z"), photo("P1", "2025-12-31T00:00:00Z")];
+  // At +50min, next boundary is at +60min → 10min remainder, under the 15min cap.
+  const validity = rotationValidity(photos, at({ minutes: 50 }));
+  assertEquals(validity.total({ unit: "minutes" }), 10);
 });
 
-Deno.test("rotationValidity: one millisecond before a boundary returns 1 ms", () => {
-  const validity = rotationValidity(zdt(2 * INTERVAL_MS - 1));
-  assertEquals(validity.total({ unit: "milliseconds" }), 1);
+Deno.test("rotationValidity: t before the anchor is still positive and capped", () => {
+  const photos = [photo("P0", "2026-01-01T00:00:00Z"), photo("P1", "2025-12-31T00:00:00Z")];
+  // slot=-1 → next boundary is the anchor itself, 20min away, capped to 15min.
+  const validity = rotationValidity(photos, at({ minutes: -20 }));
+  assertEquals(validity.total({ unit: "milliseconds" }), CAP_MS);
 });
 
-Deno.test("rotationValidity: result is a Temporal.Duration (not a number)", () => {
-  const validity = rotationValidity(zdt(42));
-  // Verify the returned value is actually a Temporal.Duration.
-  assertEquals(validity instanceof Temporal.Duration, true);
-});
-
-Deno.test("rotationValidity: validity is always positive (> 0)", () => {
-  for (const epochMs of [0, 1, INTERVAL_MS - 1, INTERVAL_MS, 2 * INTERVAL_MS]) {
-    const ms = rotationValidity(zdt(epochMs)).total({ unit: "milliseconds" });
-    if (ms <= 0) {
-      throw new Error(
-        `Expected positive validity at epochMs=${epochMs}, got ${ms}`,
-      );
-    }
+Deno.test("rotationValidity: pre-1970 t is always in (0, cap]", () => {
+  const photos = [photo("P0", "2026-01-01T00:00:00Z"), photo("P1", "2025-12-31T00:00:00Z")];
+  const preEpoch = Temporal.Instant.from("1969-01-01T00:00:00Z").toZonedDateTimeISO("UTC");
+  const ms = rotationValidity(photos, preEpoch).total({ unit: "milliseconds" });
+  if (ms <= 0 || ms > CAP_MS) {
+    throw new Error(`expected validity in (0, ${CAP_MS}], got ${ms}`);
   }
-});
-
-Deno.test("rotationValidity: negative epoch one ms before boundary returns 1 ms", () => {
-  // t = -1: slot = Math.floor(-1 / INTERVAL_MS) = -1
-  // nextBoundaryMs = (-1 + 1) * INTERVAL_MS = 0
-  // msUntilNext = 0 - (-1) = 1
-  assertEquals(rotationValidity(zdt(-1)).total({ unit: "milliseconds" }), 1);
-});
-
-Deno.test("rotationValidity: negative epoch at exact boundary returns full interval", () => {
-  // t = -INTERVAL_MS: slot = Math.floor(-INTERVAL_MS / INTERVAL_MS) = -1
-  // nextBoundaryMs = (-1 + 1) * INTERVAL_MS = 0
-  // msUntilNext = 0 - (-INTERVAL_MS) = INTERVAL_MS
-  assertEquals(
-    rotationValidity(zdt(-INTERVAL_MS)).total({ unit: "milliseconds" }),
-    INTERVAL_MS,
-  );
 });

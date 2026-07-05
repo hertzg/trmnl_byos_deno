@@ -24,6 +24,14 @@ export type RunContext = {
 export type Result<S> = {
   state: S;
   validity: Temporal.Duration;
+  // Plugin-declared metadata consumed by hashBundle/Conductor, not rendered.
+  // `identity: string` — declares "two renders with equal strings are
+  // visually identical"; hashBundle digests this string instead of the
+  // rendered HTML + assets, so an unchanged identity across polls skips
+  // rasterize and reuses the Slot's last image (see Conductor.doRefill).
+  // `holdIdentity: string` — "if the Slot currently holds this identity,
+  // keep showing it" — lets a failure Result hold the last-good image on
+  // glass instead of falling through to the error view.
   hints?: Record<string, unknown>;
   // Method syntax (not arrow property) is purely about variance: it lets the
   // orchestrator type its receive-side as `Result<unknown>` without forcing

@@ -30,11 +30,6 @@ async function main() {
   const pluginManager = await createPluginManager({
     plugin: system.plugin,
     assetsDir: system.pluginAssetsDir,
-    // The Gallery scans a mounted drop-folder outside the plugin's assets/ tree
-    // (ADR-0010); serve its bytes back under the same /assets/gallery/ prefix
-    // the Gallery view points at. Dir + prefix mirror gallery/main.ts's
-    // GALLERY_IMAGES_DIR / GALLERY_ASSET_PREFIX — keep the two in sync.
-    extraAssetRoots: [{ dir: "config/live/plugins/gallery/images", urlPrefix: "/assets/gallery/" }],
   });
   console.log(`[plugin] assets from ${system.pluginAssetsDir}`);
 

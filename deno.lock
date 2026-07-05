@@ -589,7 +589,8 @@
       "plugins/gallery": {
         "dependencies": [
           "jsr:@hono/hono@4",
-          "jsr:@std/assert@1"
+          "jsr:@std/assert@1",
+          "jsr:@std/testing@1"
         ]
       },
       "plugins/home": {

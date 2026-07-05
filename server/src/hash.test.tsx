@@ -7,12 +7,14 @@ function bundleWith(
   state: unknown,
   view: (s: unknown) => unknown,
   assets: Record<string, Uint8Array<ArrayBuffer>> = {},
+  hints?: Record<string, unknown>,
 ): Bundle {
   return {
     result: {
       state,
       validity: Temporal.Duration.from({ minutes: 5 }),
       view,
+      hints,
     },
     assets,
   };
@@ -78,4 +80,42 @@ Deno.test("hashBundle changes when an asset key is renamed (bytes identical)", a
   const atB = bundleWith(stateless, staticView, { "/assets/b": bytes });
 
   assertNotEquals(await hashBundle(atA), await hashBundle(atB));
+});
+
+Deno.test("hashBundle digests hints.identity instead of HTML+assets when it is a string", async () => {
+  const withIdentity = bundleWith({ greeting: "hi" }, helloView, {
+    "/assets/a.bin": new Uint8Array([1, 2, 3]),
+  }, { identity: "photo:abc" });
+  // Same identity string, but everything that would normally feed the hash
+  // (state, view output, assets) differs — the hash must still match.
+  const differentEverythingElse = bundleWith({ greeting: "ciao" }, staticView, {
+    "/assets/b.bin": new Uint8Array([9, 9]),
+  }, { identity: "photo:abc" });
+
+  assertEquals(await hashBundle(withIdentity), await hashBundle(differentEverythingElse));
+});
+
+Deno.test("hashBundle changes when hints.identity changes, even if HTML+assets are identical", async () => {
+  const a = bundleWith({ x: 1 }, staticView, {}, { identity: "photo:abc" });
+  const b = bundleWith({ x: 1 }, staticView, {}, { identity: "photo:def" });
+
+  assertNotEquals(await hashBundle(a), await hashBundle(b));
+});
+
+Deno.test("hashBundle falls back to HTML+assets when hints.identity is absent or non-string", async () => {
+  const noHints = bundleWith({ greeting: "hi" }, helloView);
+  const nonStringIdentity = bundleWith({ greeting: "hi" }, helloView, {}, {
+    identity: 42,
+  });
+
+  assertEquals(await hashBundle(noHints), await hashBundle(nonStringIdentity));
+});
+
+Deno.test("hashBundle ignores hints.holdIdentity — only hints.identity affects the digest", async () => {
+  const withHold = bundleWith({ greeting: "hi" }, helloView, {}, {
+    holdIdentity: "photo:zzz",
+  });
+  const withoutHold = bundleWith({ greeting: "hi" }, helloView);
+
+  assertEquals(await hashBundle(withHold), await hashBundle(withoutHold));
 });

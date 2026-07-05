@@ -143,40 +143,6 @@ Deno.test("a file inside a nested subdirectory keeps its full sub-path", async (
   );
 });
 
-Deno.test("extraAssetRoots merge a folder's files under their declared urlPrefix", async () => {
-  // The Gallery's drop-folder lives outside assetsDir (ADR-0010). An extra
-  // root makes its bytes reachable at the same /assets/gallery/<name> URL the
-  // Gallery view points at, without those files sitting in the plugin.
-  const galleryDir = await makeAssetsDir({
-    "sunset.jpg": "PHOTO",
-    "beach.png": "BEACH",
-  });
-
-  const manager = await createPluginManager({
-    plugin: trivialPlugin,
-    assetsDir: "/no/such/assets/dir",
-    extraAssetRoots: [{ dir: galleryDir, urlPrefix: "/assets/gallery/" }],
-  });
-  const bundle = await manager.run(ctx());
-
-  assertEquals(
-    new Set(Object.keys(bundle.assets)),
-    new Set(["/assets/gallery/sunset.jpg", "/assets/gallery/beach.png"]),
-  );
-  assertEquals(new TextDecoder().decode(bundle.assets["/assets/gallery/sunset.jpg"]), "PHOTO");
-});
-
-Deno.test("extraAssetRoots: an absent drop-folder contributes nothing (empty-state)", async () => {
-  const manager = await createPluginManager({
-    plugin: trivialPlugin,
-    assetsDir: "/no/such/assets/dir",
-    extraAssetRoots: [{ dir: "/no/such/drop/folder", urlPrefix: "/assets/gallery/" }],
-  });
-  const bundle = await manager.run(ctx());
-
-  assertEquals(bundle.assets, {});
-});
-
 Deno.test("synchronous plugin.run (non-Promise return) is awaited correctly", async () => {
   // Plugin.run may return a plain Result (not a Promise). The PluginManager
   // must handle both; timed() accepts () => T | Promise<T>.
@@ -197,55 +163,6 @@ Deno.test("synchronous plugin.run (non-Promise return) is awaited correctly", as
   });
   const bundle = await manager.run(ctx());
   assertEquals(bundle.result.state, "sync");
-});
-
-Deno.test("extraAssetRoots urlPrefix without trailing slash is normalised", async () => {
-  // A caller may omit the trailing slash; the PluginManager adds it so keys
-  // don't run together as /assets/galleryname instead of /assets/gallery/name.
-  const dir = await makeAssetsDir({ "a.png": "A" });
-  const manager = await createPluginManager({
-    plugin: trivialPlugin,
-    assetsDir: "/no/such/assets/dir",
-    extraAssetRoots: [{ dir, urlPrefix: "/assets/gallery" }], // no trailing slash
-  });
-  const bundle = await manager.run(ctx());
-  // Key must be /assets/gallery/a.png (slash inserted), not /assets/gallerya.png.
-  assertEquals(Object.keys(bundle.assets), ["/assets/gallery/a.png"]);
-});
-
-Deno.test("multiple extraAssetRoots combine under their respective prefixes", async () => {
-  const photosDir = await makeAssetsDir({ "photo.jpg": "JPG" });
-  const iconsDir = await makeAssetsDir({ "icon.svg": "<svg/>" });
-  const manager = await createPluginManager({
-    plugin: trivialPlugin,
-    assetsDir: "/no/such/assets/dir",
-    extraAssetRoots: [
-      { dir: photosDir, urlPrefix: "/assets/photos/" },
-      { dir: iconsDir, urlPrefix: "/assets/icons/" },
-    ],
-  });
-  const bundle = await manager.run(ctx());
-  assertEquals(
-    new Set(Object.keys(bundle.assets)),
-    new Set(["/assets/photos/photo.jpg", "/assets/icons/icon.svg"]),
-  );
-});
-
-Deno.test("extraAssetRoots files and assetsDir files coexist in the same asset map", async () => {
-  // The Plugin's own assetsDir and the Gallery's extra root must both appear
-  // in bundle.assets so the loopback origin can serve all of them.
-  const assetsDir = await makeAssetsDir({ "style.css": "CSS" });
-  const galleryDir = await makeAssetsDir({ "photo.jpg": "PHOTO" });
-  const manager = await createPluginManager({
-    plugin: trivialPlugin,
-    assetsDir,
-    extraAssetRoots: [{ dir: galleryDir, urlPrefix: "/assets/gallery/" }],
-  });
-  const bundle = await manager.run(ctx());
-  assertEquals(
-    new Set(Object.keys(bundle.assets)),
-    new Set(["/assets/style.css", "/assets/gallery/photo.jpg"]),
-  );
 });
 
 Deno.test("plugin is not invoked during createPluginManager — only on run()", async () => {

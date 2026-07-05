@@ -128,12 +128,16 @@ routes, surfaced during commute windows. Its **Result** `state` carries a `Board
 **Super-Plugin** routes on, and whose quiet-state `validity` reports when the next commute window
 opens. _Avoid_: departures, BVG (that is the upstream feed, not the Plugin).
 
-**Gallery**: The full-screen photo leaf **Plugin** — rotates sequentially, time-indexed on `t`,
-through a curated set of bundled images. It is the **Device**'s default quiet-state display: a
-composing **Super-Plugin** shows the Gallery whenever **Transport** is schedule-quiet
-(`emptyReason === "noScheduleApplicable"`), clamping the **Result** `validity` to
-`min(Gallery, Transport)` (then floored at 5 minutes — see **Super-Plugin**) so an opening commute
-window is woken into. Renders edge-to-edge, no chrome. _Avoid_: screensaver, slideshow, picture.
+**Gallery**: The full-screen photo leaf **Plugin** — its source is the user's iCloud Shared Album,
+so adding a photo from any Apple device ("share to album") is how a photo reaches the Device.
+Anchored recency rotation shows the newest addition first; adding a photo re-derives the position,
+while an unchanged album rotates steadily, one photo per hour. Signed CDN URLs are fetched fresh on
+every run and never stored; a fetch failure holds the last photo on glass rather than blanking it.
+It is the **Device**'s default quiet-state display: a composing **Super-Plugin** shows the Gallery
+whenever **Transport** is schedule-quiet (`emptyReason === "noScheduleApplicable"`), clamping the
+**Result** `validity` to `min(Gallery, Transport)` (then floored at 5 minutes — see
+**Super-Plugin**) so an opening commute window is woken into. Renders edge-to-edge, no chrome.
+_Avoid_: screensaver, slideshow, picture.
 
 **Ghosting**: The faint residual image a value-stable dark region leaves behind on the **Device**
 after it has been held in place for a long time; severity scales with darkness × area × dwell-time.
