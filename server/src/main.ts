@@ -13,6 +13,7 @@ import { createPluginManager } from "./plugin/plugin-manager.ts";
 import { createSlot } from "./slot/slot.ts";
 import { createTelemetry } from "./telemetry/telemetry.ts";
 import { createDeviceState } from "./device-state.ts";
+import { createDebugApp } from "./debug/debug.ts";
 
 const ACTIVE_PROFILE: DeviceProfile = (() => {
   const p = getProfile(system.deviceId);
@@ -27,13 +28,46 @@ const ACTIVE_PROFILE: DeviceProfile = (() => {
 })();
 
 async function main() {
+  const now = () => Temporal.Now.zonedDateTimeISO();
+
+  // Debug mode replaces the whole pipeline: no Plugin, no renderer/CDP, no
+  // Slot. The Device gets exactly what the panel at / configures. Toggled by
+  // editing config/live/system.ts (webproc) and restarting.
+  if (system.debug) {
+    const deviceState = createDeviceState({
+      now,
+      onLog: (entry) => console.log(`[device-log] ${entry.id.toUpperCase()}: ${entry.body}`),
+    });
+    const app = new Hono()
+      .use(logger())
+      .onError((err, c) => {
+        console.error("[handler]", err);
+        return c.json({ error: "internal" }, 500);
+      })
+      .route(
+        "/",
+        createDebugApp({
+          profile: ACTIVE_PROFILE,
+          deviceState,
+          friendlyId: system.friendlyId,
+          now,
+        }),
+      );
+    console.log(
+      "[debug] DEBUG MODE — normal pipeline disabled; control panel at / " +
+        "(set debug: false in config/live/system.ts to leave)",
+    );
+    console.log(`trmnl-byos-deno on :${system.port} (debug mode)`);
+    await Deno.serve({ port: system.port, hostname: "0.0.0.0" }, app.fetch).finished;
+    return;
+  }
+
   const pluginManager = await createPluginManager({
     plugin: system.plugin,
     assetsDir: system.pluginAssetsDir,
   });
   console.log(`[plugin] assets from ${system.pluginAssetsDir}`);
 
-  const now = () => Temporal.Now.zonedDateTimeISO();
   const errorView = (err: Error) => ErrorView(err);
   const errorValidity = Temporal.Duration.from({ seconds: 30 });
 

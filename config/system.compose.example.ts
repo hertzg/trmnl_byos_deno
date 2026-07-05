@@ -18,6 +18,9 @@ type SystemConfig = {
   // Luma+dither implementation. Optional — an older live system.ts without
   // this field keeps working and means "wasm".
   ditherEngine?: "wasm" | "native";
+  // Debug mode: the server boots the debug panel instead of the normal
+  // pipeline (no Plugin, no CDP). Optional — absent means false.
+  debug?: boolean;
 };
 
 // Compose-mode system config (ADR-0010). docker-compose.yml bind-mounts this
@@ -52,4 +55,8 @@ export const system = {
   // "wasm" (fused SIMD kernel, default) or "native" (plain-TypeScript
   // reference pipeline). Visually equivalent; the switch is for A/B'ing.
   ditherEngine: "wasm",
+
+  // true → boot the debug panel instead of the normal pipeline. See the
+  // SystemConfig comment above.
+  debug: false,
 } satisfies SystemConfig;

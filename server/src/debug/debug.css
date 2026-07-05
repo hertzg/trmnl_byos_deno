@@ -1,0 +1,139 @@
+/* Debug-mode additions layered on top of dashboard.css. */
+
+.debug-banner {
+  margin: 0 0 28px;
+  padding: 10px 14px;
+  border: 1px solid #e0b45c;
+  border-radius: 6px;
+  background: #fdf6e3;
+  color: #7a5b13;
+  font-size: 13px;
+}
+.debug-banner code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  background: #f6ecd2;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* pattern picker */
+.pattern-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+.pattern-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 176px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+.pattern-card:hover {
+  border-color: #999;
+}
+.pattern-card:has(input:checked) {
+  border-color: #2b6cb0;
+  box-shadow: 0 0 0 2px rgba(43, 108, 176, 0.25);
+}
+.pattern-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.pattern-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 1px solid #e3e3e3;
+  background: #fff;
+  image-rendering: pixelated;
+}
+.pattern-card .t {
+  font-size: 12px;
+  font-weight: 600;
+}
+.pattern-card .d {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.35;
+}
+
+/* response-field controls */
+.dbg-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: flex-end;
+  margin: 0 0 14px;
+}
+.dbg-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #aaa;
+}
+.dbg-fields label.chk {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 7px;
+}
+.dbg-fields input[type="number"] {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background: #fff;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  width: 90px;
+}
+
+/* exact-response preview */
+.dbg-json {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #e3e3e3;
+  border-radius: 6px;
+  background: #fff;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+/* raw headers of the last poll, inline (no popover in debug mode) */
+.dbg-headers {
+  margin: 14px 0 0;
+}
+.dbg-headers .head {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #aaa;
+  margin: 0 0 6px;
+}
+.dbg-headers table {
+  border-collapse: collapse;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+}
+.dbg-headers td {
+  padding: 2px 16px 2px 0;
+  vertical-align: top;
+}
+.dbg-headers td.name {
+  color: #888;
+  white-space: nowrap;
+}

@@ -18,6 +18,12 @@ export type SystemConfig = {
   // Luma+dither implementation. Optional — an older live system.ts without
   // this field keeps working and means "wasm".
   ditherEngine?: "wasm" | "native";
+  // Debug mode: the server boots the debug panel instead of the normal
+  // pipeline (no Plugin, no CDP). The panel at / gives exact control over the
+  // /api/display response, serves built-in test patterns, and shows what the
+  // Device sends. Toggle it from webproc by editing this file and restarting.
+  // Optional — absent means false.
+  debug?: boolean;
 };
 
 export const system = {
@@ -42,4 +48,8 @@ export const system = {
   // "wasm" (fused SIMD kernel, default) or "native" (plain-TypeScript
   // reference pipeline). Visually equivalent; the switch is for A/B'ing.
   ditherEngine: "wasm",
+
+  // true → boot the debug panel instead of the normal pipeline. See the
+  // SystemConfig comment above.
+  debug: false,
 } satisfies SystemConfig;

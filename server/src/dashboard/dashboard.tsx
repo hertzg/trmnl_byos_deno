@@ -95,7 +95,9 @@ function fmtAgo(then: Temporal.ZonedDateTime, now: Temporal.ZonedDateTime): stri
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function DeviceSection(
+// Exported for reuse by the debug-mode page, which shows the same
+// "what the Device last reported" block.
+export function DeviceSection(
   { device, logs, now }: {
     device: DeviceReport | null;
     logs: readonly LogEntry[];
