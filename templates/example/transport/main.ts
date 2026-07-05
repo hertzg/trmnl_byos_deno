@@ -66,8 +66,11 @@ export default (() => {
     async run(ctx: RunContext): Promise<Result<FrameData>> {
       const here = ctx.intent === "scrub"
         // Scrub: time-travel by fetching BVG at the chosen t. The dashboard
-        // scrubber is the only consumer with intent=scrub.
-        ? await assembler.assembleBoard(ROUTES, tToDate(ctx.t))
+        // scrubber is the only consumer with intent=scrub. Runs on a
+        // throwaway assembler — a fetch anchored at a scrubbed instant must
+        // not pollute the production assembler's keep-last-good caches with
+        // candidates from some other window.
+        ? await createBoardAssembler().assembleBoard(ROUTES, tToDate(ctx.t))
         // Poll / prerender: serve the timer-refreshed board. If the timer
         // hasn't fired yet (very first poll), block on a synchronous fetch
         // — any failure propagates to the Conductor's error-view fallback.

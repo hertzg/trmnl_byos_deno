@@ -202,6 +202,40 @@ Deno.test("mapJourneysResponse extracts realtime annotation on on-time transit l
   assertEquals(leg.realtime.remarks, []);
 });
 
+// hafas-client emits `departurePrognosisType` (the REST mirror era's field
+// was `prognosisType`) — the mapper must accept it as the live-data signal
+// on its own, without a delay or the legacy spelling alongside.
+const FIXTURE_DEPARTURE_PROGNOSIS_ONLY = {
+  journeys: [
+    {
+      type: "journey",
+      legs: [
+        {
+          tripId: "1|departure-prognosis",
+          origin: { type: "stop", id: "900003201", name: "Hbf" },
+          destination: { type: "stop", id: "900100003", name: "Alex" },
+          departure: "2025-11-10T08:00:00+01:00",
+          plannedDeparture: "2025-11-10T08:00:00+01:00",
+          arrival: "2025-11-10T08:12:00+01:00",
+          plannedArrival: "2025-11-10T08:12:00+01:00",
+          departurePrognosisType: "prognosed",
+          line: { type: "line", name: "S5", product: "suburban" },
+          direction: "Strausberg",
+        },
+      ],
+    },
+  ],
+};
+
+Deno.test("mapJourneysResponse: departurePrognosisType alone marks hasRealtime", () => {
+  const [c] = mapJourneysResponse(FIXTURE_DEPARTURE_PROGNOSIS_ONLY);
+  const leg = c.legs[0];
+  assert(leg.kind === "transit");
+  assertEquals(leg.realtime.hasRealtime, true);
+  assertEquals(leg.realtime.delaySeconds, 0);
+  assertEquals(leg.realtime.cancelled, false);
+});
+
 Deno.test("mapJourneysResponse: leg without prognosisType has hasRealtime=false", () => {
   // FIXTURE_SINGLE_TRANSIT_LEG has no prognosisType, no departureDelay.
   const [c] = mapJourneysResponse(FIXTURE_SINGLE_TRANSIT_LEG);
@@ -317,15 +351,17 @@ Deno.test("collectWindow stops when HAFAS offers no earlier page", async () => {
   assertEquals(anchors.length, 1);
 });
 
-Deno.test("collectWindow stops at the MAX_PAGES pagination cap", async () => {
+Deno.test("collectWindow stops at the MAX_PAGES pagination cap and reports a partial window", async () => {
   // Every page reports a late departure and another earlier page, so only the
-  // hard cap can end the walk.
+  // hard cap can end the walk — which means the window's early part was never
+  // reached, so the result must be marked partial.
   const { fetchPage, anchors } = scriptedPages([
     page("loop", candidate("2026-05-25T09:00:00+02:00", "2026-05-25T09:25:00+02:00")),
   ]);
   const result = await collectWindow(fetchPage, CLOSES_AT, NOW);
-  assert(Array.isArray(result));
   assertEquals(anchors.length, 12); // MAX_PAGES
+  assert(!Array.isArray(result));
+  assertEquals(result.kind, "partial-window");
 });
 
 Deno.test("collectWindow propagates a FeedError on the first page", async () => {
@@ -333,17 +369,21 @@ Deno.test("collectWindow propagates a FeedError on the first page", async () => 
   const { fetchPage } = scriptedPages([err]);
   const result = await collectWindow(fetchPage, CLOSES_AT, NOW);
   assert(!Array.isArray(result));
+  assert(result.kind === "feed-error");
   assertEquals(result.message, "HTTP 503");
 });
 
-Deno.test("collectWindow keeps earlier pages when a later page fails", async () => {
+Deno.test("collectWindow keeps earlier pages as a partial window when a later page fails", async () => {
   const { fetchPage } = scriptedPages([
     page("ref-1", candidate("2026-05-25T08:30:00+02:00", "2026-05-25T09:25:00+02:00")),
     { kind: "feed-error", message: "timeout" },
   ]);
   const result = await collectWindow(fetchPage, CLOSES_AT, NOW);
-  assert(Array.isArray(result));
-  assertEquals(result.length, 1);
+  // The late tail survives, but marked partial — callers must not mistake it
+  // for a complete window.
+  assert(!Array.isArray(result));
+  assert(result.kind === "partial-window");
+  assertEquals(result.candidates.length, 1);
 });
 
 // These fixtures carry no `refreshToken`, so this exercises the

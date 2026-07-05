@@ -8,12 +8,15 @@
 //
 // Slice 9: three-kind empty-state precedence (`none` / `feedUnreachable` /
 // `noScheduleApplicable`) plus a `lastSuccessfulFetchAt` cache that survives
-// across calls. The cache is held in a closure inside `createBoardAssembler`
-// (factory variant). The free-function `assembleBoard` keeps a process-wide
-// default assembler for callers that don't need their own cache.
+// across calls. Both that cache and the keep-last-good candidate cache (rows
+// keep rendering from the last successful fetch when the feed hiccups) are
+// held in closures inside `createBoardAssembler` (factory variant). The
+// free-function `assembleBoard` keeps a process-wide default assembler for
+// callers that don't need their own caches.
 
 import {
   type Candidate,
+  candidateKey,
   type FetchCandidates,
   fetchCandidates as defaultFetch,
 } from "./journey_client.ts";
@@ -141,6 +144,12 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
   // Most-recent successful fetch instant across the assembler's lifetime.
   // `null` until the first non-FeedError fetch resolves.
   let lastSuccessfulFetchAt: Date | null = null;
+  // Keep-last-good cache: each preference's most recent successful
+  // `Candidate[]`, keyed by `preferenceKey`. When a fetch fails, the stale
+  // candidates are re-classified at the current `now`, so their rows age out
+  // naturally via their leave-by times instead of vanishing on the first
+  // feed hiccup.
+  const lastGoodCandidates = new Map<string, readonly Candidate[]>();
 
   return {
     async assembleBoard(config, now, options = {}): Promise<Board> {
@@ -184,25 +193,54 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
         ),
       );
 
-      // Step 2a — update last-successful-fetch cache. Any successful (non
-      // FeedError) result counts as success for cache purposes; partial
-      // success still refreshes the timestamp.
+      // Step 2a — update last-successful-fetch cache. Any result that carried
+      // candidates counts as success for cache purposes; a PartialWindow
+      // still refreshes the timestamp, but its mid-walk hiccup ALSO counts as
+      // a feed error, so a board whose rows all aged out reads
+      // feedUnreachable rather than a quiet schedule.
       let anySuccess = false;
       let anyFeedError = false;
       for (const result of fetched) {
-        if (Array.isArray(result)) anySuccess = true;
-        else anyFeedError = true;
+        if (Array.isArray(result)) {
+          anySuccess = true;
+        } else if (result.kind === "partial-window") {
+          anySuccess = true;
+          anyFeedError = true;
+        } else {
+          anyFeedError = true;
+        }
       }
       if (anySuccess) lastSuccessfulFetchAt = now;
 
       // Step 3 — classify each preference's results independently. A FeedError
-      // contributes zero rows but does not abort others.
+      // falls back to that preference's last successful candidates (if any),
+      // so a transient feed outage keeps showing still-catchable rows; with no
+      // cached fallback it contributes zero rows but does not abort others.
+      // `anyFeedError` stays set either way — if the served-from-cache rows
+      // have all aged out, the empty board still reads as feedUnreachable.
       const rows: BoardRow[] = [];
       for (let i = 0; i < active.length; i++) {
-        const result = fetched[i];
-        if (!Array.isArray(result)) continue;
         const { preference, tunables, window } = active[i];
-        for (const candidate of result as readonly Candidate[]) {
+        const result = fetched[i];
+        let candidates: readonly Candidate[];
+        if (Array.isArray(result)) {
+          candidates = result;
+          lastGoodCandidates.set(preference.preferenceKey, result);
+        } else if (result.kind === "partial-window") {
+          // Truncated walk: the fresh candidates cover only the window's late
+          // tail. Rendering them alone would drop the imminent rows, and
+          // caching them would clobber a complete snapshot — merge fresh over
+          // cached instead and cache the merged set; stale entries age out
+          // via classification like any keep-last-good fallback.
+          candidates = mergeCandidates(
+            result.candidates,
+            lastGoodCandidates.get(preference.preferenceKey) ?? [],
+          );
+          lastGoodCandidates.set(preference.preferenceKey, candidates);
+        } else {
+          candidates = lastGoodCandidates.get(preference.preferenceKey) ?? [];
+        }
+        for (const candidate of candidates) {
           const row = classify(candidate, preference, tunables, now, window);
           if (row) rows.push(row);
         }
@@ -260,6 +298,23 @@ export function createBoardAssembler(defaults: AssembleOptions = {}): BoardAssem
       return board;
     },
   };
+}
+
+// Union of a truncated fetch's fresh candidates and the previous cached
+// snapshot. Fresh entries win dedup collisions (they carry newer realtime
+// times); cached entries fill in the earlier part of the window the walk
+// never reached.
+function mergeCandidates(
+  fresh: readonly Candidate[],
+  cached: readonly Candidate[],
+): readonly Candidate[] {
+  const seen = new Set(fresh.map(candidateKey));
+  const merged = [...fresh];
+  for (const c of cached) {
+    if (seen.has(candidateKey(c))) continue;
+    merged.push(c);
+  }
+  return merged;
 }
 
 // Walk every preference's schedule, materialise its next applicable arrive-by,

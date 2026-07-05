@@ -56,6 +56,11 @@ RUN cp config/system.example.ts config/system.ts \
 # (./templates/example, resolved against WORKDIR).
 COPY templates/ ./templates/
 
+# The transport plugin imports npm:hafas-client, which the `deno cache
+# src/main.ts` layer above can't see (plugins load dynamically at runtime).
+# Cache it here so the container doesn't have to reach npm at boot.
+RUN deno cache templates/example/transport/bvg/journey_client.ts
+
 # Entrypoint supervises Deno with webproc and globs config/ into -c flags.
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

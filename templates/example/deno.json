@@ -10,6 +10,8 @@
     "@ds": "../ds/mod.ts",
     "@ds/": "../ds/",
     "@std/cache": "jsr:@std/cache@^0.2.3",
+    "hafas-client": "npm:hafas-client@^6.3.6",
+    "hafas-client/": "npm:/hafas-client@^6.3.6/",
     "hono/jsx": "jsr:@hono/hono@^4/jsx",
     "hono/jsx/jsx-runtime": "jsr:@hono/hono@^4/jsx/jsx-runtime"
   }

@@ -325,6 +325,8 @@ Deno.test("assembleBoard tolerates a single preference's FeedError; others rende
   // should render STUDIO's row and contribute zero rows from OFFICE. The
   // empty-state branching on partial failure is out-of-scope for this slice
   // (slice 9), so emptyReason stays "none" as long as some rows exist.
+  // Factory variant: the free-function assembler's keep-last-good cache is
+  // warmed by earlier tests and would serve stale OFFICE rows here.
   const now = new Date("2025-11-10T07:30:00Z");
 
   const stubFetch: FetchCandidates = (origin) => {
@@ -341,7 +343,7 @@ Deno.test("assembleBoard tolerates a single preference's FeedError; others rende
     ]);
   };
 
-  const board = await assembleBoard(
+  const board = await createBoardAssembler().assembleBoard(
     { preferences: [OFFICE, STUDIO] },
     now,
     { fetchCandidates: stubFetch },
@@ -630,11 +632,15 @@ Deno.test("assembleBoard: all active fetches fail → emptyReason feedUnreachabl
   // Single active preference whose fetch returns FeedError. With no rows AND
   // an upstream fetch failure, the empty state must read as feedUnreachable —
   // not noScheduleApplicable (which would falsely imply the schedule is
-  // quiet rather than the network being broken).
+  // quiet rather than the network being broken). Factory variant: earlier
+  // tests warmed the free-function assembler's keep-last-good cache, which
+  // would otherwise serve rows here.
   const now = new Date("2025-11-10T07:30:00Z");
   const stubFetch: FetchCandidates = () =>
     Promise.resolve({ kind: "feed-error", message: "stub" } as const);
-  const board = await assembleBoard(CONFIG, now, { fetchCandidates: stubFetch });
+  const board = await createBoardAssembler().assembleBoard(CONFIG, now, {
+    fetchCandidates: stubFetch,
+  });
   assertEquals(board.rows.length, 0);
   assertEquals(board.emptyReason, "feedUnreachable");
 });
@@ -655,8 +661,11 @@ Deno.test("createBoardAssembler: all-feed-error board carries lastSuccessfulFetc
 Deno.test("createBoardAssembler caches lastSuccessfulFetchAt across calls", async () => {
   // First call succeeds → cache is set to that `now`.
   // Second call (later) all-fails → board carries the FIRST call's instant.
+  // The second `now` sits past the cached row's grace expiry (leave-by 07:42Z
+  // + 5m grace = 07:47Z), so the keep-last-good fallback yields no surviving
+  // rows and the board still reads feedUnreachable.
   const firstNow = new Date("2025-11-10T07:30:00Z");
-  const secondNow = new Date("2025-11-10T07:35:00Z");
+  const secondNow = new Date("2025-11-10T07:50:00Z");
 
   const okFetch: FetchCandidates = (origin) => {
     if ((origin as Stop).hafasStopId === HBF.hafasStopId) {
@@ -677,6 +686,160 @@ Deno.test("createBoardAssembler caches lastSuccessfulFetchAt across calls", asyn
   const second = await assembler.assembleBoard(CONFIG, secondNow, { fetchCandidates: errFetch });
   assertEquals(second.emptyReason, "feedUnreachable");
   assertEquals(second.lastSuccessfulFetchAt?.toISOString(), firstNow.toISOString());
+});
+
+// ─── keep-last-good fallback ────────────────────────────────────────────────
+//
+// A FeedError on an active preference falls back to that preference's last
+// successful Candidate[], re-classified at the current `now` — the board
+// survives a transient feed outage and its rows age out naturally via their
+// leave-by times.
+
+const ERR_FETCH: FetchCandidates = () =>
+  Promise.resolve({ kind: "feed-error", message: "stub outage" } as const);
+
+Deno.test("keep-last-good: FeedError serves the cached candidates of a prior success", async () => {
+  const firstNow = new Date("2025-11-10T07:30:00Z");
+  const secondNow = new Date("2025-11-10T07:35:00Z");
+
+  const okFetch: FetchCandidates = () =>
+    Promise.resolve([
+      // dep 08:50 Berlin, walk-out 8m → leave-by 07:42Z. Still catchable at
+      // both nows.
+      transitCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00", "2025-11-10T09:02:00+01:00"),
+    ]);
+
+  const assembler = createBoardAssembler({ fetchCandidates: okFetch });
+  const first = await assembler.assembleBoard(CONFIG, firstNow);
+  assertEquals(first.rows.length, 1);
+
+  const second = await assembler.assembleBoard(CONFIG, secondNow, { fetchCandidates: ERR_FETCH });
+  assertEquals(second.rows.length, 1);
+  assertEquals(second.rows[0].leaveByDate.toISOString(), "2025-11-10T07:42:00.000Z");
+  // Rows survived, so the board is NOT feedUnreachable despite the outage.
+  assertEquals(second.emptyReason, "none");
+});
+
+Deno.test("keep-last-good: cached rows age out at a later now", async () => {
+  const firstNow = new Date("2025-11-10T07:30:00Z");
+  // Past the cached row's grace expiry (leave-by 07:42Z + 5m grace = 07:47Z)
+  // but still inside the visibility window (closes 08:45Z).
+  const laterNow = new Date("2025-11-10T07:50:00Z");
+
+  const okFetch: FetchCandidates = () =>
+    Promise.resolve([
+      transitCandidateFor(HBF, ALEX, "2025-11-10T08:50:00+01:00", "2025-11-10T09:02:00+01:00"),
+    ]);
+
+  const assembler = createBoardAssembler({ fetchCandidates: okFetch });
+  await assembler.assembleBoard(CONFIG, firstNow);
+
+  const later = await assembler.assembleBoard(CONFIG, laterNow, { fetchCandidates: ERR_FETCH });
+  // The fallback served the cache, but classification at `laterNow` dropped
+  // the aged-out row — with nothing left, the outage surfaces again.
+  assertEquals(later.rows.length, 0);
+  assertEquals(later.emptyReason, "feedUnreachable");
+});
+
+Deno.test("keep-last-good: a failing fetch with an empty cache still reads feedUnreachable", async () => {
+  const now = new Date("2025-11-10T07:30:00Z");
+  const assembler = createBoardAssembler({ fetchCandidates: ERR_FETCH });
+  const board = await assembler.assembleBoard(CONFIG, now);
+  assertEquals(board.rows.length, 0);
+  assertEquals(board.emptyReason, "feedUnreachable");
+});
+
+Deno.test("keep-last-good: a later successful fetch replaces the cached candidates", async () => {
+  const nows = [
+    new Date("2025-11-10T07:20:00Z"),
+    new Date("2025-11-10T07:25:00Z"),
+    new Date("2025-11-10T07:40:00Z"),
+  ];
+
+  // First success caches candidate A (leave-by 07:37Z); second success
+  // replaces it with candidate B (leave-by 07:47Z).
+  const fetchA: FetchCandidates = () =>
+    Promise.resolve([
+      transitCandidateFor(HBF, ALEX, "2025-11-10T08:45:00+01:00", "2025-11-10T08:57:00+01:00"),
+    ]);
+  const fetchB: FetchCandidates = () =>
+    Promise.resolve([
+      transitCandidateFor(HBF, ALEX, "2025-11-10T08:55:00+01:00", "2025-11-10T09:07:00+01:00"),
+    ]);
+
+  const assembler = createBoardAssembler();
+  await assembler.assembleBoard(CONFIG, nows[0], { fetchCandidates: fetchA });
+  await assembler.assembleBoard(CONFIG, nows[1], { fetchCandidates: fetchB });
+
+  // At 07:40Z candidate A would still be inside its grace window (expires
+  // 07:42Z), so seeing ONLY B's row proves the cache was replaced, not merged.
+  const board = await assembler.assembleBoard(CONFIG, nows[2], { fetchCandidates: ERR_FETCH });
+  assertEquals(board.rows.length, 1);
+  assertEquals(board.rows[0].leaveByDate.toISOString(), "2025-11-10T07:47:00.000Z");
+  assertEquals(board.emptyReason, "none");
+});
+
+Deno.test("keep-last-good: a partial window merges with the cache instead of clobbering it", async () => {
+  // The motivating flap: cycle 1 caches a complete snapshot (imminent row +
+  // late tail); cycle 2's walk is cut short and carries ONLY the late tail;
+  // cycle 3 fails entirely. The imminent row must survive all three cycles —
+  // if the partial window had replaced the cache, cycles 2 and 3 would show
+  // just the late tail.
+  const nows = [
+    new Date("2025-11-10T07:30:00Z"),
+    new Date("2025-11-10T07:31:00Z"),
+    new Date("2025-11-10T07:32:00Z"),
+  ];
+  // Imminent: dep 08:45 Berlin, walk-out 8m → leave-by 07:37Z.
+  const imminent = transitCandidateFor(
+    HBF,
+    ALEX,
+    "2025-11-10T08:45:00+01:00",
+    "2025-11-10T08:57:00+01:00",
+  );
+  // Late tail: dep 09:15 Berlin → leave-by 08:07Z, arrival 09:27 ≤ closesAt 09:45.
+  const lateTail = transitCandidateFor(
+    HBF,
+    ALEX,
+    "2025-11-10T09:15:00+01:00",
+    "2025-11-10T09:27:00+01:00",
+  );
+
+  const completeFetch: FetchCandidates = () => Promise.resolve([imminent, lateTail]);
+  const partialFetch: FetchCandidates = () =>
+    Promise.resolve({ kind: "partial-window" as const, candidates: [lateTail] });
+
+  const assembler = createBoardAssembler();
+  const first = await assembler.assembleBoard(CONFIG, nows[0], { fetchCandidates: completeFetch });
+  assertEquals(first.rows.length, 2);
+
+  // Cycle 2: partial window — the board still shows BOTH rows (fresh late
+  // tail merged over the cached imminent row).
+  const second = await assembler.assembleBoard(CONFIG, nows[1], { fetchCandidates: partialFetch });
+  assertEquals(second.rows.length, 2);
+  assertEquals(second.rows[0].leaveByDate.toISOString(), "2025-11-10T07:37:00.000Z");
+
+  // Cycle 3: total outage — the fallback serves the merged cache, so the
+  // imminent row is still there.
+  const third = await assembler.assembleBoard(CONFIG, nows[2], { fetchCandidates: ERR_FETCH });
+  assertEquals(third.rows.length, 2);
+  assertEquals(third.rows[0].leaveByDate.toISOString(), "2025-11-10T07:37:00.000Z");
+});
+
+Deno.test("keep-last-good: an all-aged-out partial window still reads feedUnreachable", async () => {
+  // A partial window counts as BOTH success (candidates arrived, timestamp
+  // refreshes) and a feed hiccup — so when nothing survives classification,
+  // the empty board reports the outage instead of a quiet schedule.
+  const now = new Date("2025-11-10T07:30:00Z");
+  const partialEmpty: FetchCandidates = () =>
+    Promise.resolve({ kind: "partial-window" as const, candidates: [] });
+  const board = await createBoardAssembler().assembleBoard(CONFIG, now, {
+    fetchCandidates: partialEmpty,
+  });
+  assertEquals(board.rows.length, 0);
+  assertEquals(board.emptyReason, "feedUnreachable");
+  // The timestamp DID refresh — the partial fetch carried (zero) candidates.
+  assertEquals(board.lastSuccessfulFetchAt?.toISOString(), now.toISOString());
 });
 
 Deno.test("assembleBoard: noScheduleApplicable carries soonest nextAnchor across preferences", async () => {

@@ -41,6 +41,11 @@
     // routes files (which resolve via this root map) import the in-place
     // preference schema once they live outside templates/ (ADR-0010).
     "@transport/": "./templates/example/transport/",
+    // Direct BVG HAFAS access for the transport plugin. The trailing-slash
+    // entry is what lets the bvg profile subpath ("hafas-client/p/bvg/…")
+    // resolve. Mirrored in templates/example/deno.json.
+    "hafas-client": "npm:hafas-client@^6.3.6",
+    "hafas-client/": "npm:/hafas-client@^6.3.6/",
     "hono": "jsr:@hono/hono@^4",
     "hono/deno": "jsr:@hono/hono@^4/deno",
     "hono/logger": "jsr:@hono/hono@^4/logger",
