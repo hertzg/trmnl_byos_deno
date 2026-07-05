@@ -29,7 +29,7 @@ while the module graph stays acyclic.
 
 ```
 /
-├── deno.json          # workspace members + shared fmt/lint/unstable/tasks; ZERO imports
+├── deno.jsonc         # workspace members + shared fmt/lint/unstable/tasks; ZERO imports
 ├── server/            # ← src/ + scripts/        @hztrmnl/server
 ├── ds/                # ← templates/ds/          @hztrmnl/ds
 ├── plugins/
@@ -38,6 +38,11 @@ while the module graph stays acyclic.
 │   └── gallery/       # ← templates/example/gallery/     @hztrmnl/gallery
 └── config/            #                           @hztrmnl/config
 ```
+
+The plugin members are listed as a glob (`"./plugins/*"`), and the Dockerfile's manifest layer globs
+member `deno.json`s the same way (`COPY --parents`, BuildKit labs frontend) — adding a plugin is
+creating a folder; neither file is edited. Member manifests stay `deno.json` (Deno parses JSONC
+comments in them regardless of extension); the root keeps the `.jsonc` name it always had.
 
 Members import each other by bare package name (`name` + `exports` in each member's `deno.json`). No
 path aliases anywhere; third-party deps live in the member that uses them (`hafas-client` in
@@ -52,14 +57,15 @@ The package skeleton — `config/deno.json` (name + exports) and the committed `
 content. All mutable content lives under `config/live/`, and _that_ is the bind-mount boundary
 (`./config/live:/app/config/live` — the host keeps live files under the same `config/live/` path the
 repo gitignores, so the clone-based deploy flow and the mount agree; mounting the whole `./config`
-dir would nest the committed skeleton and the live tree one level too deep inside the container). The public surface is explicit subpath exports, one line per module a
-consumer imports, pointing at live files (`"./system": "./live/system.ts"`) so consumers import
-`@hztrmnl/config/system` with no `live/` in the specifier; no barrel (a barrel would fuse
-`system.ts` and per-plugin config into one module-graph node and create a real ESM cycle through the
-plugin packages). Entrypoint seeding reduces to one rule: baked example → `live/<same-path>.ts` when
-missing. Wiring a _new_ config module costs one exports line — a code change riding a deploy,
-consistent with the existing "adding a plugin is a deploy" posture. Package-level circularity
-(config → plugin → config) is deliberate and harmless.
+dir would nest the committed skeleton and the live tree one level too deep inside the container).
+The public surface is explicit subpath exports, one line per module a consumer imports, pointing at
+live files (`"./system": "./live/system.ts"`) so consumers import `@hztrmnl/config/system` with no
+`live/` in the specifier; no barrel (a barrel would fuse `system.ts` and per-plugin config into one
+module-graph node and create a real ESM cycle through the plugin packages). Entrypoint seeding
+reduces to one rule: baked example → `live/<same-path>.ts` when missing. Wiring a _new_ config
+module costs one exports line — a code change riding a deploy, consistent with the existing "adding
+a plugin is a deploy" posture. Package-level circularity (config → plugin → config) is deliberate
+and harmless.
 
 **3. `PLUGIN_DIR` / `pluginDir` and `loader.ts` die.** `config/system.ts` imports the deployed
 Plugin package by name and hands the object to the Server (`system.plugin`). Choosing a Plugin is
@@ -95,9 +101,9 @@ config may add imports; that fails loud at boot, per ADR-0010.
 - The image build is reproducible against the committed lock; drift fails the build instead of
   resolving silently.
 - Both compose files mount `./config/live:/app/config/live`. The existing Pi needs a one-time
-  migration: move its live files into a `live/` subdir and update its compose copy. `docker-compose.yml` dev bind mounts also follow the tree
-  (`./src` → `./server`, `./templates` → `./ds` + `./plugins`), and the gallery drop-folder becomes
-  `config/live/plugins/gallery/images/`.
+  migration: move its live files into a `live/` subdir and update its compose copy.
+  `docker-compose.yml` dev bind mounts also follow the tree (`./src` → `./server`, `./templates` →
+  `./ds` + `./plugins`), and the gallery drop-folder becomes `config/live/plugins/gallery/images/`.
 - The byte-handling redesign (ByteStore, Refs, Collections, identity) explored alongside this
   decision is **not** part of it; it arrives, if at all, as its own ADR. Until then Bundles carry
   asset bytes and identity stays `hash(html + assets)` per ADR-0003/0004.

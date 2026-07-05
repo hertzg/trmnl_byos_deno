@@ -1,0 +1,25 @@
+{
+  // Workspace root (ADR-0012): members + shared tooling config only — zero
+  // "imports". Members resolve each other by bare @hztrmnl/* package name and
+  // declare their own third-party deps, so nothing here needs mirroring.
+  // "./plugins/*" globs every plugin member: adding a plugin is creating a
+  // folder with a deno.json — no edit here, none in the Dockerfile.
+  "workspace": ["./server", "./ds", "./plugins/*", "./config"],
+  // The dither pipeline imports its wasm kernel via `with { type: "bytes" }`.
+  "unstable": ["raw-imports"],
+  "tasks": {
+    "dev": "deno run --allow-all --watch=server,ds,plugins,config server/src/main.ts",
+    "start": "deno run --allow-all server/src/main.ts",
+    "test": "deno test --allow-all",
+    "bench": "deno bench --allow-all",
+    "fmt": "deno fmt",
+    "lint": "deno lint",
+    "wasm": "deno run -A server/scripts/build-wasm.ts"
+  },
+  "fmt": {
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "singleQuote": false,
+    "exclude": ["**/*.html", "plugins/home/assets/"]
+  }
+}

@@ -1,5 +1,8 @@
 {
   "name": "@hztrmnl/config",
+  // Exports point into live/ (the mounted, webproc-edited tree) but hide it
+  // from the specifier: consumers import "@hztrmnl/config/system". One line
+  // per module a consumer imports — wildcard exports don't exist in Deno.
   "exports": {
     "./system": "./live/system.ts",
     "./plugins/transport/routes": "./live/plugins/transport/routes.ts"

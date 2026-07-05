@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1-labs
 #
 # Multi-arch image for the Pi 5 (arm64) and amd64. Arch-agnostic — TARGETARCH is
 # populated by BuildKit from the build platform, so no --platform is pinned here:
@@ -9,7 +9,7 @@
 # browser editor for the mounted config/live/ files on :8080 and restarts Deno on save.
 #
 # Unversioned :debian tag — tracks the latest Deno. The dither pipeline imports
-# the wasm kernel via a raw import (`unstable: ["raw-imports"]` in deno.json), so
+# the wasm kernel via a raw import (`unstable: ["raw-imports"]` in deno.jsonc), so
 # the base must stay recent enough to know that flag; older Deno (e.g. 2.1.4)
 # warns "'raw-imports' isn't a valid unstable feature" and crash-loops the boot.
 # Latest always satisfies it.
@@ -41,18 +41,15 @@ ENV DENO_DIR=/deno-dir
 WORKDIR /app
 
 # Dependency layer: copy manifest files only so this layer is cache-stable
-# across source edits. deno.lock ships into the image (ADR-0012) so the build
-# is reproducible; --frozen enforces it.
-# Note: `deno install --frozen` without sources works in Deno 2 when the lock
-# already covers all specifiers. If the lock predates a new import the build
-# fails loud rather than resolving silently.
-COPY deno.json deno.lock ./
-COPY server/deno.json ./server/
-COPY ds/deno.json ./ds/
-COPY plugins/home/deno.json ./plugins/home/
-COPY plugins/transport/deno.json ./plugins/transport/
-COPY plugins/gallery/deno.json ./plugins/gallery/
-COPY config/deno.json ./config/
+# across source edits. The --parents glob (needs the 1-labs syntax frontend
+# above) picks up every member deno.json at its own path, so adding a plugin
+# or moving a member never touches this file — the workspace root's
+# "./plugins/*" glob and this COPY discover members the same way.
+# deno.lock ships into the image (ADR-0012) so the build is reproducible;
+# --frozen enforces it: if the lock predates a new import the build fails
+# loud rather than resolving silently.
+COPY deno.jsonc deno.lock ./
+COPY --parents ./*/deno.json ./*/*/deno.json ./
 RUN deno install --frozen
 
 # Source layer: copy all workspace members (config/live/ is dockerignored).

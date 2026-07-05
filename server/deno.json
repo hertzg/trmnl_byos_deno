@@ -7,6 +7,10 @@
     "jsx": "precompile",
     "jsxImportSource": "hono/jsx"
   },
+  // AssemblyScript source files. asc hardcodes the .ts extension at parse time,
+  // so they have to live on disk as *.as.ts even though they're not valid
+  // TypeScript (i32, v128, etc.). Excluding them keeps `deno check`, `deno
+  // test`, `deno lint`, and the LSP from trying to parse them.
   "exclude": ["src/**/*.as.ts"],
   "imports": {
     "@astral/astral": "jsr:@astral/astral@^0.5.4",
