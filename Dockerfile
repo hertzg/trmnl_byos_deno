@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1-labs
 #
 # Multi-arch image for the Pi 5 (arm64) and amd64. Arch-agnostic — TARGETARCH is
 # populated by BuildKit from the build platform, so no --platform is pinned here:
@@ -6,13 +6,14 @@
 #   from a Mac:  docker buildx build --platform linux/arm64 -t trmnl-byos .
 #
 # The Deno server is supervised by jpillora/webproc (ADR-0010), which serves a
-# browser editor for the mounted config/ files on :8080 and restarts Deno on save.
+# browser editor for the mounted config/live/ files on :8080 and restarts Deno on save.
 #
-# Unversioned :debian tag — tracks the latest Deno. The dither pipeline imports
-# the wasm kernel via a raw import (`unstable: ["raw-imports"]` in deno.jsonc), so
-# the base must stay recent enough to know that flag; older Deno (e.g. 2.1.4)
-# warns "'raw-imports' isn't a valid unstable feature" and crash-loops the boot.
-# Latest always satisfies it.
+# Unversioned :debian tag — tracks the latest Deno. The base must be recent
+# enough for the DesignSystem's `with { type: "text" }` CSS imports
+# (ds/styles/Styles.tsx), which were unstable-flagged until Deno stabilized
+# raw text/bytes imports, and for the wasm-module import in the dither
+# pipeline (stable since 2.1). Latest satisfies both; a pinned 2.1.4 once
+# crash-looped here — see git history.
 FROM denoland/deno:debian
 
 RUN apt-get update \
@@ -40,28 +41,37 @@ ENV DENO_DIR=/deno-dir
 
 WORKDIR /app
 
-# Cache deps separately for faster rebuilds. main.ts statically imports
-# ../config/system.ts (the live, gitignored file); provide it transiently from
-# the example so `deno cache` resolves, then remove it in the same layer — no
-# live config (and no baked default) lands in the image. Config is mounted at
-# runtime.
-COPY deno.jsonc ./
+# Dependency layer: copy manifest files only so this layer is cache-stable
+# across source edits. The --parents glob (needs the 1-labs syntax frontend
+# above) picks up every member deno.jsonc at its own path, so adding a plugin
+# or moving a member never touches this file — the workspace root's
+# "./plugins/*" glob and this COPY discover members the same way.
+# deno.lock ships into the image (ADR-0012) so the build is reproducible;
+# --frozen enforces it: if the lock predates a new import the build fails
+# loud rather than resolving silently.
+COPY deno.jsonc deno.lock ./
+COPY --parents ./*/deno.jsonc ./*/*/deno.jsonc ./
+RUN deno install --frozen
+
+# Source layer: copy all workspace members (config/live/ is dockerignored).
+COPY server/ ./server/
+COPY ds/ ./ds/
+COPY plugins/ ./plugins/
 COPY config/ ./config/
-COPY src/ ./src/
-RUN cp config/system.example.ts config/system.ts \
-    && deno cache src/main.ts \
-    && rm config/system.ts
 
-# Bundled Plugin + DesignSystem, served directly from PLUGIN_DIR's default
-# (./templates/example, resolved against WORKDIR).
-COPY templates/ ./templates/
+# Seed build-time live config so the module graph resolves for `deno cache`.
+# These files are never mounted and exist only during the build layer.
+RUN mkdir -p config/live/plugins/transport \
+    && cp config/system.example.ts config/live/system.ts \
+    && cp config/plugins/transport/routes.example.ts config/live/plugins/transport/routes.ts
 
-# The transport plugin imports npm:hafas-client, which the `deno cache
-# src/main.ts` layer above can't see (plugins load dynamically at runtime).
-# Cache it here so the container doesn't have to reach npm at boot.
-RUN deno cache templates/example/transport/bvg/journey_client.ts
+# Cache the full graph from the workspace entrypoint. With config/system.ts
+# statically importing @hztrmnl/home → @hztrmnl/transport → hafas-client, a
+# single cache invocation covers what previously needed an extra hand-maintained
+# line for journey_client.ts (ADR-0012 deletes that line).
+RUN deno cache --frozen server/src/main.ts
 
-# Entrypoint supervises Deno with webproc and globs config/ into -c flags.
+# Entrypoint supervises Deno with webproc and globs config/live/ into -c flags.
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

@@ -1,8 +1,24 @@
 import { resolve } from "@std/path";
-import type { SystemConfig } from "./system.example.ts";
+import type { Plugin } from "@hztrmnl/server/plugin";
+import plugin from "@hztrmnl/home";
+
+// SystemConfig mirrors system.example.ts. Kept inline so this file resolves
+// correctly both in its committed location (config/) and when bind-mounted as
+// config/live/system.ts (where a relative ../system.example.ts would be needed
+// but config/ example files are image-owned, not in the live mount).
+type SystemConfig = {
+  port: number;
+  publicUrlOrigin: string;
+  friendlyId: string;
+  cdpUrl: string;
+  loopbackHost: string;
+  plugin: Plugin<unknown>;
+  pluginAssetsDir: string;
+  deviceId: string;
+};
 
 // Compose-mode system config (ADR-0010). docker-compose.yml bind-mounts this
-// committed starter directly onto the container's config/system.ts, so the
+// committed starter directly onto the container's config/live/system.ts, so the
 // compose dev environment gets its own loopbackHost without an env override and
 // without touching the system.ts used by `deno task dev` / the Pi.
 //
@@ -24,8 +40,9 @@ export const system = {
   // loopback interface only).
   loopbackHost: "127.0.0.1",
 
-  // resolve(...) so it's an absolute path regardless of cwd.
-  pluginDir: resolve("./templates/example"),
+  plugin,
+  // Interim until the byte-handling redesign: where the deployed Plugin's assets/ live.
+  pluginAssetsDir: resolve("./plugins/home/assets"),
 
   deviceId: "trmnl-x",
 } satisfies SystemConfig;

@@ -19,19 +19,19 @@ _Avoid_: service, backend.
 
 **Plugin**: A user-authored module exposing one method: `run(ctx) → Result`. The Result carries the
 Plugin's data, the duration that data stands for, optional rasterization hints, and the view
-component that turns the data into JSX. Asset bytes live in `pluginDir/assets/` and are referenced
-from view by their `/assets/...` URL path. _Avoid_: template, app.
+component that turns the data into JSX. Asset bytes live in the Plugin package's `assets/` directory
+and are referenced from view by their `/assets/...` URL path. _Avoid_: template, app.
 
-**DesignSystem**: Shared visual vocabulary for **Plugin** views, shipped from `templates/ds/`.
-Provides layout primitives (`Layout`, `Content`, `Grid`, `Flex`, `Columns`), typography (`Title`,
-`Value`, `Label`, `Description`), the Item pattern (`meta + content + icon`), chrome overlays
-(`StatusBar`, `BatteryIndicator`), and `EmptyState`. Components are individually importable; CSS
-ships via a `<Styles />` component the Plugin author renders explicitly in `<head>`. A `<Page>`
-document wrapper is the natural next promotion (see ADR-0008 §Surface and the "page wrapper" entry
-below) — it owns `<html>/<head>/<body>` boilerplate and auto-renders `<Styles />` plus a charset,
-title, and optional plugin override stylesheet. Framework-informed but project-native — adopts the
-TRMNL Design Framework's e-ink research without its class-based API or marketplace orientation (see
-ADR-0008). _Avoid_: framework, theme, UI kit.
+**DesignSystem**: Shared visual vocabulary for **Plugin** views, shipped as the `@hztrmnl/ds`
+workspace package. Provides layout primitives (`Layout`, `Content`, `Grid`, `Flex`, `Columns`),
+typography (`Title`, `Value`, `Label`, `Description`), the Item pattern (`meta + content + icon`),
+chrome overlays (`StatusBar`, `BatteryIndicator`), and `EmptyState`. Components are individually
+importable; CSS ships via a `<Styles />` component the Plugin author renders explicitly in `<head>`.
+A `<Page>` document wrapper is the natural next promotion (see ADR-0008 §Surface and the "page
+wrapper" entry below) — it owns `<html>/<head>/<body>` boilerplate and auto-renders `<Styles />`
+plus a charset, title, and optional plugin override stylesheet. Framework-informed but
+project-native — adopts the TRMNL Design Framework's e-ink research without its class-based API or
+marketplace orientation (see ADR-0008). _Avoid_: framework, theme, UI kit.
 
 **Page**: A `<Page>` DesignSystem component that owns the document skeleton — `<html lang>`,
 `<head>` (charset, `<title>`, auto-`<Styles />`, optional plugin override
@@ -40,7 +40,7 @@ still composes `<Layout>`, `<Content>`, `<StatusBar>` etc. inside as needed. The
 `<Styles />` on the Plugin's behalf — a deliberate softening of the cornerstone
 (Server/Renderer/PluginManager still inject nothing; DS components compose each other freely once
 the Plugin imports them). Plugins that don't want DS styling don't use `<Page>`; they hand-roll the
-document the way `templates/example/root.tsx` did pre-Page. _Avoid_: Document, Frame, Screen.
+document the skeleton directly. _Avoid_: Document, Frame, Screen.
 
 **RunContext**: The single argument to `run`. Always contains `t: Temporal.ZonedDateTime`, an
 `intent` (`"poll"` for the Device's `/api/display` call, `"scrub"` for a dashboard preview), and a
@@ -59,10 +59,12 @@ Plugin's `run` returned; `assets` is a `Record<urlPath, Uint8Array>` of every fi
 `assets/` directory, keyed by the URL path the view references (e.g. `/assets/foo.svg`). A Bundle is
 the unit of "everything the Renderer needs to produce one Image." _Avoid_: package, payload.
 
-**PluginManager**: The thin module that owns the Plugin's lifecycle. It loads the Plugin module
-once, reads its `assets/` directory into memory once, and exposes one method: `run(ctx) → Bundle`,
-which calls `plugin.run(ctx)` and attaches the asset map. PluginManager does not derive HTML, does
-not catch errors, does not interact with the Renderer. _Avoid_: loader, host.
+**PluginManager**: The thin module that owns the Plugin's lifecycle. It receives the **Plugin** as
+an object — `config/system.ts` imports the deployed Plugin package by name and hands it over; there
+is no path-based loading — reads the configured assets directory into memory once, and exposes one
+method: `run(ctx) → Bundle`, which calls `plugin.run(ctx)` and attaches the asset map. PluginManager
+does not derive HTML, does not catch errors, does not interact with the Renderer. _Avoid_: loader,
+host.
 
 **Renderer**: The deep module that owns everything from Bundle to Image. Public surface:
 `identity(bundle) → string` (derives HTML internally, returns the Bundle's identity hash) and
@@ -228,15 +230,20 @@ doesn't affect what the Device sees.
 
 ## Plugin packaging
 
-A Plugin is a folder on disk:
+A Plugin is a workspace package (see ADR-0012): a `deno.jsonc` with `name` (scope `@hztrmnl`) and
+`exports`, whose main export default-exports a `{ run }` object satisfying the Plugin contract.
+Packages import each other by bare name; there are no path aliases, and a Plugin's third-party
+dependencies live in its own `deno.jsonc`.
 
-- `main.ts` — default-exports a `{ run }` object satisfying the Plugin contract.
-- `assets/` — any files referenced from `view` HTML. PluginManager reads the directory recursively
-  at load time and exposes each file at `/assets/<path-relative-to-assets-dir>` inside every Bundle.
-  Renderer's internal HTTP server serves these to CDP during screenshot.
+The deployed Plugin is chosen by `config/system.ts`, which imports it by name and hands the object
+to the Server — there is no `PLUGIN_DIR` and no path-based loading; a wrong Plugin shape is a
+boot-time type error.
 
-Asset changes take effect on Plugin reload. The Bundle's asset bytes contribute to identity, so an
-asset edit invalidates the Device's filename cache on the next poll.
+Asset bytes live in the package's `assets/` directory. PluginManager reads the configured assets
+directory recursively at load time and exposes each file at `/assets/<path-relative-to-assets-dir>`
+inside every Bundle; Renderer's internal HTTP server serves these to CDP during screenshot. Asset
+changes take effect on restart. The Bundle's asset bytes contribute to identity, so an asset edit
+invalidates the Device's filename cache on the next poll.
 
 ## Example dialogue
 
@@ -256,7 +263,8 @@ asset edit invalidates the Device's filename cache on the next poll.
 
 ## Flagged ambiguities
 
-- "template" in the codebase = **Plugin** (rename pending).
+- "template" in the codebase = **Plugin** — resolved by the workspace restructure (ADR-0012);
+  implementation pending.
 - "snapshot" / "present" / "Sample" / "Presentation" are gone from the target vocabulary — collapsed
   into `run` and `Result`. The codebase may still use the old names; rename pending.
 - "Conductor" was used previously to cover both the Device facade and the broader orchestration; it

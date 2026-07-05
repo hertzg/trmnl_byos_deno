@@ -1,29 +1,36 @@
 #!/bin/sh
-# Container entrypoint (ADR-0010): supervise the Deno server with webproc and
-# auto-discover the editable config so the -c list never needs hand-maintenance
-# as plugins are added.
+# Container entrypoint (ADR-0010, ADR-0012): supervise the Deno server with
+# webproc and auto-discover the editable config so the -c list never needs
+# hand-maintenance as plugins are added.
 #
 # webproc's -c takes individual file paths only (no dir, no glob), so we glob
-# them ourselves at container start: every *.ts under config/, minus the
-# committed *.example.ts starters. config/plugins/gallery/images/ is binaries,
-# not *.ts, so it's skipped for free. A newly added config file becomes editable
-# after the next restart (adding a plugin is a deploy) — acceptable per the ADR.
+# them ourselves at container start: every *.ts under config/live/. A newly
+# added config file becomes editable after the next restart (adding a plugin is
+# a deploy) — acceptable per the ADR.
 set -e
 
-# Seed each live <name>.ts from its committed <name>.example.ts starter when the
-# live file is missing, so a fresh mount materializes real, editable config and
-# webproc lists it on first boot instead of an empty editor. An already-edited
-# live file is never clobbered. The compose-only variant (*.compose.example.ts)
-# is applied via an explicit bind-mount, not seeded here.
+# Seed each config/live/<name>.ts from the baked config/**/<name>.example.ts
+# starter when the live file is missing, so a fresh mount materializes real,
+# editable config and webproc lists it on first boot instead of an empty editor.
+# An already-edited live file is never clobbered. The compose-only variant
+# (*.compose.example.ts) is applied via an explicit bind-mount, not seeded here.
+# Only starters outside config/live/ are considered (prune the live tree itself).
 # shellcheck disable=SC2044  # config paths are controlled and contain no spaces
-for ex in $(find config -type f -name '*.example.ts' ! -name '*.compose.example.ts'); do
-  live="${ex%.example.ts}.ts"
+for ex in $(find config -path config/live -prune -o -type f -name '*.example.ts' ! -name '*.compose.example.ts' -print); do
+  # Map config/<rel>.example.ts → config/live/<rel>.ts
+  rel="${ex#config/}"
+  live="config/live/${rel%.example.ts}.ts"
+  mkdir -p "$(dirname "$live")"
   [ -e "$live" ] || { cp "$ex" "$live"; echo "entrypoint: seeded $live from $ex" >&2; }
 done
 
+# Ensure the gallery drop-folder exists so the plugin can scan it even when
+# the operator has not yet mounted or created photos.
+mkdir -p config/live/plugins/gallery/images
+
 args=""
 # shellcheck disable=SC2044  # config paths are controlled and contain no spaces
-for f in $(find config -type f -name '*.ts' ! -name '*.example.ts'); do
+for f in $(find config/live -type f -name '*.ts' ! -name '*.example.ts'); do
   args="$args -c $f"
 done
 
@@ -48,4 +55,4 @@ exec webproc \
   --host 0.0.0.0 \
   --port 8080 \
   $auth \
-  -- deno run --allow-all src/main.ts
+  -- deno run --allow-all server/src/main.ts

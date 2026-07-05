@@ -1,30 +1,13 @@
 .env
 .env.*
 !.env.example
-deno.lock
 .idea/
 .vscode/
 *.log
 .DS_Store
 .claude/
 
-# Per-template private config (e.g. BVG stops/filters). The committed `*.example.ts`
-# is the starter template; the active `routes.ts` is a local copy users edit and keep
-# out of version control.
-templates/**/routes.ts
-!templates/**/routes.example.ts
-
-# Live system config; the committed system.example.ts is the starter.
-config/system.ts
-!config/system.example.ts
-
-# Mounted config tree (ADR-0010): same committed-example / gitignored-live split,
-# at the relocated config/plugins/<plugin>/ home.
-config/plugins/**/routes.ts
-!config/plugins/**/routes.example.ts
-
-
-# Gallery drop-folder (ADR-0010): mounted photos are large binaries kept out of
-# version control; the empty folder ships via .gitkeep.
-config/plugins/gallery/images/*
-!config/plugins/gallery/images/.gitkeep
+# Live config tree (ADR-0010, ADR-0012): all mutable operator content lives under
+# config/live/. The committed *.example.ts starters and config/deno.json are
+# image-owned; only config/live/ is the bind-mount boundary.
+config/live/

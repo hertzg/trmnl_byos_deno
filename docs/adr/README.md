@@ -2,18 +2,20 @@
 
 Each ADR captures a single decision with its context and consequences.
 
-| #                                    | Title                                                                                                  | Status    |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------ | --------- |
-| [0001](0001-service-scope.md)        | Service scope and intent                                                                               | Accepted  |
-| [0002](0002-plugin-contract.md)      | Plugin contract: `run(ctx) → Result`, assets via folder convention                                     | Accepted  |
-| [0003](0003-render-pipeline.md)      | Render pipeline: Plugin → Bundle → Renderer → Image                                                    | Accepted  |
-| [0004](0004-caching.md)              | Single-slot Image cache; `validity` drives `refresh_rate`, identity drives the Device's filename cache | Accepted  |
-| [0005](0005-http-layer.md)           | HTTP layer: Hono, routing, and the dashboard at `/`                                                    | Accepted  |
-| [0006](0006-non-features.md)         | Explicit non-features                                                                                  | Accepted  |
-| [0007](0007-prerender-scheduling.md) | Prerender warm-up ahead of Device wake                                                                 | Withdrawn |
-| [0008](0008-design-system.md)        | Project-native design system, framework-informed                                                       | Accepted  |
-| [0009](0009-composition-assets.md)   | Super-Plugin asset composition: a single merged `assets/` tree                                          | Accepted  |
-| [0010](0010-mounted-config-webproc.md) | Mounted `config/` folder, edited via webproc                                                          | Accepted  |
+| #                                                    | Title                                                                                                  | Status    |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------- |
+| [0001](0001-service-scope.md)                        | Service scope and intent                                                                               | Accepted  |
+| [0002](0002-plugin-contract.md)                      | Plugin contract: `run(ctx) → Result`, assets via folder convention                                     | Accepted  |
+| [0003](0003-render-pipeline.md)                      | Render pipeline: Plugin → Bundle → Renderer → Image                                                    | Accepted  |
+| [0004](0004-caching.md)                              | Single-slot Image cache; `validity` drives `refresh_rate`, identity drives the Device's filename cache | Accepted  |
+| [0005](0005-http-layer.md)                           | HTTP layer: Hono, routing, and the dashboard at `/`                                                    | Accepted  |
+| [0006](0006-non-features.md)                         | Explicit non-features                                                                                  | Accepted  |
+| [0007](0007-prerender-scheduling.md)                 | Prerender warm-up ahead of Device wake                                                                 | Withdrawn |
+| [0008](0008-design-system.md)                        | Project-native design system, framework-informed                                                       | Accepted  |
+| [0009](0009-composition-assets.md)                   | Super-Plugin asset composition: a single merged `assets/` tree                                         | Accepted  |
+| [0010](0010-mounted-config-webproc.md)               | Mounted `config/` folder, edited via webproc                                                           | Accepted  |
+| [0011](0011-anti-ghosting-first-interface-design.md) | Anti-ghosting-first interface design                                                                   | Accepted  |
+| [0012](0012-deno-workspace.md)                       | Deno workspace: `@hztrmnl` packages, config-as-package, loader death                                   | Accepted  |
 
 ## Format
 

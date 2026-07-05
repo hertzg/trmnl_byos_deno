@@ -1,0 +1,823 @@
+/* ---- base ---- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: #f4f4f4;
+  color: #111;
+  font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px;
+}
+button {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 11px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background: #fff;
+  color: #222;
+  cursor: pointer;
+}
+button:hover {
+  background: #efefef;
+}
+input[type="text"],
+input[type="date"] {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background: #fff;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ---- top bar ---- */
+.topbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 24px;
+  flex-wrap: wrap;
+  margin: 0 0 28px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #dcdcdc;
+}
+.topbar h1 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.topbar .now {
+  font-size: 12px;
+  color: #999;
+}
+.topbar .now code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: #555;
+}
+
+/* ---- section panel ---- */
+section.panel {
+  margin: 0 0 34px;
+}
+section.panel > h2 {
+  margin: 0 0 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e3e3e3;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #555;
+}
+section.panel > h2 .cap {
+  margin-left: 4px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #aaa;
+}
+.hint {
+  margin: 0 4px 6px;
+  font-size: 11px;
+  color: #aaa;
+}
+
+/* ---- facts: shared key/value rows (preview, slot, trace) ---- */
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  align-items: baseline;
+}
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fact .k {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #aaa;
+}
+.fact .v {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  color: #111;
+}
+.fact .v.lg {
+  font-size: 15px;
+  font-weight: 600;
+}
+.fact .v.muted {
+  font-family: inherit;
+  font-style: italic;
+  color: #999;
+}
+
+/* ---- timeline controls (date picker + span buttons) ---- */
+.tl-controls {
+  display: flex;
+  gap: 12px 24px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0 0 14px;
+}
+.tl-controls .grp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.tl-controls .grp > span {
+  font-size: 12px;
+  color: #999;
+  margin-right: 2px;
+}
+.tl-controls button {
+  padding: 4px 10px;
+}
+.tl-controls button.on {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+.tl-controls button.on:hover {
+  background: #111;
+}
+
+/* ---- day overview strip ---- */
+.overview {
+  position: relative;
+  height: 34px;
+  margin: 2px 4px 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.overview.grabbing {
+  cursor: grabbing;
+}
+.ov-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 18px;
+  height: 1px;
+  background: #ccc;
+}
+.ov-tick {
+  position: absolute;
+  top: 15px;
+  width: 1px;
+  height: 7px;
+  background: #e0e0e0;
+}
+.ov-tick-label {
+  position: absolute;
+  top: 23px;
+  font-size: 9px;
+  color: #c4c4c4;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.ov-now {
+  position: absolute;
+  top: 12px;
+  height: 13px;
+  width: 1.5px;
+  background: #111;
+}
+.ov-cache {
+  position: absolute;
+  top: 14px;
+  height: 9px;
+  background: #f0dcb0;
+  border: 1px solid #c2913a;
+  box-sizing: border-box;
+}
+.ov-viewport {
+  position: absolute;
+  top: 8px;
+  height: 21px;
+  box-sizing: border-box;
+  background: #111;
+  opacity: 0.08;
+  pointer-events: none;
+}
+.ov-viewport-frame {
+  position: absolute;
+  top: 8px;
+  height: 21px;
+  box-sizing: border-box;
+  border: 1px solid #888;
+  pointer-events: none;
+}
+
+/* ---- detail scrub track ---- */
+.timeline-wrap {
+  position: relative;
+  height: 150px;
+  margin: 4px 4px 0;
+  user-select: none;
+}
+.track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30px;
+  height: 92px;
+  cursor: pointer;
+  touch-action: none;
+}
+.rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 36px;
+  height: 1.5px;
+  background: #111;
+}
+.rail-cap {
+  position: absolute;
+  top: 31px;
+  width: 1.5px;
+  height: 11px;
+  background: #111;
+}
+.rail-cap.l {
+  left: 0;
+}
+.rail-cap.r {
+  right: 0;
+}
+.hour-tick {
+  position: absolute;
+  top: 32px;
+  width: 1px;
+  height: 9px;
+  background: #ccc;
+}
+.hour-label {
+  position: absolute;
+  top: 72px;
+  font-size: 10px;
+  color: #aaa;
+  font-variant-numeric: tabular-nums;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.edge-label {
+  position: absolute;
+  top: 110px;
+  font-size: 11px;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.edge-label.l {
+  left: 0;
+}
+.edge-label.r {
+  right: 0;
+}
+.span-label {
+  position: absolute;
+  top: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #bbb;
+}
+.cache-zone {
+  position: absolute;
+  top: 30px;
+  height: 12px;
+  box-sizing: border-box;
+  background: #f0dcb0;
+  border: 1px solid #c2913a;
+}
+.cache-zone.empty {
+  display: none;
+}
+.cache-cap {
+  position: absolute;
+  top: 17px;
+  font-size: 10px;
+  color: #9a7320;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.cache-cap.empty {
+  display: none;
+}
+.now-mark {
+  position: absolute;
+  top: 20px;
+  bottom: 14px;
+  width: 1.5px;
+  background: #111;
+}
+.now-mark::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background: #111;
+}
+.now-mark.off {
+  display: none;
+}
+.now-label {
+  position: absolute;
+  top: 2px;
+  font-size: 10px;
+  color: #999;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.now-label.off {
+  display: none;
+}
+.valid-bracket {
+  position: absolute;
+  top: 44px;
+  height: 8px;
+  box-sizing: border-box;
+  border: 1px dashed #888;
+  border-top: 0;
+  display: none;
+}
+.valid-bracket.shown {
+  display: block;
+}
+.valid-bracket.beyond {
+  border-right: 0;
+}
+.valid-bracket.beyond::after {
+  content: "";
+  position: absolute;
+  right: -7px;
+  top: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid #888;
+}
+.valid-cap {
+  position: absolute;
+  top: 54px;
+  font-size: 10px;
+  color: #888;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  display: none;
+}
+.valid-cap.shown {
+  display: block;
+}
+.scrub-head {
+  position: absolute;
+  top: 20px;
+  bottom: 10px;
+  width: 1.5px;
+  background: #111;
+  cursor: grab;
+}
+.scrub-head.grabbing {
+  cursor: grabbing;
+}
+.scrub-grip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 9px solid #111;
+}
+.scrub-label {
+  position: absolute;
+  top: -17px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  color: #111;
+  background: #fff;
+  border: 1px solid #111;
+  padding: 1px 4px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tl-actions {
+  margin: 8px 4px 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  color: #999;
+}
+.tl-actions button {
+  font: inherit;
+  padding: 3px 9px;
+  border: 1px solid #bbb;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: #888;
+  margin: 10px 4px 0;
+}
+.legend > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend .sw {
+  width: 20px;
+  height: 10px;
+  display: inline-block;
+  box-sizing: border-box;
+}
+.legend .sw.cache {
+  background: #f0dcb0;
+  border: 1px solid #c2913a;
+}
+.legend .sw.valid {
+  border: 1px dashed #888;
+  border-top: 0;
+  height: 7px;
+}
+.legend .sw.now {
+  width: 1.5px;
+  background: #111;
+}
+.legend .sw.scrub {
+  width: 1.5px;
+  background: #111;
+}
+
+/* ---- preview: the hero — breaks out wider than the column ---- */
+section.preview {
+  margin-left: calc(-1 * clamp(0px, (100vw - 100% - 48px) / 2, 160px));
+  margin-right: calc(-1 * clamp(0px, (100vw - 100% - 48px) / 2, 160px));
+}
+.preview-frame {
+  position: relative;
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 10px;
+  min-height: 200px;
+}
+.preview-frame.stale {
+  border-style: dashed;
+  border-color: #bbb;
+}
+/* No fixed aspect — the rendered Image sizes the frame to its own
+   intrinsic ratio (the device profile's, e.g. trmnl-x 4:3). */
+.preview-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  cursor: zoom-in;
+}
+/* Hover loupe — a floating window onto the rendered Image at its native
+   1:1 resolution, since the inline preview is downscaled to fit. */
+.preview-loupe {
+  position: fixed;
+  display: none;
+  z-index: 20;
+  pointer-events: none;
+  width: 400px;
+  height: 300px;
+  border: 1px solid #111;
+  background-color: #fff;
+  background-repeat: no-repeat;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  image-rendering: pixelated;
+}
+.preview-loupe.shown {
+  display: block;
+}
+.spinner-veil {
+  position: absolute;
+  inset: 10px;
+  background: #ffffffcc;
+  display: none;
+  place-items: center;
+  flex-direction: column;
+  gap: 9px;
+}
+.preview-frame.busy .spinner-veil {
+  display: grid;
+}
+.spinner {
+  width: 26px;
+  height: 26px;
+  border: 3px solid #ddd;
+  border-top-color: #111;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spinner-veil span {
+  font-size: 12px;
+  color: #888;
+}
+.stale-chip {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: none;
+  background: #444;
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+.preview-frame.stale .stale-chip {
+  display: block;
+}
+.preview-error {
+  position: absolute;
+  inset: 10px;
+  background: #fff0f0;
+  color: #6b1212;
+  display: none;
+  place-items: center;
+  padding: 16px;
+  box-sizing: border-box;
+  font-size: 12px;
+  text-align: center;
+}
+.preview-frame.errored .preview-error {
+  display: grid;
+}
+
+/* preview footer — render facts + projected API response */
+.preview-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 48px;
+  align-items: flex-start;
+  margin-top: 16px;
+}
+.preview-summary {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.badge {
+  align-self: flex-start;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+  background: #f3f3f3;
+  color: #666;
+}
+.badge.match {
+  border-color: #111;
+  background: #fff;
+  color: #111;
+  font-weight: 700;
+}
+.api {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.api-head {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #aaa;
+  margin-bottom: 6px;
+}
+pre.api-resp {
+  margin: 0;
+  background: #f6f6f6;
+  border: 1px solid #ddd;
+  padding: 12px 14px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  color: #222;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+  width: max-content;
+  max-width: 100%;
+}
+
+/* ---- slot & trace ---- */
+.slot-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.trace {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid #ececec;
+}
+.trace-head {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #aaa;
+  margin-bottom: 10px;
+}
+.trace .empty {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
+}
+.trace pre.error {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  background: #fff0f0;
+  border: 1px solid #f3b0b0;
+  color: #6b1212;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---- device section ---- */
+.device-empty {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+  font-style: italic;
+}
+.logs {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid #ececec;
+}
+.logs-head {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #aaa;
+  margin-bottom: 10px;
+}
+.logs ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: #f6f6f6;
+  border: 1px solid #ddd;
+  max-height: 260px;
+  overflow: auto;
+}
+.logs li {
+  display: grid;
+  grid-template-columns: max-content max-content 1fr;
+  gap: 0 12px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  border-top: 1px solid #ececec;
+}
+.logs li:first-child {
+  border-top: 0;
+}
+.logs li .ts {
+  color: #999;
+}
+.logs li .id {
+  color: #666;
+}
+.logs li .body {
+  color: #222;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.logs .empty {
+  padding: 10px 12px;
+  font-style: italic;
+  color: #999;
+}
+
+/* ---- raw-headers hover popover ---- */
+/* Positioned at the right edge of the device section heading. The
+   trigger is keyboard-focusable so the popover is reachable without a
+   mouse — :hover and :focus-within both show the panel. */
+.headers-pop {
+  position: relative;
+  display: inline-block;
+  margin-left: 10px;
+}
+.headers-pop .trigger {
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 7px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  background: #fff;
+  color: #555;
+  cursor: help;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+}
+.headers-pop .trigger:focus {
+  outline: 1px solid #111;
+}
+/* Open upward — the device section is the last on the page, so a
+   downward panel would extend body scrollHeight, trigger a scrollbar,
+   reflow the page, and flicker on every hover. Opening above the
+   trigger keeps the panel inside the existing layout box. The visual
+   gap is rendered via padding-bottom + background-clip so the hover
+   surface stays contiguous and the cursor can't pass through a dead
+   zone between trigger and panel. max-height + overflow caps any
+   accidental tallness rather than letting the panel grow off-screen. */
+.headers-pop .panel {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  z-index: 10;
+  min-width: 380px;
+  max-width: min(600px, 90vw);
+  max-height: min(60vh, 420px);
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #111;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  padding: 10px 12px 16px;
+  background-clip: padding-box;
+}
+.headers-pop:hover .panel,
+.headers-pop:focus-within .panel {
+  display: block;
+}
+.headers-pop .panel-head {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #aaa;
+  margin-bottom: 6px;
+}
+.headers-pop table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+}
+.headers-pop td {
+  padding: 3px 8px 3px 0;
+  vertical-align: top;
+  border-top: 1px solid #ececec;
+}
+.headers-pop tr:first-child td {
+  border-top: 0;
+}
+.headers-pop td.name {
+  color: #666;
+  white-space: nowrap;
+}
+.headers-pop td.value {
+  color: #222;
+  word-break: break-word;
+}

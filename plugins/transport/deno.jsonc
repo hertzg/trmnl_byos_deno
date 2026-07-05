@@ -1,0 +1,21 @@
+{
+  "name": "@hztrmnl/transport",
+  "exports": {
+    ".": "./main.ts",
+    "./bvg/preference": "./bvg/preference.ts"
+  },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "hono/jsx"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.0",
+    // Direct BVG HAFAS access. The trailing-slash entry is what lets the bvg
+    // profile subpath ("hafas-client/p/bvg/…") resolve.
+    "hafas-client": "npm:hafas-client@^6.3.6",
+    "hafas-client/": "npm:/hafas-client@^6.3.6/",
+    "hono/jsx": "jsr:@hono/hono@^4/jsx",
+    "hono/jsx/jsx-runtime": "jsr:@hono/hono@^4/jsx/jsx-runtime",
+    "hono/jsx/dom/server": "jsr:@hono/hono@^4/jsx/dom/server"
+  }
+}

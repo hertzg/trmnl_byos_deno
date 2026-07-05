@@ -1,20 +1,22 @@
-# Production stack for the Pi (ADR-0010): runs the published image
+# Production stack for the Pi (ADR-0010, ADR-0012): runs the published image
 # ghcr.io/hertzg/trmnl_byos_deno:latest (no local build), supervised by webproc.
 # Unlike docker-compose.yml (local dev: `build: .` + source bind-mounts), this
-# mounts only ./config. Deploy by fetching this file alongside the committed
-# config/*.example.ts starters (simplest: `git clone --depth 1` the repo), then:
+# mounts only the live config. Deploy by fetching this file alongside the repo
+# (simplest: `git clone --depth 1` the repo), then:
 #
 #   docker compose -f compose.stack.yaml up -d
 #
-# The entrypoint seeds the live config/*.ts from the *.example.ts starters on first
-# boot and webproc lists them on :8080. Drop gallery photos into
-# ./config/plugins/gallery/images/.
+# The entrypoint seeds live config from the baked *.example.ts starters on first
+# boot and webproc lists them on :8080. The host ./config/live/ dir holds only live
+# content (starters are image-owned). Drop gallery photos into
+# ./config/live/plugins/gallery/images/ on the host.
 #
 # Networking (slice #51): chrome shares the deno container's network namespace
 # (`network_mode: service:trmnl-byos`) so it reaches the Renderer's loopback origin
 # at 127.0.0.1:<ephemeral>. That requires loopbackHost=127.0.0.1 (not the
 # host.docker.internal default that `deno task dev` wants), so we bind-mount the
-# committed config/system.compose.example.ts onto the container's config/system.ts.
+# committed config/system.compose.example.ts onto the container's
+# config/live/system.ts.
 services:
   trmnl-byos:
     image: ghcr.io/hertzg/trmnl_byos_deno:latest
@@ -25,10 +27,10 @@ services:
       # webproc editor — local-only at the host; basic auth as a second layer.
       - "127.0.0.1:8080:8080"
     volumes:
-      # Mounted config tree (ADR-0010): webproc-editable, survives image updates.
-      - ./config:/app/config
+      # Mounted live config tree (ADR-0010, ADR-0012): webproc-editable, survives image updates.
+      - ./config/live:/app/config/live
       # loopbackHost override for the shared-netns topology: see the note above.
-      - ./config/system.compose.example.ts:/app/config/system.ts
+      - ./config/system.compose.example.ts:/app/config/live/system.ts
     environment:
       TZ: "${TZ:-Etc/UTC}"
       # Basic auth for the webproc editor (:8080) — optional, off by default. Set
