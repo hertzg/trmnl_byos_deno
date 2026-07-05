@@ -1,0 +1,26 @@
+{
+  "workspace": [
+    "./server",
+    "./ds",
+    "./plugins/home",
+    "./plugins/transport",
+    "./plugins/gallery",
+    "./config"
+  ],
+  "unstable": ["raw-imports"],
+  "tasks": {
+    "dev": "deno run --allow-all --watch=server,ds,plugins,config server/src/main.ts",
+    "start": "deno run --allow-all server/src/main.ts",
+    "test": "deno test --allow-all",
+    "bench": "deno bench --allow-all",
+    "fmt": "deno fmt",
+    "lint": "deno lint",
+    "wasm": "deno run -A server/scripts/build-wasm.ts"
+  },
+  "fmt": {
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "singleQuote": false,
+    "exclude": ["**/*.html", "plugins/home/assets/"]
+  }
+}

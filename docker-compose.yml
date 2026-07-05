@@ -2,14 +2,15 @@
 # webproc entrypoint supervises the Deno server and serves a config editor on
 # :8080. Run with: docker compose up --build
 #
-# Config comes from the mounted ./config volume, not env vars (env-var config
-# loading was removed in ADR-0010). The only genuine runtime env knob left is TZ;
-# WEBPROC_USER/WEBPROC_PASS gate the :8080 editor and are injectable.
+# Config comes from the mounted ./config/live volume, not env vars (env-var
+# config loading was removed in ADR-0010). The only genuine runtime env knob
+# left is TZ; WEBPROC_USER/WEBPROC_PASS gate the :8080 editor and are
+# injectable.
 #
-# Hot reload: editing config/ files through the webproc editor (:8080) bounces
-# Deno on save (--on-save restart). Code edits under src/ and templates/ are
-# bind-mounted but no longer deno-watched (webproc owns supervision now); pick
-# them up with `docker compose restart trmnl-byos-dev`.
+# Hot reload: editing config/live/ files through the webproc editor (:8080)
+# bounces Deno on save (--on-save restart). Code edits under server/, ds/, and
+# plugins/ are bind-mounted but no longer deno-watched (webproc owns supervision
+# now); pick them up with `docker compose restart trmnl-byos-dev`.
 #
 # Networking note (slice #51): the Renderer owns a loopback HTTP origin on
 # <loopbackHost>:<ephemeral> that CDP fetches the Bundle (HTML + assets) from.
@@ -19,8 +20,8 @@
 # "host.docker.internal" (for the `deno task dev` flow: deno on the host, chrome
 # in docker). Compose needs the opposite, and env overrides are gone — so we
 # bind-mount the committed config/system.compose.example.ts (loopbackHost =
-# 127.0.0.1) directly onto the container's config/system.ts, overriding just
-# that file. The deno-task-dev / Pi config/system.ts is untouched.
+# 127.0.0.1) directly onto the container's config/live/system.ts, overriding
+# just that file. The deno-task-dev / Pi config/live/system.ts is untouched.
 services:
   trmnl-byos-dev:
     build: .
@@ -32,13 +33,14 @@ services:
       # Exposed on the host so a non-Docker workflow can also point at CDP.
       - "127.0.0.1:9222:9222"
     volumes:
-      - ./src:/app/src:cached
-      # Bundled Plugin + DesignSystem; bind-mounted so edits survive a restart.
-      - ./templates:/app/templates:cached
-      # Mounted config tree (ADR-0010): webproc-editable, survives rebuilds.
-      - ./config:/app/config:cached
+      - ./server:/app/server:cached
+      # DesignSystem and leaf plugins; bind-mounted so edits survive a restart.
+      - ./ds:/app/ds:cached
+      - ./plugins:/app/plugins:cached
+      # Mounted live config tree (ADR-0010, ADR-0012): webproc-editable, survives rebuilds.
+      - ./config/live:/app/config/live:cached
       # Compose-mode loopbackHost override: see the networking note above.
-      - ./config/system.compose.example.ts:/app/config/system.ts:cached
+      - ./config/system.compose.example.ts:/app/config/live/system.ts:cached
     environment:
       TZ: "${TZ:-Etc/UTC}"
       # Basic auth for the webproc editor (:8080). Overridable via host env.

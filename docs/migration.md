@@ -11,7 +11,7 @@ the PRD will be.
 
 | Today                                                              | Target                                                                                                                                     |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `template` (codebase term + `templates/` dir + `TEMPLATE_DIR` env) | **Plugin** (term, dir, env)                                                                                                                |
+| `template` (codebase term + `templates/` dir + `TEMPLATE_DIR` env) | **Plugin** (term, `plugins/` dir)                                                                                                          |
 | `setup(config: SetupConfig): Registration`                         | `default function (): Plugin`                                                                                                              |
 | `onDisplay(): { jsx, validForSeconds }`                            | `run(ctx: RunContext) → Result { state, validity, hints?, view }`                                                                          |
 | `Date`, `validForSeconds: number`                                  | `Temporal.ZonedDateTime`, `Temporal.Duration`                                                                                              |

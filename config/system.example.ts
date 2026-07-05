@@ -1,6 +1,8 @@
 import { resolve } from "@std/path";
+import type { Plugin } from "@hztrmnl/server/plugin";
+import plugin from "@hztrmnl/home";
 
-// Server infra config. This is the committed starter; copy it to `config/system.ts`
+// Server infra config. This is the committed starter; copy it to `config/live/system.ts`
 // (gitignored) and edit that. Per-environment differences (dev 127.0.0.1 vs. compose
 // vs. Pi) live in each environment's own mounted `system.ts`, not in code branches.
 // No env parsing — every value is a literal here.
@@ -10,7 +12,8 @@ export type SystemConfig = {
   friendlyId: string;
   cdpUrl: string;
   loopbackHost: string;
-  pluginDir: string;
+  plugin: Plugin<unknown>;
+  pluginAssetsDir: string;
   deviceId: string;
 };
 
@@ -27,8 +30,9 @@ export const system = {
   // "127.0.0.1". See bind-host trade-off in renderer.ts.
   loopbackHost: "host.docker.internal",
 
-  // resolve(...) so it's an absolute path regardless of cwd.
-  pluginDir: resolve("./templates/example"),
+  plugin,
+  // Interim until the byte-handling redesign: where the deployed Plugin's assets/ live.
+  pluginAssetsDir: resolve("./plugins/home/assets"),
 
   deviceId: "trmnl-x",
 } satisfies SystemConfig;

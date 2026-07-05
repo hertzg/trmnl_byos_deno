@@ -6,10 +6,10 @@
 #   from a Mac:  docker buildx build --platform linux/arm64 -t trmnl-byos .
 #
 # The Deno server is supervised by jpillora/webproc (ADR-0010), which serves a
-# browser editor for the mounted config/ files on :8080 and restarts Deno on save.
+# browser editor for the mounted config/live/ files on :8080 and restarts Deno on save.
 #
 # Unversioned :debian tag — tracks the latest Deno. The dither pipeline imports
-# the wasm kernel via a raw import (`unstable: ["raw-imports"]` in deno.jsonc), so
+# the wasm kernel via a raw import (`unstable: ["raw-imports"]` in deno.json), so
 # the base must stay recent enough to know that flag; older Deno (e.g. 2.1.4)
 # warns "'raw-imports' isn't a valid unstable feature" and crash-loops the boot.
 # Latest always satisfies it.
@@ -40,28 +40,40 @@ ENV DENO_DIR=/deno-dir
 
 WORKDIR /app
 
-# Cache deps separately for faster rebuilds. main.ts statically imports
-# ../config/system.ts (the live, gitignored file); provide it transiently from
-# the example so `deno cache` resolves, then remove it in the same layer — no
-# live config (and no baked default) lands in the image. Config is mounted at
-# runtime.
-COPY deno.jsonc ./
+# Dependency layer: copy manifest files only so this layer is cache-stable
+# across source edits. deno.lock ships into the image (ADR-0012) so the build
+# is reproducible; --frozen enforces it.
+# Note: `deno install --frozen` without sources works in Deno 2 when the lock
+# already covers all specifiers. If the lock predates a new import the build
+# fails loud rather than resolving silently.
+COPY deno.json deno.lock ./
+COPY server/deno.json ./server/
+COPY ds/deno.json ./ds/
+COPY plugins/home/deno.json ./plugins/home/
+COPY plugins/transport/deno.json ./plugins/transport/
+COPY plugins/gallery/deno.json ./plugins/gallery/
+COPY config/deno.json ./config/
+RUN deno install --frozen
+
+# Source layer: copy all workspace members (config/live/ is dockerignored).
+COPY server/ ./server/
+COPY ds/ ./ds/
+COPY plugins/ ./plugins/
 COPY config/ ./config/
-COPY src/ ./src/
-RUN cp config/system.example.ts config/system.ts \
-    && deno cache src/main.ts \
-    && rm config/system.ts
 
-# Bundled Plugin + DesignSystem, served directly from PLUGIN_DIR's default
-# (./templates/example, resolved against WORKDIR).
-COPY templates/ ./templates/
+# Seed build-time live config so the module graph resolves for `deno cache`.
+# These files are never mounted and exist only during the build layer.
+RUN mkdir -p config/live/plugins/transport \
+    && cp config/system.example.ts config/live/system.ts \
+    && cp config/plugins/transport/routes.example.ts config/live/plugins/transport/routes.ts
 
-# The transport plugin imports npm:hafas-client, which the `deno cache
-# src/main.ts` layer above can't see (plugins load dynamically at runtime).
-# Cache it here so the container doesn't have to reach npm at boot.
-RUN deno cache templates/example/transport/bvg/journey_client.ts
+# Cache the full graph from the workspace entrypoint. With config/system.ts
+# statically importing @hztrmnl/home → @hztrmnl/transport → hafas-client, a
+# single cache invocation covers what previously needed an extra hand-maintained
+# line for journey_client.ts (ADR-0012 deletes that line).
+RUN deno cache --frozen server/src/main.ts
 
-# Entrypoint supervises Deno with webproc and globs config/ into -c flags.
+# Entrypoint supervises Deno with webproc and globs config/live/ into -c flags.
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

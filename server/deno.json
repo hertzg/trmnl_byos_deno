@@ -1,0 +1,30 @@
+{
+  "name": "@hztrmnl/server",
+  "exports": {
+    "./plugin": "./src/plugin/plugin.ts"
+  },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "hono/jsx"
+  },
+  "exclude": ["src/**/*.as.ts"],
+  "imports": {
+    "@astral/astral": "jsr:@astral/astral@^0.5.4",
+    "@hertzg/crc": "jsr:@hertzg/crc@^0.2.0",
+    "@img/png": "jsr:@img/png@^0.1.6",
+    "@std/assert": "jsr:@std/assert@^1.0.0",
+    "@std/bytes": "jsr:@std/bytes@^1.0.6",
+    "@std/encoding": "jsr:@std/encoding@^1.0.10",
+    "@std/fs": "jsr:@std/fs@^1.0.0",
+    "@std/math": "jsr:@std/math@^0.0.0",
+    "@std/media-types": "jsr:@std/media-types@^1.0.0",
+    "@std/path": "jsr:@std/path@^1.0.0",
+    "@std/testing": "jsr:@std/testing@^1.0.0",
+    "hono": "jsr:@hono/hono@^4",
+    "hono/logger": "jsr:@hono/hono@^4/logger",
+    "hono/timing": "jsr:@hono/hono@^4/timing",
+    "hono/jsx": "jsr:@hono/hono@^4/jsx",
+    "hono/jsx/jsx-runtime": "jsr:@hono/hono@^4/jsx/jsx-runtime",
+    "hono/jsx/dom/server": "jsr:@hono/hono@^4/jsx/dom/server"
+  }
+}

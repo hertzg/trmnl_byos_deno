@@ -1,6 +1,8 @@
-# Build-context hygiene + keep live (gitignored) config and secrets OUT of the
-# image. Only the committed *.example.ts starters get baked; the live *.ts files
-# are mounted at runtime (ADR-0010).
+# Build-context hygiene: keep live (operator-owned) config out of the image.
+# Only the committed *.example.ts starters and config/deno.json get baked;
+# config/live/ is mounted at runtime (ADR-0010, ADR-0012).
+# deno.lock ships with the build (ADR-0012 removed it from this list so the
+# Dockerfile can use --frozen).
 .git
 .gitignore
 .worktrees
@@ -9,16 +11,7 @@
 .claude
 *.log
 .DS_Store
-deno.lock
 docs
 
-# Live system config (the example starters are kept).
-config/system.ts
-config/system.compose.ts
-
-# Live plugin config (per-plugin routes copies).
-config/plugins/**/routes.ts
-
-# Gallery drop-folder: mounted binaries, never baked.
-config/plugins/gallery/images/*
-!config/plugins/gallery/images/.gitkeep
+# Live config tree: all mutable operator content lives under config/live/.
+config/live/

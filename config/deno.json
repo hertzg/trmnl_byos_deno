@@ -1,0 +1,10 @@
+{
+  "name": "@hztrmnl/config",
+  "exports": {
+    "./system": "./live/system.ts",
+    "./plugins/transport/routes": "./live/plugins/transport/routes.ts"
+  },
+  "imports": {
+    "@std/path": "jsr:@std/path@^1.0.0"
+  }
+}

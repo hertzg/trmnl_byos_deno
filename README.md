@@ -46,16 +46,17 @@ The image is published to `ghcr.io/hertzg/trmnl_byos_deno:latest` on every push 
 
 ### Deploy to a Raspberry Pi
 
-`compose.stack.yaml` runs the published image (no local build), supervised by webproc. Clone the repo
-for the file plus the committed `config/*.example.ts` starters, then bring it up:
+`compose.stack.yaml` runs the published image (no local build), supervised by webproc. Clone the
+repo for the file plus the committed `config/*.example.ts` starters, then bring it up:
 
 ```sh
 git clone --depth 1 https://github.com/hertzg/trmnl_byos_deno && cd trmnl_byos_deno
 docker compose -f compose.stack.yaml up -d
 ```
 
-The entrypoint seeds the live `config/*.ts` from the example starters on first boot; edit them in the
-webproc editor at `http://127.0.0.1:8080` and drop gallery photos into `config/plugins/gallery/images/`.
+The entrypoint seeds the live `config/live/*.ts` from the baked example starters on first boot; edit
+them in the webproc editor at `http://127.0.0.1:8080` and drop gallery photos into
+`config/plugins/gallery/images/` on the host (mounted as `config/live/plugins/gallery/images/`).
 
 ## Local dev
 
@@ -102,13 +103,12 @@ of the box.
 | `CDP_URL`           | no       | HTTP base of the CloakBrowser CDP sidecar. Default `http://localhost:9222`.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `LOOPBACK_HOST`     | no       | Hostname the Renderer hands CDP for its internal loopback origin. Default `host.docker.internal` (deno-task-dev workflow — deno on the host, chrome in docker reaching the host across the docker bridge); the Renderer binds the loopback port on `0.0.0.0` so chrome can reach it. Compose mode pins `127.0.0.1` in `docker-compose.yml` (chrome shares the deno container's network namespace, loopback bind keeps the port un-reachable from outside). On Linux without `host-gateway`, set the docker bridge IP (e.g. `172.17.0.1`). |
 | `PORT`              | no       | Server port. Default `3000`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `DEVICE_ID`         | no       | Active device profile id, looked up in [`src/render/profiles.ts`](src/render/profiles.ts). Determines panel dimensions, dpr, bit depth, and dither mode. Unknown id fails fast at boot with the list of registered ids. Default `trmnl-x`.                                                                                                                                                                                                                                                                                                |
+| `DEVICE_ID`         | no       | Active device profile id, looked up in [`server/src/render/profiles.ts`](server/src/render/profiles.ts). Determines panel dimensions, dpr, bit depth, and dither mode. Unknown id fails fast at boot with the list of registered ids. Default `trmnl-x`.                                                                                                                                                                                                                                                                                  |
 | `FRIENDLY_ID`       | no       | Returned in `/api/setup`. Default `TRMNL`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `PLUGIN_DIR`        | no       | Absolute path to the Plugin directory. Must contain a `main.ts` whose default export is a factory returning a Plugin. Default `./templates/example`.                                                                                                                                                                                                                                                                                                                                                                                      |
 
 TRMNL X panel geometry (1872×1404 native, 1040×780 CSS @ DPR 1.8, 4-bit grayscale, Floyd-Steinberg)
-lives as a registry entry in [`src/render/profiles.ts`](src/render/profiles.ts). Adding another
-device model is a registry entry, not a sprawl of new env vars.
+lives as a registry entry in [`server/src/render/profiles.ts`](server/src/render/profiles.ts).
+Adding another device model is a registry entry, not a sprawl of new env vars.
 
 ## Troubleshooting
 
@@ -134,8 +134,8 @@ method: `run(ctx) → Result`. The Server calls the factory once at boot with th
 the Conductor calls `run(ctx)` on each trigger (Device poll, dashboard scrub, prerender warm-up).
 
 ```tsx
-// templates/your-plugin/main.tsx
-import type { Plugin, RunContext } from "../../src/plugin/plugin.ts";
+// plugins/your-plugin/main.tsx
+import type { Plugin, RunContext } from "@hztrmnl/server/plugin";
 
 type State = { greeting: string };
 
@@ -173,10 +173,9 @@ the Device skip both download and repaint when nothing visible changed.
 
 `docs/plugin-authoring.md` covers the world-knowledge-layer pattern, when `ctx.intent` matters,
 Super-Plugin composition, and the common traps. The bundled example at
-[`templates/example/`](templates/example/) is a working reference.
+[`plugins/home/`](plugins/home/) is a working reference.
 
-To ship your own Plugin, bind-mount or copy it into `PLUGIN_DIR`. Files in `assets/` are served at
-`/assets/*` and reachable from your JSX with paths like
+Files in `assets/` are served at `/assets/*` and reachable from your JSX with paths like
 `<link rel="stylesheet" href="/assets/style.css" />`.
 
 ## License

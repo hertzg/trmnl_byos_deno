@@ -7,13 +7,13 @@
 ADR-0002 defined the **Plugin** contract and the `pluginDir/assets/` folder convention:
 **PluginManager** reads one Plugin's `assets/` directory recursively at load time and attaches the
 resulting `Record<urlPath, Uint8Array>` to every **Bundle**. ADR-0002 explicitly deferred one
-question: "How a Super-Plugin aggregates its sub-Plugins' `assets/` directories is deferred …
-Until a concrete Super-Plugin exists, the folder convention applies to the outermost Plugin only."
+question: "How a Super-Plugin aggregates its sub-Plugins' `assets/` directories is deferred … Until
+a concrete Super-Plugin exists, the folder convention applies to the outermost Plugin only."
 CONTEXT.md carried the same deferral as the "Composition asset story" open question.
 
 The first concrete **Super-Plugin** now exists: it routes between **Transport** (the BVG departure
 board) and **Gallery** (a full-screen photo). The Super-Plugin is the deployed Plugin, so
-PluginManager reads *its* `assets/`. But when the Super-Plugin delegates to Transport's view, that
+PluginManager reads _its_ `assets/`. But when the Super-Plugin delegates to Transport's view, that
 view references `/assets/bvg/*.svg`, `/assets/fonts/*.woff2`, `/assets/style.css` — bytes that must
 be in the Bundle, or the screenshot shows broken images. Gallery's view references
 `/assets/gallery/*`.
@@ -35,9 +35,9 @@ path resolves identically whether the leaf runs standalone or composed.
 
 ## Decision
 
-A Super-Plugin owns a single `assets/` directory — the merged union of its sub-Plugins' asset
-trees. Leaf Plugins composed into a Super-Plugin are **code-only modules**; they do not carry their
-own `assets/` directory in the deployed unit. PluginManager is unchanged: it still reads exactly one
+A Super-Plugin owns a single `assets/` directory — the merged union of its sub-Plugins' asset trees.
+Leaf Plugins composed into a Super-Plugin are **code-only modules**; they do not carry their own
+`assets/` directory in the deployed unit. PluginManager is unchanged: it still reads exactly one
 `assets/` directory, the deployed (outermost) Plugin's.
 
 Layout of the deployed Super-Plugin:
@@ -52,16 +52,16 @@ templates/example/        ← the Super-Plugin (deployed; PLUGIN_DIR points here
   gallery/                ← Gallery leaf, code only
 ```
 
-This works without URL rewriting because leaf asset namespaces are collision-free. Should two
-leaves ever collide, the resolution is to rename one leaf's subfolder — not to add machinery.
+This works without URL rewriting because leaf asset namespaces are collision-free. Should two leaves
+ever collide, the resolution is to rename one leaf's subfolder — not to add machinery.
 
 ## Consequences
 
 - The Plugin contract, the Bundle shape, PluginManager, and the Renderer are all unchanged. The
   "small contract" property of ADR-0002 and the "no Server-side orchestration" stance of ADR-0006
   are preserved.
-- A leaf Plugin composed into a Super-Plugin is not independently *rasterizable* — its assets live
-  in the parent. It remains independently *runnable* (`run(ctx) → Result` needs no assets) and so
+- A leaf Plugin composed into a Super-Plugin is not independently _rasterizable_ — its assets live
+  in the parent. It remains independently _runnable_ (`run(ctx) → Result` needs no assets) and so
   unit-testable. The Dashboard always scrubs the deployed Plugin (the Super-Plugin), so standalone
   leaf rasterization is not a real workflow.
 - The merged tree is maintained by hand — drop files into the Super-Plugin's `assets/`. No build
