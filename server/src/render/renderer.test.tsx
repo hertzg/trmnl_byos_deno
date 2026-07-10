@@ -1,9 +1,11 @@
 /** @jsxImportSource hono/jsx */
 import { assertEquals, assertMatch, assertNotEquals, assertStringIncludes } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
+import { renderToString } from "hono/jsx/dom/server";
 import { createRenderer, type RendererDeps } from "./renderer.ts";
-import { hashBundle } from "../hash.ts";
+import { hash } from "../hash.ts";
 import type { Bundle } from "../plugin/bundle.ts";
+import type { ResultHints } from "../plugin/plugin.ts";
 
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
 
@@ -11,11 +13,36 @@ function bundleWith(
   state: unknown,
   view: (s: unknown) => unknown,
   assets: Record<string, Uint8Array<ArrayBuffer>> = {},
+  hints?: ResultHints,
 ): Bundle {
   return {
-    result: { state, validity: fiveMin, view },
+    result: { state, validity: fiveMin, hints, view },
     assets,
   };
+}
+
+// Independent re-derivation of the identity Renderer computes for a
+// hint-less Bundle (render → HTML, concat with sorted asset bytes, hash) —
+// an oracle for the "equals the bundle-payload hash" assertion below. The
+// concatenation format is Renderer-internal (`bundlePayload` in
+// renderer.ts); duplicated here only as a known-good reference, not because
+// callers should ever reproduce it.
+async function expectedBundlePayloadHash(bundle: Bundle): Promise<string> {
+  const html = renderToString(
+    bundle.result.view(bundle.result.state) as Parameters<typeof renderToString>[0],
+  );
+  const encoder = new TextEncoder();
+  const parts: Uint8Array[] = [encoder.encode(html)];
+  for (const key of [...Object.keys(bundle.assets)].sort()) {
+    parts.push(encoder.encode(key), new Uint8Array([0]), bundle.assets[key], new Uint8Array([0]));
+  }
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let offset = 0;
+  for (const part of parts) {
+    out.set(part, offset);
+    offset += part.length;
+  }
+  return await hash(out);
 }
 
 // Default deps. `fetchPngFromUrl` returns one byte; tests that care about
@@ -35,9 +62,9 @@ function defaults(overrides: Partial<RendererDeps> = {}): RendererDeps {
   };
 }
 
-// ─── identity ──────────────────────────────────────────────────────────────
+// ─── identity: no hint — bundle-payload hash ───────────────────────────────
 
-Deno.test("Renderer.identity delegates to hashBundle and returns its hash", async () => {
+Deno.test("Renderer.identity with no hints.identity equals the bundle-payload hash", async () => {
   const renderer = createRenderer(defaults());
   try {
     const bundle = bundleWith(
@@ -47,7 +74,7 @@ Deno.test("Renderer.identity delegates to hashBundle and returns its hash", asyn
 
     const id = await renderer.identity(bundle);
 
-    assertEquals(id, await hashBundle(bundle));
+    assertEquals(id, await expectedBundlePayloadHash(bundle));
   } finally {
     await renderer.close();
   }
@@ -60,6 +87,102 @@ Deno.test("Renderer.identity is deterministic for equivalent bundles", async () 
     const b = bundleWith({ x: 1 }, (s) => <p>{String((s as { x: number }).x)}</p>);
 
     assertEquals(await renderer.identity(a), await renderer.identity(b));
+  } finally {
+    await renderer.close();
+  }
+});
+
+Deno.test("Renderer.identity changes when the rendered HTML changes", async () => {
+  const renderer = createRenderer(defaults());
+  try {
+    const hi = bundleWith({ greeting: "hi" }, (s) => <p>{(s as { greeting: string }).greeting}</p>);
+    const ciao = bundleWith(
+      { greeting: "ciao" },
+      (s) => <p>{(s as { greeting: string }).greeting}</p>,
+    );
+
+    assertNotEquals(await renderer.identity(hi), await renderer.identity(ciao));
+  } finally {
+    await renderer.close();
+  }
+});
+
+Deno.test("Renderer.identity changes when an asset's bytes change", async () => {
+  const renderer = createRenderer(defaults());
+  try {
+    const original = bundleWith({}, () => <p>same</p>, {
+      "/assets/a.bin": new Uint8Array([1, 2, 3]),
+    });
+    const edited = bundleWith({}, () => <p>same</p>, {
+      "/assets/a.bin": new Uint8Array([1, 2, 4]),
+    });
+
+    assertNotEquals(await renderer.identity(original), await renderer.identity(edited));
+  } finally {
+    await renderer.close();
+  }
+});
+
+Deno.test("Renderer.identity ignores the insertion order of asset keys", async () => {
+  const renderer = createRenderer(defaults());
+  try {
+    const a = new Uint8Array([1, 2]);
+    const b = new Uint8Array([3, 4]);
+    const ab = bundleWith({}, () => <p>same</p>, { "/assets/a": a, "/assets/b": b });
+    const ba = bundleWith({}, () => <p>same</p>, { "/assets/b": b, "/assets/a": a });
+
+    assertEquals(await renderer.identity(ab), await renderer.identity(ba));
+  } finally {
+    await renderer.close();
+  }
+});
+
+Deno.test("Renderer.identity changes when an asset key is renamed (bytes identical)", async () => {
+  const renderer = createRenderer(defaults());
+  try {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const atA = bundleWith({}, () => <p>same</p>, { "/assets/a": bytes });
+    const atB = bundleWith({}, () => <p>same</p>, { "/assets/b": bytes });
+
+    assertNotEquals(await renderer.identity(atA), await renderer.identity(atB));
+  } finally {
+    await renderer.close();
+  }
+});
+
+// ─── identity: asserted hints.identity short-circuits ─────────────────────
+
+Deno.test("Renderer.identity with hints.identity present returns hash(asserted), stable while the HTML churns", async () => {
+  const renderer = createRenderer(defaults());
+  try {
+    let sig = 0;
+    const churning = () =>
+      bundleWith(
+        { sig: ++sig },
+        (s) => <img src={`https://cdn.example/photo?sig=${(s as { sig: number }).sig}`} />,
+        {},
+        { identity: "photo:chk-constant" },
+      );
+
+    const first = await renderer.identity(churning());
+    const second = await renderer.identity(churning());
+
+    assertEquals(first, await hash("photo:chk-constant"));
+    assertEquals(second, first);
+  } finally {
+    await renderer.close();
+  }
+});
+
+Deno.test("Renderer.identity with hints.identity present differs from the no-hint identity of the same Bundle", async () => {
+  const renderer = createRenderer(defaults());
+  try {
+    const state = { greeting: "hi" };
+    const view = (s: unknown) => <p>{(s as { greeting: string }).greeting}</p>;
+    const noHint = bundleWith(state, view);
+    const withHint = bundleWith(state, view, {}, { identity: "photo:chk-1" });
+
+    assertNotEquals(await renderer.identity(noHint), await renderer.identity(withHint));
   } finally {
     await renderer.close();
   }

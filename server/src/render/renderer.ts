@@ -3,7 +3,7 @@ import { renderToString } from "hono/jsx/dom/server";
 import { contentType } from "@std/media-types";
 import { extname } from "@std/path";
 import type { Bundle } from "../plugin/bundle.ts";
-import { hashBundle } from "../hash.ts";
+import { hash } from "../hash.ts";
 import type { DeviceProfile } from "./profiles.ts";
 import { connect } from "@astral/astral";
 import { initPage, type Page, renderUrl, resolveCdpEndpoint } from "./_internal/cdp.ts";
@@ -91,7 +91,13 @@ export function createRenderer(deps: RendererDeps): Renderer {
 
   return {
     identity(bundle) {
-      return timed("identity", () => hashBundle(bundle));
+      return timed("identity", () => {
+        // A Plugin-asserted content identity (Result `hints.identity`) skips
+        // HTML render + asset hashing entirely — see ADR-0004 and the trap
+        // documented on `ResultHints.identity` (plugin.ts).
+        const asserted = bundle.result.hints?.identity;
+        return asserted !== undefined ? hash(asserted) : hash(bundlePayload(bundle));
+      });
     },
     rasterize(bundle, overrides) {
       const next = timed("rasterize", () =>
@@ -115,6 +121,50 @@ export function createRenderer(deps: RendererDeps): Renderer {
       await server.shutdown();
     },
   };
+}
+
+// The default identity payload: HTML derived from `view(state)` concatenated
+// with the Bundle's asset bytes. HTML derivation is Renderer-internal per
+// ADR-0003, so this lives here rather than in hash.ts (which just hashes
+// bytes).
+function bundlePayload(bundle: Bundle): Uint8Array<ArrayBuffer> {
+  const html = renderToString(
+    bundle.result.view(bundle.result.state) as Parameters<typeof renderToString>[0],
+  );
+  return concatHtmlAndAssets(html, bundle.assets);
+}
+
+// Each asset is serialised as `utf8(key) + 0x00 + bytes + 0x00`, so two
+// assets with identical bytes but different keys hash differently. Keys are
+// processed in sorted order so insertion order doesn't affect the digest.
+function concatHtmlAndAssets(
+  html: string,
+  assets: Record<string, Uint8Array>,
+): Uint8Array<ArrayBuffer> {
+  const encoder = new TextEncoder();
+  const htmlBytes = encoder.encode(html);
+  const sortedKeys = [...Object.keys(assets)].sort();
+  const keyBytesByKey = new Map<string, Uint8Array>();
+  for (const key of sortedKeys) keyBytesByKey.set(key, encoder.encode(key));
+
+  let totalLength = htmlBytes.length;
+  for (const key of sortedKeys) {
+    totalLength += keyBytesByKey.get(key)!.length + 1 + assets[key].length + 1;
+  }
+
+  const out = new Uint8Array(new ArrayBuffer(totalLength));
+  out.set(htmlBytes, 0);
+  let offset = htmlBytes.length;
+  for (const key of sortedKeys) {
+    const keyBytes = keyBytesByKey.get(key)!;
+    out.set(keyBytes, offset);
+    offset += keyBytes.length;
+    offset += 1; // 0x00 separator between key and bytes
+    out.set(assets[key], offset);
+    offset += assets[key].length;
+    offset += 1; // 0x00 terminator between entries
+  }
+  return out;
 }
 
 export type FetchPngFromUrlConfig = {

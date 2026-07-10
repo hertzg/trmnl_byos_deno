@@ -4,7 +4,6 @@ import {
   assertLessOrEqual,
   assertNotEquals,
 } from "@std/assert";
-import { hashIdentity } from "../hash.ts";
 import { assertSpyCalls, spy } from "@std/testing/mock";
 import { type ConductorDeps, createConductor } from "./conductor.ts";
 import type { Plugin } from "../plugin/plugin.ts";
@@ -31,14 +30,20 @@ function managerFor(plugin: Plugin<unknown>): PluginManager {
   };
 }
 
-// A fake Renderer whose `identity` derives a deterministic, inspectable
-// string from the Bundle's rendered view output — tests can then assert on
-// `out.identity` without re-implementing hashBundle. `rasterize` returns a
+// A fake Renderer whose `identity` mirrors the real short-circuit (asserted
+// `hints.identity` wins, otherwise a deterministic string derived from the
+// Bundle's rendered view output) — tests can then assert on `out.identity`
+// without spinning up the real hash/HTML pipeline. `rasterize` returns a
 // short PNG-magic byte sequence so the /image/<id>.png route can hand back
 // recognisable bytes without spinning CDP.
 function fakeRenderer(overrides: Partial<Renderer> = {}): Renderer {
   return {
-    identity: (b: Bundle) => Promise.resolve(`id-${String(b.result.view(b.result.state))}`),
+    identity: (b: Bundle) =>
+      Promise.resolve(
+        b.result.hints?.identity !== undefined
+          ? `id-${b.result.hints.identity}`
+          : `id-${String(b.result.view(b.result.state))}`,
+      ),
     rasterize: () => Promise.resolve(new Uint8Array([0x89, 0x50, 0x4e, 0x47])),
     origin: () => "http://127.0.0.1:0",
     close: () => Promise.resolve(),
@@ -409,12 +414,14 @@ Deno.test("Tier 3: once validity has elapsed, the next /api/display runs the Plu
 
 // ─── hints.identity: Plugin-asserted filename identity ─────────────────────
 
-Deno.test("constant hints.identity keeps the filename stable across refills even when the Bundle identity churns", async () => {
+Deno.test("constant hints.identity keeps the filename AND image_url stable across refills even when the Bundle HTML churns", async () => {
   // Mirrors the Gallery bug: the rendered HTML embeds a freshly-signed URL
   // on every run, so the Bundle hash — and without the hint, the filename —
   // changes per refill for the same photo, forcing a full e-ink redraw of
-  // unchanged content. The asserted identity pins the filename; the image
-  // URL keeps tracking the real (churned) Bundle identity.
+  // unchanged content. There is one identity now: the asserted string
+  // short-circuits it inside the Renderer, so it pins both the filename and
+  // the /image/<id>.png URL. That's the intended trade — the Plugin owns
+  // repaint responsibility once it asserts an identity.
   let clock = T0;
   const now = () => clock;
   let runCount = 0;
@@ -439,11 +446,8 @@ Deno.test("constant hints.identity keeps the filename stable across refills even
   const second = await (await conductor.app.request("/api/display")).json();
 
   assertEquals(runCount, 2);
-  assertEquals(first.filename, `image-${await hashIdentity("photo:chk-constant")}`);
   assertEquals(second.filename, first.filename);
-  // Content addressing is untouched: the URL still follows the Bundle hash,
-  // so a filename change always points the Device at genuinely current bytes.
-  assertNotEquals(second.image_url, first.image_url);
+  assertEquals(second.image_url, first.image_url);
 });
 
 Deno.test("a changed hints.identity changes the filename — the Device downloads the new image", async () => {

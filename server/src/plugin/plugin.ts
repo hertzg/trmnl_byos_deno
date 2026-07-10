@@ -24,14 +24,27 @@ export type RunContext = {
 // Optional per-Result hints from the Plugin to the Server.
 export type ResultHints = {
   // Opaque assertion of the Result's visual content — "same string ⇒ same
-  // pixels". When present, the Device-facing `/api/display` filename is
-  // derived from it instead of from the Bundle hash, so a view whose HTML
-  // churns per run (e.g. short-lived signed URLs) stops re-triggering full
-  // e-ink redraws of unchanged content. Filename-only: the Server never
+  // pixels". When present, it short-circuits the *whole* identity computed
+  // by `Renderer.identity` (not just the filename): it keys both the
+  // Device-facing `/api/display` filename and the `/image/<id>.png` URL, so
+  // a view whose HTML churns per run (e.g. short-lived signed URLs) stops
+  // re-triggering full e-ink redraws of unchanged content. The Server never
   // uses it for caching, Slot reuse, or render skipping (the reuse contract
   // was reverted in 0f5b531 — it pinned stale images). Trap: a Plugin that
   // provides this owns repaint responsibility — pixels that change while
   // the identity stays constant will not repaint on the Device.
+  //
+  // Composition transfers this ownership silently: a Super-Plugin that
+  // spreads a routed leaf's Result (see `composeResult` in
+  // plugins/home/compose.ts) inherits the leaf's assertion without ever
+  // seeing it. Fine when the composer passes the leaf's view through
+  // unwrapped; a composer that wraps it in varying chrome (battery
+  // indicator, status bar) must strip or re-derive the inherited
+  // `hints.identity`, or the chrome will never repaint.
+  //
+  // Assertions share one global namespace across all Plugins — prefix with
+  // something plugin-unique (Gallery uses `photo:`) so two unrelated
+  // Plugins can never collide on the same string.
   identity?: string;
 };
 
