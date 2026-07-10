@@ -1,4 +1,10 @@
-import { assertEquals, assertGreaterOrEqual, assertLessOrEqual } from "@std/assert";
+import {
+  assertEquals,
+  assertGreaterOrEqual,
+  assertLessOrEqual,
+  assertNotEquals,
+} from "@std/assert";
+import { hashIdentity } from "../hash.ts";
 import { assertSpyCalls, spy } from "@std/testing/mock";
 import { type ConductorDeps, createConductor } from "./conductor.ts";
 import type { Plugin } from "../plugin/plugin.ts";
@@ -399,6 +405,74 @@ Deno.test("Tier 3: once validity has elapsed, the next /api/display runs the Plu
   // Different `state.n` → different `view(state)` → different identity.
   assertEquals(first.filename, "image-id-<p>1</p>");
   assertEquals(second.filename, "image-id-<p>2</p>");
+});
+
+// ─── hints.identity: Plugin-asserted filename identity ─────────────────────
+
+Deno.test("constant hints.identity keeps the filename stable across refills even when the Bundle identity churns", async () => {
+  // Mirrors the Gallery bug: the rendered HTML embeds a freshly-signed URL
+  // on every run, so the Bundle hash — and without the hint, the filename —
+  // changes per refill for the same photo, forcing a full e-ink redraw of
+  // unchanged content. The asserted identity pins the filename; the image
+  // URL keeps tracking the real (churned) Bundle identity.
+  let clock = T0;
+  const now = () => clock;
+  let runCount = 0;
+  const conductor = createConductor({
+    ...defaults({ now, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: () => {
+        runCount++;
+        return {
+          state: { url: `https://cdn.example/photo?sig=${runCount}` },
+          validity: fiveMin,
+          hints: { identity: "photo:chk-constant" },
+          view: (s: { url: string }) => `<img src="${s.url}">`,
+        };
+      },
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const first = await (await conductor.app.request("/api/display")).json();
+  clock = T0.add(fiveMin);
+  const second = await (await conductor.app.request("/api/display")).json();
+
+  assertEquals(runCount, 2);
+  assertEquals(first.filename, `image-${await hashIdentity("photo:chk-constant")}`);
+  assertEquals(second.filename, first.filename);
+  // Content addressing is untouched: the URL still follows the Bundle hash,
+  // so a filename change always points the Device at genuinely current bytes.
+  assertNotEquals(second.image_url, first.image_url);
+});
+
+Deno.test("a changed hints.identity changes the filename — the Device downloads the new image", async () => {
+  // Inverse guard (the failure that sank the reverted reuse contract in
+  // 0f5b531): new content must never hide behind a stale filename.
+  let clock = T0;
+  const now = () => clock;
+  let runCount = 0;
+  const conductor = createConductor({
+    ...defaults({ now, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: () => {
+        runCount++;
+        return {
+          state: {},
+          validity: fiveMin,
+          hints: { identity: `photo:chk-${runCount}` },
+          view: () => "<p>same html</p>",
+        };
+      },
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const first = await (await conductor.app.request("/api/display")).json();
+  clock = T0.add(fiveMin);
+  const second = await (await conductor.app.request("/api/display")).json();
+
+  assertNotEquals(second.filename, first.filename);
 });
 
 // ─── Tier 1: validity hit reuses the Slot, no Plugin run ───────────────────

@@ -8,6 +8,7 @@ import type { RenderTrace, Telemetry } from "../telemetry/telemetry.ts";
 import type { DeviceState } from "../device-state.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
+import { hashIdentity } from "../hash.ts";
 
 // BYOS facade. Owns the orchestration loop from `/api/display` through
 // Plugin → identity → eager rasterize → Slot.put, and serves the PNG at
@@ -88,9 +89,16 @@ export function createConductor(deps: ConductorDeps): Conductor {
         deps.telemetry.record(trace);
       })
       .catch(() => {});
+    // The filename the Device caches by: a Plugin-asserted content identity
+    // (hints.identity) wins over the Bundle hash, so per-run HTML churn
+    // (signed URLs) stops forcing full redraws of unchanged content. The
+    // /image/<id>.png URL stays keyed by the Bundle hash regardless.
+    const asserted = bundle.result.hints?.identity;
+    const filenameIdentity = asserted === undefined ? identity : await hashIdentity(asserted);
     deps.slot.put({
       bundle,
       identity,
+      filenameIdentity,
       image,
       cachedAt: deps.now(),
     });
@@ -148,7 +156,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
       return c.json({
         status: 0,
         image_url: `${publicOrigin(c)}/image/${display.identity}.png`,
-        filename: `image-${display.identity}`,
+        filename: `image-${display.filenameIdentity}`,
         refresh_rate: refreshRate,
         reset_firmware: false,
         update_firmware: false,

@@ -19,8 +19,10 @@ function makeBundle(validity: Temporal.Duration): Bundle {
 
 function makeEntry(overrides: Partial<SlotEntry> = {}): SlotEntry {
   const bundle = overrides.bundle ?? makeBundle(Temporal.Duration.from({ minutes: 5 }));
+  const identity = overrides.identity ?? "id-1";
   return {
-    identity: overrides.identity ?? "id-1",
+    identity,
+    filenameIdentity: overrides.filenameIdentity ?? identity,
     bundle,
     cachedAt: overrides.cachedAt ?? fixedNow(),
     image: overrides.image ?? Promise.resolve(new Uint8Array([1, 2, 3])),
@@ -51,6 +53,16 @@ Deno.test("after put(), display() returns the entry's identity and remaining val
 
   assertEquals(display?.identity, "abc123");
   assertEquals(display?.refreshIn.total({ unit: "seconds" }), 300);
+});
+
+Deno.test("display() surfaces filenameIdentity independently of identity", () => {
+  const slot = createSlot({ now: fixedNow });
+  slot.put(makeEntry({ identity: "bundle-hash", filenameIdentity: "asserted-hash" }));
+
+  const display = slot.display();
+
+  assertEquals(display?.identity, "bundle-hash");
+  assertEquals(display?.filenameIdentity, "asserted-hash");
 });
 
 Deno.test("display() returns null after the entry's validity has elapsed", () => {

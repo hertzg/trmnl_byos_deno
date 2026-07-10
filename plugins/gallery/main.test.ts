@@ -1,4 +1,4 @@
-import { assertEquals, assertExists } from "@std/assert";
+import { assertEquals, assertExists, assertNotEquals } from "@std/assert";
 import type { RunContext } from "@hztrmnl/server/plugin";
 import GalleryPlugin from "./main.ts";
 
@@ -27,6 +27,10 @@ type FakePhoto = {
 // client's own parsing/sorting in depth).
 function stubAlbum(photos: FakePhoto[]): Disposable {
   const original = globalThis.fetch;
+  // iCloud re-signs on every webasseturls call — the URL for the SAME photo
+  // differs per request (expiry/signature params). The counter reproduces
+  // that churn; tests relying on a stable src would be asserting a fiction.
+  let signCounter = 0;
   globalThis.fetch = ((input: string | URL) => {
     const url = String(input);
     if (url.includes("/sharedstreams/webstream")) {
@@ -47,6 +51,7 @@ function stubAlbum(photos: FakePhoto[]): Disposable {
       );
     }
     if (url.includes("/sharedstreams/webasseturls")) {
+      signCounter++;
       return Promise.resolve(
         new Response(
           JSON.stringify({
@@ -55,7 +60,7 @@ function stubAlbum(photos: FakePhoto[]): Disposable {
                 p,
               ) => [p.checksum, {
                 url_location: "cvws.icloud-content.com",
-                url_path: `/${p.checksum}`,
+                url_path: `/${p.checksum}?sig=${signCounter}`,
               }]),
             ),
           }),
@@ -88,6 +93,34 @@ Deno.test("run: a successful poll returns a src and a Duration validity", async 
   const result = await GalleryPlugin.run(ctx("poll"));
   assertExists(result.state.src);
   assertEquals(result.validity instanceof Temporal.Duration, true);
+});
+
+Deno.test("run: hints.identity stays constant for the same photo while the signed src churns", async () => {
+  // The regression behind "the panel wipes every refill for the same photo":
+  // the src is a per-run signed URL, so the Bundle hash can never be stable.
+  // The asserted identity — keyed on the derivative checksum — is what keeps
+  // the Device-facing filename constant between rotations.
+  using _s = stubAlbum([{ guid: "GOOD-GUID", checksum: "chk-good" }]);
+  const first = await GalleryPlugin.run(ctx("poll"));
+  const second = await GalleryPlugin.run(ctx("poll"));
+
+  assertNotEquals(first.state.src, second.state.src); // the URL really churned
+  assertEquals(first.hints?.identity, "photo:chk-good");
+  assertEquals(second.hints?.identity, first.hints?.identity);
+});
+
+Deno.test("run: a different photo yields a different hints.identity", async () => {
+  let a, b;
+  {
+    using _s = stubAlbum([{ guid: "GUID-A", checksum: "chk-a" }]);
+    a = await GalleryPlugin.run(ctx("poll"));
+  }
+  {
+    using _s = stubAlbum([{ guid: "GUID-B", checksum: "chk-b" }]);
+    b = await GalleryPlugin.run(ctx("poll"));
+  }
+
+  assertNotEquals(a.hints?.identity, b.hints?.identity);
 });
 
 Deno.test("run: an empty album returns a note and 15min validity", async () => {

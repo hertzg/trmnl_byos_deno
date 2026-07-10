@@ -30,6 +30,11 @@ export default {
       return {
         state: { src: await fetchAssetUrl(token, photo) },
         validity: rotationValidity(photos, ctx.t),
+        // The signed URL churns on every run; the derivative checksum is the
+        // photo's stable content key. Asserting it keeps the /api/display
+        // filename constant per photo, so the Device only redraws when
+        // rotation advances (or the photo itself is re-edited).
+        hints: { identity: `photo:${photo.checksum}` },
         view: Gallery,
       };
     } catch (err) {

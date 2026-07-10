@@ -4,6 +4,10 @@ import type { Bundle } from "../plugin/bundle.ts";
 
 export type SlotEntry = {
   identity: string;
+  // Feeds the /api/display `filename`. Equal to `identity` unless the
+  // Plugin asserted its own content identity (Result `hints.identity`);
+  // `identity` alone keys the content-addressed /image/<id>.png URL.
+  filenameIdentity: string;
   bundle: Bundle;
   cachedAt: Temporal.ZonedDateTime;
   image: Promise<Uint8Array<ArrayBuffer>>;
@@ -15,6 +19,7 @@ export type SlotDeps = {
 
 export type SlotDisplay = {
   identity: string;
+  filenameIdentity: string;
   cachedAt: Temporal.ZonedDateTime;
   refreshIn: Temporal.Duration;
 };
@@ -47,6 +52,7 @@ export function createSlot(deps: SlotDeps): Slot {
       if (!isStillValid(entry, now)) return null;
       return {
         identity: entry.identity,
+        filenameIdentity: entry.filenameIdentity,
         cachedAt: entry.cachedAt,
         refreshIn: expiryOf(entry).since(now),
       };

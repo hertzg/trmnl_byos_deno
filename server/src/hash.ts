@@ -12,6 +12,14 @@ export async function hashBundle(bundle: Bundle): Promise<string> {
   return encodeHex(new Uint8Array(digest)).slice(0, LENGTH);
 }
 
+// Digest a Plugin-asserted content identity (Result `hints.identity`) into
+// the same 16-hex shape as hashBundle, so the Device-facing filename looks
+// identical whichever path derived it.
+export async function hashIdentity(identity: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identity));
+  return encodeHex(new Uint8Array(digest)).slice(0, LENGTH);
+}
+
 function renderHtml(bundle: Bundle): string {
   const jsx = bundle.result.view(bundle.result.state) as Parameters<typeof renderToString>[0];
   return renderToString(jsx);

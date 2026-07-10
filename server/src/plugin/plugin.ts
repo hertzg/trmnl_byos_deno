@@ -21,10 +21,24 @@ export type RunContext = {
   device: DeviceReport | null;
 };
 
+// Optional per-Result hints from the Plugin to the Server.
+export type ResultHints = {
+  // Opaque assertion of the Result's visual content — "same string ⇒ same
+  // pixels". When present, the Device-facing `/api/display` filename is
+  // derived from it instead of from the Bundle hash, so a view whose HTML
+  // churns per run (e.g. short-lived signed URLs) stops re-triggering full
+  // e-ink redraws of unchanged content. Filename-only: the Server never
+  // uses it for caching, Slot reuse, or render skipping (the reuse contract
+  // was reverted in 0f5b531 — it pinned stale images). Trap: a Plugin that
+  // provides this owns repaint responsibility — pixels that change while
+  // the identity stays constant will not repaint on the Device.
+  identity?: string;
+};
+
 export type Result<S> = {
   state: S;
   validity: Temporal.Duration;
-  hints?: Record<string, unknown>;
+  hints?: ResultHints;
   // Method syntax (not arrow property) is purely about variance: it lets the
   // orchestrator type its receive-side as `Result<unknown>` without forcing
   // every Plugin's `Result<MyState>` to be a strict subtype. Authors still
