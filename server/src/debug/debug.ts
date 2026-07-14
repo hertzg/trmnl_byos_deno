@@ -5,6 +5,7 @@ import type { DeviceProfile } from "../render/profiles.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 import { isPattern, renderPattern } from "./patterns.ts";
+import { type BuildInfo, readBuildInfo } from "../build-info.ts";
 import DebugPage from "./debug.tsx";
 
 // Debug-mode facade. When system.debug is true this app replaces the
@@ -65,6 +66,9 @@ export type DebugDeps = {
   friendlyId: string;
   now: () => Temporal.ZonedDateTime;
   fetch?: typeof fetch;
+  // Build identity shown in the topbar, same as the dashboard's. Defaults
+  // to reading the baked build-info.json ("<version>+dev" outside Docker).
+  build?: BuildInfo;
 };
 
 export function createDebugApp(deps: DebugDeps): Hono {
@@ -133,6 +137,7 @@ export function createDebugApp(deps: DebugDeps): Hono {
       const page = renderToString(
         DebugPage({
           now: deps.now(),
+          build: deps.build ?? await readBuildInfo(),
           cfg,
           response: displayResponse(publicOrigin(c)),
           generatedResponse: generatedDisplayResponse(publicOrigin(c)),
