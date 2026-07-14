@@ -44,8 +44,10 @@ document the skeleton directly. _Avoid_: Document, Frame, Screen.
 
 **RunContext**: The single argument to `run`. Always contains `t: Temporal.ZonedDateTime`, an
 `intent` (`"poll"` for the Device's `/api/display` call, `"scrub"` for a dashboard preview), and a
-`device` (latest heartbeat-derived telemetry). Open-shaped — more fields may be added non-breakingly
-over time; Plugins read what they need and ignore the rest. _Avoid_: bag, params, options.
+`device` (latest heartbeat-derived telemetry). `t` arrives in the system's configured timezone
+(`SystemConfig.timeZone`) — the Device's wall clock — so Plugins compare `t`'s clock fields directly
+instead of importing a zone of their own. Open-shaped — more fields may be added non-breakingly over
+time; Plugins read what they need and ignore the rest. _Avoid_: bag, params, options.
 
 **Result**: What `run(ctx)` returns — `{ state, validity, hints?, view }`. `state` is the Plugin's
 public data shape; `validity` is the duration that data stands for; `hints` are optional
@@ -118,9 +120,10 @@ frame, picture, output.
 their `run`, inspects the returned **Result**s to route, and returns one Result of its own. The
 **Server** and **Conductor** see a Super-Plugin as exactly one Plugin; the nesting is invisible to
 them. All multi-mode display logic lives here, never in the Server (see ADR-0002). It floors every
-Result's `validity` at 5 minutes as a battery policy — the **Device** is never told to poll sooner —
-accepting that fast-moving content (the realtime **Transport** board) may run up to 5 minutes stale.
-_Avoid_: orchestrator, router, manager.
+awake Result's `validity` at 5 minutes as a battery policy — the **Device** is never told to poll
+sooner — accepting that fast-moving content (the realtime **Transport** board) may run up to 5
+minutes stale. The **Sleep** Result is exempt from the floor (see **Sleep Window**). _Avoid_:
+orchestrator, router, manager.
 
 **Transport**: The commute departure-board leaf **Plugin** — Berlin BVG journeys for the configured
 routes, surfaced during commute windows. Its **Result** `state` carries a `Board` whose
@@ -137,6 +140,23 @@ every run and never stored. It is the **Device**'s default quiet-state display: 
 (`emptyReason === "noScheduleApplicable"`), clamping the **Result** `validity` to
 `min(Gallery, Transport)` (then floored at 5 minutes — see **Super-Plugin**) so an opening commute
 window is woken into. Renders edge-to-edge, no chrome. _Avoid_: screensaver, slideshow, picture.
+
+**Sleep**: The static night leaf **Plugin** — a black screen with a large centered sleeping-emoji
+glyph, nothing else. Completely dumb: it knows nothing about time, windows, or validity; its
+rendered HTML never changes, so its identity is naturally constant. The composing **Super-Plugin**
+decides when to show it and what `validity` to attach (see **Sleep Window**). _Avoid_: night mode,
+screensaver, standby.
+
+**Sleep Window**: A configured wall-clock interval `{ from, until }` during which the Device should
+not refresh and nobody is around to look at it. Lives in the **Super-Plugin**'s config as an array
+(usually one entry; `from > until` wraps past midnight; entries are expected non-overlapping),
+interpreted in the system timezone carried by `RunContext.t`. Inside a window the Super-Plugin runs
+no other leaves, returns the **Sleep** Result, and sets `validity` to the remaining window — the
+Device deep-sleeps the whole window in one shot (drift ±1–3 min over 8 h, self-correcting when it
+wakes early). The 5-minute validity floor does **not** apply to this Result, so an early-woken
+Device can be told to re-poll in under 5 minutes and exit the window on time. While awake, the
+Super-Plugin clamps every validity to `min(validity, nextWindowStart − t)` so sleep is entered on
+time. _Avoid_: downtime, quiet hours (Transport's "schedule-quiet" is an unrelated concept), DND.
 
 **Ghosting**: The faint residual image a value-stable dark region leaves behind on the **Device**
 after it has been held in place for a long time; severity scales with darkness × area × dwell-time.
