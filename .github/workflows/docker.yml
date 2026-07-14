@@ -27,10 +27,14 @@ jobs:
       # The UTC build instant is the whole build identity: the server bakes
       # it into the version's semver build metadata (0.1.0+20260714113000Z,
       # see server/src/build-info.ts). "+" is not a legal Docker tag
-      # character, so no versioned tag is pushed — the sha tag identifies
-      # builds in the registry.
+      # character, so the image is tagged with the bare stamp instead — the
+      # tag is exactly the version's build-metadata part, derived from the
+      # same instant that lands in the baked build-info.json.
       - id: version
-        run: echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+        run: |
+          date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "date=${date}" >> "$GITHUB_OUTPUT"
+          echo "stamp=$(echo "${date}" | tr -d ':T-')" >> "$GITHUB_OUTPUT"
 
       - id: meta
         uses: docker/metadata-action@v5
@@ -38,6 +42,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.stamp }}
             type=sha,format=short
 
       # Gate the push on container acceptance tests: build the runner-arch
