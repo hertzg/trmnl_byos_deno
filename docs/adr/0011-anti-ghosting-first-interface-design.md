@@ -67,6 +67,19 @@ First application — **Transport** becomes chrome-free: departure rows on white
 except the rows themselves. The head title, the status bar (titles, date, instance, battery), and
 the footnote are dropped.
 
+### Open question — dwell vs. drive (added 2026-07)
+
+The evidence above confounds two mechanisms: the ghosted Transport chrome was value-stable dark
+pixels that were both **held for hours** and **re-driven to the same state on every ≥5-minute
+refresh** (the X `fullUpdate`s every poll; there is no partial path). Standard E Ink remnant-voltage
+accounts attribute accumulation to drive pulses — an idle panel is not driven — which would mean the
+re-drives, not the dwell, did the damage; long-static "image sticking" concerns in vendor app notes
+start at day-scale, not hour-scale. The **Sleep** screen (black, drawn once, held ~8 h overnight
+with zero intermediate refreshes — see CONTEXT.md "Sleep Window") is a clean experiment the original
+observation never provided: residue on the first morning image means dwell alone ghosts and the
+sleep screen goes white-on-black; no residue means this ADR's constraint applies specifically to
+**re-driven** persistent dark content, and a once-drawn dark screen is fine.
+
 ### Considered and rejected
 
 - **Turn up the firmware/server knob** — nothing to turn up; `temperature_profile: "a"` is the
