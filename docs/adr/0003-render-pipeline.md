@@ -92,6 +92,9 @@ Per-Image URLs (`/image/<identity>.png`) replace the previous stable-URL pattern
 - A stale request from a Device whose cache has drifted (rare; e.g. firmware restart mid-cycle)
   responds 404 rather than serving a mismatched Image; the Device's next `/api/display` corrects.
 
+For a Plugin that asserts `hints.identity`, the URL follows the asserted identity too — trading
+byte-level freshness of `/image/<id>.png` for Plugin-controlled repaints; the Plugin owns that call.
+
 ### Error fallback lives in Conductor's orchestration
 
 Plugin throws inside `pluginManager.run`, Renderer throws inside `identity` (view-time JSX error),

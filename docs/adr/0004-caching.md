@@ -64,7 +64,10 @@ Plugin's validity is hours, the Slot answers without doing any work.
 `Renderer.identity(bundle)` derives HTML and concatenates the asset bytes (in deterministic order),
 hashes with SHA-256, truncates to 16 hex characters. The hash choice and the truncation length are
 encapsulated inside Renderer — they can change without rippling through callers. (Device-side SPIFFS
-cache handles ≥16 chars comfortably; the threshold was confirmed on PR #34.)
+cache handles ≥16 chars comfortably; the threshold was confirmed on PR #34.) If the Result carries a
+`hints.identity` assertion, that short-circuits the whole computation — `hash(asserted)` instead of
+`hash(html + assets)` — using the same digest and truncation, so the output shape never betrays
+which path produced it.
 
 Identity is the basis of both:
 

@@ -1,6 +1,6 @@
 import { assertEquals, assertStrictEquals } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
-import type { Result } from "@hztrmnl/server/plugin";
+import type { Result, ResultHints } from "@hztrmnl/server/plugin";
 import type { Board, FrameData } from "@hztrmnl/transport";
 import type { GalleryState } from "@hztrmnl/gallery";
 import { composeResult, floorValidity, minDuration, VALIDITY_FLOOR } from "./compose.ts";
@@ -115,7 +115,7 @@ Deno.test('composeResult: emptyReason "noScheduleApplicable" → runs Gallery, r
 // ---------------------------------------------------------------------------
 
 Deno.test("composeResult: Transport branch — hints are passed through unchanged (reference identity)", async () => {
-  const transportHints: Record<string, unknown> = { dither: "atkinson" };
+  const transportHints: ResultHints = { identity: "transport:x" };
   const transportResult = makeTransportResult("none", mins(10), transportHints);
   const runGallery = spy(() => makeGalleryResult(mins(10)));
 
@@ -131,7 +131,7 @@ Deno.test("composeResult: Transport branch — hints are passed through unchange
 // ---------------------------------------------------------------------------
 
 Deno.test("composeResult: Gallery branch — hints are passed through unchanged (reference identity)", async () => {
-  const galleryHints: Record<string, unknown> = { dither: "floydSteinberg" };
+  const galleryHints: ResultHints = { identity: "photo:x" };
   const transportResult = makeTransportResult("noScheduleApplicable", mins(60));
   const galleryResult = makeGalleryResult(mins(30), galleryHints);
   const runGallery = spy(() => galleryResult);

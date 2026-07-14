@@ -1,4 +1,9 @@
-import { assertEquals, assertGreaterOrEqual, assertLessOrEqual } from "@std/assert";
+import {
+  assertEquals,
+  assertGreaterOrEqual,
+  assertLessOrEqual,
+  assertNotEquals,
+} from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
 import { type ConductorDeps, createConductor } from "./conductor.ts";
 import type { Plugin } from "../plugin/plugin.ts";
@@ -25,14 +30,20 @@ function managerFor(plugin: Plugin<unknown>): PluginManager {
   };
 }
 
-// A fake Renderer whose `identity` derives a deterministic, inspectable
-// string from the Bundle's rendered view output — tests can then assert on
-// `out.identity` without re-implementing hashBundle. `rasterize` returns a
+// A fake Renderer whose `identity` mirrors the real short-circuit (asserted
+// `hints.identity` wins, otherwise a deterministic string derived from the
+// Bundle's rendered view output) — tests can then assert on `out.identity`
+// without spinning up the real hash/HTML pipeline. `rasterize` returns a
 // short PNG-magic byte sequence so the /image/<id>.png route can hand back
 // recognisable bytes without spinning CDP.
 function fakeRenderer(overrides: Partial<Renderer> = {}): Renderer {
   return {
-    identity: (b: Bundle) => Promise.resolve(`id-${String(b.result.view(b.result.state))}`),
+    identity: (b: Bundle) =>
+      Promise.resolve(
+        b.result.hints?.identity !== undefined
+          ? `id-${b.result.hints.identity}`
+          : `id-${String(b.result.view(b.result.state))}`,
+      ),
     rasterize: () => Promise.resolve(new Uint8Array([0x89, 0x50, 0x4e, 0x47])),
     origin: () => "http://127.0.0.1:0",
     close: () => Promise.resolve(),
@@ -399,6 +410,73 @@ Deno.test("Tier 3: once validity has elapsed, the next /api/display runs the Plu
   // Different `state.n` → different `view(state)` → different identity.
   assertEquals(first.filename, "image-id-<p>1</p>");
   assertEquals(second.filename, "image-id-<p>2</p>");
+});
+
+// ─── hints.identity: Plugin-asserted filename identity ─────────────────────
+
+Deno.test("constant hints.identity keeps the filename AND image_url stable across refills even when the Bundle HTML churns", async () => {
+  // Mirrors the Gallery bug: the rendered HTML embeds a freshly-signed URL
+  // on every run, so the Bundle hash — and without the hint, the filename —
+  // changes per refill for the same photo, forcing a full e-ink redraw of
+  // unchanged content. There is one identity now: the asserted string
+  // short-circuits it inside the Renderer, so it pins both the filename and
+  // the /image/<id>.png URL. That's the intended trade — the Plugin owns
+  // repaint responsibility once it asserts an identity.
+  let clock = T0;
+  const now = () => clock;
+  let runCount = 0;
+  const conductor = createConductor({
+    ...defaults({ now, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: () => {
+        runCount++;
+        return {
+          state: { url: `https://cdn.example/photo?sig=${runCount}` },
+          validity: fiveMin,
+          hints: { identity: "photo:chk-constant" },
+          view: (s: { url: string }) => `<img src="${s.url}">`,
+        };
+      },
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const first = await (await conductor.app.request("/api/display")).json();
+  clock = T0.add(fiveMin);
+  const second = await (await conductor.app.request("/api/display")).json();
+
+  assertEquals(runCount, 2);
+  assertEquals(second.filename, first.filename);
+  assertEquals(second.image_url, first.image_url);
+});
+
+Deno.test("a changed hints.identity changes the filename — the Device downloads the new image", async () => {
+  // Inverse guard (the failure that sank the reverted reuse contract in
+  // 0f5b531): new content must never hide behind a stale filename.
+  let clock = T0;
+  const now = () => clock;
+  let runCount = 0;
+  const conductor = createConductor({
+    ...defaults({ now, slot: createSlot({ now }) }),
+    pluginManager: managerFor({
+      run: () => {
+        runCount++;
+        return {
+          state: {},
+          validity: fiveMin,
+          hints: { identity: `photo:chk-${runCount}` },
+          view: () => "<p>same html</p>",
+        };
+      },
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const first = await (await conductor.app.request("/api/display")).json();
+  clock = T0.add(fiveMin);
+  const second = await (await conductor.app.request("/api/display")).json();
+
+  assertNotEquals(second.filename, first.filename);
 });
 
 // ─── Tier 1: validity hit reuses the Slot, no Plugin run ───────────────────

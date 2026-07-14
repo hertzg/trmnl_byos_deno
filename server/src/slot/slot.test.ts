@@ -19,8 +19,9 @@ function makeBundle(validity: Temporal.Duration): Bundle {
 
 function makeEntry(overrides: Partial<SlotEntry> = {}): SlotEntry {
   const bundle = overrides.bundle ?? makeBundle(Temporal.Duration.from({ minutes: 5 }));
+  const identity = overrides.identity ?? "id-1";
   return {
-    identity: overrides.identity ?? "id-1",
+    identity,
     bundle,
     cachedAt: overrides.cachedAt ?? fixedNow(),
     image: overrides.image ?? Promise.resolve(new Uint8Array([1, 2, 3])),

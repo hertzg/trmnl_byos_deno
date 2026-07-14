@@ -5,7 +5,6 @@ import type { Plugin, RunContext } from "./plugin.ts";
 import type { Bundle } from "./bundle.ts";
 import { createPluginManager } from "./plugin-manager.ts";
 import { createRenderer } from "../render/renderer.ts";
-import { hashBundle } from "../hash.ts";
 import { createSlot } from "../slot/slot.ts";
 import { createTelemetry } from "../telemetry/telemetry.ts";
 import { createDeviceState } from "../device-state.ts";
@@ -244,11 +243,11 @@ Deno.test("a PluginManager drives /api/display end-to-end through the Conductor"
   assertEquals(body.refresh_rate, 120);
 });
 
-Deno.test("a PluginManager wired through the real Renderer surfaces a filename derived from hashBundle of the produced Bundle", async () => {
+Deno.test("a PluginManager wired through the real Renderer surfaces a filename derived from Renderer.identity of the produced Bundle", async () => {
   // End-to-end smoke (slice #50): the Bundle PluginManager produces flows
-  // into Renderer.identity, which delegates to hashBundle. The /api/display
-  // filename must match the same hash a direct hashBundle call would
-  // compute for the same Bundle (Result + assets).
+  // into Renderer.identity (the bundle-payload hash, no hints.identity
+  // asserted here). The /api/display filename must match the same hash a
+  // direct Renderer.identity call would compute for the same Bundle.
   const plugin: Plugin<unknown> = {
     run(ctx) {
       return {
@@ -299,9 +298,10 @@ Deno.test("a PluginManager wired through the real Renderer surfaces a filename d
     assertEquals(res.status, 200);
     assertEquals(body.status, 0);
     // Reproduce the Bundle the PluginManager would build for an
-    // intent=poll call and assert the filename matches its hashBundle.
+    // intent=poll call and assert the filename matches the real Renderer's
+    // identity for it.
     const expected = await pluginManager.run({ t: T0, intent: "poll", device: null });
-    const expectedHash = await hashBundle(expected satisfies Bundle);
+    const expectedHash = await renderer.identity(expected satisfies Bundle);
     assertEquals(body.filename, `image-${expectedHash}`);
     // 16-char lowercase hex per ADR-0004.
     assertEquals(/^image-[0-9a-f]{16}$/.test(body.filename), true);

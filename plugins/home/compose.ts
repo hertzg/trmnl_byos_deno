@@ -87,6 +87,9 @@ export async function composeResult(
 
     // Widen to the union first, then spread + override validity.
     // See the JSDoc above for why widening comes before the spread.
+    // `hints` (including any `identity` assertion) rides through the spread
+    // unchanged, transferring repaint-identity ownership to this Result —
+    // fine here since Gallery's view passes through unwrapped.
     const widened: Result<FrameData | GalleryState> = galleryResult;
     return { ...widened, validity };
   }
@@ -96,6 +99,9 @@ export async function composeResult(
   const validity = floorValidity(transportResult.validity);
 
   // Widen to the union first, then spread + override validity.
+  // `hints` rides through the spread unchanged, transferring
+  // repaint-identity ownership to this Result — fine here since Transport's
+  // view passes through unwrapped.
   const widened: Result<FrameData | GalleryState> = transportResult;
   return { ...widened, validity };
 }
