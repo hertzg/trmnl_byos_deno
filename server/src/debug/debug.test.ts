@@ -238,3 +238,56 @@ Deno.test("the control panel page renders", async () => {
   assert(html.includes('name="proxyTarget"'));
   assert(html.includes("debug: false"));
 });
+
+Deno.test("the panel offers a paste-latest-official firmware button once the Device's model is known", async () => {
+  // The button carries the resolved S3 URL for the reported model family;
+  // 1.8.10 must beat 1.8.9 (lexicographic order would invert them) and the
+  // dev/ CI build must not count as a release.
+  const listing = `<ListBucketResult>
+    <Contents><Key>trmnl_x/FW1.8.9.bin</Key></Contents>
+    <Contents><Key>trmnl_x/FW1.8.10.bin</Key></Contents>
+    <Contents><Key>trmnl_x/dev/FW1.9.0-trmnl_x-ota-abc1234.bin</Key></Contents>
+  </ListBucketResult>`;
+  const fetched: string[] = [];
+  const { app } = makeApp({
+    fetch: ((url: string | URL | Request) => {
+      fetched.push(String(url));
+      return Promise.resolve(new Response(listing));
+    }) as typeof fetch,
+  });
+
+  // A poll reveals the model; the next panel render can resolve the family.
+  await (await app.request("/api/display", { headers: { ID: "AA:BB:CC", Model: "x" } })).body
+    ?.cancel();
+  const html = await (await app.request("/")).text();
+
+  assertEquals(fetched, [
+    "https://trmnl-fw.s3.us-east-2.amazonaws.com/?list-type=2&prefix=trmnl_x/",
+  ]);
+  assert(
+    html.includes(
+      'data-firmware-url="https://trmnl-fw.s3.us-east-2.amazonaws.com/trmnl_x/FW1.8.10.bin"',
+    ),
+  );
+  assert(html.includes("paste latest official (1.8.10)"));
+});
+
+Deno.test("the panel renders without the firmware button when the model is unknown or the bucket is unreachable", async () => {
+  // Unknown model: no poll yet — the bucket is never contacted.
+  const neverFetch = (() => {
+    throw new Error("must not fetch");
+  }) as typeof fetch;
+  const cold = makeApp({ fetch: neverFetch });
+  const coldHtml = await (await cold.app.request("/")).text();
+  assert(!coldHtml.includes('data-firmware-url="'));
+
+  // Known model but the bucket fetch fails: the panel still renders.
+  const offline = makeApp({
+    fetch: (() => Promise.reject(new Error("offline"))) as typeof fetch,
+  });
+  await (await offline.app.request("/api/display", { headers: { ID: "AA:BB:CC", Model: "x" } }))
+    .body?.cancel();
+  const offlineRes = await offline.app.request("/");
+  assertEquals(offlineRes.status, 200);
+  assert(!(await offlineRes.text()).includes('data-firmware-url="'));
+});
