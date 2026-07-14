@@ -1,0 +1,45 @@
+# Container acceptance tests, run by dgoss against the freshly built image
+# before CI pushes it (.github/workflows/docker.yml):
+#
+#   GOSS_FILES_PATH=docker dgoss run <image>
+#
+# No Chrome runs next to the container here, so render attempts fail into the
+# Conductor's error path by design — these checks assert the supervisor chain,
+# the entrypoint's config seeding, the baked build identity, and the dashboard
+# serving it.
+process:
+  webproc:
+    running: true
+  deno:
+    running: true
+
+port:
+  tcp:3000:
+    listening: true
+  # webproc (Go) binds the IPv6 wildcard; v4 traffic arrives IPv4-mapped.
+  tcp6:8080:
+    listening: true
+
+file:
+  /app/build-info.json:
+    exists: true
+    contents:
+      - '/"date":"2[0-9]{3}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z"/'
+  # Seeded from the *.example.ts starters by entrypoint.sh on first boot.
+  /app/config/live/system.ts:
+    exists: true
+
+http:
+  # The dashboard renders the baked build identity in the topbar:
+  # <code>0.1.0+20260714113000Z</code>.
+  http://127.0.0.1:3000/:
+    status: 200
+    timeout: 15000
+    body:
+      - trmnl-byos dashboard
+      - '/<code>[0-9]+\.[0-9]+\.[0-9]+\+[0-9]{14}Z<\/code>/'
+  # webproc's config editor; basic auth only arms when WEBPROC_USER/PASS are
+  # both set, so the bare image serves it open.
+  http://127.0.0.1:8080/:
+    status: 200
+    timeout: 5000

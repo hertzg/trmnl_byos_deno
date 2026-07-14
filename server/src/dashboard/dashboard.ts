@@ -6,6 +6,7 @@ import type { RunContext } from "../plugin/plugin.ts";
 import type { Slot } from "../slot/slot.ts";
 import type { Telemetry } from "../telemetry/telemetry.ts";
 import type { DeviceState } from "../device-state.ts";
+import { type BuildInfo, readBuildInfo } from "../build-info.ts";
 import Dashboard, { type TimelineState } from "./dashboard.tsx";
 
 // Dashboard at /. Debug surface. See ADR-0005.
@@ -20,6 +21,10 @@ export type DashboardDeps = {
   pluginManager: PluginManager;
   renderer: Renderer;
   now: () => Temporal.ZonedDateTime;
+  // Build identity shown in the topbar. Defaults to reading the baked
+  // build-info.json; outside the Docker image that file is absent and the
+  // page shows a dateless "<version>+dev" build.
+  build?: BuildInfo;
 };
 
 export function createDashboard(deps: DashboardDeps): Hono {
@@ -61,6 +66,7 @@ export function createDashboard(deps: DashboardDeps): Hono {
           device: deps.deviceState.latestDevice(),
           rawHeaders: deps.deviceState.latestPollHeaders(),
           logs: deps.deviceState.recentLogs(),
+          build: deps.build ?? await readBuildInfo(),
         }),
       );
       return c.html("<!DOCTYPE html>" + page, 200, { "cache-control": "no-store" });

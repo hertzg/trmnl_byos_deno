@@ -3,6 +3,7 @@
 import type { RenderTrace } from "../telemetry/telemetry.ts";
 import type { LogEntry, PollHeaders } from "../device-state.ts";
 import type { DeviceReport } from "../plugin/plugin.ts";
+import type { BuildInfo } from "../build-info.ts";
 import css from "./dashboard.css" with { type: "text" };
 import js from "./dashboard.client.js" with { type: "text" };
 
@@ -42,6 +43,9 @@ export type DashboardProps = {
   // header firmware sent, not just the ones we parse into DeviceReport.
   rawHeaders: PollHeaders | null;
   logs: readonly LogEntry[];
+  // Version + release instant of the running image; "<base>+dev" with no
+  // date outside Docker. See ../build-info.ts.
+  build: BuildInfo;
 };
 
 function fmtTime(t: Temporal.ZonedDateTime): string {
@@ -224,7 +228,8 @@ function TraceStrip({ trace }: { trace: RenderTrace | null }) {
 }
 
 export default function Dashboard(props: DashboardProps) {
-  const { now, displayed, identity, refreshIn, trace, timeline, device, rawHeaders, logs } = props;
+  const { now, displayed, identity, refreshIn, trace, timeline, device, rawHeaders, logs, build } =
+    props;
   // Embed the timeline state for the client script. `<` is escaped so a tz
   // id or identity can never break out of the inline <script>.
   const stateJson = JSON.stringify(timeline).replace(/</g, "\\u003c");
@@ -244,8 +249,16 @@ export default function Dashboard(props: DashboardProps) {
       <body>
         <header class="topbar">
           <h1>trmnl-byos dashboard</h1>
-          <div class="now">
-            now <code>{fmtTime(now)}</code> · <code>{now.timeZoneId}</code>
+          <div class="meta">
+            <div class="build">
+              <code>{build.version}</code>
+              {build.builtAt !== null
+                ? <>{" · released "}{fmtTime(build.builtAt.toZonedDateTimeISO(now.timeZoneId))}</>
+                : null}
+            </div>
+            <div class="now">
+              now <code>{fmtTime(now)}</code> · <code>{now.timeZoneId}</code>
+            </div>
           </div>
         </header>
 
