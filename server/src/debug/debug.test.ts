@@ -2,6 +2,7 @@ import { assert, assertEquals } from "@std/assert";
 import { createDebugApp } from "./debug.ts";
 import { createDeviceState } from "../device-state.ts";
 import type { DeviceProfile } from "../render/profiles.ts";
+import type { BuildInfo } from "../build-info.ts";
 
 const fixedNow = () => Temporal.ZonedDateTime.from("2026-07-05T12:00[Europe/Berlin]");
 
@@ -13,7 +14,7 @@ const profile: DeviceProfile = {
   dither: "floyd-steinberg",
 };
 
-function makeApp(overrides: { fetch?: typeof fetch } = {}) {
+function makeApp(overrides: { fetch?: typeof fetch; build?: BuildInfo } = {}) {
   const deviceState = createDeviceState({ now: fixedNow });
   const app = createDebugApp({
     profile,
@@ -237,6 +238,26 @@ Deno.test("the control panel page renders", async () => {
   assert(html.includes('name="customImage"'));
   assert(html.includes('name="proxyTarget"'));
   assert(html.includes("debug: false"));
+});
+
+Deno.test("the panel topbar shows the build identity like the dashboard's", async () => {
+  const { app } = makeApp({
+    build: {
+      version: "0.1.0+20260705100000Z",
+      builtAt: Temporal.Instant.from("2026-07-05T10:00:00Z"),
+    },
+  });
+  const html = await (await app.request("/")).text();
+  assert(html.includes("0.1.0+20260705100000Z"), "version missing from the panel");
+  // Rendered in the page tz — Europe/Berlin is UTC+2 in July.
+  assert(html.includes("released 2026-07-05 12:00:00"), "release time missing");
+});
+
+Deno.test("the panel without build info shows a dateless <base>+dev build", async () => {
+  const { app } = makeApp();
+  const html = await (await app.request("/")).text();
+  assert(/class="build"><code>[^<]+\+dev<\/code>/.test(html), "dev fallback missing");
+  assert(!html.includes("released"), "a dev build has no release time");
 });
 
 Deno.test("the panel offers a paste-latest-official firmware button once the Device's model is known", async () => {

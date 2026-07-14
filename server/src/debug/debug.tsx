@@ -5,6 +5,7 @@ import type { DeviceReport } from "../plugin/plugin.ts";
 import { DeviceSection } from "../dashboard/dashboard.tsx";
 import { PATTERNS } from "./patterns.ts";
 import type { DebugCustomImageInfo, DebugDisplayConfig, LatestFirmware } from "./debug.ts";
+import type { BuildInfo } from "../build-info.ts";
 import dashboardCss from "../dashboard/dashboard.css" with { type: "text" };
 import debugCss from "./debug.css" with { type: "text" };
 
@@ -16,6 +17,9 @@ import debugCss from "./debug.css" with { type: "text" };
 
 export type DebugPageProps = {
   now: Temporal.ZonedDateTime;
+  // Version + release instant of the running image; "<base>+dev" with no
+  // date outside Docker. See ../build-info.ts.
+  build: BuildInfo;
   cfg: DebugDisplayConfig;
   // The exact /api/display JSON the next poll will receive, resolved
   // against this page request's own origin.
@@ -45,6 +49,7 @@ function fmtBytes(n: number): string {
 export default function DebugPage(props: DebugPageProps) {
   const {
     now,
+    build,
     cfg,
     response,
     generatedResponse,
@@ -70,8 +75,16 @@ export default function DebugPage(props: DebugPageProps) {
       <body>
         <header class="topbar">
           <h1>trmnl-byos debug mode</h1>
-          <div class="now">
-            now <code>{fmtTime(now)}</code> · <code>{now.timeZoneId}</code>
+          <div class="meta">
+            <div class="build">
+              <code>{build.version}</code>
+              {build.builtAt !== null
+                ? <>{" · released "}{fmtTime(build.builtAt.toZonedDateTimeISO(now.timeZoneId))}</>
+                : null}
+            </div>
+            <div class="now">
+              now <code>{fmtTime(now)}</code> · <code>{now.timeZoneId}</code>
+            </div>
           </div>
         </header>
 
