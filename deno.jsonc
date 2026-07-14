@@ -5,6 +5,11 @@
   // "./plugins/*" globs every plugin member: adding a plugin is creating a
   // folder with a deno.jsonc — no edit here, none in the Dockerfile.
   "workspace": ["./server", "./ds", "./plugins/*", "./config"],
+  // Base version of the Docker image, bumped by hand — the running server
+  // appends the CI build instant as semver build metadata
+  // (0.1.0+20260714113000Z) for the dashboard's build line
+  // (server/src/build-info.ts). Nothing here is ever JSR-published.
+  "version": "0.1.0",
   // no-slow-types demands explicitly-written types on every export of a named
   // package so JSR can skip the type checker. These packages are never
   // published (ADR-0001 single-user posture) — the ceremony buys nothing.

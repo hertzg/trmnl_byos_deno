@@ -702,6 +702,44 @@ Deno.test("GET /'s trace block does not duplicate the error message (stack alrea
   );
 });
 
+// ─── topbar build identity ─────────────────────────────────────────────────
+
+Deno.test("GET / renders the image version and release time in the topbar", async () => {
+  const now = () => T0;
+  const dashboard = createDashboard({
+    slot: createSlot({ now }),
+    telemetry: createTelemetry(),
+    deviceState: createDeviceState({ now }),
+    conductorApp: new Hono().get("/api/display", (c) => c.body(null, 204)),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
+    }),
+    renderer: defaultRenderer(),
+    now,
+    build: {
+      version: "0.1.0+20260714120000Z",
+      builtAt: Temporal.Instant.from("2026-07-14T12:00:00Z"),
+    },
+  });
+
+  const html = await (await dashboard.request("/")).text();
+
+  assertEquals(html.includes("0.1.0+20260714120000Z"), true, "version missing from the page");
+  // The release instant renders in the page's tz — Europe/Berlin is UTC+2 in July.
+  assertEquals(html.includes("released 2026-07-14 14:00:00"), true, "release time missing");
+});
+
+Deno.test("GET / without build info renders a dateless <base>+dev build", async () => {
+  // No baked build-info.json exists when tests run, so the default path
+  // resolves to the manifest's base version with +dev metadata and no date.
+  const { app } = wire({});
+
+  const html = await (await app.request("/")).text();
+
+  assertEquals(/class="build"><code>[^<]+\+dev<\/code>/.test(html), true, "dev fallback missing");
+  assertEquals(html.includes("released"), false, "a dev build has no release time");
+});
+
 // ─── /preview/png removed ──────────────────────────────────────────────────
 
 Deno.test("GET /preview/png returns 404 — the render path is /image/<id>.png on the Conductor", async () => {

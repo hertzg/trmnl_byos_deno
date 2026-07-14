@@ -81,3 +81,12 @@ EXPOSE 3000
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# Build identity for the dashboard (server/src/build-info.ts): CI injects the
+# UTC build instant, baked into a static build-info.json — no runtime env
+# vars, no writes to the checkout. A local build without --build-arg reads as
+# "<version>+dev". Deliberately the LAST instructions: BUILD_DATE changes on
+# every CI build, and everything after an ARG's declaration re-runs when its
+# value changes — kept here, only this one printf layer is ever invalidated.
+ARG BUILD_DATE=
+RUN printf '{"date":"%s"}\n' "${BUILD_DATE}" > build-info.json

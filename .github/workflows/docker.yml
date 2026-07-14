@@ -24,6 +24,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The UTC build instant is the whole build identity: the server bakes
+      # it into the version's semver build metadata (0.1.0+20260714113000Z,
+      # see server/src/build-info.ts). "+" is not a legal Docker tag
+      # character, so no versioned tag is pushed — the sha tag identifies
+      # builds in the registry.
+      - id: version
+        run: echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
@@ -32,6 +40,31 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short
 
+      # Gate the push on container acceptance tests: build the runner-arch
+      # image from the same context and cache, boot it with dgoss, and run
+      # docker/goss.yaml inside it (processes, ports, seeded config, baked
+      # build identity, dashboard HTTP).
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: trmnl-byos:goss
+          build-args: |
+            BUILD_DATE=${{ steps.version.outputs.date }}
+          cache-from: type=gha
+
+      # Puts goss + dgoss on PATH (dgoss resolves GOSS_PATH via `which goss`).
+      # Third-party action, hence pinned to the v1.3.0 commit.
+      - uses: e1himself/goss-installation-action@3b8340a7c772f8064444f48b0df4c2a80d2e50fc # v1.3.0
+        with:
+          version: v0.4.9
+
+      - name: Container tests (dgoss)
+        run: |
+          GOSS_FILES_PATH=docker GOSS_FILES_STRATEGY=cp \
+            GOSS_OPTS="--retry-timeout 60s --sleep 2s" \
+            dgoss run trmnl-byos:goss
+
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -39,5 +72,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ steps.version.outputs.date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
