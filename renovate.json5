@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+
+  // Enable lock file maintenance for reproducible builds
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+
+  // Custom regex manager for WEBPROC_VERSION tracking jpillora/webproc releases
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["^Dockerfile$"],
+      "matchStrings": [
+        "ARG WEBPROC_VERSION=(?<currentValue>[^\\s]+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "jpillora/webproc"
+    }
+  ],
+
+  // Exclude the self-published image (ghcr.io/hertzg/trmnl_byos_deno) from updates
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/hertzg/trmnl_byos_deno"],
+      "enabled": false
+    }
+  ]
+}
