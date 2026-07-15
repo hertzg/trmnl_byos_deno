@@ -11,12 +11,15 @@
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": ["^Dockerfile$"],
+      // Slash-wrapped = regex pattern; without slashes it would be a glob and never match
+      "managerFilePatterns": ["/^Dockerfile$/"],
       "matchStrings": [
         "ARG WEBPROC_VERSION=(?<currentValue>[^\\s]+)"
       ],
       "datasourceTemplate": "github-releases",
-      "depNameTemplate": "jpillora/webproc"
+      "depNameTemplate": "jpillora/webproc",
+      // Releases are tagged v0.4.0 but the ARG holds 0.4.0 — strip the v prefix
+      "extractVersionTemplate": "^v(?<version>.+)$"
     }
   ],
 
