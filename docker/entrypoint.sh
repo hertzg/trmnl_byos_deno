@@ -12,11 +12,10 @@ set -e
 # Seed each config/live/<name>.ts from the baked config/**/<name>.example.ts
 # starter when the live file is missing, so a fresh mount materializes real,
 # editable config and webproc lists it on first boot instead of an empty editor.
-# An already-edited live file is never clobbered. The compose-only variant
-# (*.compose.example.ts) is applied via an explicit bind-mount, not seeded here.
+# An already-edited live file is never clobbered.
 # Only starters outside config/live/ are considered (prune the live tree itself).
 # shellcheck disable=SC2044  # config paths are controlled and contain no spaces
-for ex in $(find config -path config/live -prune -o -type f -name '*.example.ts' ! -name '*.compose.example.ts' -print); do
+for ex in $(find config -path config/live -prune -o -type f -name '*.example.ts' -print); do
   # Map config/<rel>.example.ts → config/live/<rel>.ts
   rel="${ex#config/}"
   live="config/live/${rel%.example.ts}.ts"

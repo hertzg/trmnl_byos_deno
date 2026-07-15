@@ -408,30 +408,28 @@ Deno.test("Renderer.rasterize hands the fetcher a URL on the loopback origin (no
 
 // ─── loopback host configurability ─────────────────────────────────────────
 
-Deno.test("default loopbackHost: URL handed to CDP is on http://host.docker.internal:<port> (deno-task-dev default; binds 0.0.0.0)", async () => {
-  // The `deno task dev` workflow is the common path: deno runs on the host
-  // and chrome runs in docker, reaching the host via `host.docker.internal`.
-  // The default Just Works for that workflow; compose mode opts in to
-  // `LOOPBACK_HOST=127.0.0.1` via docker-compose.yml. This test deliberately
-  // constructs the renderer WITHOUT going through `defaults()` so it sees
-  // the production default for `loopbackHost`; we never `rasterize()` here
-  // because `host.docker.internal` doesn't resolve in the test process — we
-  // only assert on `origin()` and the URL the renderer would hand CDP.
+Deno.test("default loopbackHost: URL handed to CDP stays on http://127.0.0.1:<port> (loopback bind)", async () => {
+  // "127.0.0.1" is the one seeded default (ADR-0010: a single committed
+  // starter; per-environment values live in each environment's own
+  // config/live/system.ts). It covers both run modes — compose (chrome
+  // shares the deno netns) and dev with a host-networked chrome — and keeps
+  // the ephemeral port off the LAN. This test deliberately constructs the
+  // renderer WITHOUT going through `defaults()` so it sees the fallback.
   const renderer = createRenderer({
     fetchPngFromUrl: () => Promise.resolve(new Uint8Array([0x01])),
   });
   try {
-    assertMatch(renderer.origin(), /^http:\/\/host\.docker\.internal:\d+$/);
+    assertMatch(renderer.origin(), /^http:\/\/127\.0\.0\.1:\d+$/);
   } finally {
     await renderer.close();
   }
 });
 
-Deno.test("loopbackHost override to 127.0.0.1: URL handed to CDP stays on the loopback interface (compose-mode override)", async () => {
-  // Compose mode pins LOOPBACK_HOST=127.0.0.1 in docker-compose.yml because
-  // chrome shares the deno container's network namespace and 127.0.0.1
-  // resolves to the deno process — and binding the ephemeral port on the
-  // loopback interface only keeps it un-reachable from outside the container.
+Deno.test("loopbackHost 127.0.0.1 passed explicitly: URL handed to CDP stays on the loopback interface", async () => {
+  // Same value as the fallback, but arriving the way production does — via
+  // SystemConfig.loopbackHost from the mounted config/live/system.ts. Binding
+  // the ephemeral port on the loopback interface keeps it un-reachable from
+  // outside the netns chrome shares.
   const fetchPngFromUrl = spy((_url: string) => Promise.resolve(new Uint8Array([0x01])));
   const renderer = createRenderer(defaults({
     fetchPngFromUrl,

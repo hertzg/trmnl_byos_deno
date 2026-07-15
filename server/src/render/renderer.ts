@@ -36,9 +36,10 @@ export type FetchPngFromUrl = (
 
 export type RendererDeps = {
   fetchPngFromUrl: FetchPngFromUrl;
-  // Defaults to "host.docker.internal" so `deno task dev` (deno on host,
-  // chrome in docker) Just Works. Compose mode pins "127.0.0.1". Any value
-  // other than "127.0.0.1" flips the bind to 0.0.0.0 — see the security
+  // From SystemConfig.loopbackHost. "127.0.0.1" (the seeded default) covers
+  // both run modes: compose (chrome shares the deno netns) and dev with a
+  // host-networked chrome. Any other value (e.g. "host.docker.internal" for
+  // a port-mapped dev chrome) flips the bind to 0.0.0.0 — see the security
   // trade-off comment in createRenderer.
   loopbackHost?: string;
 };
@@ -74,13 +75,13 @@ export function createRenderer(deps: RendererDeps): Renderer {
       return c.body(bytes, 200, headers);
     });
 
-  // Default loopback ("host.docker.internal") targets `deno task dev`:
-  // chrome-in-docker reaches the deno host via host.docker.internal, which
-  // resolves to the host's external IP — so the ephemeral port must be
-  // bound on 0.0.0.0 and is therefore LAN-reachable. Acceptable under
-  // ADR-0001's single-user trusted-LAN posture. Compose mode overrides to
-  // "127.0.0.1" so the port stays inside the container's network namespace.
-  const loopbackHost = deps.loopbackHost ?? "host.docker.internal";
+  // "127.0.0.1" keeps the ephemeral port inside the network namespace —
+  // correct whenever chrome shares it (compose netns, host-net dev chrome).
+  // Any other host (e.g. "host.docker.internal" for a port-mapped dev
+  // chrome) resolves to the host's external IP, so the port must bind
+  // 0.0.0.0 and becomes LAN-reachable — acceptable under ADR-0001's
+  // single-user trusted-LAN posture.
+  const loopbackHost = deps.loopbackHost ?? "127.0.0.1";
   const bindHostname = loopbackHost === "127.0.0.1" ? "127.0.0.1" : "0.0.0.0";
   const server = Deno.serve(
     { port: 0, hostname: bindHostname, onListen: () => {} },
