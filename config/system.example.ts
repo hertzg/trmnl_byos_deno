@@ -15,6 +15,9 @@ export type SystemConfig = {
   plugin: Plugin<unknown>;
   pluginAssetsDir: string;
   deviceId: string;
+  // IANA time zone (e.g. "Europe/Berlin"). The Device's wall clock;
+  // carried into every RunContext.t so Plugins compare clock fields directly.
+  timeZone: string;
   // Luma+dither implementation. Optional — an older live system.ts without
   // this field keeps working and means "wasm".
   ditherEngine?: "wasm" | "native";
@@ -34,16 +37,20 @@ export const system = {
 
   cdpUrl: "http://localhost:9222",
 
-  // Hostname the Renderer hands CDP. Default targets `deno task dev` (chrome
-  // in docker reaches host via host.docker.internal). Compose mode pins
-  // "127.0.0.1". See bind-host trade-off in renderer.ts.
-  loopbackHost: "host.docker.internal",
+  // Hostname the Renderer hands CDP. "127.0.0.1" covers both run modes:
+  // compose (chrome shares the deno container's netns) and `deno task dev`
+  // with a host-networked chrome container. A port-mapped dev chrome instead
+  // needs "host.docker.internal" — set it in your live copy, not here. See
+  // bind-host trade-off in renderer.ts.
+  loopbackHost: "127.0.0.1",
 
   plugin,
   // Interim until the byte-handling redesign: where the deployed Plugin's assets/ live.
   pluginAssetsDir: resolve("./plugins/home/assets"),
 
   deviceId: "trmnl-x",
+
+  timeZone: "Europe/Berlin",
 
   // "wasm" (fused SIMD kernel, default) or "native" (plain-TypeScript
   // reference pipeline). Visually equivalent; the switch is for A/B'ing.

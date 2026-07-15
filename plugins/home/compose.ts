@@ -8,6 +8,8 @@
 import type { Result } from "@hztrmnl/server/plugin";
 import type { FrameData } from "@hztrmnl/transport";
 import type { GalleryState } from "@hztrmnl/gallery";
+import { activeWindowEnd, nextWindowStart } from "./sleep-window.ts";
+import type { SleepWindow } from "./sleep-window.ts";
 
 // Battery policy floor. The Device is never told to poll sooner than 5 minutes,
 // accepting that fast-moving content (the realtime Transport board) may run up
@@ -104,4 +106,64 @@ export async function composeResult(
   // view passes through unwrapped.
   const widened: Result<FrameData | GalleryState> = transportResult;
   return { ...widened, validity };
+}
+
+/**
+ * Top-level compose function with sleep window integration.
+ *
+ * Routes between three branches:
+ * - IN-WINDOW: skip Transport and Gallery entirely; return the Sleep leaf's
+ *   Result with validity = remaining window duration (floor exempted).
+ * - AWAKE: run Transport/Gallery routing (via composeResult), then clamp
+ *   validity to the next window start (if configured), and apply floor.
+ *
+ * Parameters:
+ * - `t`: current time in device's timezone (from RunContext)
+ * - `windows`: parsed sleep windows (empty array = no sleep configured)
+ * - `runTransport`, `runGallery`, `runSleep`: thunks (only invoked if needed)
+ *
+ * Return type unions all three leaves: FrameData | GalleryState | SleepState.
+ * Widen before spreading to ensure `view` type alignment under strictFunctionTypes.
+ */
+export async function compose<SleepState>(
+  t: Temporal.ZonedDateTime,
+  windows: SleepWindow[],
+  runTransport: () => Result<FrameData> | Promise<Result<FrameData>>,
+  runGallery: () => Result<GalleryState> | Promise<Result<GalleryState>>,
+  runSleep: () => Result<SleepState> | Promise<Result<SleepState>>,
+): Promise<Result<FrameData | GalleryState | SleepState>> {
+  // Check if we're currently in a sleep window.
+  const windowEnd = activeWindowEnd(t, windows);
+
+  if (windowEnd !== null) {
+    // IN-WINDOW: show Sleep, skip Transport and Gallery.
+    const sleepResult = await runSleep();
+
+    // Compute validity = time until window ends, in zoned space (DST-safe).
+    // No floor applies to this result.
+    const validity = windowEnd.since(t);
+
+    // Widen to union, then override validity.
+    const widened: Result<FrameData | GalleryState | SleepState> = sleepResult;
+    return { ...widened, validity };
+  }
+
+  // AWAKE: use composeResult for Transport/Gallery routing.
+  let result = await composeResult(
+    await runTransport(),
+    runGallery,
+  ) as Result<FrameData | GalleryState | SleepState>;
+
+  // If windows are configured, clamp validity to the next window start.
+  const nextStart = nextWindowStart(t, windows);
+  if (nextStart !== null) {
+    const timeToNextWindow = nextStart.since(t);
+    // Clamp: min(current validity, time to next window).
+    const clamped = minDuration(result.validity, timeToNextWindow);
+    // Floor the clamped result (battery policy for awake).
+    result = { ...result, validity: floorValidity(clamped) };
+  }
+  // else: no windows configured, result.validity is already floored by composeResult.
+
+  return result;
 }

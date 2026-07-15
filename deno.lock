@@ -615,6 +615,13 @@
           "jsr:@std/testing@1"
         ]
       },
+      "plugins/sleep": {
+        "dependencies": [
+          "jsr:@hono/hono@4",
+          "jsr:@std/assert@1",
+          "jsr:@std/testing@1"
+        ]
+      },
       "plugins/transport": {
         "dependencies": [
           "jsr:@hono/hono@4",

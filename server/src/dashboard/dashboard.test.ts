@@ -298,6 +298,42 @@ Deno.test('GET /dashboard/preview.png parses ?t= into ctx.t and runs Plugin with
   assertEquals(ctx.t.toString(), "2026-05-16T12:30:00+02:00[Europe/Berlin]");
 });
 
+Deno.test("GET /dashboard/preview.png converts ?t= from a different zone to the system zone", async () => {
+  // A user scrubs to a time given in UTC, but the System's configured zone is
+  // Europe/Berlin. The Dashboard must convert the UTC instant into Berlin time
+  // before passing it to the Plugin. Same instant, different zone.
+  const seen: { ctxes: RunContext[] } = { ctxes: [] };
+  const now = () => at("2026-05-16T10:00");
+  const { app } = wire({
+    now,
+    pluginManager: {
+      run(ctx) {
+        seen.ctxes.push(ctx);
+        return Promise.resolve({
+          result: { state: {}, validity: fiveMin, view: () => "" },
+          assets: {},
+        });
+      },
+    },
+  });
+
+  // Submit ?t= as a UTC instant: 2026-05-16T10:30:00[UTC]
+  // This is the same instant as 2026-05-16T12:30:00+02:00[Europe/Berlin]
+  // URL-encoded: %2B -> +, %5B -> [, %5D -> ]
+  await (await app.request(
+    "/dashboard/preview.png?t=2026-05-16T10:30:00%2B00:00%5BUTC%5D",
+  )).arrayBuffer();
+
+  assertEquals(seen.ctxes.length, 1);
+  const ctx = seen.ctxes[0];
+  // The parsed instant must be converted to the system zone (Europe/Berlin)
+  // so the Plugin sees the correct local time.
+  assertEquals(ctx.t.toString(), "2026-05-16T12:30:00+02:00[Europe/Berlin]");
+  // Verify it's the same instant by comparing epochMilliseconds
+  const utcInstant = Temporal.ZonedDateTime.from("2026-05-16T10:30:00[UTC]");
+  assertEquals(ctx.t.epochMilliseconds, utcInstant.epochMilliseconds);
+});
+
 Deno.test("GET /dashboard/preview.png falls back to now() when ?t is missing or unparseable", async () => {
   // Robustness: the form always supplies `t`, but the route guards against
   // missing or malformed values so a typo in the URL doesn't 500.
@@ -406,6 +442,78 @@ Deno.test("GET /dashboard/preview.png does NOT mutate the Slot or write to Telem
   assertEquals(slot.display()?.identity, identityBefore);
 });
 
+Deno.test("GET /dashboard/preview.png?t=<night-time> scrubs to sleep window and returns sleep screen with correct validity header", async () => {
+  // Acceptance criterion 6: Dashboard scrub to a night-time t shows the sleep
+  // screen with the expected validity headers.
+  // Scrub to 23:30 during a 23:00-07:00 sleep window and verify:
+  // 1. The preview renders the sleep view (black background + 😴)
+  // 2. x-validity header = 27000 seconds (7.5 hours until 07:00)
+  // 3. x-identity remains stable across multiple scrubs at the same time
+  const sleepTime = Temporal.ZonedDateTime.from(
+    "2026-05-16T23:30:00+02:00[Europe/Berlin]",
+  );
+  const expectedValiditySeconds = 27000; // 7.5 hours = 7.5 * 60 * 60
+
+  // Create a sleep-window-aware plugin that simulates compose behavior:
+  // when the ctx.t falls inside the 23:00–07:00 window, return a sleep result
+  // with validity = remaining time until window end (floor exempted).
+  // This mimics how the home plugin's compose function works.
+  const sleepWindowAwarePlugin: Plugin<{ inWindow: boolean }> = {
+    run(ctx: RunContext) {
+      // Hardcoded sleep window: 23:00–07:00
+      const hour = ctx.t.hour;
+      const inWindow = hour >= 23 || hour < 7;
+
+      if (inWindow) {
+        // Compute remaining time until 07:00 (next day if needed)
+        const endOfDay = ctx.t.add(Temporal.Duration.from({ days: 1 }));
+        const windowEndTime = endOfDay.with({ hour: 7, minute: 0, second: 0 });
+        const remaining = windowEndTime.since(ctx.t);
+
+        // Return sleep result: black screen + 😴, with exact remaining validity
+        return {
+          state: { inWindow: true },
+          validity: remaining, // exact remaining duration (floor exempted)
+          view: () =>
+            '<html><head><style>html,body{margin:0;padding:0;width:100%;height:100%;background:#000;display:flex;justify-content:center;align-items:center}.emoji{font-size:200px}</style></head><body><div class="emoji">😴</div></body></html>',
+        };
+      }
+
+      // Awake: return normal view
+      return {
+        state: { inWindow: false },
+        validity: fiveMin,
+        view: () => "<p>awake</p>",
+      };
+    },
+  };
+
+  const { app } = wire({
+    pluginManager: managerFor(sleepWindowAwarePlugin),
+    renderer: defaultRenderer({
+      identity: () => Promise.resolve("sleep-stable-id"),
+    }),
+  });
+
+  // Scrub to 23:30 (inside the window)
+  const res = await app.request(
+    `/dashboard/preview.png?t=${encodeURIComponent(sleepTime.toString())}`,
+  );
+
+  assertEquals(res.status, 200);
+  // Verify x-validity header contains the remaining window duration (7.5 hours)
+  assertEquals(res.headers.get("x-validity"), String(expectedValiditySeconds));
+  // Verify x-identity is stable
+  assertEquals(res.headers.get("x-identity"), "sleep-stable-id");
+  // Verify the PNG was rasterized (not testing PNG content, just that
+  // the response carries PNG bytes)
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  assertEquals(bytes[0], 0x89); // PNG magic number
+  assertEquals(bytes[1], 0x50);
+  assertEquals(bytes[2], 0x4e);
+  assertEquals(bytes[3], 0x47);
+});
+
 // ─── GET / — the "jump to t" form + clear button ──────────────────────────
 
 Deno.test("GET / renders a 'jump to t' form that navigates GET /", async () => {
@@ -508,6 +616,29 @@ Deno.test("GET /?t=<iso> embeds the scrub instant and that day's midnight", asyn
   const instant = Temporal.ZonedDateTime.from(tIso);
   assertEquals(dash.scrubMs, instant.epochMilliseconds);
   assertEquals(dash.dayStartMs, instant.startOfDay().epochMilliseconds);
+});
+
+Deno.test("GET /?t= converts from a different zone to the system zone for embedding", async () => {
+  // Verify that the GET / route also converts ?t= from a different zone
+  // to the system zone for embedding in window.__DASH__.
+  const { app } = wire({});
+
+  // Submit ?t= as a UTC instant: 2026-05-16T10:30:00[UTC]
+  // This is the same instant as 2026-05-16T12:30:00+02:00[Europe/Berlin]
+  const html = await (await app.request(
+    `/?t=${encodeURIComponent("2026-05-16T10:30:00+00:00[UTC]")}`,
+  )).text();
+  const dash = extractDash(html);
+
+  // The embedded scrubMs should be the instant in Berlin time
+  const expected = Temporal.ZonedDateTime.from(
+    "2026-05-16T12:30:00+02:00[Europe/Berlin]",
+  );
+  assertEquals(
+    dash.scrubMs,
+    expected.epochMilliseconds,
+    "scrubMs should be the same instant in system zone",
+  );
 });
 
 Deno.test("GET /?date=<YYYY-MM-DD> embeds that date's midnight as dayStartMs", async () => {

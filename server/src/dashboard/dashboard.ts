@@ -114,6 +114,7 @@ type Displayed = {
 // parse failure falls back to "today, now" — the dashboard never 500s on a
 // bad query string. `dayEnd` is `dayStart + 1 day`; Temporal makes that the
 // next midnight even across a 23 h / 25 h DST day.
+// The `?t=` parameter is converted to the system zone (current.timeZoneId).
 function resolveDisplayed(
   tRaw: string | undefined,
   dateRaw: string | undefined,
@@ -124,7 +125,9 @@ function resolveDisplayed(
 
   if (tRaw) {
     try {
-      instant = Temporal.ZonedDateTime.from(tRaw);
+      const parsed = Temporal.ZonedDateTime.from(tRaw);
+      // Convert the parsed instant to the system zone.
+      instant = parsed.toInstant().toZonedDateTimeISO(current.timeZoneId);
       dayStart = instant.startOfDay();
     } catch {
       // Fall through to the default below.
@@ -156,7 +159,10 @@ function parseScrubTime(
 ): Temporal.ZonedDateTime {
   if (!raw) return now();
   try {
-    return Temporal.ZonedDateTime.from(raw);
+    const parsed = Temporal.ZonedDateTime.from(raw);
+    // Convert the parsed instant to the system zone (from deps.now()).
+    // Same instant, different zone id — so Plugins see the correct local time.
+    return parsed.toInstant().toZonedDateTimeISO(now().timeZoneId);
   } catch {
     return now();
   }
