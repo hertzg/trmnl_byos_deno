@@ -28,7 +28,7 @@ const ACTIVE_PROFILE: DeviceProfile = (() => {
 })();
 
 async function main() {
-  const now = () => Temporal.Now.zonedDateTimeISO();
+  const now = () => Temporal.Now.zonedDateTimeISO(system.timeZone);
 
   // Debug mode replaces the whole pipeline: no Plugin, no renderer/CDP, no
   // Slot. The Device gets exactly what the panel at / configures. Toggled by

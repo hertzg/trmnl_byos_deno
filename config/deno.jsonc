@@ -6,7 +6,8 @@
   "exports": {
     "./system": "./live/system.ts",
     "./plugins/transport/routes": "./live/plugins/transport/routes.ts",
-    "./plugins/gallery/album": "./live/plugins/gallery/album.ts"
+    "./plugins/gallery/album": "./live/plugins/gallery/album.ts",
+    "./plugins/home/sleep": "./live/plugins/home/sleep.ts"
   },
   "imports": {
     "@std/path": "jsr:@std/path@^1.0.0"
