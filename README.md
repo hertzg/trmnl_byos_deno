@@ -73,12 +73,13 @@ deno task dev
 ```
 
 The Renderer owns a loopback HTTP origin that CDP fetches the Bundle (HTML + assets) from. The
-default `LOOPBACK_HOST=host.docker.internal` matches this workflow (deno on the host, chrome in
-docker reaching the host across the docker bridge); the Renderer hands CDP a URL chrome can resolve
-and binds the loopback port on `0.0.0.0` so it's reachable from the docker bridge. On Linux without
-`host-gateway`, set `LOOPBACK_HOST=<docker bridge IP>` (e.g. `172.17.0.1`). Compose mode pins
-`LOOPBACK_HOST=127.0.0.1` in `docker-compose.yml` because chrome shares the deno container's network
-namespace there and the loopback bind keeps the port un-reachable from outside the container.
+seeded default `loopbackHost: "127.0.0.1"` in `config/system.example.ts` works whenever chrome
+shares the deno process's network namespace — compose mode, or a host-networked dev chrome. If your
+dev chrome is a port-mapped container instead (as in the `docker run` line above), set
+`loopbackHost: "host.docker.internal"` in your gitignored `config/live/system.ts`; the Renderer then
+binds the loopback port on `0.0.0.0` so chrome can reach it across the docker bridge. On Linux
+without `host-gateway`, use the docker bridge IP (e.g. `172.17.0.1`). Per-environment values always
+live in that environment's own `config/live/system.ts`, never in committed variants (ADR-0010).
 
 The Device path is `/api/display` → follow the `image_url` it returns. For dev iteration on a
 Plugin's view, open `http://localhost:3000/preview` for live HTML or `/preview/png` for the live

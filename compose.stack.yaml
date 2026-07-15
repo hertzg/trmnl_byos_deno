@@ -14,10 +14,10 @@
 #
 # Networking (slice #51): chrome shares the deno container's network namespace
 # (`network_mode: service:trmnl-byos`) so it reaches the Renderer's loopback origin
-# at 127.0.0.1:<ephemeral>. That requires loopbackHost=127.0.0.1 (not the
-# host.docker.internal default that `deno task dev` wants), so we bind-mount the
-# committed config/system.compose.example.ts onto the container's
-# config/live/system.ts.
+# at 127.0.0.1:<ephemeral> — the seeded default in config/system.example.ts.
+# Per ADR-0010 there is exactly one committed starter; environment-specific
+# values are edits to this deployment's own mounted config/live/system.ts
+# (via webproc on :8080), never a committed variant.
 services:
   trmnl-byos:
     image: ghcr.io/hertzg/trmnl_byos_deno:latest
@@ -30,8 +30,6 @@ services:
     volumes:
       # Mounted live config tree (ADR-0010, ADR-0012): webproc-editable, survives image updates.
       - ./config/live:/app/config/live
-      # loopbackHost override for the shared-netns topology: see the note above.
-      - ./config/system.compose.example.ts:/app/config/live/system.ts
     environment:
       TZ: "${TZ:-Etc/UTC}"
       # Basic auth for the webproc editor (:8080) — optional, off by default. Set

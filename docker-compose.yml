@@ -16,12 +16,9 @@
 # <loopbackHost>:<ephemeral> that CDP fetches the Bundle (HTML + assets) from.
 # In compose mode chrome shares the deno container's network namespace
 # (`network_mode: service:trmnl-byos-dev`) so 127.0.0.1 resolves to the deno
-# process. The production default in config/system.example.ts is
-# "host.docker.internal" (for the `deno task dev` flow: deno on the host, chrome
-# in docker). Compose needs the opposite, and env overrides are gone — so we
-# bind-mount the committed config/system.compose.example.ts (loopbackHost =
-# 127.0.0.1) directly onto the container's config/live/system.ts, overriding
-# just that file. The deno-task-dev / Pi config/live/system.ts is untouched.
+# process — which is exactly the seeded default in config/system.example.ts
+# (ADR-0010: one starter; per-environment values live in each environment's
+# own mounted config/live/system.ts, never in committed variants).
 services:
   trmnl-byos-dev:
     build: .
@@ -39,8 +36,6 @@ services:
       - ./plugins:/app/plugins:cached
       # Mounted live config tree (ADR-0010, ADR-0012): webproc-editable, survives rebuilds.
       - ./config/live:/app/config/live:cached
-      # Compose-mode loopbackHost override: see the networking note above.
-      - ./config/system.compose.example.ts:/app/config/live/system.ts:cached
     environment:
       TZ: "${TZ:-Etc/UTC}"
       # Basic auth for the webproc editor (:8080). Overridable via host env.
