@@ -5,7 +5,7 @@
     "jsr:@deno-library/progress@^1.5.1": "1.5.1",
     "jsr:@deno/cache-dir@0.22.2": "0.22.2",
     "jsr:@deno/graph@0.86": "0.86.9",
-    "jsr:@hertzg/crc@0.2": "0.2.0",
+    "jsr:@hertzg/crc@0.3": "0.3.0",
     "jsr:@hono/hono@4": "4.12.26",
     "jsr:@img/internal@~0.1.1": "0.1.1",
     "jsr:@img/png@~0.1.6": "0.1.6",
@@ -73,8 +73,8 @@
     "@deno/graph@0.86.9": {
       "integrity": "c4f353a695bcc5246c099602977dabc6534eacea9999a35a8cb24e807192e6a1"
     },
-    "@hertzg/crc@0.2.0": {
-      "integrity": "2d6befa56aac19b23e11036187dcff4938e2599c8c660b2567756ca610450075",
+    "@hertzg/crc@0.3.0": {
+      "integrity": "4fe580516792ca93ab026683195c941d9c65e31db7e641753b55d4ec3a50523d",
       "dependencies": [
         "jsr:@std/cache"
       ]
@@ -632,7 +632,7 @@
       "server": {
         "dependencies": [
           "jsr:@astral/astral@~0.5.4",
-          "jsr:@hertzg/crc@0.2",
+          "jsr:@hertzg/crc@0.3",
           "jsr:@hono/hono@4",
           "jsr:@img/png@~0.1.6",
           "jsr:@std/assert@1",
