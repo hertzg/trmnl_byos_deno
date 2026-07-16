@@ -49,7 +49,7 @@ jobs:
       # image from the same context and cache, boot it with dgoss, and run
       # docker/goss.yaml inside it (processes, ports, seeded config, baked
       # build identity, dashboard HTTP).
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           load: true
@@ -70,7 +70,7 @@ jobs:
             GOSS_OPTS="--retry-timeout 60s --sleep 2s" \
             dgoss run trmnl-byos:goss
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
