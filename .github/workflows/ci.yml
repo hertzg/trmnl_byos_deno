@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # No deno-version pin: the Dockerfile deliberately tracks Deno's
+      # latest release rather than a fixed minor (a pinned 2.1.4 once
+      # crash-looped there — see Dockerfile). setup-deno's default is the
+      # latest v2.x, matching that same floating-latest posture here.
+      - uses: denoland/setup-deno@v2
+
+      # config/live/ is gitignored (ADR-0010/0012) — @hztrmnl/config's
+      # exports point into it, so nothing type-checks or runs until it's
+      # seeded from the committed example starters.
+      - name: Seed config/live from example starters
+        run: |
+          mkdir -p config/live/plugins/transport config/live/plugins/gallery config/live/plugins/home
+          cp config/system.example.ts config/live/system.ts
+          cp config/plugins/transport/routes.example.ts config/live/plugins/transport/routes.ts
+          cp config/plugins/gallery/album.example.ts config/live/plugins/gallery/album.ts
+          cp config/plugins/home/sleep.example.ts config/live/plugins/home/sleep.ts
+
+      - name: deno test
+        run: deno task test
