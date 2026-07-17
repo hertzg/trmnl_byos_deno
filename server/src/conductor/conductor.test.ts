@@ -664,14 +664,14 @@ Deno.test("Plugin throw → trace.error is the caught Error with its message + s
   assertEquals(trace.identity, "id-<p>ERR</p>");
 });
 
-Deno.test("rasterize rejection still records a trace (the .finally runs even on failure)", async () => {
-  // The eager rasterize promise can reject (CDP outage, dither failure)
-  // after the Conductor has already returned from /api/display. The
-  // trace must still be recorded so the Dashboard can show that the
-  // cycle completed — the trace's `error` stays null in this branch
-  // because the throw happened inside the rasterize promise the
-  // Conductor doesn't await; that failure surfaces at /image/<id>.png,
-  // not in the trace's error field.
+Deno.test("rasterize rejection still records a trace, with trace.error set to the rejection", async () => {
+  // The eager rasterize promise can reject synchronously-scheduled but
+  // asynchronously-settled (CDP outage, dither failure) after the
+  // Conductor has already returned from /api/display. The trace must
+  // still be recorded — and (issue #63) `trace.error` must carry the
+  // rejection, not stay null, so the Dashboard doesn't show a
+  // green-looking trace next to a broken /image/<id>.png.
+  const boom = new Error("CDP down");
   const telemetry = createTelemetry();
   const record = spy(telemetry, "record");
   const conductor = createConductor({
@@ -681,7 +681,7 @@ Deno.test("rasterize rejection still records a trace (the .finally runs even on 
     }),
     renderer: fakeRenderer({
       identity: () => Promise.resolve("rasterize-died"),
-      rasterize: () => Promise.reject(new Error("CDP down")),
+      rasterize: () => Promise.reject(boom),
     }),
   });
 
@@ -691,6 +691,59 @@ Deno.test("rasterize rejection still records a trace (the .finally runs even on 
 
   assertSpyCalls(record, 1);
   assertEquals(record.calls[0].args[0].identity, "rasterize-died");
+  assertEquals(record.calls[0].args[0].error, boom);
+});
+
+Deno.test("rasterize promise that rejects asynchronously (after /api/display returns) surfaces in trace.error, and the Slot's image promise still rejects", async () => {
+  // The realistic failure mode from issue #63: the CDP sidecar restarts
+  // (or the cached Page goes invalid) and the rasterize promise it
+  // returned rejects on a later microtask/macrotask turn, well after the
+  // orchestration loop — and /api/display — has already returned. The
+  // telemetry-recording chain must still capture that rejection, and the
+  // rejection must still be observable via the Slot's `image` promise
+  // (the /image/<id>.png handler's only source of truth) — no swallowing
+  // and no unhandled rejection anywhere in the process.
+  const boom = new Error("CDP sidecar restarted");
+  let rejectRasterize!: (err: Error) => void;
+  const rasterizePromise = new Promise<Uint8Array<ArrayBuffer>>((_resolve, reject) => {
+    rejectRasterize = reject;
+  });
+  const telemetry = createTelemetry();
+  const record = spy(telemetry, "record");
+  const slot = createSlot({ now: () => T0 });
+  const conductor = createConductor({
+    ...defaults({ telemetry, slot, now: () => T0 }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer({
+      identity: () => Promise.resolve("async-rasterize-fail"),
+      rasterize: () => rasterizePromise,
+    }),
+  });
+
+  // /api/display returns before rasterize ever settles.
+  await (await conductor.app.request("/api/display")).body?.cancel();
+  assertEquals(telemetry.latest(), null);
+
+  // Now the rasterize promise rejects, asynchronously, well after the
+  // handler above already returned.
+  rejectRasterize(boom);
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assertSpyCalls(record, 1);
+  assertEquals(record.calls[0].args[0].error, boom);
+
+  // The Slot's stored image promise keeps its own rejection — the
+  // /image/<id>.png handler still observes the failure.
+  await slot.image("async-rasterize-fail").then(
+    () => {
+      throw new Error("expected slot.image() to reject, but it resolved");
+    },
+    (err) => assertEquals(err, boom),
+  );
 });
 
 Deno.test("Tier 1 cache hit does NOT record a new trace — no new cycle ran", async () => {

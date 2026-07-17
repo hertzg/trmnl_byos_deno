@@ -69,12 +69,21 @@ export function createConductor(deps: ConductorDeps): Conductor {
       image = deps.renderer.rasterize(bundle);
     }
     // Record telemetry once the eager rasterize settles, so `rasterize`
-    // duration is real wall-clock. The trailing `.catch(noop)` is essential:
-    // `.finally` re-throws upstream rejection on the chain we create here,
-    // and that chain is otherwise dangling. The `image` promise the Slot
-    // stores keeps its rejection; the /image/<id>.png handler observes it.
+    // duration is real wall-clock. The two-armed `.then` maps a resolve to
+    // `null` and normalizes a reject into an Error, so an asynchronous
+    // rasterize failure (CDP outage, dither failure) lands in
+    // `trace.error` exactly like a synchronous one. Because that first
+    // `.then` never itself throws, the chain we create here never produces
+    // an unhandled rejection; the trailing `.catch(noop)` only guards
+    // against `telemetry.record` throwing. The `image` promise the Slot
+    // stores keeps its original rejection — the /image/<id>.png handler
+    // still observes it.
     image
-      .finally(() => {
+      .then(
+        () => null,
+        (err) => (err instanceof Error ? err : new Error(String(err))),
+      )
+      .then((rasterizeError) => {
         const trace: RenderTrace = {
           ranAt,
           identity,
@@ -83,7 +92,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
             identity: identityEnd.since(pluginRunEnd),
             rasterize: deps.now().since(identityEnd),
           },
-          error: caught,
+          error: caught ?? rasterizeError,
         };
         deps.telemetry.record(trace);
       })
