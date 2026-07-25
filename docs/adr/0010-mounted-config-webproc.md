@@ -50,9 +50,10 @@ each environment's own mounted `system.ts`, not in code branches.
 
 `src/config.ts` (the `env()` helper, the `parseInt`/default boilerplate, the exported constants) is
 deleted. The app imports `config/system.ts` directly as a typed object; `ACTIVE_PROFILE` becomes
-`getProfile(system.deviceId)` at wiring time in `main.ts`. Configuration is no longer sourced from
-environment variables. The device-profile registry (`src/render/profiles.ts`, ADR-0006) is unchanged
-— only the _source_ of `deviceId` and the Server knobs moves from env to `system.ts`.
+`getProfile(config.deviceId)` at wiring time in the composition root (`server/src/app.ts`; `main.ts`
+is the entry point that reads `system` and hands it to `createApp`). Configuration is no longer
+sourced from environment variables. The device-profile registry (`src/render/profiles.ts`, ADR-0006)
+is unchanged — only the _source_ of `deviceId` and the Server knobs moves from env to `system.ts`.
 
 ### Plugins keep importing their own config
 

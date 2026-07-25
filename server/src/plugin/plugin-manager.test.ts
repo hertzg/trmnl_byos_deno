@@ -231,6 +231,7 @@ Deno.test("a PluginManager drives /api/display end-to-end through the Conductor"
     errorView: (_err: Error) => "",
     errorValidity: Temporal.Duration.from({ seconds: 30 }),
     friendlyId: "SMOKE",
+    publicUrlOrigin: "",
     now,
   });
 
@@ -289,6 +290,7 @@ Deno.test("a PluginManager wired through the real Renderer surfaces a filename d
       errorView: (_err: Error) => "",
       errorValidity: Temporal.Duration.from({ seconds: 30 }),
       friendlyId: "SMOKE",
+      publicUrlOrigin: "",
       now,
     });
 
@@ -364,6 +366,7 @@ Deno.test("end-to-end: /api/display → /image/<id>.png drives PluginManager →
       errorView: (_err: Error) => "",
       errorValidity: Temporal.Duration.from({ seconds: 30 }),
       friendlyId: "SMOKE",
+      publicUrlOrigin: "",
       now,
     });
 

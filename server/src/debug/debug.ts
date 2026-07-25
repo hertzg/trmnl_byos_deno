@@ -64,6 +64,8 @@ export type DebugDeps = {
   profile: DeviceProfile;
   deviceState: DeviceState;
   friendlyId: string;
+  // Empty → derive the origin the Device dialled from its own request headers.
+  publicUrlOrigin: string;
   now: () => Temporal.ZonedDateTime;
   fetch?: typeof fetch;
   // Build identity shown in the topbar, same as the dashboard's. Defaults
@@ -139,8 +141,8 @@ export function createDebugApp(deps: DebugDeps): Hono {
           now: deps.now(),
           build: deps.build ?? await readBuildInfo(),
           cfg,
-          response: displayResponse(publicOrigin(c)),
-          generatedResponse: generatedDisplayResponse(publicOrigin(c)),
+          response: displayResponse(publicOrigin(c, deps.publicUrlOrigin)),
+          generatedResponse: generatedDisplayResponse(publicOrigin(c, deps.publicUrlOrigin)),
           responseJsonError,
           proxyError,
           customImage: customImageInfo(),
@@ -256,12 +258,12 @@ export function createDebugApp(deps: DebugDeps): Hono {
         status: 200,
         api_key: "byos",
         friendly_id: deps.friendlyId,
-        image_url: `${publicOrigin(c)}/image/setup.png`,
+        image_url: `${publicOrigin(c, deps.publicUrlOrigin)}/image/setup.png`,
         message: "Welcome (debug mode)",
       }))
     .get("/api/display", (c) => {
       recordDeviceSideEffects(c.req.raw, deps);
-      return c.json(displayResponse(publicOrigin(c)));
+      return c.json(displayResponse(publicOrigin(c, deps.publicUrlOrigin)));
     })
     .get("/image/:id{.+\\.png}", async (c) => {
       const id = c.req.param("id").replace(/\.png$/, "");

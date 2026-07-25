@@ -23,6 +23,8 @@ export type ConductorDeps = {
   telemetry: Telemetry;
   deviceState: DeviceState;
   friendlyId: string;
+  // Empty → derive the origin the Device dialled from its own request headers.
+  publicUrlOrigin: string;
   now: () => Temporal.ZonedDateTime;
 };
 
@@ -137,7 +139,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
         status: 200,
         api_key: "byos",
         friendly_id: deps.friendlyId,
-        image_url: `${publicOrigin(c)}/image/setup.png`,
+        image_url: `${publicOrigin(c, deps.publicUrlOrigin)}/image/setup.png`,
         message: "Welcome",
       }))
     .get("/api/display", async (c) => {
@@ -156,7 +158,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
       );
       return c.json({
         status: 0,
-        image_url: `${publicOrigin(c)}/image/${display.identity}.png`,
+        image_url: `${publicOrigin(c, deps.publicUrlOrigin)}/image/${display.identity}.png`,
         filename: `image-${display.identity}`,
         refresh_rate: refreshRate,
         reset_firmware: false,

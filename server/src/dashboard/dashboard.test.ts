@@ -39,12 +39,20 @@ function conductorDefaults(
   overrides: Partial<ConductorDeps> = {},
 ): Pick<
   ConductorDeps,
-  "errorView" | "errorValidity" | "friendlyId" | "now" | "slot" | "telemetry" | "deviceState"
+  | "errorView"
+  | "errorValidity"
+  | "friendlyId"
+  | "publicUrlOrigin"
+  | "now"
+  | "slot"
+  | "telemetry"
+  | "deviceState"
 > {
   return {
     errorView: (_err: Error) => "",
     errorValidity: Temporal.Duration.from({ seconds: 30 }),
     friendlyId: "ID",
+    publicUrlOrigin: "",
     now,
     slot: createSlot({ now }),
     telemetry: createTelemetry(),
