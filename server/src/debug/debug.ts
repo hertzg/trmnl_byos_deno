@@ -4,6 +4,7 @@ import type { DeviceState } from "../device-state.ts";
 import type { DeviceProfile } from "../render/profiles.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
+import type { Clock } from "../clock.ts";
 import { isPattern, renderPattern } from "./patterns.ts";
 import { type BuildInfo, readBuildInfo } from "../build-info.ts";
 import DebugPage from "./debug.tsx";
@@ -66,7 +67,7 @@ export type DebugDeps = {
   friendlyId: string;
   // Empty → derive the origin the Device dialled from its own request headers.
   publicUrlOrigin: string;
-  now: () => Temporal.ZonedDateTime;
+  now: Clock;
   fetch?: typeof fetch;
   // Build identity shown in the topbar, same as the dashboard's. Defaults
   // to reading the baked build-info.json ("<version>+dev" outside Docker).

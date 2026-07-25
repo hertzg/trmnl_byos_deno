@@ -7,6 +7,7 @@ import type { Slot } from "../slot/slot.ts";
 import type { Telemetry } from "../telemetry/telemetry.ts";
 import type { DeviceState } from "../device-state.ts";
 import { type BuildInfo, readBuildInfo } from "../build-info.ts";
+import type { Clock } from "../clock.ts";
 import Dashboard, { type TimelineState } from "./dashboard.tsx";
 
 // Dashboard at /. Debug surface. See ADR-0005.
@@ -20,7 +21,7 @@ export type DashboardDeps = {
   conductorApp: Hono;
   pluginManager: PluginManager;
   renderer: Renderer;
-  now: () => Temporal.ZonedDateTime;
+  now: Clock;
   // Build identity shown in the topbar. Defaults to reading the baked
   // build-info.json; outside the Docker image that file is absent and the
   // page shows a dateless "<version>+dev" build.
@@ -155,7 +156,7 @@ function parseBitDepth(raw: string | undefined): 1 | 2 | 4 | 8 | undefined {
 
 function parseScrubTime(
   raw: string | undefined,
-  now: () => Temporal.ZonedDateTime,
+  now: Clock,
 ): Temporal.ZonedDateTime {
   if (!raw) return now();
   try {

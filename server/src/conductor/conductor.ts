@@ -8,6 +8,7 @@ import type { RenderTrace, Telemetry } from "../telemetry/telemetry.ts";
 import type { DeviceState } from "../device-state.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
+import type { Clock } from "../clock.ts";
 
 // BYOS facade. Owns the orchestration loop from `/api/display` through
 // Plugin → identity → eager rasterize → Slot.put, and serves the PNG at
@@ -25,7 +26,7 @@ export type ConductorDeps = {
   friendlyId: string;
   // Empty → derive the origin the Device dialled from its own request headers.
   publicUrlOrigin: string;
-  now: () => Temporal.ZonedDateTime;
+  now: Clock;
 };
 
 export type Conductor = {

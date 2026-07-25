@@ -13,6 +13,7 @@ import { createSlot } from "./slot/slot.ts";
 import { createTelemetry } from "./telemetry/telemetry.ts";
 import { createDeviceState } from "./device-state.ts";
 import { createDebugApp } from "./debug/debug.ts";
+import { type Clock, systemClock } from "./clock.ts";
 
 // Composition root. The entire object graph is built here, from a SystemConfig
 // and nothing else — importing this module starts nothing and reads no
@@ -28,12 +29,12 @@ export type App = {
 // The two process boundaries a test can't own: the wall clock and the browser
 // that rasterizes. Both default to the real thing.
 export type AppDeps = {
-  now?: () => Temporal.ZonedDateTime;
+  now?: Clock;
   fetchPngFromUrl?: FetchPngFromUrl;
 };
 
 export async function createApp(config: SystemConfig, deps: AppDeps = {}): Promise<App> {
-  const now = deps.now ?? (() => Temporal.Now.zonedDateTimeISO(config.timeZone));
+  const now = deps.now ?? systemClock(config.timeZone);
   const profile = requireProfile(config.deviceId);
   return config.debug
     ? debugModeApp(config, profile, now)
@@ -58,7 +59,7 @@ function requireProfile(deviceId: string): DeviceProfile {
 function debugModeApp(
   config: SystemConfig,
   profile: DeviceProfile,
-  now: () => Temporal.ZonedDateTime,
+  now: Clock,
 ): App {
   const deviceState = createDeviceState({ now, onLog: logDeviceEntry });
 
@@ -83,7 +84,7 @@ function debugModeApp(
 async function pipelineApp(
   config: SystemConfig,
   profile: DeviceProfile,
-  now: () => Temporal.ZonedDateTime,
+  now: Clock,
   deps: AppDeps,
 ): Promise<App> {
   const pluginManager = await createPluginManager({
