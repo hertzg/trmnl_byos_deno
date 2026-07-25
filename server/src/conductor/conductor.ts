@@ -8,6 +8,7 @@ import type { RenderTrace, Telemetry } from "../telemetry/telemetry.ts";
 import type { DeviceState } from "../device-state.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
+import type { Clock } from "../clock.ts";
 
 // BYOS facade. Owns the orchestration loop from `/api/display` through
 // Plugin → identity → eager rasterize → Slot.put, and serves the PNG at
@@ -23,7 +24,9 @@ export type ConductorDeps = {
   telemetry: Telemetry;
   deviceState: DeviceState;
   friendlyId: string;
-  now: () => Temporal.ZonedDateTime;
+  // Empty → derive the origin the Device dialled from its own request headers.
+  publicUrlOrigin: string;
+  now: Clock;
 };
 
 export type Conductor = {
@@ -137,7 +140,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
         status: 200,
         api_key: "byos",
         friendly_id: deps.friendlyId,
-        image_url: `${publicOrigin(c)}/image/setup.png`,
+        image_url: `${publicOrigin(c, deps.publicUrlOrigin)}/image/setup.png`,
         message: "Welcome",
       }))
     .get("/api/display", async (c) => {
@@ -156,7 +159,7 @@ export function createConductor(deps: ConductorDeps): Conductor {
       );
       return c.json({
         status: 0,
-        image_url: `${publicOrigin(c)}/image/${display.identity}.png`,
+        image_url: `${publicOrigin(c, deps.publicUrlOrigin)}/image/${display.identity}.png`,
         filename: `image-${display.identity}`,
         refresh_rate: refreshRate,
         reset_firmware: false,

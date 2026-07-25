@@ -4,6 +4,7 @@ import type { DeviceState } from "../device-state.ts";
 import type { DeviceProfile } from "../render/profiles.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
+import type { Clock } from "../clock.ts";
 import { isPattern, renderPattern } from "./patterns.ts";
 import { type BuildInfo, readBuildInfo } from "../build-info.ts";
 import DebugPage from "./debug.tsx";
@@ -64,7 +65,9 @@ export type DebugDeps = {
   profile: DeviceProfile;
   deviceState: DeviceState;
   friendlyId: string;
-  now: () => Temporal.ZonedDateTime;
+  // Empty → derive the origin the Device dialled from its own request headers.
+  publicUrlOrigin: string;
+  now: Clock;
   fetch?: typeof fetch;
   // Build identity shown in the topbar, same as the dashboard's. Defaults
   // to reading the baked build-info.json ("<version>+dev" outside Docker).
@@ -139,8 +142,8 @@ export function createDebugApp(deps: DebugDeps): Hono {
           now: deps.now(),
           build: deps.build ?? await readBuildInfo(),
           cfg,
-          response: displayResponse(publicOrigin(c)),
-          generatedResponse: generatedDisplayResponse(publicOrigin(c)),
+          response: displayResponse(publicOrigin(c, deps.publicUrlOrigin)),
+          generatedResponse: generatedDisplayResponse(publicOrigin(c, deps.publicUrlOrigin)),
           responseJsonError,
           proxyError,
           customImage: customImageInfo(),
@@ -256,12 +259,12 @@ export function createDebugApp(deps: DebugDeps): Hono {
         status: 200,
         api_key: "byos",
         friendly_id: deps.friendlyId,
-        image_url: `${publicOrigin(c)}/image/setup.png`,
+        image_url: `${publicOrigin(c, deps.publicUrlOrigin)}/image/setup.png`,
         message: "Welcome (debug mode)",
       }))
     .get("/api/display", (c) => {
       recordDeviceSideEffects(c.req.raw, deps);
-      return c.json(displayResponse(publicOrigin(c)));
+      return c.json(displayResponse(publicOrigin(c, deps.publicUrlOrigin)));
     })
     .get("/image/:id{.+\\.png}", async (c) => {
       const id = c.req.param("id").replace(/\.png$/, "");

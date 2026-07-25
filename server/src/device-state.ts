@@ -1,4 +1,5 @@
 import type { DeviceReport } from "./plugin/plugin.ts";
+import type { Clock } from "./clock.ts";
 
 // Observed state from the single Device: the most-recent parsed DeviceReport
 // (so the next Plugin.run can carry it forward across header-less polls) and
@@ -29,7 +30,7 @@ export type DeviceState = {
 };
 
 export type DeviceStateDeps = {
-  now: () => Temporal.ZonedDateTime;
+  now: Clock;
   // How many log entries to keep. Older entries fall off the front.
   // Default is generous enough for a debug session but bounded.
   logRingSize?: number;

@@ -20,6 +20,7 @@ function makeApp(overrides: { fetch?: typeof fetch; build?: BuildInfo } = {}) {
     profile,
     deviceState,
     friendlyId: "TRMNL",
+    publicUrlOrigin: "",
     now: fixedNow,
     ...overrides,
   });

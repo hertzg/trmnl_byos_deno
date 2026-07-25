@@ -1,4 +1,5 @@
 import type { Bundle } from "../plugin/bundle.ts";
+import type { Clock } from "../clock.ts";
 
 // Single-Image cache. See ADR-0004.
 
@@ -10,7 +11,7 @@ export type SlotEntry = {
 };
 
 export type SlotDeps = {
-  now: () => Temporal.ZonedDateTime;
+  now: Clock;
 };
 
 export type SlotDisplay = {

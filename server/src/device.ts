@@ -1,4 +1,5 @@
 import type { DeviceReport } from "./plugin/plugin.ts";
+import type { Clock } from "./clock.ts";
 
 // Linear Li-ion approximation: 4.2 V → 100 %, 3.3 V → 0 %, clamped. Coarse
 // but fine for an at-a-glance indicator.
@@ -28,7 +29,7 @@ function readNumber(headers: Headers, name: string): number | null {
 // not-a-Device-poll and keeps its previous state.
 export function parseDeviceHeaders(
   headers: Headers,
-  now: () => Temporal.ZonedDateTime = () => Temporal.Now.zonedDateTimeISO(),
+  now: Clock,
 ): DeviceReport | null {
   const id = readHeader(headers, "ID");
   if (!id) return null;
