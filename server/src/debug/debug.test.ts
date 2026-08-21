@@ -14,6 +14,13 @@ const profile: DeviceProfile = {
   dither: "floyd-steinberg",
 };
 
+// The panel now always resolves a model for the firmware-button fetch (see
+// resolveFwModel in debug.ts), so every GET / hits fetchImpl even when no
+// test cares about firmware. Default to a stub that fails loudly instead of
+// silently reaching the real S3 bucket from tests that never override it.
+const noNetworkFetch =
+  (() => Promise.reject(new Error("test: unexpected network fetch"))) as typeof fetch;
+
 function makeApp(overrides: { fetch?: typeof fetch; build?: BuildInfo } = {}) {
   const deviceState = createDeviceState({ now: fixedNow });
   const app = createDebugApp({
@@ -22,7 +29,8 @@ function makeApp(overrides: { fetch?: typeof fetch; build?: BuildInfo } = {}) {
     friendlyId: "TRMNL",
     publicUrlOrigin: "",
     now: fixedNow,
-    ...overrides,
+    fetch: overrides.fetch ?? noNetworkFetch,
+    build: overrides.build,
   });
   return { app, deviceState };
 }
@@ -291,24 +299,62 @@ Deno.test("the panel offers a paste-latest-official firmware button once the Dev
       'data-firmware-url="https://trmnl-fw.s3.us-east-2.amazonaws.com/trmnl_x/FW1.8.10.bin"',
     ),
   );
-  assert(html.includes("paste latest official (1.8.10)"));
+  assert(html.includes("paste latest official (x · 1.8.10)"));
 });
 
-Deno.test("the panel renders without the firmware button when the model is unknown or the bucket is unreachable", async () => {
-  // Unknown model: no poll yet — the bucket is never contacted.
-  const neverFetch = (() => {
-    throw new Error("must not fetch");
-  }) as typeof fetch;
-  const cold = makeApp({ fetch: neverFetch });
-  const coldHtml = await (await cold.app.request("/")).text();
-  assert(!coldHtml.includes('data-firmware-url="'));
+Deno.test("the panel offers the firmware button for the default model before any Device has polled", async () => {
+  // No poll yet, so there is no reported model — the panel still resolves
+  // one (the first known model) so the button isn't gated on connectivity.
+  const listing = `<ListBucketResult>
+    <Contents><Key>trmnl_x/FW2.0.0.bin</Key></Contents>
+  </ListBucketResult>`;
+  const fetched: string[] = [];
+  const { app } = makeApp({
+    fetch: ((url: string | URL | Request) => {
+      fetched.push(String(url));
+      return Promise.resolve(new Response(listing));
+    }) as typeof fetch,
+  });
+  const html = await (await app.request("/")).text();
+  assertEquals(fetched, [
+    "https://trmnl-fw.s3.us-east-2.amazonaws.com/?list-type=2&prefix=trmnl_x/",
+  ]);
+  assert(
+    html.includes(
+      'data-firmware-url="https://trmnl-fw.s3.us-east-2.amazonaws.com/trmnl_x/FW2.0.0.bin"',
+    ),
+  );
+});
 
-  // Known model but the bucket fetch fails: the panel still renders.
+Deno.test("the fwModel query param picks which model family the panel fetches, overriding the Device's reported model", async () => {
+  const listing = `<ListBucketResult>
+    <Contents><Key>trmnl_og/FW1.0.0.bin</Key></Contents>
+  </ListBucketResult>`;
+  const fetched: string[] = [];
+  const { app } = makeApp({
+    fetch: ((url: string | URL | Request) => {
+      fetched.push(String(url));
+      return Promise.resolve(new Response(listing));
+    }) as typeof fetch,
+  });
+  await (await app.request("/api/display", { headers: { ID: "AA:BB:CC", Model: "x" } })).body
+    ?.cancel();
+  const html = await (await app.request("/?fwModel=og")).text();
+
+  assertEquals(fetched, [
+    "https://trmnl-fw.s3.us-east-2.amazonaws.com/?list-type=2&prefix=trmnl_og/",
+  ]);
+  assert(
+    html.includes(
+      'data-firmware-url="https://trmnl-fw.s3.us-east-2.amazonaws.com/trmnl_og/FW1.0.0.bin"',
+    ),
+  );
+});
+
+Deno.test("the panel renders without the firmware button when the bucket is unreachable", async () => {
   const offline = makeApp({
     fetch: (() => Promise.reject(new Error("offline"))) as typeof fetch,
   });
-  await (await offline.app.request("/api/display", { headers: { ID: "AA:BB:CC", Model: "x" } }))
-    .body?.cancel();
   const offlineRes = await offline.app.request("/");
   assertEquals(offlineRes.status, 200);
   assert(!(await offlineRes.text()).includes('data-firmware-url="'));
