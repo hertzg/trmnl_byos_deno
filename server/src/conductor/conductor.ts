@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { RunContext } from "../plugin/plugin.ts";
+import type { DeviceReport, RunContext } from "../plugin/plugin.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
@@ -9,6 +9,7 @@ import type { DeviceState } from "../device-state.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 import type { Clock } from "../clock.ts";
+import { compareFirmwareVersions, latestOfficialFirmware } from "../firmware/firmware.ts";
 
 // BYOS facade. Owns the orchestration loop from `/api/display` through
 // Plugin → identity → eager rasterize → Slot.put, and serves the PNG at
@@ -27,6 +28,10 @@ export type ConductorDeps = {
   // Empty → derive the origin the Device dialled from its own request headers.
   publicUrlOrigin: string;
   now: Clock;
+  // true → check TRMNL's official firmware bucket on every poll and offer an
+  // update when the Device is behind. See SystemConfig.firmwareAutoUpdate.
+  firmwareAutoUpdate?: boolean;
+  fetch?: typeof fetch;
 };
 
 export type Conductor = {
@@ -34,6 +39,8 @@ export type Conductor = {
 };
 
 export function createConductor(deps: ConductorDeps): Conductor {
+  const fetchImpl = deps.fetch ?? fetch;
+
   // Single-flight: a cache miss runs the Plugin at most once even under
   // burst load (Device poll racing the Dashboard's in-process refill).
   let pendingRefill: Promise<void> | null = null;
@@ -157,14 +164,17 @@ export function createConductor(deps: ConductorDeps): Conductor {
         1,
         Math.ceil(display.refreshIn.total({ unit: "seconds" })),
       );
+      const firmwareUpdate = deps.firmwareAutoUpdate
+        ? await pendingFirmwareUpdate(deps.deviceState.latestDevice(), fetchImpl)
+        : null;
       return c.json({
         status: 0,
         image_url: `${publicOrigin(c, deps.publicUrlOrigin)}/image/${display.identity}.png`,
         filename: `image-${display.identity}`,
         refresh_rate: refreshRate,
         reset_firmware: false,
-        update_firmware: false,
-        firmware_url: "",
+        update_firmware: firmwareUpdate !== null,
+        firmware_url: firmwareUpdate?.url ?? "",
         special_function: "none",
         // "a" forces CLEAR_SLOW on TRMNL X's FastEPD path (4-pass B/W/B/W
         // ghost-erase vs CLEAR_FAST's 2-pass), eliminating visible ghosting
@@ -194,4 +204,17 @@ export function createConductor(deps: ConductorDeps): Conductor {
     });
 
   return { app };
+}
+
+// null unless the Device has reported both a model and a firmware version,
+// TRMNL's bucket has a release for that model, and the Device's version is
+// older than it — i.e. exactly when offering an update makes sense.
+async function pendingFirmwareUpdate(
+  device: DeviceReport | null,
+  fetchImpl: typeof fetch,
+) {
+  if (device?.model == null || device.fwVersion == null) return null;
+  const latest = await latestOfficialFirmware(device.model, fetchImpl);
+  if (latest === null) return null;
+  return compareFirmwareVersions(device.fwVersion, latest.version) < 0 ? latest : null;
 }

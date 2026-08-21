@@ -124,6 +124,7 @@ async function pipelineApp(
     friendlyId: config.friendlyId,
     publicUrlOrigin: config.publicUrlOrigin,
     now,
+    firmwareAutoUpdate: config.firmwareAutoUpdate,
   });
 
   const dashboard = createDashboard({

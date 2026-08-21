@@ -7,7 +7,10 @@ import { publicOrigin } from "../http/request.ts";
 import type { Clock } from "../clock.ts";
 import { isPattern, renderPattern } from "./patterns.ts";
 import { type BuildInfo, readBuildInfo } from "../build-info.ts";
+import { type LatestFirmware, latestOfficialFirmware } from "../firmware/firmware.ts";
 import DebugPage from "./debug.tsx";
+
+export type { LatestFirmware };
 
 // Debug-mode facade. When system.debug is true this app replaces the
 // Conductor AND the dashboard: /api/display returns exactly the operator's
@@ -291,58 +294,6 @@ export function createDebugApp(deps: DebugDeps): Hono {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-// Latest official firmware for the Device's model family, so the panel can
-// offer a "paste into firmware_url" button. Official binaries live in
-// TRMNL's public S3 bucket (usetrmnl.com/api/firmware/latest only answers
-// for the OG model); release keys are `<family>/FW<dotted-version>.bin`
-// exactly, which also skips the `<family>/dev/…` CI builds. Panel-render
-// convenience only: fetched per page load, never throws — no release, no
-// button. The short timeout keeps the panel usable offline.
-const FIRMWARE_BUCKET = "https://trmnl-fw.s3.us-east-2.amazonaws.com";
-const FIRMWARE_FAMILY_BY_MODEL: Record<string, string> = {
-  x: "trmnl_x",
-  og: "trmnl_og",
-};
-
-export type LatestFirmware = {
-  version: string;
-  url: string;
-};
-
-async function latestOfficialFirmware(
-  model: string | null,
-  fetchImpl: typeof fetch,
-): Promise<LatestFirmware | null> {
-  const family = FIRMWARE_FAMILY_BY_MODEL[model ?? ""];
-  if (!family) return null;
-  try {
-    const res = await fetchImpl(`${FIRMWARE_BUCKET}/?list-type=2&prefix=${family}/`, {
-      signal: AbortSignal.timeout(3000),
-    });
-    if (!res.ok) {
-      await res.body?.cancel();
-      return null;
-    }
-    const xml = await res.text();
-    const keys = new RegExp(`<Key>${family}/FW(\\d+(?:\\.\\d+)*)\\.bin</Key>`, "g");
-    // Numeric compare — lexicographic order would put 1.8.9 above 1.8.10.
-    const byVersion = (a: string, b: string) => {
-      const as = a.split(".").map(Number);
-      const bs = b.split(".").map(Number);
-      for (let i = 0; i < Math.max(as.length, bs.length); i++) {
-        if ((as[i] ?? 0) !== (bs[i] ?? 0)) return (as[i] ?? 0) - (bs[i] ?? 0);
-      }
-      return 0;
-    };
-    const top = [...xml.matchAll(keys)].map((m) => m[1]).sort(byVersion).at(-1);
-    return top === undefined
-      ? null
-      : { version: top, url: `${FIRMWARE_BUCKET}/${family}/FW${top}.bin` };
-  } catch {
-    return null;
-  }
 }
 
 function recordDeviceSideEffects(req: Request, deps: DebugDeps): void {

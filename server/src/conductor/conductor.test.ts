@@ -215,6 +215,101 @@ Deno.test("GET /api/display leaves ctx.device null when no Device has polled yet
   assertEquals(seen.device, null);
 });
 
+// ─── firmwareAutoUpdate: optional per-poll update offer ───────────────────
+
+Deno.test("firmwareAutoUpdate defaults to off — a poll from a Device on an old version still gets update_firmware=false", async () => {
+  const neverFetch = (() => {
+    throw new Error("must not fetch when firmwareAutoUpdate is unset");
+  }) as typeof fetch;
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+    fetch: neverFetch,
+  });
+
+  const body = await (
+    await conductor.app.request("/api/display", { headers: { ID: "AA:BB:CC", Model: "x" } })
+  ).json();
+
+  assertEquals(body.update_firmware, false);
+  assertEquals(body.firmware_url, "");
+});
+
+Deno.test("firmwareAutoUpdate=true offers the latest official firmware when the Device is behind", async () => {
+  const listing = `<ListBucketResult>
+    <Contents><Key>trmnl_x/FW1.8.9.bin</Key></Contents>
+    <Contents><Key>trmnl_x/FW1.8.10.bin</Key></Contents>
+  </ListBucketResult>`;
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+    firmwareAutoUpdate: true,
+    fetch: (() => Promise.resolve(new Response(listing))) as typeof fetch,
+  });
+
+  const body = await (
+    await conductor.app.request("/api/display", {
+      headers: { ID: "AA:BB:CC", Model: "x", "FW-Version": "1.8.9" },
+    })
+  ).json();
+
+  assertEquals(body.update_firmware, true);
+  assertEquals(
+    body.firmware_url,
+    "https://trmnl-fw.s3.us-east-2.amazonaws.com/trmnl_x/FW1.8.10.bin",
+  );
+});
+
+Deno.test("firmwareAutoUpdate=true leaves update_firmware=false once the Device already reports the latest version", async () => {
+  const listing = `<ListBucketResult>
+    <Contents><Key>trmnl_x/FW1.8.10.bin</Key></Contents>
+  </ListBucketResult>`;
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+    firmwareAutoUpdate: true,
+    fetch: (() => Promise.resolve(new Response(listing))) as typeof fetch,
+  });
+
+  const body = await (
+    await conductor.app.request("/api/display", {
+      headers: { ID: "AA:BB:CC", Model: "x", "FW-Version": "1.8.10" },
+    })
+  ).json();
+
+  assertEquals(body.update_firmware, false);
+  assertEquals(body.firmware_url, "");
+});
+
+Deno.test("firmwareAutoUpdate=true never fetches before any Device has polled — no model to look up yet", async () => {
+  const neverFetch = (() => {
+    throw new Error("must not fetch with no known Device");
+  }) as typeof fetch;
+  const conductor = createConductor({
+    ...defaults(),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+    firmwareAutoUpdate: true,
+    fetch: neverFetch,
+  });
+
+  const body = await (await conductor.app.request("/api/display")).json();
+
+  assertEquals(body.update_firmware, false);
+  assertEquals(body.firmware_url, "");
+});
+
 Deno.test("GET /api/display passes intent=poll into the Plugin", async () => {
   const seen: { intents: string[] } = { intents: [] };
   const conductor = createConductor({
