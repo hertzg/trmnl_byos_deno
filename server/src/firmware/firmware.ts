@@ -1,3 +1,5 @@
+import { parse, type XmlElement, type XmlNode } from "@std/xml";
+
 // Latest official firmware lookups against TRMNL's public S3 bucket
 // (usetrmnl.com/api/firmware/latest only answers for the OG model). Release
 // keys are `<family>/FW<dotted-version>.bin` exactly, which also skips the
@@ -45,12 +47,33 @@ export async function latestOfficialFirmware(
       return null;
     }
     const xml = await res.text();
-    const keys = new RegExp(`<Key>${family}/FW(\\d+(?:\\.\\d+)*)\\.bin</Key>`, "g");
-    const top = [...xml.matchAll(keys)].map((m) => m[1]).sort(compareFirmwareVersions).at(-1);
+    const keyPattern = new RegExp(`^${family}/FW(\\d+(?:\\.\\d+)*)\\.bin$`);
+    const top = parse(xml, { trackPosition: false })
+      .root.children
+      .filter(isElement)
+      .filter((el) => el.name.local === "Contents")
+      .flatMap((contents) => contents.children.filter(isElement))
+      .filter((el) => el.name.local === "Key")
+      .map(elementText)
+      .map((key) => keyPattern.exec(key)?.[1])
+      .filter((version) => version !== undefined)
+      .sort(compareFirmwareVersions)
+      .at(-1);
     return top === undefined
       ? null
       : { version: top, url: `${FIRMWARE_BUCKET}/${family}/FW${top}.bin` };
   } catch {
     return null;
   }
+}
+
+function isElement(node: XmlNode): node is XmlElement {
+  return node.type === "element";
+}
+
+function elementText(el: XmlElement): string {
+  return el.children
+    .filter((node) => node.type === "text")
+    .map((node) => node.text)
+    .join("");
 }

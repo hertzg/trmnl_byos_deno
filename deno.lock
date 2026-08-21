@@ -37,6 +37,7 @@
     "jsr:@std/path@^1.1.5": "1.1.5",
     "jsr:@std/semver@1": "1.0.8",
     "jsr:@std/testing@1": "1.0.19",
+    "jsr:@std/xml@0.2": "0.2.0",
     "jsr:@zip-js/zip-js@^2.7.52": "2.8.26",
     "npm:hafas-client@^6.3.6": "6.3.6"
   },
@@ -165,6 +166,9 @@
         "jsr:@std/internal@^1.0.14",
         "jsr:@std/path@^1.1.5"
       ]
+    },
+    "@std/xml@0.2.0": {
+      "integrity": "e0b54ae29592bc1fc688109f78ef5c18680bf820ba8aa0a3990a115e709e58d2"
     },
     "@zip-js/zip-js@2.8.26": {
       "integrity": "2b78bfa2c5d43766c9a487fc0274981d45732de41bb5b82433d29d235be67191"
@@ -644,7 +648,8 @@
           "jsr:@std/media-types@1",
           "jsr:@std/path@1",
           "jsr:@std/semver@1",
-          "jsr:@std/testing@1"
+          "jsr:@std/testing@1",
+          "jsr:@std/xml@0.2"
         ]
       }
     }
