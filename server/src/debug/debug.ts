@@ -137,6 +137,7 @@ export function createDebugApp(deps: DebugDeps): Hono {
   return new Hono()
     .get("/", async (c) => {
       const device = deps.deviceState.latestDevice();
+      const fwModel = resolveFwModel(c.req.query("fwModel"), device?.model);
       const page = renderToString(
         DebugPage({
           now: deps.now(),
@@ -148,7 +149,8 @@ export function createDebugApp(deps: DebugDeps): Hono {
           proxyError,
           customImage: customImageInfo(),
           device,
-          latestFirmware: await latestOfficialFirmware(device?.model ?? null, fetchImpl),
+          fwModel,
+          latestFirmware: await latestOfficialFirmware(fwModel, fetchImpl),
           rawHeaders: deps.deviceState.latestPollHeaders(),
           logs: deps.deviceState.recentLogs(),
         }),
@@ -293,18 +295,33 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Latest official firmware for the Device's model family, so the panel can
-// offer a "paste into firmware_url" button. Official binaries live in
-// TRMNL's public S3 bucket (usetrmnl.com/api/firmware/latest only answers
-// for the OG model); release keys are `<family>/FW<dotted-version>.bin`
-// exactly, which also skips the `<family>/dev/…` CI builds. Panel-render
+// Latest official firmware for a model family, so the panel can offer a
+// "paste into firmware_url" button. Official binaries live in TRMNL's
+// public S3 bucket (usetrmnl.com/api/firmware/latest only answers for the
+// OG model); release keys are `<family>/FW<dotted-version>.bin` exactly,
+// which also skips the `<family>/dev/…` CI builds. Panel-render
 // convenience only: fetched per page load, never throws — no release, no
 // button. The short timeout keeps the panel usable offline.
+//
+// The model is picked via the `fwModel` query param (defaulting to the
+// last-known Device's model, then the first known model) rather than
+// requiring a Device to have polled at least once — the button is useful
+// before any Device has ever reported in.
 const FIRMWARE_BUCKET = "https://trmnl-fw.s3.us-east-2.amazonaws.com";
 const FIRMWARE_FAMILY_BY_MODEL: Record<string, string> = {
   x: "trmnl_x",
   og: "trmnl_og",
 };
+export const FIRMWARE_MODELS: readonly string[] = Object.keys(FIRMWARE_FAMILY_BY_MODEL);
+
+function resolveFwModel(
+  requested: string | undefined,
+  deviceModel: string | null | undefined,
+): string {
+  if (requested !== undefined && requested in FIRMWARE_FAMILY_BY_MODEL) return requested;
+  if (deviceModel != null && deviceModel in FIRMWARE_FAMILY_BY_MODEL) return deviceModel;
+  return FIRMWARE_MODELS[0];
+}
 
 export type LatestFirmware = {
   version: string;
@@ -312,10 +329,10 @@ export type LatestFirmware = {
 };
 
 async function latestOfficialFirmware(
-  model: string | null,
+  model: string,
   fetchImpl: typeof fetch,
 ): Promise<LatestFirmware | null> {
-  const family = FIRMWARE_FAMILY_BY_MODEL[model ?? ""];
+  const family = FIRMWARE_FAMILY_BY_MODEL[model];
   if (!family) return null;
   try {
     const res = await fetchImpl(`${FIRMWARE_BUCKET}/?list-type=2&prefix=${family}/`, {
