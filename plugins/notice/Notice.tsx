@@ -36,6 +36,13 @@ html, body {
   flex-direction: column;
 }
 
+/* One notice fills the screen; a few share it; four or more go small. Every
+   size below is an em of the thread's font size, so one number moves the
+   whole view. */
+.scale-one { font-size: 7.4vw }
+.scale-few { font-size: 4.6vw }
+.scale-many { font-size: 3.3vw }
+
 /* The roll-up line sits outside this box on purpose: anything that overflows
    here leaves by the *start* edge, which the panel cannot show and nothing
    indicates, so the one element announcing hidden notices must not be the
@@ -51,13 +58,6 @@ html, body {
   gap: 0.5em;
   overflow: hidden;
 }
-
-/* One notice fills the screen; a few share it; four or more go small. Every
-   size below is an em of the thread's font size, so one number moves the
-   whole view. */
-.scale-one { font-size: 7.4vw }
-.scale-few { font-size: 4.6vw }
-.scale-many { font-size: 3.3vw }
 
 /* Caps the bubble's width against a definite width (the thread's content
    box) while letting the bubble itself hug its text. */
@@ -80,22 +80,32 @@ html, body {
 }
 
 /* The one place gray is spent: photographic content, which needs tone
-   (ADR-0011). A 4:3 slot 46% of the panel wide when there is room for it, and
-   narrower when there is not. Every message pays for its own text line,
-   padding, time label and gap first (3.1em each, measured against a rendered
-   bubble at 2.49em plus the 0.5em gap); the photos then split whatever height
-   the panel has left. Both counts come straight off the state: --rows is how
-   many messages are on screen, --photos how many of them carry an image, so a
-   lone photo among five notices is not charged for the other four. A photo
-   sized off the panel alone is the one thing in this sheet that does not
-   yield as the thread fills, and two of them push the oldest messages -- and
-   the roll-up line announcing them -- off the top edge. */
+   (ADR-0011). */
 .photo {
   display: block;
-  width: min(46vw, calc((88vh - var(--rows) * 3.1em) / var(--photos) * 4 / 3));
   aspect-ratio: 4 / 3;
   object-fit: cover;
   margin-bottom: 0.2em;
+}
+
+/* The newest photo is the one worth looking at, so it gets the room the thread
+   has left: 93.6vh is the thread's content box (the panel less its 2.4vw
+   padding, top and bottom) and every row is charged 4.25em of it first -- the
+   measured pitch of a two-line bubble, its padding, border, time label and gap
+   included. A message is a row, and an older photo is charged a row of its own
+   for the thumbnail it adds. Text wins over the photo, never the other way
+   round. Both numbers are empirical, and the vw padding only reconciles with
+   the vh budget at this panel's one aspect ratio; it holds because it is
+   conservative, not because it is derived. Below the thumbnail size the photo
+   stops shrinking -- a one-pixel sliver says less than a small picture. */
+.photo-newest {
+  width: max(3em, min(46vw, calc(max(0px, 93.6vh - var(--rows) * 4.25em) * 4 / 3)));
+}
+
+/* An older photo is a reminder that a photo is there, not the photo itself.
+   One number, an em of the type scale, so it moves with the notice count. */
+.photo-old {
+  width: 3em;
 }
 
 .earlier {
@@ -121,7 +131,9 @@ function scaleFor(count: number) {
 }
 
 export default function Notice({ notices, earlierCount }: NoticeState) {
-  const photoCount = notices.filter((notice) => notice.imageDataUrl !== null).length;
+  const withPhoto = notices.filter((notice) => notice.imageDataUrl !== null);
+  const newestPhotoId = withPhoto.length > 0 ? withPhoto[withPhoto.length - 1].id : null;
+  const rows = notices.length + Math.max(0, withPhoto.length - 1);
 
   return (
     <html>
@@ -131,16 +143,18 @@ export default function Notice({ notices, earlierCount }: NoticeState) {
         <style dangerouslySetInnerHTML={{ __html: css }} />
       </head>
       <body>
-        <div
-          class={`thread ${scaleFor(notices.length)}`}
-          style={`--rows:${Math.max(1, notices.length)};--photos:${Math.max(1, photoCount)}`}
-        >
+        <div class={`thread ${scaleFor(notices.length)}`} style={`--rows:${rows}`}>
           {earlierCount > 0 && <div class="earlier">{earlierCount} earlier</div>}
           <div class="messages">
             {notices.map((notice) => (
               <div class="msg" key={notice.id}>
                 <div class="bubble">
-                  {notice.imageDataUrl !== null && <img class="photo" src={notice.imageDataUrl} />}
+                  {notice.imageDataUrl !== null && (
+                    <img
+                      class={notice.id === newestPhotoId ? "photo photo-newest" : "photo photo-old"}
+                      src={notice.imageDataUrl}
+                    />
+                  )}
                   <div>{notice.text}</div>
                 </div>
                 <div class="time">{notice.timeLabel}</div>

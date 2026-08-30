@@ -211,7 +211,7 @@ Deno.test("Notice renders a photo inside the bubble with the text below as a cap
     earlierCount: 0,
   });
 
-  assertStringIncludes(html, '<img class="photo" src="data:image/jpeg;base64,AAAA"');
+  assertStringIncludes(html, '<img class="photo photo-newest" src="data:image/jpeg;base64,AAAA"');
   assertStringIncludes(html, "min(46vw");
   assertStringIncludes(html, "aspect-ratio: 4 / 3");
   assertLess(html.indexOf("<img"), html.indexOf("Look what the cat did"));
@@ -263,14 +263,14 @@ Deno.test("Notice sizes the photo from the notice count and the photo count", ()
     earlierCount: 0,
   });
 
-  // Every message is charged for its own text and time label; only the
-  // messages carrying a photo split what is left. A photo pinned to the panel
-  // regardless of count pushes the oldest messages off the top edge, where
-  // the panel has no scrollbar and shows no clipping indicator.
-  assertStringIncludes(html, "--rows:5;--photos:1");
+  // Every message is charged a row of the panel before the photo gets what is
+  // left. A photo pinned to the panel regardless of count pushes the oldest
+  // messages off the top edge, where there is no scrollbar and no clipping
+  // indicator.
+  assertStringIncludes(html, "--rows:5");
 });
 
-Deno.test("Notice charges one photo notice for one row and one photo", () => {
+Deno.test("Notice charges a single photo notice one row", () => {
   const html = render({
     notices: [{
       id: "n-abc123",
@@ -281,7 +281,7 @@ Deno.test("Notice charges one photo notice for one row and one photo", () => {
     earlierCount: 0,
   });
 
-  assertStringIncludes(html, "--rows:1;--photos:1");
+  assertStringIncludes(html, "--rows:1");
 });
 
 Deno.test("Notice keeps the roll-up line out of the region that clips", () => {
@@ -296,4 +296,54 @@ Deno.test("Notice keeps the roll-up line out of the region that clips", () => {
   // Overflow leaves `.messages` by the start edge, so the first child is the
   // first thing lost. The line announcing hidden notices must not sit there.
   assertLess(html.indexOf('class="earlier"'), html.indexOf('class="messages"'));
+});
+
+Deno.test("Notice gives the room to the newest photo and thumbnails the older one", () => {
+  const html = render({
+    notices: [
+      {
+        id: "n-older",
+        text: "Older photo",
+        imageDataUrl: "data:image/jpeg;base64,OLDER",
+        timeLabel: "08:12",
+      },
+      {
+        id: "n-newer",
+        text: "Newer photo",
+        imageDataUrl: "data:image/jpeg;base64,NEWER",
+        timeLabel: "09:40",
+      },
+    ],
+    earlierCount: 0,
+  });
+
+  // Realistically there is one photo, at most two. The newest is the one worth
+  // looking at, so it takes the leftover height rather than halving it with a
+  // photo that has already been seen.
+  assertStringIncludes(html, '<img class="photo photo-old" src="data:image/jpeg;base64,OLDER"');
+  assertStringIncludes(html, '<img class="photo photo-newest" src="data:image/jpeg;base64,NEWER"');
+});
+
+Deno.test("Notice charges an older photo a budget row of its own", () => {
+  const html = render({
+    notices: [
+      {
+        id: "n-older",
+        text: "Older photo",
+        imageDataUrl: "data:image/jpeg;base64,OLDER",
+        timeLabel: "08:12",
+      },
+      {
+        id: "n-newer",
+        text: "Newer photo",
+        imageDataUrl: "data:image/jpeg;base64,NEWER",
+        timeLabel: "09:40",
+      },
+    ],
+    earlierCount: 0,
+  });
+
+  // Two messages plus the thumbnail the older one adds. Without the third row
+  // the pair overflowed the panel by 178px.
+  assertStringIncludes(html, "--rows:3");
 });
