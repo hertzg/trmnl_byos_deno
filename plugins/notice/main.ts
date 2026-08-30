@@ -3,6 +3,10 @@ import { encodeBase64 } from "@std/encoding/base64";
 import Notice, { type NoticeState } from "./Notice.tsx";
 import { inbox } from "./state.ts";
 
+// Re-exported for consumers (e.g. @hztrmnl/home) that import NoticeState by
+// package name rather than by file path.
+export type { NoticeState };
+
 // The leaf Plugin. It reads the inbox and formats it; the routes are what
 // fill the inbox. `run` is a pure read — no stamping, no mutation — so a
 // dashboard scrub and a prerender are safe by construction.
