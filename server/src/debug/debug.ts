@@ -7,6 +7,7 @@ import { publicOrigin } from "../http/request.ts";
 import type { Clock } from "../clock.ts";
 import { isPattern, renderPattern } from "./patterns.ts";
 import { type BuildInfo, readBuildInfo } from "../build-info.ts";
+import { FIRMWARE_MODELS, listOfficialFirmware } from "../firmware/firmware.ts";
 import DebugPage from "./debug.tsx";
 
 // Debug-mode facade. When system.debug is true this app replaces the
@@ -138,10 +139,14 @@ export function createDebugApp(deps: DebugDeps): Hono {
     .get("/", async (c) => {
       const device = deps.deviceState.latestDevice();
       const fwModel = resolveFwModel(c.req.query("fwModel"), device?.model);
+      const [build, releases] = await Promise.all([
+        deps.build ? Promise.resolve(deps.build) : readBuildInfo(),
+        listOfficialFirmware(fwModel, fetchImpl),
+      ]);
       const page = renderToString(
         DebugPage({
           now: deps.now(),
-          build: deps.build ?? await readBuildInfo(),
+          build,
           cfg,
           response: displayResponse(publicOrigin(c, deps.publicUrlOrigin)),
           generatedResponse: generatedDisplayResponse(publicOrigin(c, deps.publicUrlOrigin)),
@@ -150,7 +155,7 @@ export function createDebugApp(deps: DebugDeps): Hono {
           customImage: customImageInfo(),
           device,
           fwModel,
-          latestFirmware: await latestOfficialFirmware(fwModel, fetchImpl),
+          latestFirmware: releases[0] ?? null,
           rawHeaders: deps.deviceState.latestPollHeaders(),
           logs: deps.deviceState.recentLogs(),
         }),
@@ -295,71 +300,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Latest official firmware for a model family, so the panel can offer a
-// "paste into firmware_url" button. Official binaries live in TRMNL's
-// public S3 bucket (usetrmnl.com/api/firmware/latest only answers for the
-// OG model); release keys are `<family>/FW<dotted-version>.bin` exactly,
-// which also skips the `<family>/dev/…` CI builds. Panel-render
-// convenience only: fetched per page load, never throws — no release, no
-// button. The short timeout keeps the panel usable offline.
-//
 // The model is picked via the `fwModel` query param (defaulting to the
 // last-known Device's model, then the first known model) rather than
 // requiring a Device to have polled at least once — the button is useful
 // before any Device has ever reported in.
-const FIRMWARE_BUCKET = "https://trmnl-fw.s3.us-east-2.amazonaws.com";
-const FIRMWARE_FAMILY_BY_MODEL: Record<string, string> = {
-  x: "trmnl_x",
-  og: "trmnl_og",
-};
-export const FIRMWARE_MODELS: readonly string[] = Object.keys(FIRMWARE_FAMILY_BY_MODEL);
-
 function resolveFwModel(
   requested: string | undefined,
   deviceModel: string | null | undefined,
 ): string {
-  if (requested !== undefined && requested in FIRMWARE_FAMILY_BY_MODEL) return requested;
-  if (deviceModel != null && deviceModel in FIRMWARE_FAMILY_BY_MODEL) return deviceModel;
+  if (requested !== undefined && FIRMWARE_MODELS.includes(requested)) return requested;
+  if (deviceModel != null && FIRMWARE_MODELS.includes(deviceModel)) return deviceModel;
   return FIRMWARE_MODELS[0];
-}
-
-export type LatestFirmware = {
-  version: string;
-  url: string;
-};
-
-async function latestOfficialFirmware(
-  model: string,
-  fetchImpl: typeof fetch,
-): Promise<LatestFirmware | null> {
-  const family = FIRMWARE_FAMILY_BY_MODEL[model];
-  if (!family) return null;
-  try {
-    const res = await fetchImpl(`${FIRMWARE_BUCKET}/?list-type=2&prefix=${family}/`, {
-      signal: AbortSignal.timeout(3000),
-    });
-    if (!res.ok) {
-      await res.body?.cancel();
-      return null;
-    }
-    const xml = await res.text();
-    const keys = new RegExp(`<Key>${family}/FW(\\d+(?:\\.\\d+)*)\\.bin</Key>`, "g");
-    // Numeric compare — lexicographic order would put 1.8.9 above 1.8.10.
-    const byVersion = (a: string, b: string) => {
-      const as = a.split(".").map(Number);
-      const bs = b.split(".").map(Number);
-      for (let i = 0; i < Math.max(as.length, bs.length); i++) {
-        if ((as[i] ?? 0) !== (bs[i] ?? 0)) return (as[i] ?? 0) - (bs[i] ?? 0);
-      }
-      return 0;
-    };
-    const top = [...xml.matchAll(keys)].map((m) => m[1]).sort(byVersion).at(-1);
-    return top === undefined
-      ? null
-      : { version: top, url: `${FIRMWARE_BUCKET}/${family}/FW${top}.bin` };
-  } catch {
-    return null;
-  }
 }
 
 function recordDeviceSideEffects(req: Request, deps: DebugDeps): void {
