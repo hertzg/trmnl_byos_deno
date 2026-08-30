@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertStringIncludes } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
 import createNoticeRoutes, { type NoticeDeps } from "./routes.ts";
 import { inbox } from "./state.ts";
@@ -273,4 +273,14 @@ Deno.test("DELETE /notice invalidates the cached Image", async () => {
   await app.request("/notice", { method: "DELETE" });
 
   assertSpyCalls(invalidate, 1);
+});
+
+Deno.test("GET /notice/app serves the control page", async () => {
+  const { app } = freshRoutes();
+
+  const res = await app.request("/notice/app");
+
+  assertEquals(res.status, 200);
+  assertEquals(res.headers.get("content-type"), "text/html; charset=utf-8");
+  assertStringIncludes(await res.text(), "<!doctype html>");
 });
