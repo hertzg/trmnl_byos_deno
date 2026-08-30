@@ -19,16 +19,15 @@ export type FirmwareRelease = {
 };
 
 // The Device-facing firmware offer, in memory only. The dashboard loads the
-// release list, picks a version and arms it; the first poll that actually
-// offers an update disarms it; a restart clears the lot. A poll never touches
-// the network — the listing is fetched by the dashboard, not by `/api/display`.
+// release list, picks a version and arms it; the next Device poll takes it and
+// disarms it; a restart clears the lot. A poll never touches the network — the
+// listing is fetched by the dashboard, not by `/api/display`.
 export type FirmwareOffer = {
   // Every official release for the loaded model, newest first. Empty until
   // `load` has succeeded once.
   releases(): readonly FirmwareRelease[];
   // What an armed poll will offer: the operator's pick, or the newest release
-  // while they haven't picked one (so a refresh that brings in a new release
-  // re-points an offer armed and left alone).
+  // while they haven't picked one.
   selection(): FirmwareRelease | null;
   // Held as a version and not as a release, so a pick survives a refresh: the
   // reloaded list resolves the same version again, and a list that no longer

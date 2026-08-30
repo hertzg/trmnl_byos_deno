@@ -323,7 +323,9 @@ Deno.test("making the offer disarms it — the poll after an update offer gets u
   assertEquals(second.update_firmware, false);
 });
 
-Deno.test("an armed offer stays armed while the Device already reports the selected version", async () => {
+Deno.test("an armed offer reflashes the version the Device already reports", async () => {
+  // Arming is the operator asking for this release to go on; whether flashing
+  // what is already installed is worth doing is the firmware's call.
   const firmwareOffer = await loadedOffer();
   firmwareOffer.arm();
   const conductor = createConductor({
@@ -340,8 +342,11 @@ Deno.test("an armed offer stays armed while the Device already reports the selec
     })
   ).json();
 
-  assertEquals(body.update_firmware, false);
-  assertEquals(firmwareOffer.armed(), true);
+  assertEquals(body.update_firmware, true);
+  assertEquals(
+    body.firmware_url,
+    "https://trmnl-fw.s3.us-east-2.amazonaws.com/trmnl_x/FW1.8.10.bin",
+  );
 });
 
 Deno.test("a poll with no Device headers never spends the offer — the dashboard refills through this route", async () => {

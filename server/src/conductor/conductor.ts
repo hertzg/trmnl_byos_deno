@@ -1,6 +1,5 @@
 import { Hono } from "hono";
-import { equals, tryParse } from "@std/semver";
-import type { DeviceReport, RunContext } from "../plugin/plugin.ts";
+import type { RunContext } from "../plugin/plugin.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
 import type { Renderer } from "../render/renderer.ts";
@@ -10,7 +9,7 @@ import type { DeviceState } from "../device-state.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 import type { Clock } from "../clock.ts";
-import type { FirmwareOffer, FirmwareRelease } from "../firmware/firmware.ts";
+import type { FirmwareOffer } from "../firmware/firmware.ts";
 
 // BYOS facade. Owns the orchestration loop from `/api/display` through
 // Plugin → identity → eager rasterize → Slot.put, and serves the PNG at
@@ -162,14 +161,15 @@ export function createConductor(deps: ConductorDeps): Conductor {
         1,
         Math.ceil(display.refreshIn.total({ unit: "seconds" })),
       );
-      // Gated on this request's `report`, not the last known Device: only a
-      // real Device poll can spend the offer. The dashboard refills an empty
-      // Slot by calling this route in-process, and bins the response.
+      // Gated on this request's `report`: only a real Device poll can spend
+      // the offer. The dashboard refills an empty Slot by calling this route
+      // in-process, and bins the response. What the Device is running is not
+      // consulted — arming a version is the operator saying "put this one on",
+      // reflashing the same version included, and whether that is worth doing
+      // is the firmware's call.
       const firmwareUpdate = report !== null && deps.firmwareOffer.armed()
-        ? pendingFirmwareUpdate(report, deps.firmwareOffer.selection())
+        ? deps.firmwareOffer.selection()
         : null;
-      // Spent only once an update is actually on the wire: an armed offer
-      // against an already-current Device stays armed for the next release.
       if (firmwareUpdate !== null) deps.firmwareOffer.disarm();
       return c.json({
         status: 0,
@@ -208,18 +208,4 @@ export function createConductor(deps: ConductorDeps): Conductor {
     });
 
   return { app };
-}
-
-// The armed selection, unless the Device already reports exactly that version
-// — reflashing what it is running costs a download and a reboot for nothing.
-// Any other reported version is offered, older or newer: an armed offer for a
-// specific release is the operator saying "put this one on".
-function pendingFirmwareUpdate(
-  device: DeviceReport,
-  selection: FirmwareRelease | null,
-): FirmwareRelease | null {
-  if (selection === null) return null;
-  const reported = tryParse(device.fwVersion ?? "");
-  if (reported !== undefined && equals(reported, selection.version)) return null;
-  return selection;
 }
