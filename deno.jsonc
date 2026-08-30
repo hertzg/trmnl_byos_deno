@@ -4,7 +4,7 @@
   // declare their own third-party deps, so nothing here needs mirroring.
   // "./plugins/*" globs every plugin member: adding a plugin is creating a
   // folder with a deno.jsonc — no edit here, none in the Dockerfile.
-  "workspace": ["./server", "./ds", "./plugins/*", "./config"],
+  "workspace": ["./server", "./ds", "./plugins/*", "./config", "./device-sim"],
   // Base version of the Docker image, bumped by hand — the running server
   // appends the CI build instant as semver build metadata
   // (0.1.0+20260714113000Z) for the dashboard's build line
@@ -21,7 +21,11 @@
     "bench": "deno bench --allow-all",
     "fmt": "deno fmt",
     "lint": "deno lint",
-    "wasm": "deno run -A server/scripts/build-wasm.ts"
+    "wasm": "deno run -A server/scripts/build-wasm.ts",
+    // Emulates the requests a TRMNL panel makes; one subcommand per request.
+    // --allow-run is for spawning the image previewer; naming the binaries
+    // instead makes Deno log a resolve failure for the other platform's one.
+    "device": "deno run --allow-net --allow-read --allow-write --allow-run device-sim/main.ts"
   },
   "fmt": {
     "lineWidth": 100,
