@@ -281,6 +281,17 @@ Deno.test("GET /notice/app serves the control page", async () => {
   const res = await app.request("/notice/app");
 
   assertEquals(res.status, 200);
-  assertEquals(res.headers.get("content-type"), "text/html; charset=utf-8");
+  assertEquals(res.headers.get("content-type"), "text/html; charset=UTF-8");
   assertStringIncludes(await res.text(), "<!doctype html>");
+});
+
+Deno.test("GET /notice/app is never cached", async () => {
+  // It lives on a Home Screen, so a copy held across a redeploy is the one
+  // stale page that would actually be annoying.
+  const { app } = freshRoutes();
+
+  const res = await app.request("/notice/app");
+  await res.body?.cancel();
+
+  assertEquals(res.headers.get("cache-control"), "no-store");
 });

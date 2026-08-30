@@ -185,6 +185,14 @@ button {
   color: var(--muted);
 }
 
+#photo-drop {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  color: var(--muted);
+  border-radius: 12px;
+}
+
 #status {
   margin: 0;
   /* Reserved so the page does not jump when the line appears. */
@@ -442,10 +450,14 @@ button {
       .then(function () { sendBtn.disabled = false; });
   });
 
-  // The Device only ever sees a notice on its next poll. Awake that is a
-  // couple of minutes at most, so "on the frame" is honest; asleep it is
-  // hours away, and the only honest thing is to name the hour.
-  var SOON_MS = 2 * 60 * 1000;
+  // The Device only ever sees a notice on its next poll, and showsAt is that
+  // poll. Awake, it is bounded by the Super-Plugin's own numbers: never
+  // sooner than the 5-minute battery floor (plugins/home/compose.ts), never
+  // later than the gallery branch's 15-minute change-detection cap
+  // (plugins/gallery/rotation.ts). Asleep, it is hours out. 25 minutes clears
+  // the awake ceiling with room to spare and is nowhere near a sleep window,
+  // so the two cases never trade lines.
+  var SOON_MS = 25 * 60 * 1000;
 
   function landingLine(showsAt) {
     var at = new Date(showsAt);
