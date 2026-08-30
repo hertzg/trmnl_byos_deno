@@ -40,6 +40,13 @@ html, body {
   gap: 0.5em;
 }
 
+/* One notice fills the screen; a few share it; four or more go small. Every
+   size below is an em of the thread's font size, so one number moves the
+   whole view. */
+.scale-one { font-size: 7.4vw }
+.scale-few { font-size: 4.6vw }
+.scale-many { font-size: 3.3vw }
+
 .bubble {
   box-sizing: border-box;
   max-width: 78%;
@@ -68,6 +75,12 @@ html, body {
 }
 `;
 
+function scaleFor(count: number) {
+  if (count <= 1) return "scale-one";
+  if (count <= 3) return "scale-few";
+  return "scale-many";
+}
+
 export default function Notice({ notices, earlierCount }: NoticeState) {
   return (
     <html>
@@ -77,7 +90,7 @@ export default function Notice({ notices, earlierCount }: NoticeState) {
         <style dangerouslySetInnerHTML={{ __html: css }} />
       </head>
       <body>
-        <div class="thread">
+        <div class={`thread ${scaleFor(notices.length)}`}>
           {earlierCount > 0 && <div class="earlier">{earlierCount} earlier</div>}
           {notices.map((notice) => (
             <div class="msg" key={notice.id}>

@@ -139,3 +139,42 @@ Deno.test("Notice renders no roll-up line when earlierCount is 0", () => {
 
   assertEquals(html.includes('class="earlier"'), false);
 });
+
+Deno.test("Notice fills the screen with a single notice", () => {
+  const html = render({
+    notices: [{ id: "n-one", text: "Only one", imageDataUrl: null, timeLabel: "08:12" }],
+    earlierCount: 0,
+  });
+
+  assertStringIncludes(html, 'class="thread scale-one"');
+  assertStringIncludes(html, ".scale-one { font-size: 7.4vw }");
+});
+
+Deno.test("Notice drops to medium type once notices share the screen", () => {
+  const html = render({
+    notices: [
+      { id: "n-one", text: "First", imageDataUrl: null, timeLabel: "08:12" },
+      { id: "n-two", text: "Second", imageDataUrl: null, timeLabel: "09:40" },
+      { id: "n-three", text: "Third", imageDataUrl: null, timeLabel: "11:05" },
+    ],
+    earlierCount: 0,
+  });
+
+  assertStringIncludes(html, 'class="thread scale-few"');
+  assertStringIncludes(html, ".scale-few { font-size: 4.6vw }");
+});
+
+Deno.test("Notice drops to small type at four notices and up", () => {
+  const html = render({
+    notices: [
+      { id: "n-one", text: "First", imageDataUrl: null, timeLabel: "08:12" },
+      { id: "n-two", text: "Second", imageDataUrl: null, timeLabel: "09:40" },
+      { id: "n-three", text: "Third", imageDataUrl: null, timeLabel: "11:05" },
+      { id: "n-four", text: "Fourth", imageDataUrl: null, timeLabel: "13:30" },
+    ],
+    earlierCount: 0,
+  });
+
+  assertStringIncludes(html, 'class="thread scale-many"');
+  assertStringIncludes(html, ".scale-many { font-size: 3.3vw }");
+});
