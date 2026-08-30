@@ -4,7 +4,10 @@ import { appPage } from "./app-page.ts";
 Deno.test("the Home Screen icon is a PNG data URI", () => {
   // iOS ignores an SVG in apple-touch-icon and falls back to a screenshot of
   // the page, so this has to be a PNG.
-  assertMatch(appPage, /<link rel="apple-touch-icon" href="data:image\/png;base64,[A-Za-z0-9+/=]+">/);
+  assertMatch(
+    appPage,
+    /<link rel="apple-touch-icon" href="data:image\/png;base64,[A-Za-z0-9+/=]+">/,
+  );
 });
 
 Deno.test("every icon is inline SVG, never a character glyph", () => {
@@ -17,8 +20,13 @@ Deno.test("every icon is inline SVG, never a character glyph", () => {
 });
 
 Deno.test("15 min is preselected, and it is the only chip that is", () => {
-  assertMatch(appPage, /data-minutes="15" aria-pressed="true"/);
-  assertEquals(appPage.match(/aria-pressed="true"/g)?.length, 1);
+  // Selection is announced through aria-pressed, so the markup is the whole
+  // truth about which duration a send with no interaction gets.
+  const pressed = [...appPage.matchAll(/data-minutes="(\d+)" aria-pressed="(\w+)"/g)]
+    .filter(([, , state]) => state === "true")
+    .map(([, minutes]) => minutes);
+
+  assertEquals(pressed, ["15"]);
 });
 
 Deno.test("notice text never reaches the DOM as markup", () => {

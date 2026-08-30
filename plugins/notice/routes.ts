@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { appPage } from "./app-page.ts";
 import { DEFAULT_MINUTES, type NoticeImage } from "./inbox.ts";
 import { inbox } from "./state.ts";
 
@@ -22,6 +23,12 @@ const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 // request as the text.
 export default function createNoticeRoutes(deps: NoticeDeps): Hono {
   return new Hono()
+    // The control page. A fifth route, but not a fifth endpoint: it serves
+    // one static string and drives the four below from the phone.
+    .get(
+      "/notice/app",
+      (c) => c.body(appPage, 200, { "content-type": "text/html; charset=utf-8" }),
+    )
     .post("/notice", async (c) => {
       const body = await c.req.formData();
 
