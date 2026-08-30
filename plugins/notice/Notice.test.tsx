@@ -1,5 +1,5 @@
 /** @jsxImportSource hono/jsx */
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assertEquals, assertLess, assertStringIncludes } from "@std/assert";
 import { renderToString } from "hono/jsx/dom/server";
 import Notice, { type NoticeState } from "./Notice.tsx";
 
@@ -81,4 +81,32 @@ Deno.test("Notice bottom-anchors the thread and left-aligns bubbles at 78% max w
   assertStringIncludes(html, "justify-content: flex-end");
   assertStringIncludes(html, "align-items: flex-start");
   assertStringIncludes(html, "max-width: 78%");
+});
+
+Deno.test("Notice labels each bubble with its time in small grey monospace", () => {
+  const html = render({
+    notices: [{
+      id: "n-abc123",
+      text: "Bread is in the oven",
+      imageDataUrl: null,
+      timeLabel: "08:12",
+    }],
+    earlierCount: 0,
+  });
+
+  assertStringIncludes(html, ">08:12<");
+  assertStringIncludes(html, "font-family: ui-monospace, monospace");
+  assertStringIncludes(html, "color: #555");
+});
+
+Deno.test("Notice keeps the given order — oldest at the top, newest at the bottom", () => {
+  const html = render({
+    notices: [
+      { id: "n-older", text: "Sent first", imageDataUrl: null, timeLabel: "08:12" },
+      { id: "n-newer", text: "Sent second", imageDataUrl: null, timeLabel: "09:40" },
+    ],
+    earlierCount: 0,
+  });
+
+  assertLess(html.indexOf("Sent first"), html.indexOf("Sent second"));
 });

@@ -51,6 +51,13 @@ html, body {
   /* Square bottom-left reads as a chat bubble without needing a tail. */
   border-radius: 0.5em 0.5em 0.5em 0;
 }
+
+.time {
+  margin: 0.1em 0 0 0.5em;
+  font-family: ui-monospace, monospace;
+  font-size: 0.34em;
+  color: #555;
+}
 `;
 
 export default function Notice({ notices }: NoticeState) {
@@ -66,6 +73,7 @@ export default function Notice({ notices }: NoticeState) {
           {notices.map((notice) => (
             <div class="msg" key={notice.id}>
               <div class="bubble">{notice.text}</div>
+              <div class="time">{notice.timeLabel}</div>
             </div>
           ))}
         </div>
