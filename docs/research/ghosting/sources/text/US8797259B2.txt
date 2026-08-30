@@ -1,0 +1,3048 @@
+US8797259B2 - Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+- Google Patents
+US8797259B2 - Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+- Google Patents
+Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+Download PDF
+Info
+Publication number
+US8797259B2
+US8797259B2
+US12/724,828
+US72482810A
+US8797259B2
+US 8797259 B2
+US8797259 B2
+US 8797259B2
+US 72482810 A
+US72482810 A
+US 72482810A
+US 8797259 B2
+US8797259 B2
+US 8797259B2
+Authority
+US
+United States
+Prior art keywords
+electrophoretic
+contrast
+voltage
+display unit
+display device
+Prior art date
+2009-03-23
+Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.)
+Active
+, expires
+2032-09-08
+Application number
+US12/724,828
+Other versions
+US20100238158A1
+(
+en
+Inventor
+Junpei Yoshida
+Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.)
+E Ink Corp
+Original Assignee
+Seiko Epson Corp
+Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.)
+2009-03-23
+Filing date
+2010-03-16
+Publication date
+2014-08-05
+2010-03-16
+Application filed by Seiko Epson Corp
+filed
+Critical
+Seiko Epson Corp
+2010-03-16
+Assigned to SEIKO EPSON CORPORATION
+reassignment
+SEIKO EPSON CORPORATION
+ASSIGNMENT OF ASSIGNORS INTEREST (SEE DOCUMENT FOR DETAILS).
+Assignors: YOSHIDA, JUNPEI
+2010-09-23
+Publication of US20100238158A1
+publication
+Critical
+patent/US20100238158A1/en
+2014-08-05
+Application granted
+granted
+Critical
+2014-08-05
+Publication of US8797259B2
+publication
+Critical
+patent/US8797259B2/en
+2018-09-13
+Assigned to E INK CORPORATION
+reassignment
+E INK CORPORATION
+ASSIGNMENT OF ASSIGNORS INTEREST (SEE DOCUMENT FOR DETAILS).
+Assignors: SEIKO EPSON CORPORATION
+Status
+Active
+legal-status
+Critical
+Current
+2032-09-08
+Adjusted expiration
+legal-status
+Critical
+Links
+USPTO
+USPTO PatentCenter
+USPTO Assignment
+Espacenet
+Global Dossier
+Discuss
+Images
+Classifications
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G3/00
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes
+G09G3/04
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes for presentation of a single character by selection from a plurality of characters, or by composing the character by combination of individual elements, e.g. segments using a combination of such display devices for composing words, rows or the like, in a frame with fixed character positions
+G09G3/16
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes for presentation of a single character by selection from a plurality of characters, or by composing the character by combination of individual elements, e.g. segments using a combination of such display devices for composing words, rows or the like, in a frame with fixed character positions by control of light from an independent source
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2320/00
+—
+Control of display operating conditions
+G09G2320/02
+—
+Improving the quality of display appearance
+G09G2320/0271
+—
+Adjustment of the gradation levels within the range of the gradation scale, e.g. by redistribution or clipping
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2320/00
+—
+Control of display operating conditions
+G09G2320/04
+—
+Maintaining the quality of display appearance
+G09G2320/041
+—
+Temperature compensation
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2320/00
+—
+Control of display operating conditions
+G09G2320/04
+—
+Maintaining the quality of display appearance
+G09G2320/043
+—
+Preventing or counteracting the effects of ageing
+G09G2320/046
+—
+Dealing with screen burn-in prevention or compensation of the effects thereof
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G3/00
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes
+G09G3/20
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes for presentation of an assembly of a number of characters, e.g. a page, by composing the assembly by combination of individual elements arranged in a matrix no fixed position being assigned to or needed to be assigned to the individual characters or partial characters
+G09G3/34
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes for presentation of an assembly of a number of characters, e.g. a page, by composing the assembly by combination of individual elements arranged in a matrix no fixed position being assigned to or needed to be assigned to the individual characters or partial characters by control of light from an independent source
+G09G3/3433
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes for presentation of an assembly of a number of characters, e.g. a page, by composing the assembly by combination of individual elements arranged in a matrix no fixed position being assigned to or needed to be assigned to the individual characters or partial characters by control of light from an independent source using light modulating elements actuated by an electric field and being other than liquid crystal devices and electrochromic devices
+G09G3/344
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes for presentation of an assembly of a number of characters, e.g. a page, by composing the assembly by combination of individual elements arranged in a matrix no fixed position being assigned to or needed to be assigned to the individual characters or partial characters by control of light from an independent source using light modulating elements actuated by an electric field and being other than liquid crystal devices and electrochromic devices based on particles moving in a fluid or in a gas, e.g. electrophoretic devices
+Definitions
+the present invention
+relates to an electrophoretic display device driving method, an electrophoretic display device, and an electronic apparatus.
+a display device of which a representative example
+is a liquid crystal display device with the characteristics of a thin shape, a lightweight, and low power consumption. Therefore, the display device expected to achieve clear display as an image display device has currently been developed in the fields of an OA apparatus, an information terminal, a watch, a television, and the like.
+an electronic paper device of which a representative example is an electrophoretic display (EPD)
+has characteristics of thinness, lightness, and low power consumption like paper. Therefore, the electronic paper device has rapidly been developed as a paper capable of executing a rewriting operation.
+EPD
+electrophoretic display
+a microcapsule type EPD which is a representative electrophoretic display device
+is a display unit which includes microcapsules enclosing a liquid in which charged particles are dispersed and realizes a contrast by applying a voltage to electrodes interposing the microcapsules to generate an electric field and by varying the distribution of the charged particles.
+JP-T-2007-501436
+discloses a technique of expanding a driving voltage for the electrophoretic element and prolonging an application time in a low temperature environment.
+JP-A-2007-187936 and JP-A-2007-187938
+an operation is repeated in every writing time to ensure a display maintaining ability.
+the electrophoretic display device
+when the electrophoretic display device is left in an arbitrary display state for a long time, a defect (burn-in) may occur in that the image vaguely remains even when the display is updated.
+the burn-in
+shows a tendency to occur depending on temperature. For example, the electrophoretic display device is left at a high temperature environment of about 70° C., the burn-in occurs for several hours.
+An advantage of some aspects of the invention
+is that it provides an electrophoretic display device driving method, an electrophoretic display device, and an electronic apparatus capable of preventing burn-in from occurring.
+a method of driving an electrophoretic display device
+including a display unit in which an electrophoretic element containing electrophoretic particles is interposed between first and second substrates and in which a plurality of pixels are arranged.
+the method
+includes lowering a contrast of the display unit, when a predetermined non-operation period elapses after the display unit displays an image.
+the driving method
+when the image is displayed and the predetermined non-operation period elapses, an operation of agitating the electrophoretic particles is executed in effect by changing the contrast.
+an operation of agitating the electrophoretic particles
+is executed in effect by changing the contrast.
+the displayed image
+since the contrast of the displayed image is just changed and the displayed image is not erased, the displayed image does not disappear while a user uses the electrophoretic display device.
+the burn-in
+can be prevented without stress given to the user.
+a gray scale of at least some of the pixels
+may be transferred to an intermediate gray scale.
+the electrophoretic particles
+can be distant from the vicinity of the electrodes. Accordingly, when the predetermined non-operation period elapses, it is possible to transfer the state of the electrophoretic display device to the state where the burn-in rarely occurs.
+the electrophoretic particles
+can be drawn strongly to the electrodes, and thus the burn-in easily occurs.
+the burn-in
+can be prevented with the smaller number of operations.
+the burn-in
+since the contrast can be changed in all of the pixels of plural gray scales, the burn-in can be prevented with the smaller number of operations.
+a voltage applied to the electrophoretic element in the lowering of the contrast
+may be lower than a voltage applied to the electrophoretic element in displaying an image on the display unit.
+the burn-in preventing operation
+can be executed without disappearance of the image displayed on the display unit.
+a voltage application period during which a voltage is applied to the electrophoretic element in the lowering of the contrast
+may be shorter than a voltage application period during which a voltage is applied to the electrophoretic element in displaying an image on the display unit.
+the burn-in preventing operation
+can be executed without disappearance of the image displayed on the display unit.
+the voltages or a voltage application period
+may be changed on the basis of an ambient temperature.
+the driving method
+it is possible to execute the burn-in preventing operation in considering a case where the burn-in easily occurs depending on the ambient temperature.
+a length of the non-operation period until the lowering is executed
+may be changed on the basis of an ambient temperature.
+the driving method
+it is possible to execute the burn-in preventing operation in considering a case where the burn-in easily occurs depending on the ambient temperature.
+an electrophoretic display device
+including: a display unit in which an electrophoretic element containing electrophoretic particles is interposed between first and second substrates and in which a plurality of pixels are arranged; and a control unit which controls the display unit.
+the control unit
+executes a contrast changing operation of lowering a contrast of the display unit, when a predetermined non-operation period elapses after the display unit displays an image.
+the displayed image
+since the contrast of the displayed image is just changed and the displayed image is not erased, the displayed image does not disappear while the user uses the electrophoretic display device.
+the burn-in
+can be prevented without stress given to the user.
+control unit
+may transfer a gray scale of at least some of the pixels to an intermediate gray scale.
+At least some of the electrophoretic particles
+can be distant from the vicinity of the electrodes. Accordingly, when the predetermined non-operation period elapses, it is possible to transfer the state of the electrophoretic display device to the state where the burn-in rarely occurs.
+a voltage applied to the electrophoretic element in the contrast changing operation
+may be lower than a voltage applied to the electrophoretic element in an image displaying operation of displaying an image on the display unit.
+the burn-in preventing operation
+can be executed without disappearance of the image displayed on the display unit.
+a voltage application period during which a voltage is applied to the electrophoretic element in the contrast changing operation
+may be shorter than a voltage application period during which a voltage is applied to the electrophoretic element in an image displaying operation of displaying an image on the display unit.
+the burn-in preventing operation
+can be executed without disappearance of the image displayed on the display unit.
+the control unit
+may change the voltages or a voltage application period on the basis of an ambient temperature.
+control unit
+may change a length of the non-operation period until the contrast changing operation is executed.
+an electronic apparatus
+including the above-described electrophoretic display device.
+FIGS. 2A and 2B
+are diagrams illustrating the sectional configuration and the electric configuration of the electrophoretic display device.
+FIGS. 3A and 3B
+are explanatory diagrams illustrating an operation of an electrophoretic element.
+FIG. 5
+is a flowchart illustrating a driving method.
+FIG. 7
+is a diagram illustrating an example of an electronic apparatus.
+FIG. 8
+is a diagram illustrating an example of an electronic apparatus.
+FIG. 9
+is a diagram illustrating an example of an electronic apparatus.
+the electrophoretic display device 100
+includes a display unit 5 in which a plurality of pixels (segments) 40 is arranged, a controller (control unit) 63 , and a pixel electrode driving circuit 60 connected to the controller 63 .
+the pixel electrode driving circuit 60
+is connected to pixels 40 via pixel electrode wires 61 .
+a common electrode 37
+(see FIGS. 2A and 2B ) common to the pixels 40 is disposed in the display unit 5 . In FIG. 1 , the common electrode 37 is simply illustrated by a wire.
+the electrophoretic display device 100
+is a segment driving type electrophoretic display device which transmits image data from the controller 63 to the pixel electrode driving circuit 60 and directly inputs potential based on the image data to the respective pixels 40 .
+the display unit 5 of the electrophoretic display device 100
+which interposes an electrophoretic element 32 between a first substrate 30 and a second substrate 31 .
+a plurality of pixel electrodes (segment electrode: first electrode) 35
+is formed on the first substrate 30 close to the electrophoretic element 32 .
+the common electrode (second electrode) 37
+is formed on the second substrate 31 close to the electrophoretic element 32 .
+a plurality of microcapsules 20 enclosing electrophoretic particles therein
+is arranged in a planar shape.
+the electrophoretic display device 100
+displays an image formed by the electrophoretic element 32 on the side of the common electrode 37 .
+the first substrate 30
+is a substrate made of glass, plastic, or the like.
+the first substrate 30
+may not be transparent, since the first substrate 30 is disposed on an opposite side of an image display surface.
+the pixel electrodes 35
+are formed by sequentially laminating a nickel plate and a gold plate on a Cu (copper) foil or formed of Al (aluminum), ITO (Indium Tin Oxide), or the like.
+the second substrate 31
+is a substrate made of glass, plastic, or the like.
+the second substrate 31
+is transparent, since the second substrate 31 is disposed on the side of the image display surface.
+the common electrode 37
+is a transparent electrode formed of MgAg (magnesium sliver), ITO, IZO (registered trademark: Indium Zinc Oxide), or the like.
+the pixel electrode driving circuit 60
+is connected to the pixel electrodes 35 via the pixel electrode wires 61 . Since switching elements 60 s respectively connected to the pixel electrode wires 61 are installed in the pixel electrode driving circuit 60 , the switching elements 60 s operate to input potential to the pixel electrodes 35 and to electrically interrupt the input (high impedance) to the pixel electrodes 35 .
+a common electrode driving circuit 64
+is connected to the common electrode 37 via a common electrode wire 62 . Since a switching element 64 s connected to the common electrode wire 62 is installed in the common electrode driving circuit 64 , the switching elements 64 s operate to input potential to the common electrode 37 and to electrically interrupt the input (high impedance) to the common electrode 37 .
+the electrophoretic element 32
+is formed in advance close to the second substrate 31 and is generally treated as an electrophoretic sheet including the adhesive layer 33 .
+the electrophoretic sheet
+is treated in a state where a protective peeling sheet is bonded to the surface of the adhesive layer 33 .
+the display unit 5
+is formed by bonding the electrophoretic sheet, from which the protective peeling sheet is removed, to the first substrate 30 (on which the pixel electrodes 35 and the like are formed) manufactured independently. Accordingly, the adhesive layer 33 exists on only the side close to the pixel electrodes 35 .
+FIG. 2B
+is a schematic sectional view illustrating the microcapsule 20 .
+the microcapsule 20
+has a particle diameter from about 30  ⁇ m to about 50  ⁇ m, for example, and is a spherical member in which a dispersion medium 21 , plural white particles (electrophoretic particles) 27 , and plural black particles (electrophoretic particles) 26 are enclosed.
+the microcapsules 20
+are interposed between the common electrode 37 and the pixel electrodes 35 and one or plural microcapsules 20 are disposed in one pixel 40 .
+the outer shell (wall membrane) of the microcapsule 20
+is formed of transparent polymer resin such as acryl resin such as polymethyl methacrylate and polyethyl methacrylate, urea resin, and gum Arabic.
+transparent polymer resin
+such as acryl resin such as polymethyl methacrylate and polyethyl methacrylate, urea resin, and gum Arabic.
+the dispersion medium 21
+is a liquid for dispersing the white particles 27 and the black particles 26 in the microcapsule 20 .
+the dispersion medium 21
+include water, alcoholic solvent (such as methanol, ethanol, isopropanol, butanol, octanol, and methyl cellosolve), esters (such as ethyl acetate and butyl acetate), ketones (such as acetone, methylethyl ketone, and methyl isobutyl ketone), aliphatic hydrocarbons (such as pentane, hexane, and octane), alicyclic hydrocarbons (such as cyclohexane and methyl cyclohexane), aromatic hydrocarbons (such as benzene, toluene, and benzenes having a long-chain alkyl group (such as xylene, hexyl benzene, heptyl benzene,
+the white particles 27
+are particles (polymer or colloid) formed of white pigments such as titanium dioxide, zinc flower, and antimony trioxide and are charged to, for example, negative polarity for use.
+the black particles 26
+are particles (polymer or colloid) formed of black pigments such as aniline black and carbon black and are charged to, for example, positive polarity for use.
+a charging control agent
+including particles of electrolyte, surfactant, metal soap, resin, rubber, oil, varnish, or compound, a dispersion solvent such as titanium coupling agent, aluminum coupling agent, and silane coupling agent, lubricant, and stabilizer may be added to the pigments as needed.
+red, green, and blue pigments
+may be used instead of the black particles 26 and the white particles 27 .
+the display unit 5
+can display red, green, and blue.
+FIGS. 3A and 3B
+are explanatory diagrams illustrating an operation of an electrophoretic element.
+FIG. 3A
+shows a state where the pixel 40 displays white and
+FIG. 3B
+shows a state where the pixel 40 displays black.
+the common electrode 37
+is maintained with the relatively high potential and the pixel electrode 35 is maintained with the relatively low potential. Accordingly, the negatively charged white particles 27 are attracted to the common electrode 37 and the positively charged black particles 26 are attracted to the pixel electrode 35 . As a result, when the pixel is viewed from the common electrode 37 serving as the display surface, white (W) is recognized.
+the common electrode 37
+is maintained with the relatively low potential and the pixel electrode 35 is maintained with the relatively high potential. Accordingly, the positively charged black particles 26 are attracted to the common electrode 37 and the negatively charged white particles 27 are attracted to the pixel electrode 35 . As a result, when the pixel is viewed from the common electrode 37 , black (B) is recognized.
+FIG. 4
+is a block diagram illustrating the functions of the electrophoretic display device 100 .
+the electrophoretic display device 100
+includes a controller 63 , a temperature sensor 65 , an operation unit 66 , an interface 67 , a power source 68 , and a driving circuit 69 , as shown in FIG. 4 .
+the driving circuit 69
+includes the pixel electrode driving circuit 60 and the common electrode driving circuit 64 shown in FIG. 1 and FIGS. 2A and 2B and is connected to the display unit 5 .
+the controller 63
+includes a control circuit 70 , a memory 71 (memory unit), a timer 72 , and a display rewriting circuit 73 .
+the control circuit 70
+serves as a CPU (Central Processing Unit) of the electrophoretic display device 100 and controls a variety of operations of the units of the electrophoretic display device 100 as a whole.
+the control circuit 70
+is connected to the memory 71 , the timer 72 , and the display rewriting circuit 73 within the controller 63 .
+the control circuit 70
+is also connected to the temperature sensor 65 (temperature detector), the operation unit 66 , the interface 67 , and the power source 68 which are installed outside the controller 63 .
+the memory 71
+may be a volatile memory or a non-volatile memory.
+An SRAM
+Static Random Access Memory
+DRAM
+Dynamic Random Access Memory
+a mask ROM
+Read-Only Memory
+flash memory
+or a FeRAM (Ferroelectric Random Access Memory), for example, may be used as the non-volatile memory.
+the memory 71
+stores predetermined image data in which a display image pattern or the like is determined at power-ON time or power-OFF time, an LUT (Look-Up Table) defining a correspondent relationship between temperature information and operational modes, a program for controlling and driving the display unit 5 , and the like.
+the memory 71
+also serves as a working memory maintaining temperature information acquired by the temperature sensor 65 , operation time information, or the like.
+the timer 72
+measures desired time independently or under the control of the control circuit 70 .
+the configuration of the timer 72
+is not particularly limited.
+the timer 72
+may be included in the controller 63 or may be mounted independently like the temperature sensor 65 .
+the display rewriting circuit 73
+converts image data, which is input to the control circuit 70 via the interface 67 and is transmitted from the control circuit 70 , into image data which can be displayed by the pixels 40 of the display unit 5 .
+the image data converted by the display rewriting circuit 73
+contains display color information corresponding to the respective pixels 40 .
+the image data generated by the display rewriting circuit 73
+is transmitted to the driving circuit 69 (the pixel electrode driving circuit 60 and the common electrode driving circuit 64 ).
+the temperature sensor 65
+is a sensor of which an electric value such as a resistance value or a capacitance value is changed in response to temperature.
+the temperature sensor 65
+transmits a detected temperature to the control circuit 70 .
+a thermistor or a thermocouple
+can be used as the temperature sensor 65 . Since a signal input from the temperature sensor 65 to the control circuit 70 is a detected analog signal, it is desirable that the controller 63 or the control circuit 70 has an AD converter capable of executing AD conversion from the detected analog signal to data serving as encoded temperature information.
+One or plural temperature sensors 65
+may be included in the electrophoretic display device 100 and installed at regions where the temperature of the display unit 5 shown in FIG. 1 and FIGS. 2A and 2B can be measured.
+the temperature sensor 65
+may be attached to the back surface of the first substrate 30 shown in FIG. 2A .
+the temperature sensors 65
+may be disposed at two or more regions near the center of the display unit 5 and of the periphery of the display unit 5 .
+a simple average value, a weighted average value, or the maximum value of the plural temperatures measured by the plural temperature sensors 65
+may be used as the temperature information acquired by the control circuit 70 .
+the operation unit 66
+is a user interface of the electrophoretic display device 100 through which a user inputs an operation instruction.
+the interface 67
+is a connection unit of the electrophoretic display device 100 connected to an external apparatus (not shown).
+the interface 67
+transmits image data or a command input from the external apparatus to the control circuit 70 and transmits a response signal or the like output from the control circuit 70 to the external apparatus.
+the power source 68
+is a battery supplying power to the electrophoretic display device 100 or a power circuit connected to an external power source.
+the driving circuit 69
+inputs image signals to the pixels 40 on the basis of the image data input from the display rewriting circuit 73 . Accordingly, the electrophoretic element 32 of the pixels 40 is driven by the image signals to display an image defined by the image data on the display unit 5 .
+FIG. 5
+is a flowchart illustrating a driving method according to this embodiment.
+FIG. 6A
+is an explanatory diagram illustrating status transition of the display unit 5 in the driving method according to this embodiment.
+FIG. 6B
+is a timing chart of the driving method according to this embodiment.
+the driving method
+includes an image displaying step ST 10 , a timer initiating step ST 11 , an operation determining step ST 12 , a temperature detecting step ST 13 , a parameter setting step ST 14 , a non-operation period determining step ST 15 , a contrast changing step ST 16 , and a timer stopping step ST 17 .
+an image
+is displayed on the display unit 5 .
+character “A”
+is displayed on the display unit 5 .
+the control circuit 70
+transmits image data corresponding to character “A” to the display rewriting circuit 73 .
+the display rewriting circuit 73
+sequentially transmits a control signal and the converted image data to the driving circuit 69 .
+the potential corresponding to the image data
+is input to the pixel electrode 35 of each pixel 40 by the driving circuit 69 .
+First area A 1 shown in FIG. 6A
+corresponds to an area in which a character image of a black display is displayed.
+Second area A 2
+corresponds to an area in which a background image of a white display is displayed.
+potential Vcom input to the common electrode 37
+potential V 1 input to the pixel electrode 35 of the pixels 40 belonging to a first area A 1
+potential V 2 input to the pixel electrode 35 of the pixels 40 belonging to a second area A 2
+are illustrated.
+a high-level potential
+for example, 15 V
+a low-level potential
+for example, 0 V
+the electrophoretic element 32
+is driven by a potential difference occurring between the pixel electrodes 35 (high-level) and the common electrode 37 and thus the pixels 40 display black for a period during which the potential Vcom of the common electrode 37 is the low level ( FIG. 3B ).
+the electrophoretic element 32
+is driven by a potential difference occurring between the pixel electrodes 35 (low-level) and the common electrode 37 and thus the pixels 40 display white for a period during which the potential Vcom of the common electrode 37 is the high level ( FIG. 3A ).
+the image shown in FIG. 6A
+is displayed on the display unit 5 by the above operations. Subsequently, when a high impedance state where all of the pixel electrodes 35 and the common electrode 37 are electrically cut is formed, the image displaying step ST 10 ends and the process proceeds to the timer initiating step ST 11 .
+the control circuit 70
+initiates time measurement of the timer 72 .
+the timer 72
+may be realized either by software or hardware.
+the operation determining step ST 12
+it is determined whether a signal is input from the operation unit 66 to the control circuit 70 .
+the temperature detecting step ST 13
+is selected.
+the series of steps shown in FIG. 5
+is terminated (END).
+the time measurement of the timer 72
+is interrupted in effect, and then an image displaying operation based on the signal input from the operation 66 , a power control operation, and the like are executed.
+the control circuit 70
+acquires temperature information from the output of the temperature sensor 65 , maintains the temperature information as the current ambient temperature (the temperature of the display unit 5 ), and stores the temperature information in an ambient temperature storage area (not shown) of the memory 71 . Subsequently, the process proceeds to the parameter setting step ST 14 .
+a non-operation period reference value serving as determination reference used in the non-operation period determining step ST 15 and driving parameters of the pixels 40 used in the contrast changing step ST 16
+are set.
+an arithmetical operation of using the temperature information (ambient temperature) acquired in the temperature detecting step ST 13 or table reference
+is executed for the control circuit 70 .
+the non-operation period reference value and the driving parameters
+are set on the basis of this execution result.
+the set non-operation period reference value
+is a reference time which is used when it is determined whether the contrast changing step ST 16 is executed in the non-operation period determining step ST 15 .
+the set driving parameters
+are the potential (amplitude) of a pulse input to the pixel electrodes 35 (and the common electrode 37 ) in the contrast changing step ST 16 , the width of a pulse, the length of a voltage application period, and the like.
+a calculation expression used in the calculation operation of the parameter setting step ST 14
+is a calculation expression for associating the non-operation period reference value or one or a plurality of driving parameters with the ambient temperature.
+the table used in the table reference
+is a table for associating the non-operation period reference value or one or a plurality of driving parameters with the ambient temperature.
+the non-operation period reference value, the amplitude of the pulse, the width of the pulse, and the voltage application period, or the like
+are set for the ambient temperature.
+the ambient temperature
+is associated with the non-operation period reference value so that the non-operation period reference value becomes smaller as the ambient temperature is higher.
+the amplitude of the pulse input to the electrophoretic element 32 , the width of the pulse, and the voltage application period
+are associated with the non-operation period reference value so that the amplitude of the pulse, the width of the pulse, and the voltage application period become larger as the ambient temperature is higher in the contrast changing step ST 16 .
+the calculation expression or the table
+is set by combining one or a plurality of the amplitude of the pulse, the width of the pulse, and the voltage application period.
+the non-operation period reference value used in the non-operation period determining step ST 15 and one or a plurality of the amplitude of the pulse, the width of the pulse, and the voltage application period, which are the driving parameters of the pixels 40 , used in the contrast changing step ST 16
+are calculated or obtained and then set by the calculation operation and the table reference of using the temperature information acquired in the temperature detecting step ST 13 .
+the measurement result (non-operation period) of the timer 72 the non-operation period reference value set in the parameter setting step ST 14
+are compared to each other for the control circuit 70 .
+the contrast changing step ST 16
+is selected as the result of the comparison.
+the process
+returns to the operation determining step ST 12 and then the observation operation of the operation unit 66 resumes.
+the low-level potential
+is input to the pixel electrodes 35 belonging to the first area A 1 and the high-level potential is input to the pixel electrodes 35 belonging to the second area A 2 .
+the rectangular wave pulse in which the high-level potential (for example, 15 V) and the low-level potential (for example, 0 V) are periodically repeated,
+is input to the common electrode 37 .
+the pixels 40 belonging to the first area A 1
+display white and the pixels 40 belonging to the second area A 2 display black.
+the display of the pixels 40 belonging to the first area A 1 displaying black
+does not become white but dark gray (intermediate gray scale display).
+the display of the pixels 40 belonging to the second area A 2 displaying white
+does not become black but light gray.
+the amplitude of the pulse or the width of the pulse
+are the same as those in the image displaying step ST 10 .
+the driving parameter
+is also changed.
+the high-level potential input to the pixel electrodes 35 and the common electrode 37
+is changed from 15 V to 10 V, for example.
+the width of the wave pulse input to the common electrode 37
+is changed from 20 ms to 50 ms, for example.
+steps ST 11 to ST 17
+are repeatedly executed and the contrast changing step ST 16 is executed whenever the non-operation period corresponding to the ambient temperature elapses.
+the burn-in
+since the displayed image is not erased, but is changed to have the low contrast, the burn-in is prevented. Accordingly, the displayed image does not disappear and the same image can continuously be displayed so as to be suitable for use.
+the image
+suddenly disappears while a user views the image and thus the user may feel stress.
+the burn-in
+can be prevented without stress given to the user.
+the non-operation period reference value used in the non-operation period determining step ST 15
+is set on the basis of the ambient temperature in the temperature detecting step ST 13 and the parameter setting step ST 14 . Accordingly, since the contrast changing step ST 16 can be executed at an appropriate time, power consumption can be reduced and the burn-in can be prevented.
+the burn-in occurring when the electrophoretic particles are stuck to the wall membranes of the microcapsules 20
+show a tendency to occur depending on the ambient temperature. That is, the burn-in rarely occurs at relatively low temperature, but easily occurs at relatively high temperature. Accordingly, when the non-operation period reference value is fixed to a value suitable for a high temperature environment, for example, the unnecessary contrast changing step is executed and thus unnecessary power consumption may occur in the case where the ambient temperature is relatively low. Alternatively, when the non-operation period reference value is fixed to a value suitable for a low temperature environment, the burn-in may occur at a high temperature environment.
+the contrast changing step ST 16
+can be selectively executed depending on the ambient temperature, the above-mentioned unnecessary power consumption can be inhibited and the burn-in can be prevented.
+the driving parameters used in the contrast changing step ST 16
+are set on the basis of the ambient temperature in the temperature detecting step ST 13 and the parameter setting step ST 14 . Accordingly, the electrophoretic element 32 can be driven in an appropriate range in which the burn-in can be prevented.
+the burn-in
+easily occurs at relatively high temperature. Accordingly, when the voltage applied to the electrophoretic element 32 is too low or the voltage application period is too short in the contrast changing step ST 16 , the operation of separating the electrophoretic particles from the wall membranes of the microcapsules 20 is not sufficient and thus the burn-in may occur. Alternatively, when the contrast is excessively changed in the contrast changing step, the visibility of the displayed image may deteriorate.
+the burn-in
+can be prevented without depending on the ambient temperature and the maximum contrast can be obtained in the range in which the burn-in can be prevented.
+the timer 72
+is reset and the observation of the operation unit 66 resumes. In this way, the burn-in can be prevented for a period longer than the non-operation period reference value.
+the series of operations
+can be terminated. For example, when a sequence of erasing the image of the display unit 5 after elapse of a predetermined non-operation period or a sequence of stopping power is provided, it is not necessary to change the contrast. Accordingly, the operations can be terminated.
+the entire contrast of the display unit 5
+is changed by writing a reversing image to the display unit 5 .
+the burn-in
+can be prevented with the smaller number of operations.
+the contrast
+can be changed in a part of the display unit 5 .
+both the black display of the first area A 1 and the white display of the second area A 2
+are transferred to the gray display in the contrast changing step ST 16 .
+either the black display of the first area A 1 or the white display of the second area A 2
+may be transferred to the gray display.
+the black particles 26
+are more easily stuck to the wall membranes of the microcapsules 20 than the white particles 27 , only the black display of the first area A 1 may be transferred to the gray display. In this case, the pixel electrodes 35 belonging to the second area A 2 may become the high impedance state in the contrast changing step ST 16 shown in FIG. 6B .
+the contrast
+may be changed only in the first area A 1 where the gray scale value is maximum (minimum).
+the gray scale value of the display gray scale
+is maximum or minimum, the electrophoretic particles can be drawn strongly to the electrodes, and thus the burn-in easily occurs.
+the burn-in
+can be prevented with the smaller number of operations.
+a contrast recovering step of recovering the contrast lowered in the contrast changing step ST 16
+may be executed in accordance with the signal input from the operation unit 66 .
+the contrast recovering step
+may be executed at the returning time from the standby status.
+the contrast recovering step
+an operation like the image displaying step ST 10 may be executed.
+the contrast
+is slightly lowered by execution of the contrast changing step ST 16 by the display unit 5 , it is desirable that the contrast is recovered using the same driving parameters as the driving parameters used in the contrast changing step ST 16 .
+the image displaying operation
+is executed using the same amplitude of the pulse, the same width of the pulse, and the same voltage application period as those used in the contrast changing step ST 16 . In this way, it is possible to prevent an excess writing operation for the display unit 5 in the low contrast state in the contrast changing step ST 16 .
+the segment type electrophoretic display device
+has been described, but the driving method according to this embodiment is suitably used also in an active matrix type electrophoretic display device. That is, the electrophoretic display device according to the invention may be realized as an SRAM (Static Random Access Memory) type electrophoretic display device in which a latch circuit is disposed in every pixel or a DRAM (Dynamic Random Access Memory) type electrophoretic display device in which a selection transistor and a capacitor are disposed in every pixel.
+SRAM
+Static Random Access Memory
+DRAM
+Dynamic Random Access Memory
+FIG. 7
+is a front view illustrating a wrist watch 1000 .
+the wrist watch 1000
+includes a watch case 1002 and a pair of bands 1003 connected to the watch case 1002 .
+a display unit 1005 made from the electrophoretic display device 100 according to the above-described embodiment, a second hand 1021 , a minute hand 1022 , and an hour hand 1023
+are installed on the front of the watch case 1002 .
+a winder 1010 serving as an operator and operational buttons 1011
+are installed on the side of the watch case 1002 .
+the winder 1010
+is connected to a winding brass (not shown) installed inside the case so as to be integrated with the winding brass and is installed so as to be pressed at multi steps (for example, two steps) and so as to be rotatable.
+a background image, a character line such as a date or a time, a second hand, a minute hand, an hour hand, and the like
+can be displayed on the display unit 1005 .
+FIG. 8
+is a perspective view illustrating the configuration of an electronic paper 1100 .
+the electronic paper 1100
+includes the electrophoretic display device 100 according to the above-described embodiment in a display area 1101 .
+the electronic paper 1100
+has flexibility and includes a main body 1102 formed of a rewritable sheet having texture and flexibility like known paper.
+FIG. 9
+is a perspective view illustrating the configuration of an electronic notebook 1200 .
+the electronic notebook 1200
+is made by binding plural sheets of electronic paper 1100 and attaching a cover 1201 .
+the cover 1201
+includes a display data inputting unit (not shown) which inputs display data transmitted from an external apparatus, for example. With such a configuration, display details can be changed or updated in accordance with the display data with the bound electronic paper.
+the electrophoretic display device 100 according to the invention
+is used in the wrist watch 1000 , the electronic paper 1100 , and the electronic notebook 1200 , the electronic apparatuses including the display device capable of maintaining a display quality for a long time and being excellent in reliability can be realized.
+the electrophoretic display device according to the invention
+is also applicable to a display device of an electronic apparatus such as a portable telephone or a portable audio apparatus.
+Landscapes
+Engineering & Computer Science
+(
+AREA
+)
+Physics & Mathematics
+(
+AREA
+)
+Computer Hardware Design
+(
+AREA
+)
+General Physics & Mathematics
+(
+AREA
+)
+Theoretical Computer Science
+(
+AREA
+)
+Electrochromic Elements, Electrophoresis, Or Variable Reflection Or Absorption Elements
+(
+AREA
+)
+Control Of Indicators Other Than Cathode Ray Tubes
+(
+AREA
+)
+Abstract
+There is provided a method of driving an electrophoretic display device including a display unit in which an electrophoretic element containing electrophoretic particles is interposed between first and second substrates and in which a plurality of pixels are arranged. The method includes lowering a contrast of the display unit, when a predetermined non-operation period elapses after the display unit displays an image.
+Description
+BACKGROUND
+1. Technical Field
+The present invention relates to an electrophoretic display device driving method, an electrophoretic display device, and an electronic apparatus.
+2. Related Art
+A display device of which a representative example is a liquid crystal display device with the characteristics of a thin shape, a lightweight, and low power consumption. Therefore, the display device expected to achieve clear display as an image display device has currently been developed in the fields of an OA apparatus, an information terminal, a watch, a television, and the like.
+On the other hand, an electronic paper device of which a representative example is an electrophoretic display (EPD) has characteristics of thinness, lightness, and low power consumption like paper. Therefore, the electronic paper device has rapidly been developed as a paper capable of executing a rewriting operation.
+A microcapsule type EPD which is a representative electrophoretic display device is a display unit which includes microcapsules enclosing a liquid in which charged particles are dispersed and realizes a contrast by applying a voltage to electrodes interposing the microcapsules to generate an electric field and by varying the distribution of the charged particles.
+In such an electrophoretic display device, a migration speed of the charged particles in an electrophoretic element depends on temperature. For this reason, for example, JP-T-2007-501436 discloses a technique of expanding a driving voltage for the electrophoretic element and prolonging an application time in a low temperature environment. In JP-A-2007-187936 and JP-A-2007-187938, an operation is repeated in every writing time to ensure a display maintaining ability.
+However, when the electrophoretic display device is left in an arbitrary display state for a long time, a defect (burn-in) may occur in that the image vaguely remains even when the display is updated. The burn-in shows a tendency to occur depending on temperature. For example, the electrophoretic display device is left at a high temperature environment of about 70° C., the burn-in occurs for several hours.
+According to the techniques disclosed in JP-T-2007-501436, JP-A-2007-187936, and JP-A-2007-187938, a variation in the migration speed of the charged particles depending on a variation in temperature may be compensated. However, the burn-in occurring during a time, at which the display is not changed, is not taken into consideration. Moreover, the defect caused due to the variation in temperature may not be sufficiently prevented.
+SUMMARY
+An advantage of some aspects of the invention is that it provides an electrophoretic display device driving method, an electrophoretic display device, and an electronic apparatus capable of preventing burn-in from occurring.
+According to an aspect of the invention, there is provided a method of driving an electrophoretic display device including a display unit in which an electrophoretic element containing electrophoretic particles is interposed between first and second substrates and in which a plurality of pixels are arranged. The method includes lowering a contrast of the display unit, when a predetermined non-operation period elapses after the display unit displays an image.
+According to the driving method, when the image is displayed and the predetermined non-operation period elapses, an operation of agitating the electrophoretic particles is executed in effect by changing the contrast. In this way, when the electrophoretic display device is in an environment in which burn-in occurs, it is possible to prevent the electrophoretic particles from being stuck in the electrophoretic display device.
+According to the aspect of the invention, since the contrast of the displayed image is just changed and the displayed image is not erased, the displayed image does not disappear while a user uses the electrophoretic display device. The burn-in can be prevented without stress given to the user.
+In the lowering of the contrast, a gray scale of at least some of the pixels may be transferred to an intermediate gray scale.
+According to the driving method, at least some of the electrophoretic particles can be distant from the vicinity of the electrodes. Accordingly, when the predetermined non-operation period elapses, it is possible to transfer the state of the electrophoretic display device to the state where the burn-in rarely occurs.
+In the lowering of the contrast, a gray scale of only the pixels of a specific gray scale may be transferred to the intermediate gray scale. For example, when the specific color electrophoretic particles included in the electrophoretic element are easily particularly stuck, the burn-in can be prevented with the smaller number of operations by using the driving method.
+In the lowering of the contrast, the maximum gray scale or the minimum gray scale of only the pixels are transferred to the intermediate gray scale.
+When the gray scale value of the display gray scale is maximum or minimum, the electrophoretic particles can be drawn strongly to the electrodes, and thus the burn-in easily occurs. However, by selectively transferring the contrast of only the pixels to the maximum or minimum scales, the burn-in can be prevented with the smaller number of operations.
+In the lowering of the contrast, at least some of the pixels may execute a reversing display operation.
+According to the driving method, since the contrast can be changed in all of the pixels of plural gray scales, the burn-in can be prevented with the smaller number of operations.
+A voltage applied to the electrophoretic element in the lowering of the contrast may be lower than a voltage applied to the electrophoretic element in displaying an image on the display unit.
+According to the driving method, the burn-in preventing operation can be executed without disappearance of the image displayed on the display unit.
+A voltage application period during which a voltage is applied to the electrophoretic element in the lowering of the contrast may be shorter than a voltage application period during which a voltage is applied to the electrophoretic element in displaying an image on the display unit.
+According to the driving method, the burn-in preventing operation can be executed without disappearance of the image displayed on the display unit.
+The voltages or a voltage application period may be changed on the basis of an ambient temperature.
+According to the driving method, it is possible to execute the burn-in preventing operation in considering a case where the burn-in easily occurs depending on the ambient temperature.
+A length of the non-operation period until the lowering is executed may be changed on the basis of an ambient temperature.
+According to the driving method, it is possible to execute the burn-in preventing operation in considering a case where the burn-in easily occurs depending on the ambient temperature.
+According to another aspect of the invention, there is provided an electrophoretic display device including: a display unit in which an electrophoretic element containing electrophoretic particles is interposed between first and second substrates and in which a plurality of pixels are arranged; and a control unit which controls the display unit. The control unit executes a contrast changing operation of lowering a contrast of the display unit, when a predetermined non-operation period elapses after the display unit displays an image.
+With such a configuration, when the image is displayed and the predetermined non-operation period elapses, an operation of agitating the electrophoretic particles is executed in effect by changing the contrast. In this way, when the electrophoretic display device is in an environment in which burn-in occurs, it is possible to prevent the electrophoretic particles from being stuck in the electrophoretic display device.
+According to the aspect of the invention, since the contrast of the displayed image is just changed and the displayed image is not erased, the displayed image does not disappear while the user uses the electrophoretic display device. The burn-in can be prevented without stress given to the user.
+In the contrast changing operation, the control unit may transfer a gray scale of at least some of the pixels to an intermediate gray scale.
+With such a configuration, at least some of the electrophoretic particles can be distant from the vicinity of the electrodes. Accordingly, when the predetermined non-operation period elapses, it is possible to transfer the state of the electrophoretic display device to the state where the burn-in rarely occurs.
+A voltage applied to the electrophoretic element in the contrast changing operation may be lower than a voltage applied to the electrophoretic element in an image displaying operation of displaying an image on the display unit.
+With such a configuration, the burn-in preventing operation can be executed without disappearance of the image displayed on the display unit.
+A voltage application period during which a voltage is applied to the electrophoretic element in the contrast changing operation may be shorter than a voltage application period during which a voltage is applied to the electrophoretic element in an image displaying operation of displaying an image on the display unit.
+With such a configuration, the burn-in preventing operation can be executed without disappearance of the image displayed on the display unit.
+The control unit may change the voltages or a voltage application period on the basis of an ambient temperature.
+With such a configuration, it is possible to realize the electrophoretic display device capable of executing the burn-in preventing operation in considering a case where the burn-in easily occurs depending on the ambient temperature.
+On the basis of an ambient temperature, the control unit may change a length of the non-operation period until the contrast changing operation is executed.
+With such a configuration, it is possible to realize the electrophoretic display device capable of executing the burn-in preventing operation in considering a case where the burn-in easily occurs depending on the ambient temperature.
+According to still another aspect of the invention, there is provided an electronic apparatus including the above-described electrophoretic display device.
+With such a configuration, it is possible to provide an electronic apparatus including a display device capable of preventing the burn-in and excellent in reliability.
+BRIEF DESCRIPTION OF THE DRAWINGS
+The invention will be described with reference to the accompanying drawings, wherein like numbers reference like elements.
+FIG. 1
+is a schematic diagram illustrating the configuration of an electrophoretic display device according to an embodiment.
+FIGS. 2A and 2B
+are diagrams illustrating the sectional configuration and the electric configuration of the electrophoretic display device.
+FIGS. 3A and 3B
+are explanatory diagrams illustrating an operation of an electrophoretic element.
+FIG. 4
+is a block diagram illustrating functions of the electrophoretic display device.
+FIG. 5
+is a flowchart illustrating a driving method.
+FIGS. 6A and 6B
+are explanatory diagrams illustrating a driving method according to the invention.
+FIG. 7
+is a diagram illustrating an example of an electronic apparatus.
+FIG. 8
+is a diagram illustrating an example of an electronic apparatus.
+FIG. 9
+is a diagram illustrating an example of an electronic apparatus.
+DESCRIPTION OF EXEMPLARY EMBODIMENTS
+Hereinafter, an electrophoretic display device and a driving method of the same according to the embodiment of the invention will be described with reference to the drawings.
+The embodiment is just an exemplary example of the invention. The invention is not limited to this embodiment, but may be modified in various forms within the technical scope of the invention. In order to enable easy description of elements in the accompanying drawings, the elements are appropriately shown with different scales and in different numbers.
+FIG. 1
+is a schematic diagram illustrating the configuration of an
+electrophoretic display device
+100
+according to an embodiment of the invention.
+FIG. 2A
+is a diagram illustrating the sectional configuration and the electric configuration of the
+electrophoretic display device
+100
+.
+The
+electrophoretic display device
+100
+includes a
+display unit
+5
+in which a plurality of pixels (segments)
+40
+is arranged, a controller (control unit)
+63
+, and a pixel
+electrode driving circuit
+60
+connected to the
+controller
+63
+. The pixel
+electrode driving circuit
+60
+is connected to
+pixels
+40
+via
+pixel electrode wires
+61
+. A common electrode
+37
+(see
+FIGS. 2A and 2B
+) common to the
+pixels
+40
+is disposed in the
+display unit
+5
+. In
+FIG. 1
+, the
+common electrode
+37
+is simply illustrated by a wire.
+The
+electrophoretic display device
+100
+is a segment driving type electrophoretic display device which transmits image data from the
+controller
+63
+to the pixel
+electrode driving circuit
+60
+and directly inputs potential based on the image data to the
+respective pixels
+40
+.
+As shown in
+FIG. 2A
+, the
+display unit
+5
+of the
+electrophoretic display device
+100
+which interposes an
+electrophoretic element
+32
+between a
+first substrate
+30
+and a
+second substrate
+31
+. A plurality of pixel electrodes (segment electrode: first electrode)
+35
+is formed on the
+first substrate
+30
+close to the
+electrophoretic element
+32
+. In addition, the common electrode (second electrode)
+37
+is formed on the
+second substrate
+31
+close to the
+electrophoretic element
+32
+. In the
+electrophoretic element
+32
+, a plurality of
+microcapsules
+20
+enclosing electrophoretic particles therein is arranged in a planar shape. The
+electrophoretic display device
+100
+displays an image formed by the
+electrophoretic element
+32
+on the side of the
+common electrode
+37
+.
+The
+first substrate
+30
+is a substrate made of glass, plastic, or the like. The
+first substrate
+30
+may not be transparent, since the
+first substrate
+30
+is disposed on an opposite side of an image display surface. The
+pixel electrodes
+35
+are formed by sequentially laminating a nickel plate and a gold plate on a Cu (copper) foil or formed of Al (aluminum), ITO (Indium Tin Oxide), or the like.
+On the other hand, the
+second substrate
+31
+is a substrate made of glass, plastic, or the like. The
+second substrate
+31
+is transparent, since the
+second substrate
+31
+is disposed on the side of the image display surface. The
+common electrode
+37
+is a transparent electrode formed of MgAg (magnesium sliver), ITO, IZO (registered trademark: Indium Zinc Oxide), or the like.
+The pixel
+electrode driving circuit
+60
+is connected to the
+pixel electrodes
+35
+via the
+pixel electrode wires
+61
+. Since switching
+elements
+60
+s
+respectively connected to the
+pixel electrode wires
+61
+are installed in the pixel
+electrode driving circuit
+60
+, the switching
+elements
+60
+s
+operate to input potential to the
+pixel electrodes
+35
+and to electrically interrupt the input (high impedance) to the
+pixel electrodes
+35
+.
+On the other hand, a common
+electrode driving circuit
+64
+is connected to the
+common electrode
+37
+via a
+common electrode wire
+62
+. Since a switching
+element
+64
+s
+connected to the
+common electrode wire
+62
+is installed in the common
+electrode driving circuit
+64
+, the switching
+elements
+64
+s
+operate to input potential to the
+common electrode
+37
+and to electrically interrupt the input (high impedance) to the
+common electrode
+37
+.
+The
+electrophoretic element
+32
+is formed in advance close to the
+second substrate
+31
+and is generally treated as an electrophoretic sheet including the
+adhesive layer
+33
+. In the manufacturing process, the electrophoretic sheet is treated in a state where a protective peeling sheet is bonded to the surface of the
+adhesive layer
+33
+. The
+display unit
+5
+is formed by bonding the electrophoretic sheet, from which the protective peeling sheet is removed, to the first substrate
+30
+(on which the
+pixel electrodes
+35
+and the like are formed) manufactured independently. Accordingly, the
+adhesive layer
+33
+exists on only the side close to the
+pixel electrodes
+35
+.
+FIG. 2B
+is a schematic sectional view illustrating the
+microcapsule
+20
+. The
+microcapsule
+20
+has a particle diameter from about 30 μm to about 50 μm, for example, and is a spherical member in which a
+dispersion medium
+21
+, plural white particles (electrophoretic particles)
+27
+, and plural black particles (electrophoretic particles)
+26
+are enclosed. As shown in
+FIGS. 2A and 2B
+, the
+microcapsules
+20
+are interposed between the
+common electrode
+37
+and the
+pixel electrodes
+35
+and one or
+plural microcapsules
+20
+are disposed in one
+pixel
+40
+.
+The outer shell (wall membrane) of the
+microcapsule
+20
+is formed of transparent polymer resin such as acryl resin such as polymethyl methacrylate and polyethyl methacrylate, urea resin, and gum Arabic.
+The
+dispersion medium
+21
+is a liquid for dispersing the
+white particles
+27
+and the
+black particles
+26
+in the
+microcapsule
+20
+. Examples of the
+dispersion medium
+21
+include water, alcoholic solvent (such as methanol, ethanol, isopropanol, butanol, octanol, and methyl cellosolve), esters (such as ethyl acetate and butyl acetate), ketones (such as acetone, methylethyl ketone, and methyl isobutyl ketone), aliphatic hydrocarbons (such as pentane, hexane, and octane), alicyclic hydrocarbons (such as cyclohexane and methyl cyclohexane), aromatic hydrocarbons (such as benzene, toluene, and benzenes having a long-chain alkyl group (such as xylene, hexyl benzene, heptyl benzene, octyl benzene, nonyl benzene, decyl benzene, undecyl benzene, dodecyl benzene, tridecyl benzene, and tetradecyl benzene)), halogenated hydrocarbon (such as methylene chloride, chloroform, carbon tetrachloride, and 1,2-dichloroethane), carboxylate salt, and other oil substances. These materials may be used singly or as a mixture and may be mixed with surfactant and the like.
+The
+white particles
+27
+are particles (polymer or colloid) formed of white pigments such as titanium dioxide, zinc flower, and antimony trioxide and are charged to, for example, negative polarity for use. The
+black particles
+26
+are particles (polymer or colloid) formed of black pigments such as aniline black and carbon black and are charged to, for example, positive polarity for use.
+A charging control agent including particles of electrolyte, surfactant, metal soap, resin, rubber, oil, varnish, or compound, a dispersion solvent such as titanium coupling agent, aluminum coupling agent, and silane coupling agent, lubricant, and stabilizer may be added to the pigments as needed.
+For example, red, green, and blue pigments may be used instead of the
+black particles
+26
+and the
+white particles
+27
+. In this case, the
+display unit
+5
+can display red, green, and blue.
+FIGS. 3A and 3B
+are explanatory diagrams illustrating an operation of an electrophoretic element.
+FIG. 3A
+shows a state where the
+pixel
+40
+displays white and
+FIG. 3B
+shows a state where the
+pixel
+40
+displays black.
+In the white display shown in
+FIG. 3A
+, the
+common electrode
+37
+is maintained with the relatively high potential and the
+pixel electrode
+35
+is maintained with the relatively low potential. Accordingly, the negatively charged
+white particles
+27
+are attracted to the
+common electrode
+37
+and the positively charged
+black particles
+26
+are attracted to the
+pixel electrode
+35
+. As a result, when the pixel is viewed from the
+common electrode
+37
+serving as the display surface, white (W) is recognized.
+In the black display shown in
+FIG. 3B
+, the
+common electrode
+37
+is maintained with the relatively low potential and the
+pixel electrode
+35
+is maintained with the relatively high potential. Accordingly, the positively charged
+black particles
+26
+are attracted to the
+common electrode
+37
+and the negatively charged
+white particles
+27
+are attracted to the
+pixel electrode
+35
+. As a result, when the pixel is viewed from the
+common electrode
+37
+, black (B) is recognized.
+FIG. 4
+is a block diagram illustrating the functions of the
+electrophoretic display device
+100
+.
+The
+electrophoretic display device
+100
+includes a
+controller
+63
+, a
+temperature sensor
+65
+, an
+operation unit
+66
+, an
+interface
+67
+, a
+power source
+68
+, and a driving circuit
+69
+, as shown in
+FIG. 4
+. The driving circuit
+69
+includes the pixel
+electrode driving circuit
+60
+and the common
+electrode driving circuit
+64
+shown in
+FIG. 1
+and
+FIGS. 2A and 2B
+and is connected to the
+display unit
+5
+.
+The
+controller
+63
+includes a
+control circuit
+70
+, a memory
+71
+(memory unit), a
+timer
+72
+, and a
+display rewriting circuit
+73
+.
+The
+control circuit
+70
+serves as a CPU (Central Processing Unit) of the
+electrophoretic display device
+100
+and controls a variety of operations of the units of the
+electrophoretic display device
+100
+as a whole. The
+control circuit
+70
+is connected to the
+memory
+71
+, the
+timer
+72
+, and the
+display rewriting circuit
+73
+within the
+controller
+63
+. The
+control circuit
+70
+is also connected to the temperature sensor
+65
+(temperature detector), the
+operation unit
+66
+, the
+interface
+67
+, and the
+power source
+68
+which are installed outside the
+controller
+63
+.
+The
+memory
+71
+may be a volatile memory or a non-volatile memory. An SRAM (Static Random Access Memory) or a DRAM (Dynamic Random Access Memory), for example, may be used as the volatile memory. A mask ROM (Read-Only Memory), a flash memory, or a FeRAM (Ferroelectric Random Access Memory), for example, may be used as the non-volatile memory.
+The
+memory
+71
+stores predetermined image data in which a display image pattern or the like is determined at power-ON time or power-OFF time, an LUT (Look-Up Table) defining a correspondent relationship between temperature information and operational modes, a program for controlling and driving the
+display unit
+5
+, and the like. The
+memory
+71
+also serves as a working memory maintaining temperature information acquired by the
+temperature sensor
+65
+, operation time information, or the like.
+The
+timer
+72
+measures desired time independently or under the control of the
+control circuit
+70
+. The configuration of the
+timer
+72
+is not particularly limited. The
+timer
+72
+may be included in the
+controller
+63
+or may be mounted independently like the
+temperature sensor
+65
+.
+The
+display rewriting circuit
+73
+converts image data, which is input to the
+control circuit
+70
+via the
+interface
+67
+and is transmitted from the
+control circuit
+70
+, into image data which can be displayed by the
+pixels
+40
+of the
+display unit
+5
+. The image data converted by the
+display rewriting circuit
+73
+contains display color information corresponding to the
+respective pixels
+40
+. The image data generated by the
+display rewriting circuit
+73
+is transmitted to the driving circuit
+69
+(the pixel
+electrode driving circuit
+60
+and the common electrode driving circuit
+64
+).
+The
+temperature sensor
+65
+is a sensor of which an electric value such as a resistance value or a capacitance value is changed in response to temperature. The
+temperature sensor
+65
+transmits a detected temperature to the
+control circuit
+70
+. For example, a thermistor or a thermocouple can be used as the
+temperature sensor
+65
+. Since a signal input from the
+temperature sensor
+65
+to the
+control circuit
+70
+is a detected analog signal, it is desirable that the
+controller
+63
+or the
+control circuit
+70
+has an AD converter capable of executing AD conversion from the detected analog signal to data serving as encoded temperature information.
+One or
+plural temperature sensors
+65
+may be included in the
+electrophoretic display device
+100
+and installed at regions where the temperature of the
+display unit
+5
+shown in
+FIG. 1
+and
+FIGS. 2A and 2B
+can be measured.
+For example, the
+temperature sensor
+65
+may be attached to the back surface of the
+first substrate
+30
+shown in
+FIG. 2A
+. When the planar area of the
+display unit
+5
+is large, the
+temperature sensors
+65
+may be disposed at two or more regions near the center of the
+display unit
+5
+and of the periphery of the
+display unit
+5
+. When the
+plural temperature sensors
+65
+are disposed, a simple average value, a weighted average value, or the maximum value of the plural temperatures measured by the
+plural temperature sensors
+65
+may be used as the temperature information acquired by the
+control circuit
+70
+.
+The
+operation unit
+66
+is a user interface of the
+electrophoretic display device
+100
+through which a user inputs an operation instruction.
+The
+interface
+67
+is a connection unit of the
+electrophoretic display device
+100
+connected to an external apparatus (not shown). The
+interface
+67
+transmits image data or a command input from the external apparatus to the
+control circuit
+70
+and transmits a response signal or the like output from the
+control circuit
+70
+to the external apparatus.
+The
+power source
+68
+is a battery supplying power to the
+electrophoretic display device
+100
+or a power circuit connected to an external power source.
+The driving circuit
+69
+inputs image signals to the
+pixels
+40
+on the basis of the image data input from the
+display rewriting circuit
+73
+. Accordingly, the
+electrophoretic element
+32
+of the
+pixels
+40
+is driven by the image signals to display an image defined by the image data on the
+display unit
+5
+.
+Driving Method
+Next, a method of driving the electrophoretic display device having the above-described configuration will be described.
+FIG. 5
+is a flowchart illustrating a driving method according to this embodiment.
+FIG. 6A
+is an explanatory diagram illustrating status transition of the
+display unit
+5
+in the driving method according to this embodiment.
+FIG. 6B
+is a timing chart of the driving method according to this embodiment.
+As shown in
+FIG. 5
+, the driving method according to this embodiment includes an image displaying step ST
+10
+, a timer initiating step ST
+11
+, an operation determining step ST
+12
+, a temperature detecting step ST
+13
+, a parameter setting step ST
+14
+, a non-operation period determining step ST
+15
+, a contrast changing step ST
+16
+, and a timer stopping step ST
+17
+.
+First, in the image display step ST
+10
+, an image is displayed on the
+display unit
+5
+. For example, as shown in
+FIG. 6A
+, character “A” is displayed on the
+display unit
+5
+.
+The
+control circuit
+70
+transmits image data corresponding to character “A” to the
+display rewriting circuit
+73
+. The
+display rewriting circuit
+73
+sequentially transmits a control signal and the converted image data to the driving circuit
+69
+. The potential corresponding to the image data is input to the
+pixel electrode
+35
+of each
+pixel
+40
+by the driving circuit
+69
+.
+First area A
+1
+shown in
+FIG. 6A
+corresponds to an area in which a character image of a black display is displayed. Second area A
+2
+corresponds to an area in which a background image of a white display is displayed. In the timing chart shown in
+FIG. 6B
+, potential Vcom input to the
+common electrode
+37
+, potential V
+1
+input to the
+pixel electrode
+35
+of the
+pixels
+40
+belonging to a first area A
+1
+, potential V
+2
+input to the
+pixel electrode
+35
+of the
+pixels
+40
+belonging to a second area A
+2
+are illustrated.
+In the image displaying step ST
+10
+, as shown in
+FIG. 6B
+, a high-level potential (for example, 15 V) is input to the
+pixel electrodes
+35
+belonging to the first area A
+1
+and a low-level potential (for example, 0 V) is input to the
+pixel electrodes
+35
+belonging to the second area A
+2
+. A rectangular wave pulse in which the high-level potential (for example, 15 V) and the low-level potential (for example, 0 V) are periodically repeated, is input to the
+common electrode
+37
+.
+In the
+pixels
+40
+belonging to the first area A
+1
+, the
+electrophoretic element
+32
+is driven by a potential difference occurring between the pixel electrodes
+35
+(high-level) and the
+common electrode
+37
+and thus the
+pixels
+40
+display black for a period during which the potential Vcom of the
+common electrode
+37
+is the low level (
+FIG. 3B
+).
+On the other hand, in the
+pixels
+40
+belonging to the second area A
+2
+, the
+electrophoretic element
+32
+is driven by a potential difference occurring between the pixel electrodes
+35
+(low-level) and the
+common electrode
+37
+and thus the
+pixels
+40
+display white for a period during which the potential Vcom of the
+common electrode
+37
+is the high level (
+FIG. 3A
+).
+The image shown in
+FIG. 6A
+is displayed on the
+display unit
+5
+by the above operations. Subsequently, when a high impedance state where all of the
+pixel electrodes
+35
+and the
+common electrode
+37
+are electrically cut is formed, the image displaying step ST
+10
+ends and the process proceeds to the timer initiating step ST
+11
+.
+In the timer initiating step ST
+11
+, the
+control circuit
+70
+initiates time measurement of the
+timer
+72
+. The
+timer
+72
+may be realized either by software or hardware.
+Subsequently, in the operation determining step ST
+12
+, it is determined whether a signal is input from the
+operation unit
+66
+to the
+control circuit
+70
+. When it is determined that the signal is not input from the
+operation unit
+66
+, the temperature detecting step ST
+13
+is selected. Alternatively, when it is determined that the signal is input from the
+operation unit
+66
+, the series of steps shown in
+FIG. 5
+is terminated (END).
+Moreover, when the signal is input from the
+operation unit
+66
+, the time measurement of the
+timer
+72
+is interrupted in effect, and then an image displaying operation based on the signal input from the
+operation
+66
+, a power control operation, and the like are executed.
+For example, when a sending button or a selection button of a page is operated in the
+operation unit
+66
+and an image rewriting signal is input from the
+operation unit
+66
+, the series of steps from the image displaying step ST
+10
+is executed again. For example, when a power button is operated and a power stop signal is input from the
+operation unit
+66
+, a power stop operation is executed for the
+control circuit
+70
+.
+Alternatively, when the temperature detecting step ST
+13
+is selected, the
+control circuit
+70
+acquires temperature information from the output of the
+temperature sensor
+65
+, maintains the temperature information as the current ambient temperature (the temperature of the display unit
+5
+), and stores the temperature information in an ambient temperature storage area (not shown) of the
+memory
+71
+. Subsequently, the process proceeds to the parameter setting step ST
+14
+.
+In the parameter setting step ST
+14
+, a non-operation period reference value serving as determination reference used in the non-operation period determining step ST
+15
+and driving parameters of the
+pixels
+40
+used in the contrast changing step ST
+16
+are set.
+Specifically, an arithmetical operation of using the temperature information (ambient temperature) acquired in the temperature detecting step ST
+13
+or table reference is executed for the
+control circuit
+70
+. The non-operation period reference value and the driving parameters are set on the basis of this execution result.
+The set non-operation period reference value is a reference time which is used when it is determined whether the contrast changing step ST
+16
+is executed in the non-operation period determining step ST
+15
+. The set driving parameters are the potential (amplitude) of a pulse input to the pixel electrodes
+35
+(and the common electrode
+37
+) in the contrast changing step ST
+16
+, the width of a pulse, the length of a voltage application period, and the like.
+A calculation expression used in the calculation operation of the parameter setting step ST
+14
+is a calculation expression for associating the non-operation period reference value or one or a plurality of driving parameters with the ambient temperature. The table used in the table reference is a table for associating the non-operation period reference value or one or a plurality of driving parameters with the ambient temperature.
+In the
+electrophoretic display device
+100
+according to this embodiment, as the ambient temperature is higher, a burn-in degree becomes higher and a time until the occurrence of the burn-in becomes shorter. The calculation expression and the table are set on the basis of this tendency. For example, as shown in Table 1, the non-operation period reference value, the amplitude of the pulse, the width of the pulse, and the voltage application period, or the like are set for the ambient temperature.
+TABLE 1
+NON-OPERATION
+PERIOD
+VOLTAGE
+AMBIENT
+REFERENCE
+AMPLITUDE
+WIDTH OF
+APPLICATION
+TEMPERATURE
+VALUE
+OF PULSE
+PULSE
+PERIOD
+HIGH
+SMALL
+LARGE
+LARGE
+LARGE
+↑
+↑
+↑
+↑
+↑
+↓
+↓
+↓
+↓
+↓
+LOW
+LARGE
+SMALL
+SMALL
+SMALL
+In the example shown in Table 1, the ambient temperature is associated with the non-operation period reference value so that the non-operation period reference value becomes smaller as the ambient temperature is higher. The amplitude of the pulse input to the
+electrophoretic element
+32
+, the width of the pulse, and the voltage application period are associated with the non-operation period reference value so that the amplitude of the pulse, the width of the pulse, and the voltage application period become larger as the ambient temperature is higher in the contrast changing step ST
+16
+. The calculation expression or the table is set by combining one or a plurality of the amplitude of the pulse, the width of the pulse, and the voltage application period.
+In the parameter setting step ST
+14
+, the non-operation period reference value used in the non-operation period determining step ST
+15
+and one or a plurality of the amplitude of the pulse, the width of the pulse, and the voltage application period, which are the driving parameters of the
+pixels
+40
+, used in the contrast changing step ST
+16
+are calculated or obtained and then set by the calculation operation and the table reference of using the temperature information acquired in the temperature detecting step ST
+13
+.
+Subsequently, in the non-operation period determining step ST
+15
+, the measurement result (non-operation period) of the
+timer
+72
+the non-operation period reference value set in the parameter setting step ST
+14
+are compared to each other for the
+control circuit
+70
+. When the non-operation period is equal to or larger than the non-operation period reference value, the contrast changing step ST
+16
+is selected as the result of the comparison. Alternatively, when the non-operation period does not reach the non-operation period reference value, the process returns to the operation determining step ST
+12
+and then the observation operation of the
+operation unit
+66
+resumes.
+When the contrast changing step ST
+16
+is selected, as shown in
+FIG. 6B
+, the low-level potential is input to the
+pixel electrodes
+35
+belonging to the first area A
+1
+and the high-level potential is input to the
+pixel electrodes
+35
+belonging to the second area A
+2
+. The rectangular wave pulse in which the high-level potential (for example, 15 V) and the low-level potential (for example, 0 V) are periodically repeated, is input to the
+common electrode
+37
+.
+That is, an operation of displaying a monochrome reversing image of the image data on the
+display unit
+5
+used in the image displaying step ST
+10
+is executed.
+In the contrast changing step ST
+16
+, the
+pixels
+40
+belonging to the first area A
+1
+display white and the
+pixels
+40
+belonging to the second area A
+2
+display black. However, since the voltage application period in the contrast changing step ST
+16
+is shorter than the voltage application period in the image displaying step ST
+10
+, the display of the
+pixels
+40
+belonging to the first area A
+1
+displaying black does not become white but dark gray (intermediate gray scale display). The display of the
+pixels
+40
+belonging to the second area A
+2
+displaying white does not become black but light gray.
+In the timing chart shown in
+FIG. 6B
+, the amplitude of the pulse or the width of the pulse are the same as those in the image displaying step ST
+10
+. However, when the amplitude of the pulse or the width of the pulse is changed in the parameter setting step ST
+14
+, the driving parameter is also changed. For example, when the ambient temperature is changed to be relatively low and the amplitude of the pulse is changed to be small, the high-level potential input to the
+pixel electrodes
+35
+and the
+common electrode
+37
+is changed from 15 V to 10 V, for example. Alternatively, when the ambient temperature is changed to be relatively high and the amplitude of the pulse is changed to be large, the width of the wave pulse input to the
+common electrode
+37
+is changed from 20 ms to 50 ms, for example.
+By the above operations, an image of which the contrast is lowered as a whole is displayed on the
+display unit
+5
+, as shown in
+FIG. 6A
+. Subsequently, when the high impedance state where all of the
+pixel electrodes
+35
+and the
+common electrode
+37
+are electrically cut is formed, the contrast changing step ST
+16
+ends and the process proceeds to the timer stopping step ST
+17
+.
+Subsequently, the
+timer
+72
+stops in the timer stopping step ST
+17
+, and then the process returns to the timer initiating step ST
+11
+. Subsequently, steps ST
+11
+to ST
+17
+are repeatedly executed and the contrast changing step ST
+16
+is executed whenever the non-operation period corresponding to the ambient temperature elapses.
+In the above-described driving method according to this embodiment, by executing the contrast changing step ST
+16
+after the elapse of the non-operation period set to correspond to the ambient temperature, some of the electrophoretic particles (the
+black particles
+26
+and the white particles
+27
+) which are likely to be drawn toward the wall membranes of the
+microcapsules
+20
+in the image displaying step ST
+10
+can be distant from the wall membranes of the
+microcapsules
+20
+. In this way, when the same image is displayed for a long time, the electrophoretic particles of the
+microcapsules
+20
+can be prevented from being stuck to the wall membranes of the
+microcapsules
+20
+. Accordingly, the occurrence of the burn-in can be prevented effectively.
+In the driving method according to this embodiment, since the displayed image is not erased, but is changed to have the low contrast, the burn-in is prevented. Accordingly, the displayed image does not disappear and the same image can continuously be displayed so as to be suitable for use.
+In a driving method of erasing the displayed image to prevent the burn-in, the image suddenly disappears while a user views the image and thus the user may feel stress. In this embodiment, however, since the displayed image does not disappear, the burn-in can be prevented without stress given to the user.
+In the driving method according to this embodiment, the non-operation period reference value used in the non-operation period determining step ST
+15
+is set on the basis of the ambient temperature in the temperature detecting step ST
+13
+and the parameter setting step ST
+14
+. Accordingly, since the contrast changing step ST
+16
+can be executed at an appropriate time, power consumption can be reduced and the burn-in can be prevented.
+More specifically, the burn-in occurring when the electrophoretic particles are stuck to the wall membranes of the
+microcapsules
+20
+, as described above, show a tendency to occur depending on the ambient temperature. That is, the burn-in rarely occurs at relatively low temperature, but easily occurs at relatively high temperature. Accordingly, when the non-operation period reference value is fixed to a value suitable for a high temperature environment, for example, the unnecessary contrast changing step is executed and thus unnecessary power consumption may occur in the case where the ambient temperature is relatively low. Alternatively, when the non-operation period reference value is fixed to a value suitable for a low temperature environment, the burn-in may occur at a high temperature environment.
+In this embodiment, however, since the contrast changing step ST
+16
+can be selectively executed depending on the ambient temperature, the above-mentioned unnecessary power consumption can be inhibited and the burn-in can be prevented.
+In the driving method according to this embodiment, the driving parameters used in the contrast changing step ST
+16
+are set on the basis of the ambient temperature in the temperature detecting step ST
+13
+and the parameter setting step ST
+14
+. Accordingly, the
+electrophoretic element
+32
+can be driven in an appropriate range in which the burn-in can be prevented.
+More specifically, the burn-in easily occurs at relatively high temperature. Accordingly, when the voltage applied to the
+electrophoretic element
+32
+is too low or the voltage application period is too short in the contrast changing step ST
+16
+, the operation of separating the electrophoretic particles from the wall membranes of the
+microcapsules
+20
+is not sufficient and thus the burn-in may occur. Alternatively, when the contrast is excessively changed in the contrast changing step, the visibility of the displayed image may deteriorate.
+In this embodiment, however, since the contrast is appropriately changed depending on the ambient temperature, the burn-in can be prevented without depending on the ambient temperature and the maximum contrast can be obtained in the range in which the burn-in can be prevented.
+In the driving method according to this embodiment, after the contrast changing step ST
+16
+is executed, the
+timer
+72
+is reset and the observation of the
+operation unit
+66
+resumes. In this way, the burn-in can be prevented for a period longer than the non-operation period reference value.
+In the timer stopping step ST
+17
+after the contrast changing step ST
+16
+is executed once or several times, the series of operations can be terminated. For example, when a sequence of erasing the image of the
+display unit
+5
+after elapse of a predetermined non-operation period or a sequence of stopping power is provided, it is not necessary to change the contrast. Accordingly, the operations can be terminated.
+In this embodiment, when the display of the first area A
+1
+is black and the display of the second area A
+2
+is white, the entire contrast of the
+display unit
+5
+is changed by writing a reversing image to the
+display unit
+5
+. In this way, since the contrast can be changed in all of the
+pixels
+40
+of the plural display gray scales, the burn-in can be prevented with the smaller number of operations.
+In the driving method according to this embodiment, the contrast can be changed in a part of the
+display unit
+5
+. In this embodiment, both the black display of the first area A
+1
+and the white display of the second area A
+2
+are transferred to the gray display in the contrast changing step ST
+16
+. However, for example, either the black display of the first area A
+1
+or the white display of the second area A
+2
+may be transferred to the gray display.
+More specifically, when the
+black particles
+26
+are more easily stuck to the wall membranes of the
+microcapsules
+20
+than the
+white particles
+27
+, only the black display of the first area A
+1
+may be transferred to the gray display. In this case, the
+pixel electrodes
+35
+belonging to the second area A
+2
+may become the high impedance state in the contrast changing step ST
+16
+shown in
+FIG. 6B
+.
+For example, when the display of the first area A
+1
+is black and the display of the second area A
+2
+is gray for the image displayed in the image displaying step ST
+10
+, the contrast may be changed only in the first area A
+1
+where the gray scale value is maximum (minimum). When the gray scale value of the display gray scale is maximum or minimum, the electrophoretic particles can be drawn strongly to the electrodes, and thus the burn-in easily occurs. However, by selectively transferring the
+pixels
+40
+to the intermediate gray scales, the burn-in can be prevented with the smaller number of operations.
+In this embodiment, when the signal is input from the
+operation unit
+66
+in the operation determining step ST
+12
+, the series of operations is terminated. However, a contrast recovering step of recovering the contrast lowered in the contrast changing step ST
+16
+may be executed in accordance with the signal input from the
+operation unit
+66
+.
+For example, when a status return button for cancelling the standby status is installed in the
+operation unit
+66
+or a sequence of retuning the process from the standby status by the operation of a selection button or a power button is provided, the contrast recovering step may be executed at the returning time from the standby status.
+In the contrast recovering step, an operation like the image displaying step ST
+10
+may be executed. However, when the contrast is slightly lowered by execution of the contrast changing step ST
+16
+by the
+display unit
+5
+, it is desirable that the contrast is recovered using the same driving parameters as the driving parameters used in the contrast changing step ST
+16
+.
+That is, it is desirable that the image displaying operation is executed using the same amplitude of the pulse, the same width of the pulse, and the same voltage application period as those used in the contrast changing step ST
+16
+. In this way, it is possible to prevent an excess writing operation for the
+display unit
+5
+in the low contrast state in the contrast changing step ST
+16
+.
+In this embodiment, the segment type electrophoretic display device has been described, but the driving method according to this embodiment is suitably used also in an active matrix type electrophoretic display device. That is, the electrophoretic display device according to the invention may be realized as an SRAM (Static Random Access Memory) type electrophoretic display device in which a latch circuit is disposed in every pixel or a DRAM (Dynamic Random Access Memory) type electrophoretic display device in which a selection transistor and a capacitor are disposed in every pixel.
+Electronic Apparatuses
+Next, a case where the
+electrophoretic display device
+100
+is applied to an electronic apparatus will be described.
+FIG. 7
+is a front view illustrating a
+wrist watch
+1000
+. The
+wrist watch
+1000
+includes a
+watch case
+1002
+and a pair of
+bands
+1003
+connected to the
+watch case
+1002
+.
+A
+display unit
+1005
+made from the
+electrophoretic display device
+100
+according to the above-described embodiment, a
+second hand
+1021
+, a
+minute hand
+1022
+, and an
+hour hand
+1023
+are installed on the front of the
+watch case
+1002
+. A
+winder
+1010
+serving as an operator and
+operational buttons
+1011
+are installed on the side of the
+watch case
+1002
+. The
+winder
+1010
+is connected to a winding brass (not shown) installed inside the case so as to be integrated with the winding brass and is installed so as to be pressed at multi steps (for example, two steps) and so as to be rotatable. A background image, a character line such as a date or a time, a second hand, a minute hand, an hour hand, and the like can be displayed on the
+display unit
+1005
+.
+FIG. 8
+is a perspective view illustrating the configuration of an
+electronic paper
+1100
+. The
+electronic paper
+1100
+includes the
+electrophoretic display device
+100
+according to the above-described embodiment in a
+display area
+1101
+. The
+electronic paper
+1100
+has flexibility and includes a
+main body
+1102
+formed of a rewritable sheet having texture and flexibility like known paper.
+FIG. 9
+is a perspective view illustrating the configuration of an
+electronic notebook
+1200
+. The
+electronic notebook
+1200
+is made by binding plural sheets of
+electronic paper
+1100
+and attaching a
+cover
+1201
+. The
+cover
+1201
+includes a display data inputting unit (not shown) which inputs display data transmitted from an external apparatus, for example. With such a configuration, display details can be changed or updated in accordance with the display data with the bound electronic paper.
+Since the
+electrophoretic display device
+100
+according to the invention is used in the
+wrist watch
+1000
+, the
+electronic paper
+1100
+, and the
+electronic notebook
+1200
+, the electronic apparatuses including the display device capable of maintaining a display quality for a long time and being excellent in reliability can be realized.
+The electronic apparatuses are just examples according to the invention and do not limit the technical scope of the invention. For example, the electrophoretic display device according to the invention is also applicable to a display device of an electronic apparatus such as a portable telephone or a portable audio apparatus.
+The entire disclosure of Japanese Patent Application No. 2009-070191, filed Mar. 23, 2009 is expressly incorporated by reference herein.
+Claims (
+20
+)
+What is claimed is:
+1. A method of driving an electrophoretic display device including a display unit in which an electrophoretic element containing electrophoretic particles is interposed between first and second substrates and in which a plurality of pixels are arranged, the method comprising:
+detecting a non-operation period during which an electric potential is not input to pixel electrodes of the plurality of pixels after the display unit displays an image;
+determining that the non-operation period exceeds a predetermined reference value;
+lowering a contrast of the display unit by applying voltages to the pixel electrodes after determining that the non-operation period exceeds the predetermined reference value,
+wherein a voltage applied to the electrophoretic element in the lowering of the contrast is reverse polarity to a voltage applied to the electrophoretic element in displaying an image on the display unit.
+2. The method according to
+claim 1
+, wherein in the lowering of the contrast, a gray scale of at least some of the pixels is transferred to an intermediate gray scale.
+3. The method according to
+claim 2
+, wherein in the lowering of the contrast, a gray scale of only the pixels of a specific gray scale is transferred to the intermediate gray scale.
+4. The method according to
+claim 3
+, wherein in the lowering of the contrast, the maximum gray scale or the minimum gray scale of only the pixels are transferred to the intermediate gray scale.
+5. The method according to
+claim 1
+, wherein in the lowering of the contrast, at least some of the pixels execute a reversing display operation.
+6. The method according to
+claim 1
+, wherein a voltage applied to the electrophoretic element in the lowering of the contrast is lower than a voltage applied to the electrophoretic element in displaying an image on the display unit.
+7. The method according to
+claim 6
+, wherein the voltages or a voltage application period is changed on the basis of an ambient temperature.
+8. The method according to
+claim 1
+, wherein a voltage application period during which a voltage is applied to the electrophoretic element in the lowering of the contrast is shorter than a voltage application period during which a voltage is applied to the electrophoretic element in displaying an image on the display unit.
+9. The method according to
+claim 1
+, wherein a length of the non-operation period until the lowering is executed is changed on the basis of an ambient temperature.
+10. The method according to
+claim 1
+, wherein:
+the lowering the contrast of the display unit further comprises lowering the contrast of the display unit by applying a first voltage to the pixel electrodes in a first area and a second voltage to the pixel electrodes in a second area after determining that the non-operation period exceeds the predetermined reference value, and
+the first voltage value is different than the second voltage value.
+11. An electrophoretic display device comprising:
+a display unit in which an electrophoretic element containing electrophoretic particles is interposed between first and second substrates and in which a plurality of pixels are arranged; and
+a control unit which controls the display unit,
+wherein the control unit:
+detects a non-operation period during which an electric potential is not input to pixel electrodes of the plurality of pixels after the display unit displays an image;
+determines that the non-operation period exceeds a predetermined reference value;
+executes a contrast changing operation of lowering a contrast of the display unit by applying voltages to the pixel electrodes after determining that the non-operation period exceeds the predetermined reference value,
+wherein a voltage applied to the electrophoretic element in the lowering of the contrast is reverse polarity to a voltage applied to the electrophoretic element in displaying an image on the display unit.
+12. The electrophoretic display device according to
+claim 11
+, wherein in the contrast changing operation, the control unit transfers a gray scale of at least some of the pixels to an intermediate gray scale.
+13. The electrophoretic display device according to
+claim 11
+, wherein a voltage applied to the electrophoretic element in the contrast changing operation is lower than a voltage applied to the electrophoretic element in an image displaying operation of displaying an image on the display unit.
+14. The electrophoretic display device according to
+claim 13
+, wherein the control unit changes the voltages or a voltage application period on the basis of an ambient temperature.
+15. The electrophoretic display device according to
+claim 11
+, wherein a voltage application period during which a voltage is applied to the electrophoretic element in the contrast changing operation is shorter than a voltage application period during which a voltage is applied to the electrophoretic element in an image displaying operation of displaying an image on the display unit.
+16. The electrophoretic display device according to
+claim 11
+, wherein on the basis of an ambient temperature, the control unit changes a length of the non-operation period until the contrast changing operation is executed.
+17. An electronic apparatus comprising the electrophoretic display device according to
+claim 11
+.
+18. The electrophoretic display device according to
+claim 11
+, wherein:
+the control unit executes the contrast changing operation of lowering the contrast of the display unit by applying a first voltage to the pixel electrodes in a first area and a second voltage to the pixel electrodes in a second area after determining that the non-operation period exceeds the predetermined reference value, and
+the first voltage value is different than the second voltage value.
+19. A method of driving an electrophoretic display device including a display unit in which an electrophoretic element containing electrophoretic particles is interposed between first and second substrates and in which a plurality of pixels are arranged, the method comprising:
+detecting a non-operation period during which an electric potential is not input to pixel electrodes of the plurality of pixels after the display unit displays an image;
+determining that the non-operation period exceeds a predetermined reference value; and
+lowering a contrast of the display unit by applying a first voltage to the pixel electrodes in a first area and a second voltage to the pixel electrodes in a second area after determining that the non-operation period exceeds the predetermined reference value,
+wherein the first voltage value is different than the second voltage value.
+20. An electrophoretic display device comprising:
+a display unit in which an electrophoretic element containing electrophoretic particles is interposed between first and second substrates and in which a plurality of pixels are arranged; and
+a control unit which controls the display unit,
+wherein the control unit:
+detects a non-operation period during which an electric potential is not input to pixel electrodes of the plurality of pixels after the display unit displays an image,
+determines that the non-operation period exceeds a predetermined reference value, and
+executes a contrast changing operation of lowering a contrast of the display unit by applying a first voltage to the pixel electrodes in a first area and a second voltage to the pixel electrodes in a second area after determining that the non-operation period exceeds the predetermined reference value, the first voltage value being different than the second voltage value.
+US12/724,828
+2009-03-23
+2010-03-16
+Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+Active
+2032-09-08
+US8797259B2
+(
+en
+)
+Applications Claiming Priority (2)
+Application Number
+Priority Date
+Filing Date
+Title
+JP2009-070191
+2009-03-23
+JP2009070191A
+JP5695299B2
+(
+en
+)
+2009-03-23
+2009-03-23
+Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+Publications (2)
+Publication Number
+Publication Date
+US20100238158A1
+US20100238158A1
+(
+en
+)
+2010-09-23
+US8797259B2
+true
+US8797259B2
+(
+en
+)
+2014-08-05
+Family
+ID=42737134
+Family Applications (1)
+Application Number
+Title
+Priority Date
+Filing Date
+US12/724,828
+Active
+2032-09-08
+US8797259B2
+(
+en
+)
+2009-03-23
+2010-03-16
+Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+Country Status (3)
+Country
+Link
+US
+(
+1
+)
+US8797259B2
+(
+en
+)
+JP
+(
+1
+)
+JP5695299B2
+(
+en
+)
+CN
+(
+1
+)
+CN101847370B
+(
+en
+)
+Cited By (1)
+* Cited by examiner, † Cited by third party
+Publication number
+Priority date
+Publication date
+Assignee
+Title
+US12326641B2
+(
+en
+)
+2020-10-02
+2025-06-10
+E Ink Corporation
+Front plane laminates with outer surface electrical connections
+Families Citing this family (12)
+* Cited by examiner, † Cited by third party
+Publication number
+Priority date
+Publication date
+Assignee
+Title
+EP2277162B1
+(
+en
+)
+*
+2008-04-11
+2020-08-26
+E Ink Corporation
+Methods for driving electro-optic displays
+US8975638B2
+(
+en
+)
+2010-12-28
+2015-03-10
+Sharp Kabushiki Kaisha
+High-performance active matrix substrate with high signal quality
+US8773451B2
+(
+en
+)
+*
+2011-05-03
+2014-07-08
+Apple Inc.
+Color correction method and apparatus for displays
+JP5884344B2
+(
+en
+)
+*
+2011-09-01
+2016-03-15
+セイコーエプソン株式会社
+Circuit device, electronic device and IC card
+JP5950109B2
+(
+en
+)
+*
+2012-09-11
+2016-07-13
+セイコーエプソン株式会社
+Electrophoretic display device driving method, electrophoretic display device, electronic apparatus, and electronic timepiece
+CN104078009B
+(
+en
+)
+*
+2013-03-25
+2016-04-06
+北京京东方光电科技有限公司
+The driving circuit of electrophoresis showed and its implementation and electrophoretic display apparatus
+JP2015040865A
+(
+en
+)
+*
+2013-08-20
+2015-03-02
+株式会社デンソー
+Head-up display device
+JP6447802B2
+(
+en
+)
+*
+2014-01-20
+2019-01-09
+セイコーエプソン株式会社
+Electrophoretic display device, electronic timepiece, wristwatch, and operation method of electrophoretic display device
+JP2015138096A
+(
+en
+)
+*
+2014-01-21
+2015-07-30
+セイコーエプソン株式会社
+Electrophoretic display device, driving method of the same, control circuit, and electronic apparatus
+CN111402818A
+(
+en
+)
+2020-03-31
+2020-07-10
+重庆京东方智慧电子系统有限公司
+Driving method of color electronic paper and color electronic paper
+CN115620681B
+(
+en
+)
+*
+2022-11-09
+2023-07-28
+广州文石信息科技有限公司
+Screen driving method, device, storage medium and ink screen equipment
+TWI871077B
+(
+en
+)
+*
+2023-11-08
+2025-01-21
+元太科技工業股份有限公司
+Display device and operating method for display device
+Citations (18)
+* Cited by examiner, † Cited by third party
+Publication number
+Priority date
+Publication date
+Assignee
+Title
+JPH0950258A
+(
+en
+)
+1995-08-09
+1997-02-18
+Fujitsu Ltd
+Information processing system and plasma display device
+US6219019B1
+(
+en
+)
+*
+1996-09-05
+2001-04-17
+Kabushiki Kaisha Toshiba
+Liquid crystal display apparatus and method for driving the same
+US20040119680A1
+(
+en
+)
+*
+2002-12-18
+2004-06-24
+Xerox Corporation
+Switching of two-particle electrophoretic display media with a combination of AC and DC electric field for contrast enhancement
+JP2004219715A
+(
+en
+)
+2003-01-15
+2004-08-05
+Minolta Co Ltd
+Liquid crystal display
+WO2004104977A1
+(
+en
+)
+2003-05-23
+2004-12-02
+Koninklijke Philips Electronics N.V.
+An improved driving scheme for an electrophoretic display
+WO2005071650A1
+(
+en
+)
+2004-01-22
+2005-08-04
+Koninklijke Philips Electronics N.V.
+An electrophoretic display and a method and apparatus for driving an electrophoretic display
+US7057600B2
+(
+en
+)
+*
+2000-04-13
+2006-06-06
+Canon Kabushiki Kaisha
+Electrophoretic display method and device
+US20060221049A1
+(
+en
+)
+*
+2005-03-29
+2006-10-05
+Mitsutoshi Miyasaka
+Electrophoretic display device and method for driving the same
+US20060274030A1
+(
+en
+)
+*
+2003-08-22
+2006-12-07
+Koninklijke Philips Electronics N.V.
+Electrophoretic display panel
+US20060291122A1
+(
+en
+)
+*
+2003-09-12
+2006-12-28
+Koninklijke Philips Electronics, N.V.
+Method of compensating temperature dependence of driving schemes for electrophoretic displays
+US20070146306A1
+(
+en
+)
+*
+2004-03-01
+2007-06-28
+Koninklijke Philips Electronics, N.V.
+Transition between grayscale an dmonochrome addressing of an electrophoretic display
+JP2007187938A
+(
+en
+)
+2006-01-13
+2007-07-26
+Brother Ind Ltd
+Electrophoretic display device
+JP2007187936A
+(
+en
+)
+2006-01-13
+2007-07-26
+Brother Ind Ltd
+Electrophoretic display device
+US20080238865A1
+(
+en
+)
+*
+2007-03-29
+2008-10-02
+Seiko Epson Corporation
+Electrophoretic display device, method for driving electrophoretic display device, and electronic apparatus
+US20080238867A1
+(
+en
+)
+*
+2007-03-29
+2008-10-02
+Seiko Epson Corporation
+Electrophoretic display device, method of driving electrophoretic device, and electronic apparatus
+US20090046114A1
+(
+en
+)
+*
+2007-08-17
+2009-02-19
+Il-Pyung Lee
+Apparatus and method for driving an electrophoretic display
+WO2009028160A1
+(
+en
+)
+2007-08-24
+2009-03-05
+Panasonic Corporation
+Receiving device and receiving method
+US7528822B2
+(
+en
+)
+*
+2001-11-20
+2009-05-05
+E Ink Corporation
+Methods for driving electro-optic displays
+Family Cites Families (2)
+* Cited by examiner, † Cited by third party
+Publication number
+Priority date
+Publication date
+Assignee
+Title
+JP4867247B2
+(
+en
+)
+*
+2005-09-14
+2012-02-01
+セイコーエプソン株式会社
+Display device, driving device, and driving method
+JP5071000B2
+(
+en
+)
+*
+2007-08-31
+2012-11-14
+セイコーエプソン株式会社
+Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+2009
+2009-03-23
+JP
+JP2009070191A
+patent/JP5695299B2/en
+not_active
+Expired - Fee Related
+2010
+2010-03-16
+US
+US12/724,828
+patent/US8797259B2/en
+active
+Active
+2010-03-23
+CN
+CN201010145622.5A
+patent/CN101847370B/en
+not_active
+Expired - Fee Related
+Patent Citations (21)
+* Cited by examiner, † Cited by third party
+Publication number
+Priority date
+Publication date
+Assignee
+Title
+JPH0950258A
+(
+en
+)
+1995-08-09
+1997-02-18
+Fujitsu Ltd
+Information processing system and plasma display device
+US6219019B1
+(
+en
+)
+*
+1996-09-05
+2001-04-17
+Kabushiki Kaisha Toshiba
+Liquid crystal display apparatus and method for driving the same
+US7057600B2
+(
+en
+)
+*
+2000-04-13
+2006-06-06
+Canon Kabushiki Kaisha
+Electrophoretic display method and device
+US7528822B2
+(
+en
+)
+*
+2001-11-20
+2009-05-05
+E Ink Corporation
+Methods for driving electro-optic displays
+US20040119680A1
+(
+en
+)
+*
+2002-12-18
+2004-06-24
+Xerox Corporation
+Switching of two-particle electrophoretic display media with a combination of AC and DC electric field for contrast enhancement
+JP2004219715A
+(
+en
+)
+2003-01-15
+2004-08-05
+Minolta Co Ltd
+Liquid crystal display
+JP2007501436A
+(
+en
+)
+2003-05-23
+2007-01-25
+コーニンクレッカ　フィリップス　エレクトロニクス　エヌ　ヴィ
+Improved driving method for electrophoretic display
+WO2004104977A1
+(
+en
+)
+2003-05-23
+2004-12-02
+Koninklijke Philips Electronics N.V.
+An improved driving scheme for an electrophoretic display
+US20060274030A1
+(
+en
+)
+*
+2003-08-22
+2006-12-07
+Koninklijke Philips Electronics N.V.
+Electrophoretic display panel
+US20060291122A1
+(
+en
+)
+*
+2003-09-12
+2006-12-28
+Koninklijke Philips Electronics, N.V.
+Method of compensating temperature dependence of driving schemes for electrophoretic displays
+WO2005071650A1
+(
+en
+)
+2004-01-22
+2005-08-04
+Koninklijke Philips Electronics N.V.
+An electrophoretic display and a method and apparatus for driving an electrophoretic display
+JP2007519045A
+(
+en
+)
+2004-01-22
+2007-07-12
+コーニンクレッカ  フィリップス  エレクトロニクス  エヌ  ヴィ
+Electrophoretic display and method and apparatus for driving electrophoretic display
+US20070146306A1
+(
+en
+)
+*
+2004-03-01
+2007-06-28
+Koninklijke Philips Electronics, N.V.
+Transition between grayscale an dmonochrome addressing of an electrophoretic display
+US20060221049A1
+(
+en
+)
+*
+2005-03-29
+2006-10-05
+Mitsutoshi Miyasaka
+Electrophoretic display device and method for driving the same
+JP2007187938A
+(
+en
+)
+2006-01-13
+2007-07-26
+Brother Ind Ltd
+Electrophoretic display device
+JP2007187936A
+(
+en
+)
+2006-01-13
+2007-07-26
+Brother Ind Ltd
+Electrophoretic display device
+US20080238865A1
+(
+en
+)
+*
+2007-03-29
+2008-10-02
+Seiko Epson Corporation
+Electrophoretic display device, method for driving electrophoretic display device, and electronic apparatus
+US20080238867A1
+(
+en
+)
+*
+2007-03-29
+2008-10-02
+Seiko Epson Corporation
+Electrophoretic display device, method of driving electrophoretic device, and electronic apparatus
+US20090046114A1
+(
+en
+)
+*
+2007-08-17
+2009-02-19
+Il-Pyung Lee
+Apparatus and method for driving an electrophoretic display
+WO2009028160A1
+(
+en
+)
+2007-08-24
+2009-03-05
+Panasonic Corporation
+Receiving device and receiving method
+US20100060789A1
+(
+en
+)
+2007-08-24
+2010-03-11
+Panasonic Corporation
+Reception device and reception method
+Cited By (1)
+* Cited by examiner, † Cited by third party
+Publication number
+Priority date
+Publication date
+Assignee
+Title
+US12326641B2
+(
+en
+)
+2020-10-02
+2025-06-10
+E Ink Corporation
+Front plane laminates with outer surface electrical connections
+Also Published As
+Publication number
+Publication date
+JP5695299B2
+(
+en
+)
+2015-04-01
+CN101847370B
+(
+en
+)
+2015-08-26
+JP2010224141A
+(
+en
+)
+2010-10-07
+US20100238158A1
+(
+en
+)
+2010-09-23
+CN101847370A
+(
+en
+)
+2010-09-29
+Similar Documents
+Publication
+Publication Date
+Title
+US20100238158A1
+(
+en
+)
+2010-09-23
+Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+US20100188395A1
+(
+en
+)
+2010-07-29
+Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+US8711087B2
+(
+en
+)
+2014-04-29
+Method for driving electrophoretic display device, electrophoretic display device, and electronic device
+JP5504567B2
+(
+en
+)
+2014-05-28
+Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+US8836636B2
+(
+en
+)
+2014-09-16
+Driving method of electrophoretic display device, electrophoretic display device, and electronic apparatus
+US20090237393A1
+(
+en
+)
+2009-09-24
+Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+US20080238865A1
+(
+en
+)
+2008-10-02
+Electrophoretic display device, method for driving electrophoretic display device, and electronic apparatus
+US20090231268A1
+(
+en
+)
+2009-09-17
+Electrophoretic display device, method of driving electrophoretic display device, and electronic apparatus
+JP2009300744A
+(
+en
+)
+2009-12-24
+Electrophoretic display device, driving method thereof, and electronic equipment
+JP2009175409A
+(
+en
+)
+2009-08-06
+Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+JP5353165B2
+(
+en
+)
+2013-11-27
+Electrophoretic display device driving method, electrophoretic display device, and electronic apparatus
+US8411028B2
+(
+en
+)
+2013-04-02
+Electrophoretic display device driving circuit, electrophoretic display device, and electronic apparatus
+JP2011123216A
+(
+en
+)
+2011-06-23
+Method of driving electrophoretic display device, electrophoretic display device and electronic equipment
+US20110181533A1
+(
+en
+)
+2011-07-28
+Electronic paper device
+JP2009020285A
+(
+en
+)
+2009-01-29
+Electrophoretic display device, electronic equipment
+US9824641B2
+(
+en
+)
+2017-11-21
+Method of driving electrophoresis display device based on electrophoretic particle migration speeds, electrophoresis display device, and electronic apparatus
+CN105788533A
+(
+en
+)
+2016-07-20
+Storage Type Display Device, Storage Type Display Device Driving Method, And Electronic Apparatus
+JP2011013466A
+(
+en
+)
+2011-01-20
+Electrophoretic display and electronic apparatus
+US8089454B2
+(
+en
+)
+2012-01-03
+Driving circuit for electrophoretic display device, electrophoretic display device, method for driving the same, and electronic apparatus
+JP2010085618A
+(
+en
+)
+2010-04-15
+Driving circuit of matrix device, matrix device, image display device, electrophoretic display device, and electronic apparatus
+US9111482B2
+(
+en
+)
+2015-08-18
+Display device and method for controlling and updating display on a display device with two display sections
+JP2009145859A
+(
+en
+)
+2009-07-02
+Electrophoretic display device, electrophoretic display device driving method, and electronic apparatus
+JP2011013467A
+(
+en
+)
+2011-01-20
+Electrophoretic display device and electronic equipment
+JP5262539B2
+(
+en
+)
+2013-08-14
+Electrophoretic display device and electronic apparatus
+US12586544B2
+(
+en
+)
+2026-03-24
+Electronic paper and control method of electronic paper
+Legal Events
+Date
+Code
+Title
+Description
+2010-03-16
+AS
+Assignment
+Owner name
+:
+SEIKO EPSON CORPORATION, JAPAN
+Free format text
+:
+ASSIGNMENT OF ASSIGNORS INTEREST;ASSIGNOR:YOSHIDA, JUNPEI;REEL/FRAME:024087/0339
+Effective date
+:
+20100209
+2014-07-16
+STCF
+Information on status: patent grant
+Free format text
+:
+PATENTED CASE
+2018-03-19
+FEPP
+Fee payment procedure
+Free format text
+:
+MAINTENANCE FEE REMINDER MAILED (ORIGINAL EVENT CODE: REM.)
+2018-07-26
+FEPP
+Fee payment procedure
+Free format text
+:
+SURCHARGE FOR LATE PAYMENT, LARGE ENTITY (ORIGINAL EVENT CODE: M1554)
+2018-07-26
+MAFP
+Maintenance fee payment
+Free format text
+:
+PAYMENT OF MAINTENANCE FEE, 4TH YEAR, LARGE ENTITY (ORIGINAL EVENT CODE: M1551)
+Year of fee payment
+:
+4
+2018-09-13
+AS
+Assignment
+Owner name
+:
+E INK CORPORATION, MASSACHUSETTS
+Free format text
+:
+ASSIGNMENT OF ASSIGNORS INTEREST;ASSIGNOR:SEIKO EPSON CORPORATION;REEL/FRAME:047072/0325
+Effective date
+:
+20180901
+2022-01-20
+MAFP
+Maintenance fee payment
+Free format text
+:
+PAYMENT OF MAINTENANCE FEE, 8TH YEAR, LARGE ENTITY (ORIGINAL EVENT CODE: M1552); ENTITY STATUS OF PATENT OWNER: LARGE ENTITY
+Year of fee payment
+:
+8
+2026-01-21
+MAFP
+Maintenance fee payment
+Free format text
+:
+PAYMENT OF MAINTENANCE FEE, 12TH YEAR, LARGE ENTITY (ORIGINAL EVENT CODE: M1553); ENTITY STATUS OF PATENT OWNER: LARGE ENTITY
+Year of fee payment
+:
+12

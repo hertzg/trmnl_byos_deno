@@ -13,10 +13,10 @@ export type FrameData = {
 };
 
 export default function DefaultTemplate({ board }: FrameData) {
-  // Chrome-free by ADR-0011: on the TRMNL X panel, value-stable dark pixels
-  // held for hours ghost into the next screen. The departure rows are the
-  // only persistent ink; everything else (title, date, instance label,
-  // battery) was dropped so nothing static burns in.
+  // Deliberately chrome-free: departure rows only, no title, date, instance
+  // label or battery. This started as a ghosting mitigation, which ADR-0011
+  // now records as unfounded — the panel has no content-driven ghost cost.
+  // What's left is a layout choice, open to revisiting.
   return (
     <Page title="trmnl-byos-deno" stylesheet="/assets/style.css">
       <Layout>
