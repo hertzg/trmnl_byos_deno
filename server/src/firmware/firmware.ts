@@ -1,4 +1,4 @@
-import { compare, format, type SemVer, tryParse } from "@std/semver";
+import { compare, equals, type SemVer, tryParse } from "@std/semver";
 import { parse, type XmlElement, type XmlNode } from "@std/xml";
 
 // Official firmware releases from TRMNL's public S3 bucket
@@ -30,7 +30,10 @@ export type FirmwareOffer = {
   // while they haven't picked one (so a refresh that brings in a new release
   // re-points an offer armed and left alone).
   selection(): FirmwareRelease | null;
-  select(version: string): void;
+  // Held as a version and not as a release, so a pick survives a refresh: the
+  // reloaded list resolves the same version again, and a list that no longer
+  // carries it falls back to the newest release.
+  select(version: SemVer): void;
   armed(): boolean;
   arm(): void;
   disarm(): void;
@@ -43,12 +46,19 @@ export function createFirmwareOffer(deps: { fetch?: typeof fetch } = {}): Firmwa
   const fetchImpl = deps.fetch ?? fetch;
   let releases: readonly FirmwareRelease[] = [];
   let loadedModel: string | null = null;
-  let selected: string | null = null;
+  let selected: SemVer | null = null;
   let armed = false;
 
   return {
     releases: () => releases,
-    selection: () => releases.find((r) => format(r.version) === selected) ?? releases[0] ?? null,
+    selection: () => {
+      const pick = selected;
+      if (pick !== null) {
+        const match = releases.find((r) => equals(r.version, pick));
+        if (match !== undefined) return match;
+      }
+      return releases[0] ?? null;
+    },
     select: (version) => {
       selected = version;
     },

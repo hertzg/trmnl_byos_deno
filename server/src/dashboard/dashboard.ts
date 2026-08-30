@@ -8,7 +8,7 @@ import type { Telemetry } from "../telemetry/telemetry.ts";
 import type { DeviceState } from "../device-state.ts";
 import { type BuildInfo, readBuildInfo } from "../build-info.ts";
 import type { FirmwareOffer } from "../firmware/firmware.ts";
-import { format } from "@std/semver";
+import { format, tryParse } from "@std/semver";
 import type { Clock } from "../clock.ts";
 import Dashboard, { type FirmwareOfferView, type TimelineState } from "./dashboard.tsx";
 
@@ -134,7 +134,10 @@ export function createDashboard(deps: DashboardDeps): Hono {
       if (body["action"] === "refresh") {
         await deps.firmwareOffer.load(model, { force: true });
       } else if (body["action"] === "arm") {
-        if (typeof body["version"] === "string") deps.firmwareOffer.select(body["version"]);
+        // The picked version arrives as form text; anything that is not a
+        // version leaves the standing selection in place.
+        const picked = typeof body["version"] === "string" ? tryParse(body["version"]) : undefined;
+        if (picked !== undefined) deps.firmwareOffer.select(picked);
         deps.firmwareOffer.arm();
       } else {
         deps.firmwareOffer.disarm();

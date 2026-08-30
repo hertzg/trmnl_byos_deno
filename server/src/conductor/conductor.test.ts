@@ -5,6 +5,7 @@ import {
   assertNotEquals,
 } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
+import { parse } from "@std/semver";
 import { type ConductorDeps, createConductor } from "./conductor.ts";
 import type { Plugin } from "../plugin/plugin.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
@@ -282,7 +283,7 @@ Deno.test("an armed offer hands the Device the newest release by default", async
 
 Deno.test("an armed offer hands the Device the selected release, even an older one", async () => {
   const firmwareOffer = await loadedOffer();
-  firmwareOffer.select("1.8.9");
+  firmwareOffer.select(parse("1.8.9"));
   firmwareOffer.arm();
   const conductor = createConductor({
     ...defaults({ firmwareOffer }),

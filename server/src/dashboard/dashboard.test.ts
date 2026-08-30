@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
+import { parse } from "@std/semver";
 import { Hono } from "hono";
 import { type ConductorDeps, createConductor } from "../conductor/conductor.ts";
 import { createDashboard } from "./dashboard.ts";
@@ -1010,7 +1011,7 @@ Deno.test("POST /dashboard/firmware action=refresh re-reads the bucket", async (
 
 Deno.test("GET / renders one option per release with the selected version preselected", async () => {
   const firmwareOffer = await loadedOffer();
-  firmwareOffer.select("1.8.9");
+  firmwareOffer.select(parse("1.8.9"));
   const { app } = wire({ firmwareOffer });
 
   const html = await (await app.request("/")).text();
