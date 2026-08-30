@@ -112,6 +112,8 @@ export async function composeResult(
  * Top-level compose function with sleep window integration.
  *
  * Routes between three branches:
+ * - NOTICE: if anything is live in the notice thread, return the Notice leaf's
+ *   Result untouched, ahead of everything else.
  * - IN-WINDOW: skip Transport and Gallery entirely; return the Sleep leaf's
  *   Result with validity = remaining window duration (floor exempted).
  * - AWAKE: run Transport/Gallery routing (via composeResult), then clamp
@@ -120,18 +122,37 @@ export async function composeResult(
  * Parameters:
  * - `t`: current time in device's timezone (from RunContext)
  * - `windows`: parsed sleep windows (empty array = no sleep configured)
- * - `runTransport`, `runGallery`, `runSleep`: thunks (only invoked if needed)
+ * - `runTransport`, `runGallery`, `runSleep`, `runNotice`: thunks (only
+ *   invoked if needed; `runNotice` always runs, since its answer is what
+ *   decides the first branch)
  *
- * Return type unions all three leaves: FrameData | GalleryState | SleepState.
- * Widen before spreading to ensure `view` type alignment under strictFunctionTypes.
+ * Return type unions all four leaves: FrameData | GalleryState | SleepState |
+ * NoticeState. Widen before spreading to ensure `view` type alignment under
+ * strictFunctionTypes.
  */
-export async function compose<SleepState>(
+export async function compose<SleepState, NoticeState extends { notices: readonly unknown[] }>(
   t: Temporal.ZonedDateTime,
   windows: SleepWindow[],
   runTransport: () => Result<FrameData> | Promise<Result<FrameData>>,
   runGallery: () => Result<GalleryState> | Promise<Result<GalleryState>>,
   runSleep: () => Result<SleepState> | Promise<Result<SleepState>>,
-): Promise<Result<FrameData | GalleryState | SleepState>> {
+  runNotice: () => Result<NoticeState> | Promise<Result<NoticeState>>,
+): Promise<Result<FrameData | GalleryState | SleepState | NoticeState>> {
+  // NOTICE: a live notice beats the Sleep screen, the Transport board and the
+  // Gallery photo. The Notice leaf owns its own validity — the earliest expiry
+  // among the live notices — so its Result passes straight through: no clamp
+  // to the next window start, and no 5-minute VALIDITY_FLOOR, so a notice
+  // leaves the screen on the minute rather than up to five minutes late. That
+  // is the same floor exemption the Sleep branch below already has.
+  //
+  // A notice sent during a sleep window already carries an expiry measured
+  // from the next expected wake-up, so it is still live when the panel comes
+  // back. Nothing here needs to know sleep windows exist.
+  const noticeResult = await runNotice();
+  if (noticeResult.state.notices.length > 0) {
+    return noticeResult;
+  }
+
   // Check if we're currently in a sleep window.
   const windowEnd = activeWindowEnd(t, windows);
 
@@ -144,7 +165,7 @@ export async function compose<SleepState>(
     const validity = windowEnd.since(t);
 
     // Widen to union, then override validity.
-    const widened: Result<FrameData | GalleryState | SleepState> = sleepResult;
+    const widened: Result<FrameData | GalleryState | SleepState | NoticeState> = sleepResult;
     return { ...widened, validity };
   }
 
@@ -152,7 +173,7 @@ export async function compose<SleepState>(
   let result = await composeResult(
     await runTransport(),
     runGallery,
-  ) as Result<FrameData | GalleryState | SleepState>;
+  ) as Result<FrameData | GalleryState | SleepState | NoticeState>;
 
   // If windows are configured, clamp validity to the next window start.
   const nextStart = nextWindowStart(t, windows);
