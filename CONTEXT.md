@@ -158,11 +158,11 @@ Device can be told to re-poll in under 5 minutes and exit the window on time. Wh
 Super-Plugin clamps every validity to `min(validity, nextWindowStart − t)` so sleep is entered on
 time. _Avoid_: downtime, quiet hours (Transport's "schedule-quiet" is an unrelated concept), DND.
 
-**Ghosting**: The faint residual image a value-stable dark region leaves behind on the **Device**
-after it has been held in place for a long time; severity scales with darkness × area × dwell-time.
-On this long-dwell Device the firmware wipe is already maxed (`CLEAR_SLOW` every update), so content
-is the only lever — avoiding it is the paramount interface constraint (see ADR-0011). _Avoid_:
-burn-in (implies permanence; e-ink ghosting is not permanent), image retention.
+**Ghosting**: Traces of a previous image still visible after the panel has been rewritten. Caused by
+the drive waveform, not by what the content looks like: no manufacturer source ties it to darkness,
+area, or dwell time. On this Device the firmware already applies every documented mitigation (full
+update every poll, `CLEAR_SLOW`, panel powered down between updates), so it is not an interface
+constraint (see ADR-0011). _Avoid_: treating dark area as a ghost budget.
 
 ## Relationships
 
