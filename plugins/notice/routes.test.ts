@@ -63,6 +63,24 @@ Deno.test("POST /notice: a notice is still live an hour past its arrival", async
   assertEquals(inbox.live(at("2026-08-31T05:10:00Z")).length, 1);
 });
 
+Deno.test("POST /notice stamps receivedAt at arrival, not at the next poll", async () => {
+  // receivedAt is what the bubble labels — when the message was *sent*.
+  // Scheduling is showsAt's job, and nothing else may borrow it: reusing
+  // showsAt here would label every bubble with the wake-up time instead.
+  const { app } = freshRoutes("2026-08-31T05:00:00Z");
+
+  const posted = await (await app.request("/notice", {
+    method: "POST",
+    body: form({ text: "sent long before the panel wakes" }),
+  })).json();
+  const { notices } = await (await app.request("/notice")).json();
+
+  assertEquals(
+    Temporal.Instant.compare(notices[0].receivedAt, posted.showsAt),
+    -1,
+  );
+});
+
 Deno.test("POST /notice takes a custom duration in minutes", async () => {
   const { app } = freshRoutes("2026-08-30T12:00:00Z");
 

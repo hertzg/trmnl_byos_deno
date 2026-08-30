@@ -145,6 +145,13 @@ async function pipelineApp(
     firmwareOffer,
   });
 
+  // When the Device is next expected to poll, remembered across mutations.
+  // Every mutating notice route clears the Slot, and a cleared Slot means "no
+  // valid Image", not "the Device is due now" — nothing refills it until the
+  // Device actually polls. Without this, the second notice sent inside a
+  // sleep window would be scheduled from now and expire before the panel woke.
+  let dueAt: Temporal.Instant | null = null;
+
   const app = baseApp()
     .use(timing())
     // Open an ALS span buffer for every request, then drain anything
@@ -172,13 +179,16 @@ async function pipelineApp(
       "/",
       createNoticeRoutes({
         nextPoll: () => {
-          const t = now();
-          // A lapsed entry means the Device is due now, so the notice's
-          // lifetime starts immediately. refreshIn is exactly what the
-          // Conductor hands the Device as refresh_rate, which makes it the
-          // best estimate available.
+          const t = now().toInstant();
+          // refreshIn is anchored on the entry's expiry, so this lands on the
+          // same instant whenever it is read. It is exactly what the Conductor
+          // hands the Device as refresh_rate, which makes it the best estimate
+          // available.
           const display = slot.display();
-          return (display === null ? t : t.add(display.refreshIn)).toInstant();
+          if (display !== null) dueAt = t.add(display.refreshIn);
+          // A wake-up already in the past means the Device is overdue, so the
+          // notice's lifetime starts immediately.
+          return dueAt !== null && Temporal.Instant.compare(dueAt, t) > 0 ? dueAt : t;
         },
         invalidate: () => slot.clear(),
       }),

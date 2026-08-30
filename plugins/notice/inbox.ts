@@ -18,6 +18,10 @@ export type Notice = {
 };
 
 export type Inbox = {
+  /**
+   * Appends a notice, and drops any entry that had already expired by
+   * `receivedAt`. Writes may prune, reads may not — see `live`.
+   */
   add(input: {
     text: string;
     image?: NoticeImage;
@@ -55,6 +59,9 @@ export function createInbox(): Inbox {
         receivedAt: input.receivedAt,
         expiresAt: input.expiresAt,
       };
+      // The one place expired entries are freed. `receivedAt` is the
+      // caller's "now", so this still reads no clock of its own.
+      notices = notices.filter((n) => Temporal.Instant.compare(n.expiresAt, input.receivedAt) > 0);
       notices.push(notice);
       return notice;
     },
@@ -62,8 +69,7 @@ export function createInbox(): Inbox {
     live(at) {
       // Reads, never writes: the dashboard runs Plugins at an arbitrary
       // scrubbed instant, so a `live()` that pruned would let a read-only
-      // debug surface delete real notices. Nothing garbage-collects the
-      // expired entries — a handful in memory, emptied by the next restart.
+      // debug surface delete real notices. `add` does the freeing instead.
       return notices.filter((notice) => Temporal.Instant.compare(notice.expiresAt, at) > 0);
     },
 

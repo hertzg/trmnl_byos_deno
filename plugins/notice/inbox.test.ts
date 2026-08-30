@@ -57,6 +57,28 @@ Deno.test("live: asking about a future instant removes nothing", () => {
   assertEquals(live.map((n) => n.text), ["still live at 12:05"]);
 });
 
+Deno.test("add: drops entries that had already expired when the new one arrived", () => {
+  // Writes may prune, reads may not. Keeping live() a pure filter is what
+  // makes a dashboard scrub safe; an entry can still hold 4 MB of image
+  // bytes, so a write is where those get freed.
+  const inbox = createInbox();
+  inbox.add({
+    text: "long gone",
+    receivedAt: at("2026-08-30T11:00:00Z"),
+    expiresAt: at("2026-08-30T11:15:00Z"),
+  });
+
+  inbox.add({
+    text: "arriving at noon",
+    receivedAt: at("2026-08-30T12:00:00Z"),
+    expiresAt: at("2026-08-30T12:15:00Z"),
+  });
+
+  // Asked about 11:10, when the first notice was still live: it is not merely
+  // filtered out, it is gone.
+  assertEquals(inbox.live(at("2026-08-30T11:10:00Z")).map((n) => n.text), ["arriving at noon"]);
+});
+
 Deno.test("nextExpiry: picks the earliest expiry after the given instant", () => {
   // Arrival order and expiry order need not agree — the sender picks the duration.
   const inbox = createInbox();

@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import type { SystemConfig } from "@hztrmnl/config/system";
-import { createApp } from "./app.ts";
+import { type App, createApp } from "./app.ts";
 import type { Plugin } from "./plugin/plugin.ts";
 
 // End-to-end through the real composition root: real PluginManager, real
@@ -109,6 +109,17 @@ Deno.test("debug: true swaps in the debug panel and never starts the pipeline", 
   }
 });
 
+// The notice package holds one inbox at module scope, so its contents carry
+// across test files. These tests assert the shape of the mount, never how many
+// notices happen to be in it.
+async function postNotice(app: App["app"], text: string) {
+  const body = new FormData();
+  body.set("text", text);
+  const res = await app.request("/notice", { method: "POST", body });
+  assertEquals(res.status, 200);
+  return await res.json();
+}
+
 Deno.test("the pipeline mounts the notice routes", async () => {
   // The Server importing a Plugin package by name is a marked V0 shortcut;
   // this test is what proves the wiring reached the outward HTTP surface.
@@ -120,7 +131,34 @@ Deno.test("the pipeline mounts the notice routes", async () => {
   try {
     const res = await app.app.request("/notice");
     assertEquals(res.status, 200);
-    assertEquals(await res.json(), { notices: [] });
+    assert(Array.isArray((await res.json()).notices));
+  } finally {
+    await app.shutdown();
+  }
+});
+
+Deno.test("POST /notice schedules from the Device's next poll, mutation after mutation", async () => {
+  // The nextPoll closure is the only new logic in app.ts. A poll warms the
+  // Slot; the notice is then scheduled from that entry's refreshIn. The POST's
+  // own invalidate() empties the Slot, and the second notice must still be
+  // scheduled from the same wake-up — a cleared Slot means "no valid Image",
+  // not "the Device is due now".
+  const app = await createApp(testConfig(), {
+    now: () => T0,
+    fetchPngFromUrl: () => Promise.resolve(PNG_MAGIC),
+  });
+
+  try {
+    await app.app.request("/api/display", {
+      headers: { "ID": "AA:BB:CC:DD:EE:FF", "Host": "byos.local" },
+    });
+
+    const first = await postNotice(app.app, "first");
+    const second = await postNotice(app.app, "second");
+
+    // T0 plus the test Plugin's 5-minute validity.
+    assertEquals(first.showsAt, "2026-07-05T10:05:00Z");
+    assertEquals(second.showsAt, "2026-07-05T10:05:00Z");
   } finally {
     await app.shutdown();
   }
