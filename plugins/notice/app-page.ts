@@ -250,7 +250,7 @@ button {
 .notice-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   margin: 4px 0 0;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 13px;
