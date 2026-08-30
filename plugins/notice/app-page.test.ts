@@ -29,9 +29,10 @@ Deno.test("15 min is preselected, and it is the only chip that is", () => {
   assertEquals(pressed, ["15"]);
 });
 
-Deno.test("notice text never reaches the DOM as markup", () => {
-  // Rows are cloned from a <template> and filled with textContent, so a
-  // stray "<" in a notice cannot eat the rest of the list.
+Deno.test("the page has no HTML-parsing sink for a notice to reach", () => {
+  // Not proof on its own that the text is safe — rows are cloned from a
+  // <template> and filled with textContent, and that is what makes a stray
+  // "<" harmless. This pins the other half: there is no sink to regress into.
   assertEquals(appPage.includes("innerHTML"), false);
   assertEquals(appPage.includes("insertAdjacentHTML"), false);
 });

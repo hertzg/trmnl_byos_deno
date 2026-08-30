@@ -24,11 +24,10 @@ const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 export default function createNoticeRoutes(deps: NoticeDeps): Hono {
   return new Hono()
     // The control page. A fifth route, but not a fifth endpoint: it serves
-    // one static string and drives the four below from the phone.
-    .get(
-      "/notice/app",
-      (c) => c.body(appPage, 200, { "content-type": "text/html; charset=utf-8" }),
-    )
+    // one static string and drives the four below from the phone. no-store
+    // because this page lives on a Home Screen, where a copy cached across a
+    // redeploy is exactly the annoying case.
+    .get("/notice/app", (c) => c.html(appPage, 200, { "cache-control": "no-store" }))
     .post("/notice", async (c) => {
       const body = await c.req.formData();
 
