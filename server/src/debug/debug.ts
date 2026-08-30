@@ -7,7 +7,7 @@ import { publicOrigin } from "../http/request.ts";
 import type { Clock } from "../clock.ts";
 import { isPattern, renderPattern } from "./patterns.ts";
 import { type BuildInfo, readBuildInfo } from "../build-info.ts";
-import { listOfficialFirmware } from "../firmware/firmware.ts";
+import { FIRMWARE_MODELS, listOfficialFirmware } from "../firmware/firmware.ts";
 import DebugPage from "./debug.tsx";
 
 // Debug-mode facade. When system.debug is true this app replaces the
@@ -138,9 +138,10 @@ export function createDebugApp(deps: DebugDeps): Hono {
   return new Hono()
     .get("/", async (c) => {
       const device = deps.deviceState.latestDevice();
+      const fwModel = resolveFwModel(c.req.query("fwModel"), device?.model);
       const [build, releases] = await Promise.all([
         deps.build ? Promise.resolve(deps.build) : readBuildInfo(),
-        listOfficialFirmware(device?.model ?? null, fetchImpl),
+        listOfficialFirmware(fwModel, fetchImpl),
       ]);
       const page = renderToString(
         DebugPage({
@@ -153,6 +154,7 @@ export function createDebugApp(deps: DebugDeps): Hono {
           proxyError,
           customImage: customImageInfo(),
           device,
+          fwModel,
           latestFirmware: releases[0] ?? null,
           rawHeaders: deps.deviceState.latestPollHeaders(),
           logs: deps.deviceState.recentLogs(),
@@ -296,6 +298,19 @@ export function createDebugApp(deps: DebugDeps): Hono {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// The model is picked via the `fwModel` query param (defaulting to the
+// last-known Device's model, then the first known model) rather than
+// requiring a Device to have polled at least once — the button is useful
+// before any Device has ever reported in.
+function resolveFwModel(
+  requested: string | undefined,
+  deviceModel: string | null | undefined,
+): string {
+  if (requested !== undefined && FIRMWARE_MODELS.includes(requested)) return requested;
+  if (deviceModel != null && FIRMWARE_MODELS.includes(deviceModel)) return deviceModel;
+  return FIRMWARE_MODELS[0];
 }
 
 function recordDeviceSideEffects(req: Request, deps: DebugDeps): void {

@@ -5,7 +5,7 @@ import type { DeviceReport } from "../plugin/plugin.ts";
 import { DeviceSection } from "../dashboard/dashboard.tsx";
 import { PATTERNS } from "./patterns.ts";
 import type { DebugCustomImageInfo, DebugDisplayConfig } from "./debug.ts";
-import type { FirmwareRelease } from "../firmware/firmware.ts";
+import { FIRMWARE_MODELS, type FirmwareRelease } from "../firmware/firmware.ts";
 import type { BuildInfo } from "../build-info.ts";
 import { format } from "@std/semver";
 import dashboardCss from "../dashboard/dashboard.css" with { type: "text" };
@@ -31,8 +31,11 @@ export type DebugPageProps = {
   proxyError: string | null;
   customImage: DebugCustomImageInfo | null;
   device: DeviceReport | null;
-  // Latest official release for the Device's reported model family — null
-  // before the first poll (model unknown) or when the bucket is unreachable.
+  // Model the "paste latest official" button fetches for — from the
+  // `fwModel` query param, falling back to the last-known Device's model.
+  fwModel: string;
+  // Latest official release for fwModel's family — null when the bucket is
+  // unreachable.
   latestFirmware: FirmwareRelease | null;
   rawHeaders: PollHeaders | null;
   logs: readonly LogEntry[];
@@ -59,6 +62,7 @@ export default function DebugPage(props: DebugPageProps) {
     proxyError,
     customImage,
     device,
+    fwModel,
     latestFirmware,
     rawHeaders,
     logs,
@@ -235,10 +239,18 @@ export default function DebugPage(props: DebugPageProps) {
                 firmware_url
                 <input type="text" name="firmwareUrl" value={cfg.firmwareUrl} size={36} />
               </label>
+              <label>
+                firmware model
+                <select name="fwModel" data-fw-model-select>
+                  {FIRMWARE_MODELS.map((m) => (
+                    <option value={m} selected={m === fwModel}>{m}</option>
+                  ))}
+                </select>
+              </label>
               {latestFirmware !== null
                 ? (
                   <button type="button" data-firmware-url={latestFirmware.url}>
-                    paste latest official ({format(latestFirmware.version)})
+                    paste latest official ({fwModel} · {format(latestFirmware.version)})
                   </button>
                 )
                 : null}
@@ -273,6 +285,12 @@ const fwButton = document.querySelector("[data-firmware-url]");
 fwButton?.addEventListener("click", () => {
   const fwInput = document.querySelector('input[name="firmwareUrl"]');
   if (fwInput) fwInput.value = fwButton.getAttribute("data-firmware-url");
+});
+const fwModelSelect = document.querySelector("[data-fw-model-select]");
+fwModelSelect?.addEventListener("change", () => {
+  const url = new URL(window.location.href);
+  url.searchParams.set("fwModel", fwModelSelect.value);
+  window.location.assign(url.toString());
 });
 `,
             }}

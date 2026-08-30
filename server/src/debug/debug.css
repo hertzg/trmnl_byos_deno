@@ -121,7 +121,8 @@
   width: 90px;
 }
 .dbg-fields input[type="text"],
-.dbg-fields input[type="url"] {
+.dbg-fields input[type="url"],
+.dbg-fields select {
   font: inherit;
   font-size: 13px;
   padding: 5px 8px;

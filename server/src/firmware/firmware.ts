@@ -12,6 +12,7 @@ const FIRMWARE_FAMILY_BY_MODEL: Record<string, string> = {
   x: "trmnl_x",
   og: "trmnl_og",
 };
+export const FIRMWARE_MODELS: readonly string[] = Object.keys(FIRMWARE_FAMILY_BY_MODEL);
 
 export type FirmwareRelease = {
   version: SemVer;
