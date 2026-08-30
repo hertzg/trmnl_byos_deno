@@ -40,11 +40,13 @@ Deno.test("live: a notice at exactly its expiresAt is excluded", () => {
   assertEquals(live, []);
 });
 
-Deno.test("live: a pruned notice stays gone even when asked about an earlier instant", () => {
-  // live prunes as it goes — that is the only garbage collection this feature gets.
+Deno.test("live: asking about a future instant removes nothing", () => {
+  // live is a pure filter, not a garbage collector. The dashboard runs Plugins
+  // at an arbitrary scrubbed instant, and a read-only debug surface must not
+  // be able to destroy real state.
   const inbox = createInbox();
   inbox.add({
-    text: "pruned",
+    text: "still live at 12:05",
     receivedAt: at("2026-08-30T12:00:00Z"),
     expiresAt: at("2026-08-30T12:15:00Z"),
   });
@@ -52,7 +54,7 @@ Deno.test("live: a pruned notice stays gone even when asked about an earlier ins
   inbox.live(at("2026-08-30T12:20:00Z"));
   const live = inbox.live(at("2026-08-30T12:05:00Z"));
 
-  assertEquals(live, []);
+  assertEquals(live.map((n) => n.text), ["still live at 12:05"]);
 });
 
 Deno.test("nextExpiry: picks the earliest expiry after the given instant", () => {

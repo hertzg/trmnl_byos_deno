@@ -25,13 +25,14 @@ export type Inbox = {
     expiresAt: Temporal.Instant;
   }): Notice;
   /**
-   * Live notices in arrival order, oldest first. Drops — and prunes — every
-   * entry whose `expiresAt` has been reached; the boundary is exclusive.
+   * Live notices in arrival order, oldest first. A pure filter: entries whose
+   * `expiresAt` has been reached are omitted, never deleted. The boundary is
+   * exclusive.
    */
   live(at: Temporal.Instant): Notice[];
   /** The earliest expiry strictly after `at`, or `null` when nothing is live. */
   nextExpiry(at: Temporal.Instant): Temporal.Instant | null;
-  /** `false` when the id is unknown or already pruned. */
+  /** `false` when the id is unknown. */
   remove(id: string): boolean;
   clear(): void;
 };
@@ -59,8 +60,11 @@ export function createInbox(): Inbox {
     },
 
     live(at) {
-      notices = notices.filter((notice) => Temporal.Instant.compare(notice.expiresAt, at) > 0);
-      return [...notices];
+      // Reads, never writes: the dashboard runs Plugins at an arbitrary
+      // scrubbed instant, so a `live()` that pruned would let a read-only
+      // debug surface delete real notices. Nothing garbage-collects the
+      // expired entries — a handful in memory, emptied by the next restart.
+      return notices.filter((notice) => Temporal.Instant.compare(notice.expiresAt, at) > 0);
     },
 
     nextExpiry(at) {
