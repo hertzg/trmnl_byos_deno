@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { setMetric, timing } from "hono/timing";
 import type { SystemConfig } from "@hztrmnl/config/system";
+import createNoticeRoutes from "@hztrmnl/notice/routes";
 import { drainSpans, withSpans } from "./telemetry/spans.ts";
 import { type DeviceProfile, getProfile, profileIds } from "./render/profiles.ts";
 import { createConductor } from "./conductor/conductor.ts";
@@ -144,6 +145,13 @@ async function pipelineApp(
     firmwareOffer,
   });
 
+  // When the Device is next expected to poll, remembered across mutations.
+  // Every mutating notice route clears the Slot, and a cleared Slot means "no
+  // valid Image", not "the Device is due now" — nothing refills it until the
+  // Device actually polls. Without this, the second notice sent inside a
+  // sleep window would be scheduled from now and expire before the panel woke.
+  let dueAt: Temporal.Instant | null = null;
+
   const app = baseApp()
     .use(timing())
     // Open an ALS span buffer for every request, then drain anything
@@ -161,7 +169,30 @@ async function pipelineApp(
       });
     })
     .route("/", conductor.app)
-    .route("/", dashboard);
+    .route("/", dashboard)
+    // Marked V0 shortcut (#143): this makes the Server import a Plugin
+    // package by name, which the layering otherwise avoids. One line in, one
+    // line out. The notice package never imports back — it takes these two
+    // functions and nothing else. Debug mode deliberately skips it; that
+    // path replaces the whole pipeline and has no Slot to read.
+    .route(
+      "/",
+      createNoticeRoutes({
+        nextPoll: () => {
+          const t = now().toInstant();
+          // refreshIn is anchored on the entry's expiry, so this lands on the
+          // same instant whenever it is read. It is exactly what the Conductor
+          // hands the Device as refresh_rate, which makes it the best estimate
+          // available.
+          const display = slot.display();
+          if (display !== null) dueAt = t.add(display.refreshIn);
+          // A wake-up already in the past means the Device is overdue, so the
+          // notice's lifetime starts immediately.
+          return dueAt !== null && Temporal.Instant.compare(dueAt, t) > 0 ? dueAt : t;
+        },
+        invalidate: () => slot.clear(),
+      }),
+    );
 
   return { app, shutdown: () => renderer.close() };
 }
