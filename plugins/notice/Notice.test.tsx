@@ -80,7 +80,28 @@ Deno.test("Notice bottom-anchors the thread and left-aligns bubbles at 78% max w
 
   assertStringIncludes(html, "justify-content: flex-end");
   assertStringIncludes(html, "align-items: flex-start");
-  assertStringIncludes(html, "max-width: 78%");
+});
+
+Deno.test("Notice caps the bubble width on the message wrapper, not the bubble", () => {
+  const html = render({
+    notices: [{
+      id: "n-abc123",
+      text: "Bread is in the oven",
+      imageDataUrl: null,
+      timeLabel: "08:12",
+    }],
+    earlierCount: 0,
+  });
+
+  // A spelling guard on which element carries the cap, not a layout check --
+  // renderToString resolves no percentages, so the visual pass owns whether
+  // 78% is the right number. The element is the part that was wrong: on
+  // `.bubble` the percentage resolved against a shrink-to-fit box and did
+  // nothing at all, and an assertion on the bare string passed either way.
+  const start = html.indexOf(".msg {");
+  const msgRule = html.slice(start, html.indexOf("}", start));
+
+  assertStringIncludes(msgRule, "max-width: 78%");
 });
 
 Deno.test("Notice labels each bubble with its time in small grey monospace", () => {
@@ -191,7 +212,7 @@ Deno.test("Notice renders a photo inside the bubble with the text below as a cap
   });
 
   assertStringIncludes(html, '<img class="photo" src="data:image/jpeg;base64,AAAA"');
-  assertStringIncludes(html, "width: 46vw");
+  assertStringIncludes(html, "min(46vw");
   assertStringIncludes(html, "aspect-ratio: 4 / 3");
   assertLess(html.indexOf("<img"), html.indexOf("Look what the cat did"));
 });
@@ -223,4 +244,56 @@ Deno.test("Notice escapes the notice text — it arrives from an HTTP POST", () 
 
   assertEquals(html.includes("<script>"), false);
   assertStringIncludes(html, "&lt;script&gt;alert(1)&lt;/script&gt; &amp; co");
+});
+
+Deno.test("Notice sizes the photo from the notice count and the photo count", () => {
+  const html = render({
+    notices: [
+      { id: "n-one", text: "First", imageDataUrl: null, timeLabel: "08:12" },
+      { id: "n-two", text: "Second", imageDataUrl: null, timeLabel: "09:40" },
+      {
+        id: "n-three",
+        text: "Third",
+        imageDataUrl: "data:image/jpeg;base64,AAAA",
+        timeLabel: "11:05",
+      },
+      { id: "n-four", text: "Fourth", imageDataUrl: null, timeLabel: "13:30" },
+      { id: "n-five", text: "Fifth", imageDataUrl: null, timeLabel: "17:03" },
+    ],
+    earlierCount: 0,
+  });
+
+  // Every message is charged for its own text and time label; only the
+  // messages carrying a photo split what is left. A photo pinned to the panel
+  // regardless of count pushes the oldest messages off the top edge, where
+  // the panel has no scrollbar and shows no clipping indicator.
+  assertStringIncludes(html, "--rows:5;--photos:1");
+});
+
+Deno.test("Notice charges one photo notice for one row and one photo", () => {
+  const html = render({
+    notices: [{
+      id: "n-abc123",
+      text: "Look what the cat did",
+      imageDataUrl: "data:image/jpeg;base64,AAAA",
+      timeLabel: "08:12",
+    }],
+    earlierCount: 0,
+  });
+
+  assertStringIncludes(html, "--rows:1;--photos:1");
+});
+
+Deno.test("Notice keeps the roll-up line out of the region that clips", () => {
+  const html = render({
+    notices: [
+      { id: "n-one", text: "First", imageDataUrl: null, timeLabel: "08:12" },
+      { id: "n-two", text: "Second", imageDataUrl: null, timeLabel: "09:40" },
+    ],
+    earlierCount: 4,
+  });
+
+  // Overflow leaves `.messages` by the start edge, so the first child is the
+  // first thing lost. The line announcing hidden notices must not sit there.
+  assertLess(html.indexOf('class="earlier"'), html.indexOf('class="messages"'));
 });
