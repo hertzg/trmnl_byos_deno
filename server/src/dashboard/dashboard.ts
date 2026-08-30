@@ -47,15 +47,19 @@ export function createDashboard(deps: DashboardDeps): Hono {
 
   return new Hono()
     .get("/", async (c) => {
-      if (deps.slot.display() === null) {
-        await (await deps.conductorApp.request("/api/display")).body?.cancel();
-      }
-      const display = deps.slot.display();
       const device = deps.deviceState.latestDevice();
-      // First dashboard load that knows the Device's model reads the bucket;
-      // after that only the picker's refresh button does. The Device's poll
-      // path never touches the network.
-      await deps.firmwareOffer.load(device?.model ?? null);
+      await Promise.all([
+        deps.slot.display() === null
+          ? Promise.resolve(deps.conductorApp.request("/api/display")).then((res) =>
+            res.body?.cancel()
+          )
+          : undefined,
+        // First dashboard load that knows the Device's model reads the
+        // bucket; after that only the picker's refresh button does. The
+        // Device's poll path never touches the network.
+        deps.firmwareOffer.load(device?.model ?? null),
+      ]);
+      const display = deps.slot.display();
       const now = deps.now();
       // The displayed instant + day come from `?t=` / `?date=`; changing
       // the day is always a server round-trip (ADR-0005) so the day's tz

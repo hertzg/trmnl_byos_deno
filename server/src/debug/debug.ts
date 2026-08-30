@@ -7,10 +7,8 @@ import { publicOrigin } from "../http/request.ts";
 import type { Clock } from "../clock.ts";
 import { isPattern, renderPattern } from "./patterns.ts";
 import { type BuildInfo, readBuildInfo } from "../build-info.ts";
-import { type FirmwareRelease, listOfficialFirmware } from "../firmware/firmware.ts";
+import { listOfficialFirmware } from "../firmware/firmware.ts";
 import DebugPage from "./debug.tsx";
-
-export type { FirmwareRelease };
 
 // Debug-mode facade. When system.debug is true this app replaces the
 // Conductor AND the dashboard: /api/display returns exactly the operator's
@@ -140,10 +138,14 @@ export function createDebugApp(deps: DebugDeps): Hono {
   return new Hono()
     .get("/", async (c) => {
       const device = deps.deviceState.latestDevice();
+      const [build, releases] = await Promise.all([
+        deps.build ? Promise.resolve(deps.build) : readBuildInfo(),
+        listOfficialFirmware(device?.model ?? null, fetchImpl),
+      ]);
       const page = renderToString(
         DebugPage({
           now: deps.now(),
-          build: deps.build ?? await readBuildInfo(),
+          build,
           cfg,
           response: displayResponse(publicOrigin(c, deps.publicUrlOrigin)),
           generatedResponse: generatedDisplayResponse(publicOrigin(c, deps.publicUrlOrigin)),
@@ -151,7 +153,7 @@ export function createDebugApp(deps: DebugDeps): Hono {
           proxyError,
           customImage: customImageInfo(),
           device,
-          latestFirmware: (await listOfficialFirmware(device?.model ?? null, fetchImpl))[0] ?? null,
+          latestFirmware: releases[0] ?? null,
           rawHeaders: deps.deviceState.latestPollHeaders(),
           logs: deps.deviceState.recentLogs(),
         }),
