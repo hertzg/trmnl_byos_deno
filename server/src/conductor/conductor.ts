@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { greaterThan, tryParse } from "@std/semver";
 import type { DeviceReport, RunContext } from "../plugin/plugin.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
@@ -9,7 +10,7 @@ import type { DeviceState } from "../device-state.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 import type { Clock } from "../clock.ts";
-import { compareFirmwareVersions, latestOfficialFirmware } from "../firmware/firmware.ts";
+import { latestOfficialFirmware } from "../firmware/firmware.ts";
 
 // BYOS facade. Owns the orchestration loop from `/api/display` through
 // Plugin → identity → eager rasterize → Slot.put, and serves the PNG at
@@ -206,15 +207,16 @@ export function createConductor(deps: ConductorDeps): Conductor {
   return { app };
 }
 
-// null unless the Device has reported both a model and a firmware version,
-// TRMNL's bucket has a release for that model, and the Device's version is
-// older than it — i.e. exactly when offering an update makes sense.
+// null unless the Device has reported both a model and a parseable firmware
+// version, TRMNL's bucket has a release for that model, and the Device's
+// version is older than it — i.e. exactly when offering an update makes sense.
 async function pendingFirmwareUpdate(
   device: DeviceReport | null,
   fetchImpl: typeof fetch,
 ) {
-  if (device?.model == null || device.fwVersion == null) return null;
+  const reported = tryParse(device?.fwVersion ?? "");
+  if (device?.model == null || reported === undefined) return null;
   const latest = await latestOfficialFirmware(device.model, fetchImpl);
   if (latest === null) return null;
-  return compareFirmwareVersions(device.fwVersion, latest.version) < 0 ? latest : null;
+  return greaterThan(latest.version, reported) ? latest : null;
 }

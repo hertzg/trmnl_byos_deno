@@ -6,6 +6,7 @@ import { DeviceSection } from "../dashboard/dashboard.tsx";
 import { PATTERNS } from "./patterns.ts";
 import type { DebugCustomImageInfo, DebugDisplayConfig, LatestFirmware } from "./debug.ts";
 import type { BuildInfo } from "../build-info.ts";
+import { format } from "@std/semver";
 import dashboardCss from "../dashboard/dashboard.css" with { type: "text" };
 import debugCss from "./debug.css" with { type: "text" };
 
@@ -236,7 +237,7 @@ export default function DebugPage(props: DebugPageProps) {
               {latestFirmware !== null
                 ? (
                   <button type="button" data-firmware-url={latestFirmware.url}>
-                    paste latest official ({latestFirmware.version})
+                    paste latest official ({format(latestFirmware.version)})
                   </button>
                 )
                 : null}
