@@ -109,6 +109,36 @@ Deno.test("debug: true swaps in the debug panel and never starts the pipeline", 
   }
 });
 
+Deno.test("the pipeline mounts the notice routes", async () => {
+  // The Server importing a Plugin package by name is a marked V0 shortcut;
+  // this test is what proves the wiring reached the outward HTTP surface.
+  const app = await createApp(testConfig(), {
+    now: () => T0,
+    fetchPngFromUrl: () => Promise.resolve(PNG_MAGIC),
+  });
+
+  try {
+    const res = await app.app.request("/notice");
+    assertEquals(res.status, 200);
+    assertEquals(await res.json(), { notices: [] });
+  } finally {
+    await app.shutdown();
+  }
+});
+
+Deno.test("debug mode does not mount the notice routes", async () => {
+  // Debug mode replaces the whole pipeline by design; there is no Slot for
+  // nextPoll to read and no Image to invalidate.
+  const app = await createApp(testConfig({ debug: true }), { now: () => T0 });
+
+  try {
+    const res = await app.app.request("/notice");
+    assertEquals(res.status, 404);
+  } finally {
+    await app.shutdown();
+  }
+});
+
 Deno.test("an unknown deviceId fails at createApp, not at import", async () => {
   const err = await createApp(testConfig({ deviceId: "nope" })).catch((e: Error) => e);
   assert(err instanceof Error);

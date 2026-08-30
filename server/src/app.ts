@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { setMetric, timing } from "hono/timing";
 import type { SystemConfig } from "@hztrmnl/config/system";
+import createNoticeRoutes from "@hztrmnl/notice/routes";
 import { drainSpans, withSpans } from "./telemetry/spans.ts";
 import { type DeviceProfile, getProfile, profileIds } from "./render/profiles.ts";
 import { createConductor } from "./conductor/conductor.ts";
@@ -161,7 +162,27 @@ async function pipelineApp(
       });
     })
     .route("/", conductor.app)
-    .route("/", dashboard);
+    .route("/", dashboard)
+    // Marked V0 shortcut (#143): this makes the Server import a Plugin
+    // package by name, which the layering otherwise avoids. One line in, one
+    // line out. The notice package never imports back — it takes these two
+    // functions and nothing else. Debug mode deliberately skips it; that
+    // path replaces the whole pipeline and has no Slot to read.
+    .route(
+      "/",
+      createNoticeRoutes({
+        nextPoll: () => {
+          const t = now();
+          // A lapsed entry means the Device is due now, so the notice's
+          // lifetime starts immediately. refreshIn is exactly what the
+          // Conductor hands the Device as refresh_rate, which makes it the
+          // best estimate available.
+          const display = slot.display();
+          return (display === null ? t : t.add(display.refreshIn)).toInstant();
+        },
+        invalidate: () => slot.clear(),
+      }),
+    );
 
   return { app, shutdown: () => renderer.close() };
 }
