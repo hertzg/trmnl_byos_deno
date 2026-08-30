@@ -4,13 +4,10 @@ import type { LogEntry, PollHeaders } from "../device-state.ts";
 import type { DeviceReport } from "../plugin/plugin.ts";
 import { DeviceSection } from "../dashboard/dashboard.tsx";
 import { PATTERNS } from "./patterns.ts";
-import {
-  type DebugCustomImageInfo,
-  type DebugDisplayConfig,
-  FIRMWARE_MODELS,
-  type LatestFirmware,
-} from "./debug.ts";
+import type { DebugCustomImageInfo, DebugDisplayConfig } from "./debug.ts";
+import { FIRMWARE_MODELS, type FirmwareRelease } from "../firmware/firmware.ts";
 import type { BuildInfo } from "../build-info.ts";
+import { format } from "@std/semver";
 import dashboardCss from "../dashboard/dashboard.css" with { type: "text" };
 import debugCss from "./debug.css" with { type: "text" };
 
@@ -39,7 +36,7 @@ export type DebugPageProps = {
   fwModel: string;
   // Latest official release for fwModel's family — null when the bucket is
   // unreachable.
-  latestFirmware: LatestFirmware | null;
+  latestFirmware: FirmwareRelease | null;
   rawHeaders: PollHeaders | null;
   logs: readonly LogEntry[];
 };
@@ -253,7 +250,7 @@ export default function DebugPage(props: DebugPageProps) {
               {latestFirmware !== null
                 ? (
                   <button type="button" data-firmware-url={latestFirmware.url}>
-                    paste latest official ({fwModel} · {latestFirmware.version})
+                    paste latest official ({fwModel} · {format(latestFirmware.version)})
                   </button>
                 )
                 : null}

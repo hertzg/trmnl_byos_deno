@@ -8,6 +8,7 @@ import { createRenderer } from "../render/renderer.ts";
 import { createSlot } from "../slot/slot.ts";
 import { createTelemetry } from "../telemetry/telemetry.ts";
 import { createDeviceState } from "../device-state.ts";
+import { createFirmwareOffer } from "../firmware/firmware.ts";
 
 const T0 = Temporal.ZonedDateTime.from("2026-05-16T10:00[Europe/Berlin]");
 const fiveMin = Temporal.Duration.from({ minutes: 5 });
@@ -228,6 +229,7 @@ Deno.test("a PluginManager drives /api/display end-to-end through the Conductor"
     slot: createSlot({ now }),
     telemetry: createTelemetry(),
     deviceState: createDeviceState({ now }),
+    firmwareOffer: createFirmwareOffer(),
     errorView: (_err: Error) => "",
     errorValidity: Temporal.Duration.from({ seconds: 30 }),
     friendlyId: "SMOKE",
@@ -287,6 +289,7 @@ Deno.test("a PluginManager wired through the real Renderer surfaces a filename d
       slot: createSlot({ now }),
       telemetry: createTelemetry(),
       deviceState: createDeviceState({ now }),
+      firmwareOffer: createFirmwareOffer(),
       errorView: (_err: Error) => "",
       errorValidity: Temporal.Duration.from({ seconds: 30 }),
       friendlyId: "SMOKE",
@@ -363,6 +366,7 @@ Deno.test("end-to-end: /api/display → /image/<id>.png drives PluginManager →
       slot: createSlot({ now }),
       telemetry: createTelemetry(),
       deviceState: createDeviceState({ now }),
+      firmwareOffer: createFirmwareOffer(),
       errorView: (_err: Error) => "",
       errorValidity: Temporal.Duration.from({ seconds: 30 }),
       friendlyId: "SMOKE",

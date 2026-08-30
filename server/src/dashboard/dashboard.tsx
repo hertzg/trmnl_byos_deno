@@ -22,6 +22,15 @@ export type TimelineState = {
     | null; // the Slot's current entry; `null` when the Slot is empty
 };
 
+// The firmware picker's state, as dotted version strings. `releases` is empty
+// until the bucket has been read (no Device poll yet, or it was unreachable);
+// `selected` is what an armed poll would hand the Device.
+export type FirmwareOfferView = {
+  releases: readonly string[];
+  selected: string | null;
+  armed: boolean;
+};
+
 export type DashboardProps = {
   now: Temporal.ZonedDateTime;
   // The instant the page is currently viewing — seeds the "jump to t" input.
@@ -43,6 +52,7 @@ export type DashboardProps = {
   // header firmware sent, not just the ones we parse into DeviceReport.
   rawHeaders: PollHeaders | null;
   logs: readonly LogEntry[];
+  firmware: FirmwareOfferView;
   // Version + release instant of the running image; "<base>+dev" with no
   // date outside Docker. See ../build-info.ts.
   build: BuildInfo;
@@ -228,8 +238,19 @@ function TraceStrip({ trace }: { trace: RenderTrace | null }) {
 }
 
 export default function Dashboard(props: DashboardProps) {
-  const { now, displayed, identity, refreshIn, trace, timeline, device, rawHeaders, logs, build } =
-    props;
+  const {
+    now,
+    displayed,
+    identity,
+    refreshIn,
+    trace,
+    timeline,
+    device,
+    rawHeaders,
+    logs,
+    firmware,
+    build,
+  } = props;
   // Embed the timeline state for the client script. `<` is escaped so a tz
   // id or identity can never break out of the inline <script>.
   const stateJson = JSON.stringify(timeline).replace(/</g, "\\u003c");
@@ -432,6 +453,47 @@ export default function Dashboard(props: DashboardProps) {
               )
               : null}
           </h2>
+          <div class="device-bar">
+            <div class="facts">
+              <div class="fact">
+                <span class="k">firmware offer</span>
+                {firmware.armed
+                  ? <span class="v">armed · {firmware.selected}</span>
+                  : <span class="v muted">off</span>}
+              </div>
+            </div>
+            <form class="fw-offer" method="post" action="/dashboard/firmware">
+              {firmware.releases.length === 0 ? <span class="muted">no releases loaded</span> : (
+                // Disabled while armed: cancel first, then pick another
+                // version. A disabled control is not submitted, which is
+                // exactly right for the cancel and refresh buttons.
+                <select name="version" disabled={firmware.armed}>
+                  {firmware.releases.map((version) => (
+                    <option value={version} selected={version === firmware.selected}>
+                      {version}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {firmware.armed
+                ? (
+                  <button type="submit" name="action" value="cancel">
+                    cancel
+                  </button>
+                )
+                : (
+                  <button
+                    type="submit"
+                    name="action"
+                    value="arm"
+                    disabled={firmware.releases.length === 0}
+                  >
+                    offer on next poll
+                  </button>
+                )}
+              <button type="submit" name="action" value="refresh">refresh</button>
+            </form>
+          </div>
           <DeviceSection device={device} logs={logs} now={now} />
         </section>
         <script dangerouslySetInnerHTML={{ __html: `window.__DASH__ = ${stateJson};` }} />

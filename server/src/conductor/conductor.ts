@@ -9,6 +9,7 @@ import type { DeviceState } from "../device-state.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 import type { Clock } from "../clock.ts";
+import type { FirmwareOffer } from "../firmware/firmware.ts";
 
 // BYOS facade. Owns the orchestration loop from `/api/display` through
 // Plugin → identity → eager rasterize → Slot.put, and serves the PNG at
@@ -27,6 +28,9 @@ export type ConductorDeps = {
   // Empty → derive the origin the Device dialled from its own request headers.
   publicUrlOrigin: string;
   now: Clock;
+  // The one-shot firmware offer the dashboard arms. Read-only here, and never
+  // a network call: the release list is loaded by the dashboard.
+  firmwareOffer: FirmwareOffer;
 };
 
 export type Conductor = {
@@ -157,14 +161,24 @@ export function createConductor(deps: ConductorDeps): Conductor {
         1,
         Math.ceil(display.refreshIn.total({ unit: "seconds" })),
       );
+      // Gated on this request's `report`: only a real Device poll can spend
+      // the offer. The dashboard refills an empty Slot by calling this route
+      // in-process, and bins the response. What the Device is running is not
+      // consulted — arming a version is the operator saying "put this one on",
+      // reflashing the same version included, and whether that is worth doing
+      // is the firmware's call.
+      const firmwareUpdate = report !== null && deps.firmwareOffer.armed()
+        ? deps.firmwareOffer.selection()
+        : null;
+      if (firmwareUpdate !== null) deps.firmwareOffer.disarm();
       return c.json({
         status: 0,
         image_url: `${publicOrigin(c, deps.publicUrlOrigin)}/image/${display.identity}.png`,
         filename: `image-${display.identity}`,
         refresh_rate: refreshRate,
         reset_firmware: false,
-        update_firmware: false,
-        firmware_url: "",
+        update_firmware: firmwareUpdate !== null,
+        firmware_url: firmwareUpdate?.url ?? "",
         special_function: "none",
         // "a" forces CLEAR_SLOW on TRMNL X's FastEPD path (4-pass B/W/B/W
         // ghost-erase vs CLEAR_FAST's 2-pass), eliminating visible ghosting

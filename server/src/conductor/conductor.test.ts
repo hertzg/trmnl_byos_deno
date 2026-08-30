@@ -5,6 +5,7 @@ import {
   assertNotEquals,
 } from "@std/assert";
 import { assertSpyCalls, spy } from "@std/testing/mock";
+import { parse } from "@std/semver";
 import { type ConductorDeps, createConductor } from "./conductor.ts";
 import type { Plugin } from "../plugin/plugin.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
@@ -13,6 +14,7 @@ import type { Bundle } from "../plugin/bundle.ts";
 import { createSlot } from "../slot/slot.ts";
 import { createTelemetry } from "../telemetry/telemetry.ts";
 import { createDeviceState } from "../device-state.ts";
+import { createFirmwareOffer, type FirmwareOffer } from "../firmware/firmware.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
@@ -63,6 +65,7 @@ function defaults(
   | "slot"
   | "telemetry"
   | "deviceState"
+  | "firmwareOffer"
 > {
   const now = overrides.now ?? (() => T0);
   return {
@@ -74,6 +77,7 @@ function defaults(
     slot: createSlot({ now }),
     telemetry: createTelemetry(),
     deviceState: createDeviceState({ now }),
+    firmwareOffer: createFirmwareOffer(),
     ...overrides,
   };
 }
@@ -213,6 +217,174 @@ Deno.test("GET /api/display leaves ctx.device null when no Device has polled yet
   await (await conductor.app.request("/api/display")).body?.cancel();
 
   assertEquals(seen.device, null);
+});
+
+// ─── firmware offer: armed from the dashboard, spent by one poll ──────────
+
+// The Conductor only ever reads an offer that is already loaded, so these
+// tests build one from a canned listing instead of going near the network.
+// `1.8.9` listed before `1.8.10` also pins the ordering — a string sort would
+// call 1.8.9 the newest release.
+async function loadedOffer(): Promise<FirmwareOffer> {
+  const listing = `<ListBucketResult>
+    <Contents><Key>trmnl_x/FW1.8.9.bin</Key></Contents>
+    <Contents><Key>trmnl_x/FW1.8.10.bin</Key></Contents>
+  </ListBucketResult>`;
+  const offer = createFirmwareOffer({
+    fetch: (() => Promise.resolve(new Response(listing))) as typeof fetch,
+  });
+  await offer.load("x");
+  return offer;
+}
+
+Deno.test("a disarmed offer leaves update_firmware=false however far behind the Device is", async () => {
+  const conductor = createConductor({
+    ...defaults({ firmwareOffer: await loadedOffer() }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const body = await (
+    await conductor.app.request("/api/display", {
+      headers: { ID: "AA:BB:CC", Model: "x", "FW-Version": "1.8.9" },
+    })
+  ).json();
+
+  assertEquals(body.update_firmware, false);
+  assertEquals(body.firmware_url, "");
+});
+
+Deno.test("an armed offer hands the Device the newest release by default", async () => {
+  // Nothing selected, so the offer falls back to the newest release.
+  const firmwareOffer = await loadedOffer();
+  firmwareOffer.arm();
+  const conductor = createConductor({
+    ...defaults({ firmwareOffer }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const body = await (
+    await conductor.app.request("/api/display", {
+      headers: { ID: "AA:BB:CC", Model: "x", "FW-Version": "1.8.9" },
+    })
+  ).json();
+
+  assertEquals(body.update_firmware, true);
+  assertEquals(
+    body.firmware_url,
+    "https://trmnl-fw.s3.us-east-2.amazonaws.com/trmnl_x/FW1.8.10.bin",
+  );
+});
+
+Deno.test("an armed offer hands the Device the selected release, even an older one", async () => {
+  const firmwareOffer = await loadedOffer();
+  firmwareOffer.select(parse("1.8.9"));
+  firmwareOffer.arm();
+  const conductor = createConductor({
+    ...defaults({ firmwareOffer }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const body = await (
+    await conductor.app.request("/api/display", {
+      headers: { ID: "AA:BB:CC", Model: "x", "FW-Version": "1.8.10" },
+    })
+  ).json();
+
+  assertEquals(
+    body.firmware_url,
+    "https://trmnl-fw.s3.us-east-2.amazonaws.com/trmnl_x/FW1.8.9.bin",
+  );
+});
+
+Deno.test("making the offer disarms it — the poll after an update offer gets update_firmware=false", async () => {
+  const firmwareOffer = await loadedOffer();
+  firmwareOffer.arm();
+  const conductor = createConductor({
+    ...defaults({ firmwareOffer }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+  const headers = { ID: "AA:BB:CC", Model: "x", "FW-Version": "1.8.9" };
+
+  await (await conductor.app.request("/api/display", { headers })).body?.cancel();
+  const second = await (await conductor.app.request("/api/display", { headers })).json();
+
+  assertEquals(second.update_firmware, false);
+});
+
+Deno.test("an armed offer reflashes the version the Device already reports", async () => {
+  // Arming is the operator asking for this release to go on; whether flashing
+  // what is already installed is worth doing is the firmware's call.
+  const firmwareOffer = await loadedOffer();
+  firmwareOffer.arm();
+  const conductor = createConductor({
+    ...defaults({ firmwareOffer }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const body = await (
+    await conductor.app.request("/api/display", {
+      headers: { ID: "AA:BB:CC", Model: "x", "FW-Version": "1.8.10" },
+    })
+  ).json();
+
+  assertEquals(body.update_firmware, true);
+  assertEquals(
+    body.firmware_url,
+    "https://trmnl-fw.s3.us-east-2.amazonaws.com/trmnl_x/FW1.8.10.bin",
+  );
+});
+
+Deno.test("a poll with no Device headers never spends the offer — the dashboard refills through this route", async () => {
+  const firmwareOffer = await loadedOffer();
+  firmwareOffer.arm();
+  const conductor = createConductor({
+    ...defaults({ firmwareOffer }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const body = await (await conductor.app.request("/api/display")).json();
+
+  assertEquals(body.update_firmware, false);
+  assertEquals(firmwareOffer.armed(), true);
+});
+
+Deno.test("an armed offer with no releases loaded leaves update_firmware=false", async () => {
+  const firmwareOffer = createFirmwareOffer();
+  firmwareOffer.arm();
+  const conductor = createConductor({
+    ...defaults({ firmwareOffer }),
+    pluginManager: managerFor({
+      run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
+    }),
+    renderer: fakeRenderer(),
+  });
+
+  const body = await (
+    await conductor.app.request("/api/display", {
+      headers: { ID: "AA:BB:CC", Model: "x", "FW-Version": "1.8.9" },
+    })
+  ).json();
+
+  assertEquals(body.update_firmware, false);
+  assertEquals(body.firmware_url, "");
 });
 
 Deno.test("GET /api/display passes intent=poll into the Plugin", async () => {

@@ -7,8 +7,10 @@ import type { Slot } from "../slot/slot.ts";
 import type { Telemetry } from "../telemetry/telemetry.ts";
 import type { DeviceState } from "../device-state.ts";
 import { type BuildInfo, readBuildInfo } from "../build-info.ts";
+import type { FirmwareOffer } from "../firmware/firmware.ts";
+import { format, tryParse } from "@std/semver";
 import type { Clock } from "../clock.ts";
-import Dashboard, { type TimelineState } from "./dashboard.tsx";
+import Dashboard, { type FirmwareOfferView, type TimelineState } from "./dashboard.tsx";
 
 // Dashboard at /. Debug surface. See ADR-0005.
 
@@ -22,6 +24,9 @@ export type DashboardDeps = {
   pluginManager: PluginManager;
   renderer: Renderer;
   now: Clock;
+  // Shared with the Conductor: the dashboard loads the release list and arms
+  // a version, the Device's next poll spends it.
+  firmwareOffer: FirmwareOffer;
   // Build identity shown in the topbar. Defaults to reading the baked
   // build-info.json; outside the Docker image that file is absent and the
   // page shows a dateless "<version>+dev" build.
@@ -29,11 +34,31 @@ export type DashboardDeps = {
 };
 
 export function createDashboard(deps: DashboardDeps): Hono {
+  // Versions reach the page as the dotted strings the firmware itself speaks,
+  // so the view never has to know about SemVer objects.
+  function firmwareView(): FirmwareOfferView {
+    const selection = deps.firmwareOffer.selection();
+    return {
+      releases: deps.firmwareOffer.releases().map((r) => format(r.version)),
+      selected: selection === null ? null : format(selection.version),
+      armed: deps.firmwareOffer.armed(),
+    };
+  }
+
   return new Hono()
     .get("/", async (c) => {
-      if (deps.slot.display() === null) {
-        await (await deps.conductorApp.request("/api/display")).body?.cancel();
-      }
+      const device = deps.deviceState.latestDevice();
+      await Promise.all([
+        deps.slot.display() === null
+          ? Promise.resolve(deps.conductorApp.request("/api/display")).then((res) =>
+            res.body?.cancel()
+          )
+          : undefined,
+        // First dashboard load that knows the Device's model reads the
+        // bucket; after that only the picker's refresh button does. The
+        // Device's poll path never touches the network.
+        deps.firmwareOffer.load(device?.model ?? null),
+      ]);
       const display = deps.slot.display();
       const now = deps.now();
       // The displayed instant + day come from `?t=` / `?date=`; changing
@@ -64,9 +89,10 @@ export function createDashboard(deps: DashboardDeps): Hono {
           refreshIn: display?.refreshIn ?? null,
           trace: deps.telemetry.latest(),
           timeline,
-          device: deps.deviceState.latestDevice(),
+          device,
           rawHeaders: deps.deviceState.latestPollHeaders(),
           logs: deps.deviceState.recentLogs(),
+          firmware: firmwareView(),
           build: deps.build ?? await readBuildInfo(),
         }),
       );
@@ -101,6 +127,25 @@ export function createDashboard(deps: DashboardDeps): Hono {
     .post("/dashboard/clear", (c) => {
       deps.slot.clear();
       // 303 turns the browser's next request into a GET.
+      return c.redirect("/", 303);
+    })
+    .post("/dashboard/firmware", async (c) => {
+      // Each button names its own action rather than toggling, so re-posting
+      // a stale page can never flip an offer the other way by accident.
+      // Anything unrecognised disarms — the harmless direction.
+      const body = await c.req.parseBody();
+      const model = deps.deviceState.latestDevice()?.model ?? null;
+      if (body["action"] === "refresh") {
+        await deps.firmwareOffer.load(model, { force: true });
+      } else if (body["action"] === "arm") {
+        // The picked version arrives as form text; anything that is not a
+        // version leaves the standing selection in place.
+        const picked = typeof body["version"] === "string" ? tryParse(body["version"]) : undefined;
+        if (picked !== undefined) deps.firmwareOffer.select(picked);
+        deps.firmwareOffer.arm();
+      } else {
+        deps.firmwareOffer.disarm();
+      }
       return c.redirect("/", 303);
     });
 }
