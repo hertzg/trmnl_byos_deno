@@ -671,6 +671,7 @@
         "dependencies": [
           "jsr:@hono/hono@4",
           "jsr:@std/assert@1",
+          "jsr:@std/encoding@^1.0.10",
           "jsr:@std/testing@1"
         ]
       },
