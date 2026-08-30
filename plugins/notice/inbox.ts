@@ -31,7 +31,16 @@ export type Inbox = {
   live(at: Temporal.Instant): Notice[];
   /** The earliest expiry strictly after `at`, or `null` when nothing is live. */
   nextExpiry(at: Temporal.Instant): Temporal.Instant | null;
+  /** `false` when the id is unknown or already pruned. */
+  remove(id: string): boolean;
+  clear(): void;
 };
+
+/**
+ * The default lifetime a sender gets when it names no duration. Written here
+ * once, applied by the route — the inbox itself never reads it.
+ */
+export const DEFAULT_MINUTES = 15;
 
 export function createInbox(): Inbox {
   let notices: Notice[] = [];
@@ -60,6 +69,16 @@ export function createInbox(): Inbox {
         .filter((expiresAt) => Temporal.Instant.compare(expiresAt, at) > 0)
         .sort(Temporal.Instant.compare);
       return future[0] ?? null;
+    },
+
+    remove(id) {
+      const before = notices.length;
+      notices = notices.filter((notice) => notice.id !== id);
+      return notices.length < before;
+    },
+
+    clear() {
+      notices = [];
     },
   };
 }

@@ -1,5 +1,5 @@
-import { assertEquals } from "@std/assert";
-import { createInbox } from "./inbox.ts";
+import { assertEquals, assertNotEquals } from "@std/assert";
+import { createInbox, DEFAULT_MINUTES } from "./inbox.ts";
 
 // Temporal test helper
 function at(spec: string): Temporal.Instant {
@@ -95,4 +95,139 @@ Deno.test("nextExpiry: null on an empty inbox", () => {
   const next = inbox.nextExpiry(at("2026-08-30T12:05:00Z"));
 
   assertEquals(next, null);
+});
+
+Deno.test("nextExpiry: null when every notice has already expired", () => {
+  const inbox = createInbox();
+  inbox.add({
+    text: "long gone",
+    receivedAt: at("2026-08-30T11:00:00Z"),
+    expiresAt: at("2026-08-30T11:15:00Z"),
+  });
+
+  const next = inbox.nextExpiry(at("2026-08-30T12:05:00Z"));
+
+  assertEquals(next, null);
+});
+
+Deno.test("remove: true for a live id, and the notice is gone", () => {
+  const inbox = createInbox();
+  const notice = inbox.add({
+    text: "remove me",
+    receivedAt: at("2026-08-30T12:00:00Z"),
+    expiresAt: at("2026-08-30T12:15:00Z"),
+  });
+
+  const removed = inbox.remove(notice.id);
+
+  assertEquals(removed, true);
+  assertEquals(inbox.live(at("2026-08-30T12:05:00Z")), []);
+});
+
+Deno.test("remove: false for an unknown id", () => {
+  const inbox = createInbox();
+  inbox.add({
+    text: "still here",
+    receivedAt: at("2026-08-30T12:00:00Z"),
+    expiresAt: at("2026-08-30T12:15:00Z"),
+  });
+
+  const removed = inbox.remove("id-that-was-never-issued");
+
+  assertEquals(removed, false);
+});
+
+Deno.test("clear: empties the inbox", () => {
+  const inbox = createInbox();
+  inbox.add({
+    text: "one",
+    receivedAt: at("2026-08-30T12:00:00Z"),
+    expiresAt: at("2026-08-30T12:15:00Z"),
+  });
+  inbox.add({
+    text: "two",
+    receivedAt: at("2026-08-30T12:01:00Z"),
+    expiresAt: at("2026-08-30T12:16:00Z"),
+  });
+
+  inbox.clear();
+
+  assertEquals(inbox.live(at("2026-08-30T12:05:00Z")), []);
+});
+
+Deno.test("add: an image round-trips through live", () => {
+  const inbox = createInbox();
+  const image = { mime: "image/heic", bytes: new Uint8Array([1, 2, 3]) };
+  inbox.add({
+    text: "with a photo",
+    image,
+    receivedAt: at("2026-08-30T12:00:00Z"),
+    expiresAt: at("2026-08-30T12:15:00Z"),
+  });
+
+  const live = inbox.live(at("2026-08-30T12:05:00Z"));
+
+  assertEquals(live[0].image, { mime: "image/heic", bytes: new Uint8Array([1, 2, 3]) });
+});
+
+Deno.test("add: a notice sent without an image has a null image", () => {
+  const inbox = createInbox();
+  inbox.add({
+    text: "text only",
+    receivedAt: at("2026-08-30T12:00:00Z"),
+    expiresAt: at("2026-08-30T12:15:00Z"),
+  });
+
+  const live = inbox.live(at("2026-08-30T12:05:00Z"));
+
+  assertEquals(live[0].image, null);
+});
+
+Deno.test("createInbox: two inboxes hold their own notices", () => {
+  // A factory, not a module-scope singleton.
+  const one = createInbox();
+  const other = createInbox();
+  one.add({
+    text: "only in one",
+    receivedAt: at("2026-08-30T12:00:00Z"),
+    expiresAt: at("2026-08-30T12:15:00Z"),
+  });
+
+  const live = other.live(at("2026-08-30T12:05:00Z"));
+
+  assertEquals(live, []);
+});
+
+Deno.test("DEFAULT_MINUTES: the default notice lifetime is 15 minutes", () => {
+  // Written here once; the route applies it, the inbox never does.
+  assertEquals(DEFAULT_MINUTES, 15);
+});
+
+Deno.test("add: the returned notice carries the caller's text and instants", () => {
+  const inbox = createInbox();
+  const receivedAt = at("2026-08-30T12:00:00Z");
+  const expiresAt = at("2026-08-30T12:15:00Z");
+
+  const notice = inbox.add({ text: "carried through", receivedAt, expiresAt });
+
+  assertEquals(notice.text, "carried through");
+  assertEquals(notice.receivedAt, receivedAt);
+  assertEquals(notice.expiresAt, expiresAt);
+});
+
+Deno.test("add: each notice gets its own id", () => {
+  const inbox = createInbox();
+
+  const first = inbox.add({
+    text: "first",
+    receivedAt: at("2026-08-30T12:00:00Z"),
+    expiresAt: at("2026-08-30T12:15:00Z"),
+  });
+  const second = inbox.add({
+    text: "second",
+    receivedAt: at("2026-08-30T12:01:00Z"),
+    expiresAt: at("2026-08-30T12:16:00Z"),
+  });
+
+  assertNotEquals(first.id, second.id);
 });
