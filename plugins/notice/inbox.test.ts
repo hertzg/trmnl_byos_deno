@@ -54,3 +54,45 @@ Deno.test("live: a pruned notice stays gone even when asked about an earlier ins
 
   assertEquals(live, []);
 });
+
+Deno.test("nextExpiry: picks the earliest expiry after the given instant", () => {
+  // Arrival order and expiry order need not agree — the sender picks the duration.
+  const inbox = createInbox();
+  inbox.add({
+    text: "an hour",
+    receivedAt: at("2026-08-30T12:00:00Z"),
+    expiresAt: at("2026-08-30T13:00:00Z"),
+  });
+  inbox.add({
+    text: "a quarter of an hour",
+    receivedAt: at("2026-08-30T12:01:00Z"),
+    expiresAt: at("2026-08-30T12:16:00Z"),
+  });
+
+  const next = inbox.nextExpiry(at("2026-08-30T12:05:00Z"));
+
+  assertEquals(next, at("2026-08-30T12:16:00Z"));
+});
+
+Deno.test("nextExpiry: an expiry at exactly the given instant is not in the future", () => {
+  // Strictly after, matching live's exclusive boundary.
+  const inbox = createInbox();
+  const expiresAt = at("2026-08-30T12:15:00Z");
+  inbox.add({
+    text: "expiring on the minute",
+    receivedAt: at("2026-08-30T12:00:00Z"),
+    expiresAt,
+  });
+
+  const next = inbox.nextExpiry(expiresAt);
+
+  assertEquals(next, null);
+});
+
+Deno.test("nextExpiry: null on an empty inbox", () => {
+  const inbox = createInbox();
+
+  const next = inbox.nextExpiry(at("2026-08-30T12:05:00Z"));
+
+  assertEquals(next, null);
+});

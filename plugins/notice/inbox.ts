@@ -29,6 +29,8 @@ export type Inbox = {
    * entry whose `expiresAt` has been reached; the boundary is exclusive.
    */
   live(at: Temporal.Instant): Notice[];
+  /** The earliest expiry strictly after `at`, or `null` when nothing is live. */
+  nextExpiry(at: Temporal.Instant): Temporal.Instant | null;
 };
 
 export function createInbox(): Inbox {
@@ -50,6 +52,14 @@ export function createInbox(): Inbox {
     live(at) {
       notices = notices.filter((notice) => Temporal.Instant.compare(notice.expiresAt, at) > 0);
       return [...notices];
+    },
+
+    nextExpiry(at) {
+      const future = notices
+        .map((notice) => notice.expiresAt)
+        .filter((expiresAt) => Temporal.Instant.compare(expiresAt, at) > 0)
+        .sort(Temporal.Instant.compare);
+      return future[0] ?? null;
     },
   };
 }
