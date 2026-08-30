@@ -38,6 +38,7 @@ composed into the parent via `app.route("/", subApp)`.
 | `GET /`                      | Browser             | Dashboard | Admin page. Shows the current Image (`<img src="/image/<identity>.png">`), recent render trace, and the scrub timeline.                                                                                  |
 | `GET /dashboard/preview.png` | Browser             | Dashboard | Transient scrub render at `?t=…`. Calls PluginManager + Renderer directly; bypasses the Slot; does not write Telemetry. Returns the PNG plus the render's `identity` and `validity` as response headers. |
 | `POST /dashboard/clear`      | Browser             | Dashboard | `slot.clear()` + redirect to `/`. Invalidates the cache; next request refills.                                                                                                                           |
+| `POST /dashboard/firmware`   | Browser             | Dashboard | `action=arm` (with the picked `version`), `cancel`, or `refresh` the release list + redirect to `/`. In memory only; a restart disarms.                                                                  |
 
 The Device's image fetch is `GET /image/<identity>.png` — identity-keyed, so the filename and bytes
 are atomically paired through the URL. ADR-0003 explains why one render path is enough; ADR-0004

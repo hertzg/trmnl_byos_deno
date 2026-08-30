@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { greaterThan, tryParse } from "@std/semver";
+import { equals, tryParse } from "@std/semver";
 import type { DeviceReport, RunContext } from "../plugin/plugin.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import type { PluginManager } from "../plugin/plugin-manager.ts";
@@ -10,7 +10,7 @@ import type { DeviceState } from "../device-state.ts";
 import { parseDeviceHeaders } from "../device.ts";
 import { publicOrigin } from "../http/request.ts";
 import type { Clock } from "../clock.ts";
-import { latestOfficialFirmware } from "../firmware/firmware.ts";
+import type { FirmwareOffer, FirmwareRelease } from "../firmware/firmware.ts";
 
 // BYOS facade. Owns the orchestration loop from `/api/display` through
 // Plugin → identity → eager rasterize → Slot.put, and serves the PNG at
@@ -29,10 +29,9 @@ export type ConductorDeps = {
   // Empty → derive the origin the Device dialled from its own request headers.
   publicUrlOrigin: string;
   now: Clock;
-  // true → check TRMNL's official firmware bucket on every poll and offer an
-  // update when the Device is behind. See SystemConfig.firmwareAutoUpdate.
-  firmwareAutoUpdate?: boolean;
-  fetch?: typeof fetch;
+  // The one-shot firmware offer the dashboard arms. Read-only here, and never
+  // a network call: the release list is loaded by the dashboard.
+  firmwareOffer: FirmwareOffer;
 };
 
 export type Conductor = {
@@ -40,8 +39,6 @@ export type Conductor = {
 };
 
 export function createConductor(deps: ConductorDeps): Conductor {
-  const fetchImpl = deps.fetch ?? fetch;
-
   // Single-flight: a cache miss runs the Plugin at most once even under
   // burst load (Device poll racing the Dashboard's in-process refill).
   let pendingRefill: Promise<void> | null = null;
@@ -165,9 +162,15 @@ export function createConductor(deps: ConductorDeps): Conductor {
         1,
         Math.ceil(display.refreshIn.total({ unit: "seconds" })),
       );
-      const firmwareUpdate = deps.firmwareAutoUpdate
-        ? await pendingFirmwareUpdate(deps.deviceState.latestDevice(), fetchImpl)
+      // Gated on this request's `report`, not the last known Device: only a
+      // real Device poll can spend the offer. The dashboard refills an empty
+      // Slot by calling this route in-process, and bins the response.
+      const firmwareUpdate = report !== null && deps.firmwareOffer.armed()
+        ? pendingFirmwareUpdate(report, deps.firmwareOffer.selection())
         : null;
+      // Spent only once an update is actually on the wire: an armed offer
+      // against an already-current Device stays armed for the next release.
+      if (firmwareUpdate !== null) deps.firmwareOffer.disarm();
       return c.json({
         status: 0,
         image_url: `${publicOrigin(c, deps.publicUrlOrigin)}/image/${display.identity}.png`,
@@ -207,16 +210,16 @@ export function createConductor(deps: ConductorDeps): Conductor {
   return { app };
 }
 
-// null unless the Device has reported both a model and a parseable firmware
-// version, TRMNL's bucket has a release for that model, and the Device's
-// version is older than it — i.e. exactly when offering an update makes sense.
-async function pendingFirmwareUpdate(
-  device: DeviceReport | null,
-  fetchImpl: typeof fetch,
-) {
-  const reported = tryParse(device?.fwVersion ?? "");
-  if (device?.model == null || reported === undefined) return null;
-  const latest = await latestOfficialFirmware(device.model, fetchImpl);
-  if (latest === null) return null;
-  return greaterThan(latest.version, reported) ? latest : null;
+// The armed selection, unless the Device already reports exactly that version
+// — reflashing what it is running costs a download and a reboot for nothing.
+// Any other reported version is offered, older or newer: an armed offer for a
+// specific release is the operator saying "put this one on".
+function pendingFirmwareUpdate(
+  device: DeviceReport,
+  selection: FirmwareRelease | null,
+): FirmwareRelease | null {
+  if (selection === null) return null;
+  const reported = tryParse(device.fwVersion ?? "");
+  if (reported !== undefined && equals(reported, selection.version)) return null;
+  return selection;
 }

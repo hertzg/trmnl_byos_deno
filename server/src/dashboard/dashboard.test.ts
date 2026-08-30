@@ -10,6 +10,7 @@ import type { RasterizeOverrides, Renderer } from "../render/renderer.ts";
 import type { Bundle } from "../plugin/bundle.ts";
 import { createTelemetry } from "../telemetry/telemetry.ts";
 import { createDeviceState } from "../device-state.ts";
+import { createFirmwareOffer, type FirmwareOffer } from "../firmware/firmware.ts";
 
 const at = (iso: string) => Temporal.ZonedDateTime.from(`${iso}[Europe/Berlin]`);
 const T0 = at("2026-05-16T10:00");
@@ -71,6 +72,7 @@ function wire(conductorDeps: Partial<ConductorDeps>) {
   const telemetry = conductorDeps.telemetry ?? createTelemetry();
   const deviceState = conductorDeps.deviceState ?? createDeviceState({ now });
   const renderer = conductorDeps.renderer ?? defaultRenderer();
+  const firmwareOffer = conductorDeps.firmwareOffer ?? createFirmwareOffer();
   const pluginManager = conductorDeps.pluginManager ?? managerFor({
     run: () => ({ state: {}, validity: fiveMin, view: () => "<p>x</p>" }),
   });
@@ -82,6 +84,7 @@ function wire(conductorDeps: Partial<ConductorDeps>) {
     slot,
     telemetry,
     deviceState,
+    firmwareOffer,
   } as ConductorDeps);
   const dashboard = createDashboard({
     slot,
@@ -91,6 +94,7 @@ function wire(conductorDeps: Partial<ConductorDeps>) {
     pluginManager,
     renderer,
     now,
+    firmwareOffer,
   });
   return {
     app: new Hono().route("/", conductor.app).route("/", dashboard),
@@ -142,6 +146,7 @@ Deno.test("GET / still renders against an empty Slot (no Conductor wiring)", asy
     telemetry,
     deviceState: createDeviceState({ now }),
     conductorApp: noopApp,
+    firmwareOffer: createFirmwareOffer(),
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
     }),
@@ -205,6 +210,7 @@ Deno.test("GET / renders a placeholder trace block when telemetry.latest() is nu
     telemetry,
     deviceState: createDeviceState({ now }),
     conductorApp: noopApp,
+    firmwareOffer: createFirmwareOffer(),
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
     }),
@@ -721,6 +727,7 @@ Deno.test("GET / with an empty Slot embeds __DASH__.cache as null", async () => 
     telemetry,
     deviceState: createDeviceState({ now }),
     conductorApp: noopApp,
+    firmwareOffer: createFirmwareOffer(),
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
     }),
@@ -850,6 +857,7 @@ Deno.test("GET / renders the image version and release time in the topbar", asyn
     telemetry: createTelemetry(),
     deviceState: createDeviceState({ now }),
     conductorApp: new Hono().get("/api/display", (c) => c.body(null, 204)),
+    firmwareOffer: createFirmwareOffer(),
     pluginManager: managerFor({
       run: () => ({ state: {}, validity: fiveMin, view: () => "" }),
     }),
@@ -933,4 +941,90 @@ Deno.test("GET /dashboard/preview.png ignores a bitDepth that is not 1/2/4/8", a
   assertSpyCalls(rasterize, 2);
   assertEquals(rasterize.calls[0].args[1], { bitDepth: undefined });
   assertEquals(rasterize.calls[1].args[1], { bitDepth: undefined });
+});
+
+// ─── POST /dashboard/firmware — pick, arm, refresh ─────────────────────────
+
+// An offer with two releases already read from a canned bucket listing.
+async function loadedOffer(fetchImpl?: typeof fetch): Promise<FirmwareOffer> {
+  const listing = `<ListBucketResult>
+    <Contents><Key>trmnl_x/FW1.8.9.bin</Key></Contents>
+    <Contents><Key>trmnl_x/FW1.8.10.bin</Key></Contents>
+  </ListBucketResult>`;
+  const offer = createFirmwareOffer({
+    fetch: fetchImpl ?? ((() => Promise.resolve(new Response(listing))) as typeof fetch),
+  });
+  await offer.load("x");
+  return offer;
+}
+
+Deno.test("POST /dashboard/firmware action=arm selects the posted version and arms the offer", async () => {
+  const firmwareOffer = await loadedOffer();
+  const { app } = wire({ firmwareOffer });
+
+  const res = await app.request("/dashboard/firmware", {
+    method: "POST",
+    body: new URLSearchParams({ action: "arm", version: "1.8.9" }),
+  });
+  await res.body?.cancel();
+
+  assertEquals(res.status, 303);
+  assertEquals(res.headers.get("location"), "/");
+  assertEquals(firmwareOffer.armed(), true);
+  assertEquals(firmwareOffer.selection()?.url.endsWith("FW1.8.9.bin"), true);
+});
+
+Deno.test("POST /dashboard/firmware action=cancel disarms an armed offer", async () => {
+  const firmwareOffer = await loadedOffer();
+  firmwareOffer.arm();
+  const { app } = wire({ firmwareOffer });
+
+  await (await app.request("/dashboard/firmware", {
+    method: "POST",
+    body: new URLSearchParams({ action: "cancel" }),
+  })).body?.cancel();
+
+  assertEquals(firmwareOffer.armed(), false);
+});
+
+Deno.test("POST /dashboard/firmware action=refresh re-reads the bucket", async () => {
+  // The Device has to have polled for the refresh to know which model to ask
+  // about, so this one goes through a real /api/display first.
+  const listing = `<ListBucketResult>
+    <Contents><Key>trmnl_x/FW1.8.11.bin</Key></Contents>
+  </ListBucketResult>`;
+  const fetchImpl = spy((() => Promise.resolve(new Response(listing))) as typeof fetch);
+  const firmwareOffer = createFirmwareOffer({ fetch: fetchImpl });
+  const { app } = wire({ firmwareOffer });
+  await (await app.request("/api/display", { headers: { ID: "AA:BB:CC", Model: "x" } }))
+    .body?.cancel();
+
+  await (await app.request("/dashboard/firmware", {
+    method: "POST",
+    body: new URLSearchParams({ action: "refresh" }),
+  })).body?.cancel();
+
+  assertSpyCalls(fetchImpl, 1);
+  assertEquals(firmwareOffer.selection()?.url.endsWith("FW1.8.11.bin"), true);
+});
+
+Deno.test("GET / renders one option per release with the selected version preselected", async () => {
+  const firmwareOffer = await loadedOffer();
+  firmwareOffer.select("1.8.9");
+  const { app } = wire({ firmwareOffer });
+
+  const html = await (await app.request("/")).text();
+
+  assertEquals(html.includes('<option value="1.8.10"'), true, "newest release missing");
+  assertEquals(html.includes('<option value="1.8.9" selected>'), true, "pick not preselected");
+});
+
+Deno.test("GET / offers to cancel while the firmware offer is armed", async () => {
+  const firmwareOffer = await loadedOffer();
+  firmwareOffer.arm();
+  const { app } = wire({ firmwareOffer });
+
+  const html = await (await app.request("/")).text();
+
+  assertEquals(html.includes('value="cancel"'), true);
 });

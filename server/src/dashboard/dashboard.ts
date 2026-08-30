@@ -7,8 +7,10 @@ import type { Slot } from "../slot/slot.ts";
 import type { Telemetry } from "../telemetry/telemetry.ts";
 import type { DeviceState } from "../device-state.ts";
 import { type BuildInfo, readBuildInfo } from "../build-info.ts";
+import type { FirmwareOffer } from "../firmware/firmware.ts";
+import { format } from "@std/semver";
 import type { Clock } from "../clock.ts";
-import Dashboard, { type TimelineState } from "./dashboard.tsx";
+import Dashboard, { type FirmwareOfferView, type TimelineState } from "./dashboard.tsx";
 
 // Dashboard at /. Debug surface. See ADR-0005.
 
@@ -22,6 +24,9 @@ export type DashboardDeps = {
   pluginManager: PluginManager;
   renderer: Renderer;
   now: Clock;
+  // Shared with the Conductor: the dashboard loads the release list and arms
+  // a version, the Device's next poll spends it.
+  firmwareOffer: FirmwareOffer;
   // Build identity shown in the topbar. Defaults to reading the baked
   // build-info.json; outside the Docker image that file is absent and the
   // page shows a dateless "<version>+dev" build.
@@ -29,12 +34,28 @@ export type DashboardDeps = {
 };
 
 export function createDashboard(deps: DashboardDeps): Hono {
+  // Versions reach the page as the dotted strings the firmware itself speaks,
+  // so the view never has to know about SemVer objects.
+  function firmwareView(): FirmwareOfferView {
+    const selection = deps.firmwareOffer.selection();
+    return {
+      releases: deps.firmwareOffer.releases().map((r) => format(r.version)),
+      selected: selection === null ? null : format(selection.version),
+      armed: deps.firmwareOffer.armed(),
+    };
+  }
+
   return new Hono()
     .get("/", async (c) => {
       if (deps.slot.display() === null) {
         await (await deps.conductorApp.request("/api/display")).body?.cancel();
       }
       const display = deps.slot.display();
+      const device = deps.deviceState.latestDevice();
+      // First dashboard load that knows the Device's model reads the bucket;
+      // after that only the picker's refresh button does. The Device's poll
+      // path never touches the network.
+      await deps.firmwareOffer.load(device?.model ?? null);
       const now = deps.now();
       // The displayed instant + day come from `?t=` / `?date=`; changing
       // the day is always a server round-trip (ADR-0005) so the day's tz
@@ -64,9 +85,10 @@ export function createDashboard(deps: DashboardDeps): Hono {
           refreshIn: display?.refreshIn ?? null,
           trace: deps.telemetry.latest(),
           timeline,
-          device: deps.deviceState.latestDevice(),
+          device,
           rawHeaders: deps.deviceState.latestPollHeaders(),
           logs: deps.deviceState.recentLogs(),
+          firmware: firmwareView(),
           build: deps.build ?? await readBuildInfo(),
         }),
       );
@@ -101,6 +123,22 @@ export function createDashboard(deps: DashboardDeps): Hono {
     .post("/dashboard/clear", (c) => {
       deps.slot.clear();
       // 303 turns the browser's next request into a GET.
+      return c.redirect("/", 303);
+    })
+    .post("/dashboard/firmware", async (c) => {
+      // Each button names its own action rather than toggling, so re-posting
+      // a stale page can never flip an offer the other way by accident.
+      // Anything unrecognised disarms — the harmless direction.
+      const body = await c.req.parseBody();
+      const model = deps.deviceState.latestDevice()?.model ?? null;
+      if (body["action"] === "refresh") {
+        await deps.firmwareOffer.load(model, { force: true });
+      } else if (body["action"] === "arm") {
+        if (typeof body["version"] === "string") deps.firmwareOffer.select(body["version"]);
+        deps.firmwareOffer.arm();
+      } else {
+        deps.firmwareOffer.disarm();
+      }
       return c.redirect("/", 303);
     });
 }

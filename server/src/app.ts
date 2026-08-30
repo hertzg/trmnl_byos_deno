@@ -13,6 +13,7 @@ import { createSlot } from "./slot/slot.ts";
 import { createTelemetry } from "./telemetry/telemetry.ts";
 import { createDeviceState } from "./device-state.ts";
 import { createDebugApp } from "./debug/debug.ts";
+import { createFirmwareOffer } from "./firmware/firmware.ts";
 import { type Clock, systemClock } from "./clock.ts";
 
 // Composition root. The entire object graph is built here, from a SystemConfig
@@ -113,6 +114,11 @@ async function pipelineApp(
   // the in-memory ring backs the dashboard's device section.
   const deviceState = createDeviceState({ now, onLog: logDeviceEntry });
 
+  // One shared offer: the dashboard loads the release list and arms a
+  // version, the Device's next poll spends it. Deliberately not config — it
+  // never survives a restart.
+  const firmwareOffer = createFirmwareOffer();
+
   const conductor = createConductor({
     pluginManager,
     renderer,
@@ -124,7 +130,7 @@ async function pipelineApp(
     friendlyId: config.friendlyId,
     publicUrlOrigin: config.publicUrlOrigin,
     now,
-    firmwareAutoUpdate: config.firmwareAutoUpdate,
+    firmwareOffer,
   });
 
   const dashboard = createDashboard({
@@ -135,6 +141,7 @@ async function pipelineApp(
     pluginManager,
     renderer,
     now,
+    firmwareOffer,
   });
 
   const app = baseApp()

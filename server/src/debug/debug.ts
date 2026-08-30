@@ -7,10 +7,10 @@ import { publicOrigin } from "../http/request.ts";
 import type { Clock } from "../clock.ts";
 import { isPattern, renderPattern } from "./patterns.ts";
 import { type BuildInfo, readBuildInfo } from "../build-info.ts";
-import { type LatestFirmware, latestOfficialFirmware } from "../firmware/firmware.ts";
+import { type FirmwareRelease, listOfficialFirmware } from "../firmware/firmware.ts";
 import DebugPage from "./debug.tsx";
 
-export type { LatestFirmware };
+export type { FirmwareRelease };
 
 // Debug-mode facade. When system.debug is true this app replaces the
 // Conductor AND the dashboard: /api/display returns exactly the operator's
@@ -151,7 +151,7 @@ export function createDebugApp(deps: DebugDeps): Hono {
           proxyError,
           customImage: customImageInfo(),
           device,
-          latestFirmware: await latestOfficialFirmware(device?.model ?? null, fetchImpl),
+          latestFirmware: (await listOfficialFirmware(device?.model ?? null, fetchImpl))[0] ?? null,
           rawHeaders: deps.deviceState.latestPollHeaders(),
           logs: deps.deviceState.recentLogs(),
         }),

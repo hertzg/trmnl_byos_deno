@@ -4,7 +4,7 @@ import type { LogEntry, PollHeaders } from "../device-state.ts";
 import type { DeviceReport } from "../plugin/plugin.ts";
 import { DeviceSection } from "../dashboard/dashboard.tsx";
 import { PATTERNS } from "./patterns.ts";
-import type { DebugCustomImageInfo, DebugDisplayConfig, LatestFirmware } from "./debug.ts";
+import type { DebugCustomImageInfo, DebugDisplayConfig, FirmwareRelease } from "./debug.ts";
 import type { BuildInfo } from "../build-info.ts";
 import { format } from "@std/semver";
 import dashboardCss from "../dashboard/dashboard.css" with { type: "text" };
@@ -32,7 +32,7 @@ export type DebugPageProps = {
   device: DeviceReport | null;
   // Latest official release for the Device's reported model family — null
   // before the first poll (model unknown) or when the bucket is unreachable.
-  latestFirmware: LatestFirmware | null;
+  latestFirmware: FirmwareRelease | null;
   rawHeaders: PollHeaders | null;
   logs: readonly LogEntry[];
 };

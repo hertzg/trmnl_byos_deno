@@ -650,12 +650,27 @@ pre.api-resp {
 }
 
 /* ---- slot & trace ---- */
-.slot-bar {
+.slot-bar,
+.device-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 16px 32px;
   align-items: flex-end;
   justify-content: space-between;
+}
+.device-bar {
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #ececec;
+}
+.fw-offer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.fw-offer select {
+  font: inherit;
+  padding: 3px 6px;
 }
 .trace {
   margin-top: 22px;

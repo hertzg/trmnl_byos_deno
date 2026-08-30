@@ -27,11 +27,6 @@ export type SystemConfig = {
   // Device sends. Toggle it from webproc by editing this file and restarting.
   // Optional — absent means false.
   debug?: boolean;
-  // true → every /api/display poll checks TRMNL's official firmware bucket
-  // for the Device's reported model and, if a newer release exists, sets
-  // update_firmware/firmware_url so the Device installs it on its own.
-  // Optional — absent means false (no auto-update; firmware_url stays empty).
-  firmwareAutoUpdate?: boolean;
 };
 
 export const system = {
