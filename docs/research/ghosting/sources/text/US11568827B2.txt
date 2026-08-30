@@ -1,0 +1,5192 @@
+US11568827B2 - Methods for driving electro-optic displays to minimize edge ghosting
+- Google Patents
+US11568827B2 - Methods for driving electro-optic displays to minimize edge ghosting
+- Google Patents
+Methods for driving electro-optic displays to minimize edge ghosting
+Download PDF
+Info
+Publication number
+US11568827B2
+US11568827B2
+US17/873,301
+US202217873301A
+US11568827B2
+US 11568827 B2
+US11568827 B2
+US 11568827B2
+US 202217873301 A
+US202217873301 A
+US 202217873301A
+US 11568827 B2
+US11568827 B2
+US 11568827B2
+Authority
+US
+United States
+Prior art keywords
+pixel
+white
+black
+image
+state
+Prior art date
+2017-09-12
+Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.)
+Active
+Application number
+US17/873,301
+Other versions
+US20220375418A1
+(
+en
+Inventor
+Teck Ping Sim
+Yuval Ben-Dov
+Joanna F. Au
+Kenneth R. Crounse
+Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.)
+E Ink Corp
+Original Assignee
+E Ink Corp
+Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.)
+2017-09-12
+Filing date
+2022-07-26
+Publication date
+2023-01-31
+2022-07-26
+Application filed by E Ink Corp
+filed
+Critical
+E Ink Corp
+2022-07-26
+Priority to US17/873,301
+priority
+Critical
+patent/US11568827B2/en
+2022-08-12
+Assigned to E INK CORPORATION
+reassignment
+E INK CORPORATION
+ASSIGNMENT OF ASSIGNORS INTEREST (SEE DOCUMENT FOR DETAILS).
+Assignors: BEN-DOV, YUVAL, AU, JOANNA F., SIM, Teck Ping, CROUNSE, KENNETH R.
+2022-11-24
+Publication of US20220375418A1
+publication
+Critical
+patent/US20220375418A1/en
+2023-01-31
+Application granted
+granted
+Critical
+2023-01-31
+Publication of US11568827B2
+publication
+Critical
+patent/US11568827B2/en
+Status
+Active
+legal-status
+Critical
+Current
+2038-09-12
+Anticipated expiration
+legal-status
+Critical
+Links
+USPTO
+USPTO PatentCenter
+USPTO Assignment
+Espacenet
+Global Dossier
+Discuss
+238000000034
+method
+Methods
+0.000
+title
+claims
+abstract
+description
+46
+230000007704
+transition
+Effects
+0.000
+claims
+abstract
+description
+61
+239000011159
+matrix material
+Substances
+0.000
+claims
+abstract
+description
+25
+230000003287
+optical effect
+Effects
+0.000
+description
+33
+238000003384
+imaging method
+Methods
+0.000
+description
+15
+239000002245
+particle
+Substances
+0.000
+description
+15
+230000000694
+effects
+Effects
+0.000
+description
+13
+239000012530
+fluid
+Substances
+0.000
+description
+13
+230000008859
+change
+Effects
+0.000
+description
+8
+239000000463
+material
+Substances
+0.000
+description
+8
+239000010410
+layer
+Substances
+0.000
+description
+7
+238000013459
+approach
+Methods
+0.000
+description
+6
+239000002775
+capsule
+Substances
+0.000
+description
+6
+239000007788
+liquid
+Substances
+0.000
+description
+6
+230000009467
+reduction
+Effects
+0.000
+description
+6
+239000012790
+adhesive layer
+Substances
+0.000
+description
+5
+230000005684
+electric field
+Effects
+0.000
+description
+5
+239000007787
+solid
+Substances
+0.000
+description
+5
+238000005516
+engineering process
+Methods
+0.000
+description
+4
+239000000382
+optic material
+Substances
+0.000
+description
+4
+238000012545
+processing
+Methods
+0.000
+description
+4
+238000009736
+wetting
+Methods
+0.000
+description
+4
+239000003990
+capacitor
+Substances
+0.000
+description
+3
+238000003475
+lamination
+Methods
+0.000
+description
+3
+239000004973
+liquid crystal related substance
+Substances
+0.000
+description
+3
+239000003094
+microcapsule
+Substances
+0.000
+description
+3
+230000002441
+reversible effect
+Effects
+0.000
+description
+3
+GWEVSGVZZGPLCZ-UHFFFAOYSA-N
+Titan oxide
+Chemical compound
+O=[Ti]=O
+GWEVSGVZZGPLCZ-UHFFFAOYSA-N
+0.000
+description
+2
+230000008901
+benefit
+Effects
+0.000
+description
+2
+239000011230
+binding agent
+Substances
+0.000
+description
+2
+230000005540
+biological transmission
+Effects
+0.000
+description
+2
+238000007599
+discharging
+Methods
+0.000
+description
+2
+238000005538
+encapsulation
+Methods
+0.000
+description
+2
+230000008569
+process
+Effects
+0.000
+description
+2
+210000003934
+vacuole
+Anatomy
+0.000
+description
+2
+241000872198
+Serjania polyphylla
+Species
+0.000
+description
+1
+208000033853
+acromesomelic dysplasia 4
+Diseases
+0.000
+description
+1
+230000004913
+activation
+Effects
+0.000
+description
+1
+239000000654
+additive
+Substances
+0.000
+description
+1
+238000003491
+array
+Methods
+0.000
+description
+1
+238000000429
+assembly
+Methods
+0.000
+description
+1
+230000006399
+behavior
+Effects
+0.000
+description
+1
+230000015572
+biosynthetic process
+Effects
+0.000
+description
+1
+230000004397
+blinking
+Effects
+0.000
+description
+1
+230000001427
+coherent effect
+Effects
+0.000
+description
+1
+239000004020
+conductor
+Substances
+0.000
+description
+1
+JGDFBJMWFLXCLJ-UHFFFAOYSA-N
+copper chromite
+Chemical compound
+[Cu]=O.[Cu]=O.O=[Cr]O[Cr]=O
+JGDFBJMWFLXCLJ-UHFFFAOYSA-N
+0.000
+description
+1
+230000009849
+deactivation
+Effects
+0.000
+description
+1
+238000010586
+diagram
+Methods
+0.000
+description
+1
+239000005262
+ferroelectric liquid crystals (FLCs)
+Substances
+0.000
+description
+1
+230000006870
+function
+Effects
+0.000
+description
+1
+AMGQUBHHOARCQH-UHFFFAOYSA-N
+indium;oxotin
+Chemical compound
+[In].[Sn]=O
+AMGQUBHHOARCQH-UHFFFAOYSA-N
+0.000
+description
+1
+230000007774
+longterm
+Effects
+0.000
+description
+1
+238000004020
+luminiscence type
+Methods
+0.000
+description
+1
+230000014759
+maintenance of location
+Effects
+0.000
+description
+1
+239000012528
+membrane
+Substances
+0.000
+description
+1
+229910044991
+metal oxide
+Inorganic materials
+0.000
+description
+1
+150000004706
+metal oxides
+Chemical class
+0.000
+description
+1
+238000012986
+modification
+Methods
+0.000
+description
+1
+230000004048
+modification
+Effects
+0.000
+description
+1
+230000003071
+parasitic effect
+Effects
+0.000
+description
+1
+239000000049
+pigment
+Substances
+0.000
+description
+1
+238000012827
+research and development
+Methods
+0.000
+description
+1
+230000000717
+retained effect
+Effects
+0.000
+description
+1
+238000007789
+sealing
+Methods
+0.000
+description
+1
+239000012780
+transparent material
+Substances
+0.000
+description
+1
+239000002023
+wood
+Substances
+0.000
+description
+1
+Images
+Classifications
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G3/00
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes
+G09G3/20
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes for presentation of an assembly of a number of characters, e.g. a page, by composing the assembly by combination of individual elements arranged in a matrix no fixed position being assigned to or needed to be assigned to the individual characters or partial characters
+G09G3/34
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes for presentation of an assembly of a number of characters, e.g. a page, by composing the assembly by combination of individual elements arranged in a matrix no fixed position being assigned to or needed to be assigned to the individual characters or partial characters by control of light from an independent source
+G09G3/3433
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes for presentation of an assembly of a number of characters, e.g. a page, by composing the assembly by combination of individual elements arranged in a matrix no fixed position being assigned to or needed to be assigned to the individual characters or partial characters by control of light from an independent source using light modulating elements actuated by an electric field and being other than liquid crystal devices and electrochromic devices
+G09G3/344
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes for presentation of an assembly of a number of characters, e.g. a page, by composing the assembly by combination of individual elements arranged in a matrix no fixed position being assigned to or needed to be assigned to the individual characters or partial characters by control of light from an independent source using light modulating elements actuated by an electric field and being other than liquid crystal devices and electrochromic devices based on particles moving in a fluid or in a gas, e.g. electrophoretic devices
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G3/00
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes
+G09G3/20
+—
+Control arrangements or circuits, of interest only in connection with visual indicators other than cathode-ray tubes for presentation of an assembly of a number of characters, e.g. a page, by composing the assembly by combination of individual elements arranged in a matrix no fixed position being assigned to or needed to be assigned to the individual characters or partial characters
+G09G3/2007
+—
+Display of intermediate tones
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2310/00
+—
+Command of the display device
+G09G2310/06
+—
+Details of flat display driving waveforms
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2310/00
+—
+Command of the display device
+G09G2310/06
+—
+Details of flat display driving waveforms
+G09G2310/061
+—
+Details of flat display driving waveforms for resetting or blanking
+G09G2310/062
+—
+Waveforms for resetting a plurality of scan lines at a time
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2310/00
+—
+Command of the display device
+G09G2310/06
+—
+Details of flat display driving waveforms
+G09G2310/061
+—
+Details of flat display driving waveforms for resetting or blanking
+G09G2310/063
+—
+Waveforms for resetting the whole screen at once
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2310/00
+—
+Command of the display device
+G09G2310/06
+—
+Details of flat display driving waveforms
+G09G2310/068
+—
+Application of pulses of alternating polarity prior to the drive pulse in electrophoretic displays
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2320/00
+—
+Control of display operating conditions
+G09G2320/02
+—
+Improving the quality of display appearance
+G09G2320/0204
+—
+Compensation of DC component across the pixels in flat panels
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2320/00
+—
+Control of display operating conditions
+G09G2320/02
+—
+Improving the quality of display appearance
+G09G2320/0209
+—
+Crosstalk reduction, i.e. to reduce direct or indirect influences of signals directed to a certain pixel of the displayed image on other pixels of said image, inclusive of influences affecting pixels in different frames or fields or sub-images which constitute a same image, e.g. left and right images of a stereoscopic display
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2320/00
+—
+Control of display operating conditions
+G09G2320/02
+—
+Improving the quality of display appearance
+G09G2320/0247
+—
+Flicker reduction other than flicker reduction circuits used for single beam cathode-ray tubes
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2320/00
+—
+Control of display operating conditions
+G09G2320/02
+—
+Improving the quality of display appearance
+G09G2320/0257
+—
+Reduction of after-image effects
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2320/00
+—
+Control of display operating conditions
+G09G2320/02
+—
+Improving the quality of display appearance
+G09G2320/0285
+—
+Improving the quality of display appearance using tables for spatial correction of display data
+G
+—
+PHYSICS
+G09
+—
+EDUCATION; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+G09G
+—
+ARRANGEMENTS OR CIRCUITS FOR CONTROL OF INDICATING DEVICES USING STATIC MEANS TO PRESENT VARIABLE INFORMATION
+G09G2320/00
+—
+Control of display operating conditions
+G09G2320/04
+—
+Maintaining the quality of display appearance
+G09G2320/043
+—
+Preventing or counteracting the effects of ageing
+G09G2320/045
+—
+Compensation of drifts in the characteristics of light emitting or modulating elements
+Definitions
+This invention
+relates to methods for driving electro-optic displays. More specifically, this invention relates to driving methods for reducing pixel edge artifacts and/or image retentions in electro-optic displays.
+Electro-optic displays
+typically have a backplane provided with a plurality of pixel electrodes each of which defines one pixel of the display; conventionally, a single common electrode extending over a large number of pixels, and normally the whole display is provided on the opposed side of the electro-optic medium.
+the individual pixel electrodes
+may be driven directly (i.e., a separate conductor may be provided to each pixel electrode) or the pixel electrodes may be driven in an active matrix manner which will be familiar to those skilled in backplane technology. Since adjacent pixel electrodes will often be at different voltages, they must be separated by inter-pixel gaps of finite width in order to avoid electrical shorting between electrodes.
+Blooming
+refers to the tendency for application of a drive voltage to a pixel electrode to cause a change in the optical state of the electro-optic medium over an area larger than the physical size of the pixel electrode.
+excessive blooming
+should be avoided (for example, in a high resolution active matrix display one does not wish application of a drive voltage to a single pixel to cause switching over an area covering several adjacent pixels, since this would reduce the effective resolution of the display) a controlled amount of blooming is often useful. For example, consider a black-on-white electro-optic display which displays numbers using a conventional seven-segment array of seven directly driven pixel electrodes for each digit. When, for example, a zero is displayed, six segments are turned black.
+the inter-pixel gaps
+In the absence of blooming, the six inter-pixel gaps will be visible. However, by providing a controlled amount of blooming, for example as described in the aforementioned 2005/0062714, the inter-pixel gaps can be made to turn black, resulting in a more visually pleasing digit. However, blooming can lead to a problem denoted “edge ghosting”.
+An area of blooming
+is not a uniform white or black but is typically a transition zone where, as one moves across the area of blooming, the color of the medium transitions from white through various shades of gray to black. Accordingly, an edge ghost will typically be an area of varying shades of gray rather than a uniform gray area; but can still be visible and objectionable, especially since the human eye is well equipped to detect areas of gray in monochrome images where each pixel is supposed to be pure black or pure white.) In some cases, asymmetric blooming may contribute to edge ghosting. “Asymmetric blooming” refers to a phenomenon whereby in some electro-optic media (for example, the copper chromite/titania encapsulated electrophoretic media described in U.S. Pat. No.
+the blooming
+is “asymmetric” in the sense that more blooming occurs during a transition from one extreme optical state of a pixel to the other extreme optical state than during a transition in the reverse direction; in the media described in this patent, typically the blooming during a black-to-white transition is greater than that during a white-to-black one.
+the subject matter presented herein
+provides for a method for driving an electro-optic display having a plurality of display pixels.
+the method
+including updating the display with a first image, identifying display pixels with edge artifacts after the first image update, and storing the identified pixels information in a memory.
+the method
+may also include determining display pixel graytone transitions between the first image and the second image.
+the method
+may include determining displays pixels having different graytones than at least one of its cardinal neighboring pixels, and flagging the identified pixels in a memory associated with the display's controller.
+FIG. 1
+is a circuit diagram representing an electrophoretic display
+FIG. 2
+shows a circuit model of the electro-optic imaging layer
+FIG. 3 a
+illustrates an exemplary special pulse pair edge erasing waveform for pixels going through a white to white transition
+FIG. 3 b
+illustrates an exemplary special DC imbalanced pulse to erase white edges for pixels going through a white to white transition
+FIG. 3 c
+illustrates an exemplary special full white to white driving waveform
+FIG. 4 a
+illustrates an exemplary special edge erasing waveform for pixels going through a black to black transition
+FIG. 4 b
+illustrates an exemplary special full black to black driving waveform
+FIG. 5 a
+illustrates a screen shot of a display with blooming or ghosting effect
+FIG. 5 b
+illustrates another screen shot of a display with blooming or ghost effect reduction applied in accordance with the subject matter presented herein.
+the present invention
+relates to methods for driving electro-optic displays, especially bistable electro-optic displays, and to apparatus for use in such methods. More specifically, this invention relates to driving methods which may allow for reduced “ghosting” and edge effects, and reduced flashing in such displays.
+This invention
+is especially, but not exclusively, intended for use with particle-based electrophoretic displays in which one or more types of electrically charged particles are present in a fluid and are moved through the fluid under the influence of an electric field to change the appearance of the display.
+optical property
+is typically color perceptible to the human eye, it may be another optical property, such as optical transmission, reflectance, luminescence or, in the case of displays intended for machine reading, pseudo-color in the sense of a change in reflectance of electromagnetic wavelengths outside the visible range.
+gray state
+is used herein in its conventional meaning in the imaging art to refer to a state intermediate two extreme optical states of a pixel, and does not necessarily imply a black-white transition between these two extreme states.
+E Ink patents and published applications referred to below
+describe electrophoretic displays in which the extreme states are white and deep blue, so that an intermediate “gray state” would actually be pale blue. Indeed, as already mentioned, the change in optical state may not be a color change at all.
+black and “white”
+may be used hereinafter to refer to the two extreme optical states of a display, and should be understood as normally including extreme optical states which are not strictly black and white, for example, the aforementioned white and dark blue states.
+the term “monochrome”
+may be used hereinafter to denote a drive scheme which only drives pixels to their two extreme optical states with no intervening gray states.
+solid electro-optic displays
+includes rotating bichromal member displays, encapsulated electrophoretic displays, microcell electrophoretic displays and encapsulated liquid crystal displays.
+bistable and “bistability”
+are used herein in their conventional meaning in the art to refer to displays comprising display elements having first and second display states differing in at least one optical property, and such that after any given element has been driven, by means of an addressing pulse of finite duration, to assume either its first or second display state, after the addressing pulse has terminated, that state will persist for at least several times, for example at least four times, the minimum duration of the addressing pulse required to change the state of the display element.
+addressing pulse
+of finite duration
+some particle-based electrophoretic displays capable of gray scale
+are stable not only in their extreme black and white states but also in their intermediate gray states, and the same is true of some other types of electro-optic displays.
+This type of display
+is properly called “multi-stable” rather than bistable, although for convenience the term “bistable” may be used herein to cover both bistable and multi-stable displays.
+impulse
+is used herein in its conventional meaning of the integral of voltage with respect to time.
+bistable electro-optic media
+act as charge transducers, and with such media an alternative definition of impulse, namely the integral of current over time (which is equal to the total charge applied) may be used.
+the appropriate definition of impulse
+should be used, depending on whether the medium acts as a voltage-time impulse transducer or a charge impulse transducer.
+waveform
+will be used to denote the entire voltage against time curve used to effect the transition from one specific initial gray level to a specific final gray level.
+waveform
+will comprise a plurality of waveform elements; where these elements are essentially rectangular (i.e., where a given element comprises application of a constant voltage for a period of time); the elements may be called “pulses” or “drive pulses”.
+drive scheme
+denotes a set of waveforms sufficient to effect all possible transitions between gray levels for a specific display.
+a display
+may make use of more than one drive scheme; for example, the aforementioned U.S. Pat. No. 7,012,600 teaches that a drive scheme may need to be modified depending upon parameters such as the temperature of the display or the time for which it has been in operation during its lifetime, and thus a display may be provided with a plurality of different drive schemes to be used at differing temperature etc.
+a set of drive schemes used in this manner
+may be referred to as “a set of related drive schemes.” It is also possible, as described in several of the aforementioned MEDEOD applications, to use more than one drive scheme simultaneously in different areas of the same display, and a set of drive schemes used in this manner may be referred to as “a set of simultaneous drive schemes.”
+electro-optic displays
+are known.
+One type of electro-optic display
+is a rotating bichromal member type as described, for example, in U.S. Pat. Nos. 5,808,783; 5,777,782; 5,760,761; 6,054,071 6,055,091; 6,097,531; 6,128,124; 6,137,467; and 6,147,791 (although this type of display is often referred to as a “rotating bichromal ball” display, the term “rotating bichromal member” is preferred as more accurate since in some of the patents mentioned above the rotating members are not spherical).
+Such a display
+uses a large number of small bodies (typically spherical or cylindrical) which have two or more sections with differing optical characteristics, and an internal dipole. These bodies are suspended within liquid-filled vacuoles within a matrix, the vacuoles being filled with liquid so that the bodies are free to rotate. The appearance of the display is changed by applying an electric field thereto, thus rotating the bodies to various positions and varying which of the sections of the bodies is seen through a viewing surface.
+This type of electro-optic medium
+is typically bistable.
+electro-optic display
+uses an electrochromic medium, for example an electrochromic medium in the form of a nanochromic film comprising an electrode formed at least in part from a semi-conducting metal oxide and a plurality of dye molecules capable of reversible color change attached to the electrode; see, for example O'Regan, B., et al., Nature 1991, 353, 737; and Wood, D., Information Display, 18(3), 24 (March 2002). See also Bach, U., et al., Adv. Mater., 2002, 14(11), 845. Nanochromic films of this type are also described, for example, in U.S. Pat. Nos. 6,301,038; 6,870,657; and 6,950,220. This type of medium is also typically bistable.
+electro-optic display
+is an electro-wetting display developed by Philips and described in Hayes, R. A., et al., “Video-Speed Electronic Paper Based on Electrowetting”, Nature, 425, 383-385 (2003). It is shown in U.S. Pat. No. 7,420,549 that such electro-wetting displays can be made bistable.
+Electrophoretic displays
+can have attributes of good brightness and contrast, wide viewing angles, state bistability, and low power consumption when compared with liquid crystal displays. Nevertheless, problems with the long-term image quality of these displays have prevented their widespread usage. For example, particles that make up electrophoretic displays tend to settle, resulting in inadequate service-life for these displays.
+electrophoretic media
+require the presence of a fluid.
+this fluid
+is a liquid, but electrophoretic media can be produced using gaseous fluids; see, for example, Kitamura, T., et al., “Electrical toner movement for electronic paper-like display”, IDW Japan, 2001, Paper HCS1-1, and Yamaguchi, Y., et al., “Toner display using insulative particles charged triboelectrically”, IDW Japan, 2001, Paper AMD4-4). See also U.S. Pat. Nos. 7,321,459 and 7,236,291.
+Such gas-based electrophoretic media
+appear to be susceptible to the same types of problems due to particle settling as liquid-based electrophoretic media, when the media are used in an orientation which permits such settling, for example in a sign where the medium is disposed in a vertical plane. Indeed, particle settling appears to be a more serious problem in gas-based electrophoretic media than in liquid-based ones, since the lower viscosity of gaseous suspending fluids as compared with liquid ones allows more rapid settling of the electrophoretic particles.
+encapsulated electrophoretic and other electro-optic media
+comprise numerous small capsules, each of which itself comprises an internal phase containing electrophoretically-mobile particles in a fluid medium, and a capsule wall surrounding the internal phase.
+the capsules
+are themselves held within a polymeric binder to form a coherent layer positioned between two electrodes.
+the technologies described in these patents and applications
+include:
+Electrophoretic particles, fluids and fluid additives
+see for example U.S. Pat. Nos. 7,002,728 and 7,679,814;
+Non-electrophoretic displays
+as described in U.S. Pat. No. 6,241,921 and U.S. Patent Application Publication No. 2015/0277160; and applications of encapsulation and microcell technology other than displays; see for example U.S. Patent Application Publications Nos. 2015/0005720 and 2016/0012710; and
+the walls surrounding the discrete microcapsules in an encapsulated electrophoretic medium
+could be replaced by a continuous phase, thus producing a so-called polymer-dispersed electrophoretic display, in which the electrophoretic medium comprises a plurality of discrete droplets of an electrophoretic fluid and a continuous phase of a polymeric material, and that the discrete droplets of electrophoretic fluid within such a polymer-dispersed electrophoretic display may be regarded as capsules or microcapsules even though no discrete capsule membrane is associated with each individual droplet; see for example, the aforementioned 2002/0131147. Accordingly, for purposes of the present application, such polymer-dispersed electrophoretic media are regarded as sub-species of encapsulated electrophoretic media.
+microcell electrophoretic display
+A related type of electrophoretic display is a so-called “microcell electrophoretic display.”
+the charged particles and the suspending fluid
+are not encapsulated within microcapsules but instead are retained within a plurality of cavities formed within a carrier medium, e.g., a polymeric film.
+a carrier medium
+e.g., a polymeric film.
+microcell electrophoretic displays
+can refer to all such display types, which may also be described collectively as “microcavity electrophoretic displays” to generalize across the morphology of the walls.
+electro-optic display
+is an electro-wetting display developed by Philips and described in Hayes, R. A., et al., “Video-Speed Electronic Paper Based on Electrowetting,” Nature, 425, 383-385 (2003). It is shown in copending application Ser. No. 10/711,802, filed Oct. 6, 2004, that such electro-wetting displays can be made bistable.
+bistable ferroelectric liquid crystal displays
+are known in the art and have exhibited remnant voltage behavior.
+electrophoretic media
+may be opaque (since, for example, in many electrophoretic media, the particles substantially block transmission of visible light through the display) and operate in a reflective mode
+some electrophoretic displays
+can be made to operate in a so-called “shutter mode” in which one display state is substantially opaque and one is light-transmissive. See, for example, the patents U.S. Pat. Nos. 6,130,774 and 6,172,798, and 5,872,552; 6,144,361; 6,271,823; 6,225,971; and 6,184,856.
+Dielectrophoretic displays
+which are similar to electrophoretic displays but rely upon variations in electric field strength, can operate in a similar mode; see U.S. Pat. No. 4,418,346.
+Other types of electro-optic displays
+may also be capable of operating in shutter mode.
+a high-resolution display
+may include individual pixels which are addressable without interference from adjacent pixels.
+One way to obtain such pixels
+is to provide an array of non-linear elements, such as transistors or diodes, with at least one non-linear element associated with each pixel, to produce an “active matrix” display.
+An addressing or pixel electrode, which addresses one pixel,
+is connected to an appropriate voltage source through the associated non-linear element.
+the non-linear element
+is a transistor
+the pixel electrode
+may be connected to the drain of the transistor, and this arrangement will be assumed in the following description, although it is essentially arbitrary and the pixel electrode could be connected to the source of the transistor.
+the pixels
+may be arranged in a two-dimensional array of rows and columns, such that any specific pixel is uniquely defined by the intersection of one specified row and one specified column.
+the sources of all the transistors in each column
+may be connected to a single column electrode, while the gates of all the transistors in each row may be connected to a single row electrode; again the assignment of sources to rows and gates to columns may be reversed if desired.
+the display
+may be written in a row-by-row manner.
+the row electrodes
+are connected to a row driver, which may apply to a selected row electrode a voltage such as to ensure that all the transistors in the selected row are conductive, while applying to all other rows a voltage such as to ensure that all the transistors in these non-selected rows remain non-conductive.
+the column electrodes
+are connected to column drivers, which place upon the various column electrodes voltages selected to drive the pixels in a selected row to their desired optical states.
+the aforementioned voltages
+are relative to a common front electrode which may be provided on the opposed side of the electro-optic medium from the non-linear array and extends across the whole display. As in known in the art, voltage is relative and a measure of a charge differential between two points.
+One voltage value
+is relative to another voltage value. For example, zero voltage (“0V”) refers to having no voltage differential relative to another voltage.)
+0V
+zero voltage
+a “shift” in the optical state associated with an addressing pulse
+refers to a situation in which a first application of a particular addressing pulse to an electro-optic display results in a first optical state (e.g., a first gray tone), and a subsequent application of the same addressing pulse to the electro-optic display results in a second optical state (e.g., a second gray tone).
+Remnant voltages
+may give rise to shifts in the optical state because the voltage applied to a pixel of the electro-optic display during application of an addressing pulse includes the sum of the remnant voltage and the voltage of the addressing pulse.
+a “drift” in the optical state of a display over time
+refers to a situation in which the optical state of an electro-optic display changes while the display is at rest (e.g., during a period in which an addressing pulse is not applied to the display). Remnant voltages may give rise to drifts in the optical state because the optical state of a pixel may depend on the pixel's remnant voltage, and a pixel's remnant voltage may decay over time.
+“ghosting”
+refers to a situation in which, after the electro-optic display has been rewritten, traces of the previous image(s) are still visible. Remnant voltages may give rise to “edge ghosting,” a type of ghosting in which an outline (edge) of a portion of a previous image remains visible.
+FIG. 1
+shows a schematic of a pixel 100 of an electro-optic display in accordance with the subject matter submitted herein.
+Pixel 100
+may include an imaging film 110 .
+imaging film 110
+may be bistable.
+imaging film 110
+may include, without limitation, an encapsulated electrophoretic imaging film, which may include, for example, charged pigment particles.
+Imaging film 110
+may be disposed between a front electrode 102 and a rear electrode 104 .
+the front electrode 102
+may be formed between the imaging film and the front of the display.
+front electrode 102
+may be transparent.
+front electrode 102
+may be formed of any suitable transparent material, including, without limitation, indium tin oxide (ITO).
+Rear electrode 104
+may be formed opposite a front electrode 102 .
+a parasitic capacitance
+(not shown) may be formed between front electrode 102 and rear electrode 104 .
+Pixel 100
+may be one of a plurality of pixels.
+the plurality of pixels
+may be arranged in a two-dimensional array of rows and columns to form a matrix, such that any specific pixel is uniquely defined by the intersection of one specified row and one specified column.
+the matrix of pixels
+may be an “active matrix,” in which each pixel is associated with at least one non-linear circuit element 120 .
+the non-linear circuit element 120
+may be coupled between back-plate electrode 104 and an addressing electrode 108 .
+non-linear element 120
+may include a diode and/or a transistor, including, without limitation, a MOSFET.
+the drain (or source) of the MOSFET
+may be coupled to back-plate electrode 104
+the source (or drain) of the MOSFET
+may be coupled to addressing electrode 108
+the gate of the MOSFET
+may be coupled to a driver electrode 106 configured to control the activation and deactivation of the MOSFET.
+the terminal of the MOSFET coupled to back-plate electrode 104
+will be referred to as the MOSFET's drain
+the terminal of the MOSFET coupled to addressing electrode 108
+will be referred to as the MOSFET's source.
+the source and drain of the MOSFET
+may be interchanged.
+the addressing electrodes 108 of all the pixels in each column
+may be connected to a same column electrode, and the driver electrodes 106 of all the pixels in each row may be connected to a same row electrode.
+the row electrodes
+may be connected to a row driver, which may select one or more rows of pixels by applying to the selected row electrodes a voltage sufficient to activate the non-linear elements 120 of all the pixels 100 in the selected row(s).
+the column electrodes
+may be connected to column drivers, which may place upon the addressing electrode 106 of a selected (activated) pixel a voltage suitable for driving the pixel into a desired optical state.
+the voltage applied to an addressing electrode 108
+may be relative to the voltage applied to the pixel's front-plate electrode 102 (e.g., a voltage of approximately zero volts).
+the front-plate electrodes 102 of all the pixels in the active matrix
+may be coupled to a common electrode.
+the pixels 100 of the active matrix
+may be written in a row-by-row manner. For example, a row of pixels may be selected by the row driver, and the voltages corresponding to the desired optical states for the row of pixels may be applied to the pixels by the column drivers. After a pre-selected interval known as the “line address time,” the selected row may be deselected, another row may be selected, and the voltages on the column drivers may be changed so that another line of the display is written.
+FIG. 2
+shows a circuit model of the electro-optic imaging layer 110 disposed between the front electrode 102 and the rear electrode 104 in accordance with the subject matter presented herein.
+Resistor 202 and capacitor 204
+may represent the resistance and capacitance of the electro-optic imaging layer 110 , the front electrode 102 and the rear electrode 104 , including any adhesive layers.
+Resistor 212 and capacitor 214
+may represent the resistance and capacitance of a lamination adhesive layer.
+Capacitor 216
+may represent a capacitance that may form between the front electrode 102 and the back electrode 104 , for example, interfacial contact areas between layers, such as the interface between the imaging layer and the lamination adhesive layer and/or between the lamination adhesive layer and the backplane electrode.
+a voltage Vi across a pixel's imaging film 110
+may include the pixel's remnant voltage.
+a display
+may make use of a “direct update” drive scheme (“DUDS” or “DU”).
+the DU
+may have two or more than two gray levels, typically fewer than a gray scale drive scheme (“GSDS), which can effect transitions between all possible gray levels, but the most important characteristic of a DU scheme is that transitions are handled by a simple unidirectional drive from the initial gray level to the final gray level, as opposed to the “indirect” transitions often used in a GSDS, where in at least some transitions the pixel is driven from an initial gray level to one extreme optical state, then in the reverse direction to a final gray level; in some cases, the transition may be effected by driving from the initial gray level to one extreme optical state, thence to the opposed extreme optical state, and only then to the final extreme optical state—see, for example, the drive scheme illustrated in FIGS.
+present electrophoretic displays
+may have an update time in grayscale mode of about two to three times the length of a saturation pulse (where “the length of a saturation pulse” is defined as the time period, at a specific voltage, that suffices to drive a pixel of a display from one extreme optical state to the other), or approximately 700-900 milliseconds, whereas a DU has a maximum update time equal to the length of the saturation pulse, or about 200-300 milliseconds.
+the DU waveform mode
+is a driving scheme that usually considers updates to white and black with empty self-transitions.
+the DU mode
+would have a short update time to bring up black and white quickly, with minimal appearance of a “flashy” transition, where the display would appear to be blinking on and off and may be visually unattractive to some viewer's eyes.
+the DU mode
+may sometimes be used to bring up menus, progress bars, keyboards etc. on a display screen. Because both the white to white and black to black transitions are null (i.e., un-driven) in the DU mode, edge artifacts may arise in the black and white backgrounds.
+some of the alternative display pixel edge artifacts reduction methods
+may result in additional latency due to image processing designed to detect and remove edge artifacts after each image update.
+the use of the DC imbalance waveforms in these reduction methods
+would not be feasible since the small dwell time in between updates does not allow sufficient time to perform post drive discharging. And without post drive discharging, there is a potential risk to overall optical performance and module reliability.
+pixel edge artifacts generated under a drive scheme or waveform modes
+may be stored in a memory (e.g., a binary map), for example, each display pixel may be represented by a designator MAP (i, j), and pixels that may develop edge artifacts may be flagged and their map information (i.e., the MAP (i.j) designator) may be saved in a binary map. Illustrated below is one approach that may be used to keep track of generated edge artifacts on the map and flag such pixels:
+a display pixel designated MAP
+may be flagged with a numerical value of 1, indicating that dark edge artifacts have formed on this pixel.
+Some of the conditions required
+may include (1). this display pixel is going through a white to white transition; (2). all four cardinal neighbors (i.e., the four closest neighboring pixels) have a next graytone of white; AND (3). at least one cardinal neighbor has a current graytone that is not white; and (4). none of the neighboring pixels (i.e., the four cardinal neighbors and also the diagonal neighbors) are currently flagged for edge artifacts.
+a display pixel MAP
+(i, j) may be flagged with a numerical value of 2, indicating that white edges have formed on this pixel.
+Some of the conditions required
+may include (1). this pixel is going through a black to black transition; (2). at least one cardinal neighbor has a current graytone that is not black and its next graytone is black; and (3). none of the neighboring pixels (i.e., the four cardinal neighbors and also the diagonal neighbors) are currently flagged for edge artifacts.
+one advantage of this approach
+is that the above mentioned image processing (i.e., map generation and pixel flagging) can occur concurrently with the display image updating cycles, thereby avoiding the creation of extra latencies to the updating cycles, due at least in part to the reason that the generated map is only required at the completion of the update cycle.
+image processing
+i.e., map generation and pixel flagging
+pixel information accumulated by the generated map
+may be later used for clearing the edge artifacts (e.g., using an out waveform mode). For example, pixels flagged for edge artifacts may be cleared with a low flash waveform with specialized waveforms.
+full clearing white to white and black to black waveforms in conjunction with special edge clearing white to white and black to black waveforms
+may be used to clear the edge artifacts.
+edge clearing white to white and black to black waveforms
+may be used to clear the edge artifacts.
+a DU OUT transition scheme
+(e.g., a modified DU scheme with the edge artifact reduction algorithm included) may be applied to pixels that is not going through a white to white or black to black transition, for example, these pixels may receive the normal transition updates as if they were under a normal DU drive scheme.
+a special full white to white waveform
+may be applied. In some embodiments, this white to white waveform may be a waveform similar to what is illustrated in FIG.
+the special edge clearing white to white waveform
+can take the form of a pulse pair as described in US Patent Publication No. 2013/0194250 to Amundson et al., which is incorporated herein in its entirety, or a DC imbalance pulse drive to white as given in illustrated in FIG. 3 b , in which case post drive discharge described in may be used to discharge remnant voltages and reduce device stresses.
+a DC imbalanced pulse
+as illustrated in FIG. 4 a , may be used to drive a pixel to black, in which case, again, a post drive discharge may be performed.
+a such DC imbalanced pulse
+have only a drive to the positive 15 volts for a period of time.
+excellent edge clearing performance
+can be achieved at the cost of small transition appearance imperfections (e.g., flashes) due to the use of the special full clearing waveform.
+transition appearance imperfections
+e.g., flashes
+transition appearance imperfections
+may be reduced using an alternative implementation described below.
+DC imbalanced waveforms
+may be used to clear the edge artifacts.
+post drive discharges
+may be used to reduce hardware stress due to the imbalanced waveforms.
+a display pixel
+is not going through either a white to white or black to black transition, a normal DU-OUT transition is applied to the pixel.
+a DC imbalanced drive pulse
+e.g., a pulse similar to that illustrated in FIG. 4 a
+edge artifact information
+instead of storing edge artifact information in a designated memory location, one may bring forward the edge artifact information in an image buffer associated with the display's controller unit (e.g., using a next image buffer associated with the controller unit).
+the special white to white and special black to black image states
+can be the same as the white to white and black to black image states for both application of the waveform transition and for image processing. For the application of waveform transition, this means that:
+special white state white state
+is equivalent to white state white state (i.e., white state to white state) of the waveform look-up table special white state
+any gray states
+i.e., white state to any gray state
+white state
+i.e., white state to any gray state
+special black state black state
+i.e., black state to black state
+black state black state
+i.e., black state to black state
+black state black state
+i.e., black state to black state
+black state black state
+is equivalent to black state black state (i.e., black state to black state) of the waveform look-up table special black state
+any gray states
+i.e., black state to any gray state
+black state to any gray state
+is equivalent to black state any gray states (i.e., black state to any gray state) of the waveform look-up stable, etc.
+the special white state to white state
+received the DC imbalance pulse to white (e.g., FIG. 3 b illustrates an exemplary such pulse) and the special black state to black state received the DC imbalance pulse to black (e.g., FIG. 4 a illustrates an exemplary such pulse).
+the imaging algorithm processing
+occurs in the background during the DU mode updating, meaning the DU updating time can be used to process the images.
+FIG. 5 a and FIG. 5 b
+illustrate displays without and with edge artifacts reduction applied.
+edge artifacts reduction
+is not applied, white edges on a black background is clearly visible, as shown in FIG. 5 a .
+FIG. 5 b
+shows that the white edges are cleared using one of the proposed methods presented herein.
+Landscapes
+Engineering & Computer Science
+(
+AREA
+)
+Physics & Mathematics
+(
+AREA
+)
+Computer Hardware Design
+(
+AREA
+)
+General Physics & Mathematics
+(
+AREA
+)
+Theoretical Computer Science
+(
+AREA
+)
+Control Of Indicators Other Than Cathode Ray Tubes
+(
+AREA
+)
+Electrochromic Elements, Electrophoresis, Or Variable Reflection Or Absorption Elements
+(
+AREA
+)
+Liquid Crystal
+(
+AREA
+)
+Abstract
+A variety of methods for driving electro-optic displays so as to reduce visible artifacts are described. Such methods includes updating a display having a plurality of display pixels with a first image, identifying display pixels with edge artifacts after the first image update, and storing the identified display pixels information in a memory. In particular, the methods are effective for minimizing edge ghosting when a pixel of an active matrix electrophoretic display undergoes a white to white transition or a black to black transition during an update between first and second images.
+Description
+REFERENCE TO RELATED APPLICATIONS
+This application is a continuation of U.S. patent application Ser. No. 16/128,996, filed Sep. 12, 2018, which claims the benefit of provisional Application Ser. No. 62/557,285 filed on Sep. 12, 2017, which is incorporated by reference in its entirety herein.
+SUBJECT OF THE INVENTION
+This invention relates to methods for driving electro-optic displays. More specifically, this invention relates to driving methods for reducing pixel edge artifacts and/or image retentions in electro-optic displays.
+BACKGROUND
+Electro-optic displays typically have a backplane provided with a plurality of pixel electrodes each of which defines one pixel of the display; conventionally, a single common electrode extending over a large number of pixels, and normally the whole display is provided on the opposed side of the electro-optic medium. The individual pixel electrodes may be driven directly (i.e., a separate conductor may be provided to each pixel electrode) or the pixel electrodes may be driven in an active matrix manner which will be familiar to those skilled in backplane technology. Since adjacent pixel electrodes will often be at different voltages, they must be separated by inter-pixel gaps of finite width in order to avoid electrical shorting between electrodes. Although at first glance it might appear that the electro-optic medium overlying these gaps would not switch when drive voltages are applied to the pixel electrodes (and indeed, this is often the case with some non-bistable electro-optic, media, such as liquid crystals, where a black mask is typically provided to hide these non-switching gaps), in the case of many bistable electro-optic media the medium overlying the gap does switch because of a phenomenon known as “blooming”.
+Blooming refers to the tendency for application of a drive voltage to a pixel electrode to cause a change in the optical state of the electro-optic medium over an area larger than the physical size of the pixel electrode. Although excessive blooming should be avoided (for example, in a high resolution active matrix display one does not wish application of a drive voltage to a single pixel to cause switching over an area covering several adjacent pixels, since this would reduce the effective resolution of the display) a controlled amount of blooming is often useful. For example, consider a black-on-white electro-optic display which displays numbers using a conventional seven-segment array of seven directly driven pixel electrodes for each digit. When, for example, a zero is displayed, six segments are turned black. In the absence of blooming, the six inter-pixel gaps will be visible. However, by providing a controlled amount of blooming, for example as described in the aforementioned 2005/0062714, the inter-pixel gaps can be made to turn black, resulting in a more visually pleasing digit. However, blooming can lead to a problem denoted “edge ghosting”.
+An area of blooming is not a uniform white or black but is typically a transition zone where, as one moves across the area of blooming, the color of the medium transitions from white through various shades of gray to black. Accordingly, an edge ghost will typically be an area of varying shades of gray rather than a uniform gray area; but can still be visible and objectionable, especially since the human eye is well equipped to detect areas of gray in monochrome images where each pixel is supposed to be pure black or pure white.) In some cases, asymmetric blooming may contribute to edge ghosting. “Asymmetric blooming” refers to a phenomenon whereby in some electro-optic media (for example, the copper chromite/titania encapsulated electrophoretic media described in U.S. Pat. No. 7,002,728) the blooming is “asymmetric” in the sense that more blooming occurs during a transition from one extreme optical state of a pixel to the other extreme optical state than during a transition in the reverse direction; in the media described in this patent, typically the blooming during a black-to-white transition is greater than that during a white-to-black one.
+As such, driving methods that also reduces the ghosting or blooming effects are needed.
+SUMMARY OF INVENTION
+Accordingly, in one aspect, the subject matter presented herein provides for a method for driving an electro-optic display having a plurality of display pixels. The method including updating the display with a first image, identifying display pixels with edge artifacts after the first image update, and storing the identified pixels information in a memory. In some embodiments, the method may also include determining display pixel graytone transitions between the first image and the second image. In some other embodiments, the method may include determining displays pixels having different graytones than at least one of its cardinal neighboring pixels, and flagging the identified pixels in a memory associated with the display's controller.
+BRIEF DESCRIPTION OF DRAWINGS
+FIG.
+1
+is a circuit diagram representing an electrophoretic display;
+FIG.
+2
+shows a circuit model of the electro-optic imaging layer;
+FIG.
+3
+a
+illustrates an exemplary special pulse pair edge erasing waveform for pixels going through a white to white transition;
+FIG.
+3
+b
+illustrates an exemplary special DC imbalanced pulse to erase white edges for pixels going through a white to white transition;
+FIG.
+3
+c
+illustrates an exemplary special full white to white driving waveform;
+FIG.
+4
+a
+illustrates an exemplary special edge erasing waveform for pixels going through a black to black transition;
+FIG.
+4
+b
+illustrates an exemplary special full black to black driving waveform;
+FIG.
+5
+a
+illustrates a screen shot of a display with blooming or ghosting effect; and
+FIG.
+5
+b
+illustrates another screen shot of a display with blooming or ghost effect reduction applied in accordance with the subject matter presented herein.
+DETAILED DESCRIPTION
+The present invention relates to methods for driving electro-optic displays, especially bistable electro-optic displays, and to apparatus for use in such methods. More specifically, this invention relates to driving methods which may allow for reduced “ghosting” and edge effects, and reduced flashing in such displays. This invention is especially, but not exclusively, intended for use with particle-based electrophoretic displays in which one or more types of electrically charged particles are present in a fluid and are moved through the fluid under the influence of an electric field to change the appearance of the display.
+The term “electro-optic”, as applied to a material or a display, is used herein in its conventional meaning in the imaging art to refer to a material having first and second display states differing in at least one optical property, the material being changed from its first to its second display state by application of an electric field to the material. Although the optical property is typically color perceptible to the human eye, it may be another optical property, such as optical transmission, reflectance, luminescence or, in the case of displays intended for machine reading, pseudo-color in the sense of a change in reflectance of electromagnetic wavelengths outside the visible range.
+The term “gray state” is used herein in its conventional meaning in the imaging art to refer to a state intermediate two extreme optical states of a pixel, and does not necessarily imply a black-white transition between these two extreme states. For example, several of the E Ink patents and published applications referred to below describe electrophoretic displays in which the extreme states are white and deep blue, so that an intermediate “gray state” would actually be pale blue. Indeed, as already mentioned, the change in optical state may not be a color change at all. The terms “black” and “white” may be used hereinafter to refer to the two extreme optical states of a display, and should be understood as normally including extreme optical states which are not strictly black and white, for example, the aforementioned white and dark blue states. The term “monochrome” may be used hereinafter to denote a drive scheme which only drives pixels to their two extreme optical states with no intervening gray states.
+Some electro-optic materials are solid in the sense that the materials have solid external surfaces, although the materials may, and often do, have internal liquid- or gas-filled spaces. Such displays using solid electro-optic materials may hereinafter for convenience be referred to as “solid electro-optic displays”. Thus, the term “solid electro-optic displays” includes rotating bichromal member displays, encapsulated electrophoretic displays, microcell electrophoretic displays and encapsulated liquid crystal displays.
+The terms “bistable” and “bistability” are used herein in their conventional meaning in the art to refer to displays comprising display elements having first and second display states differing in at least one optical property, and such that after any given element has been driven, by means of an addressing pulse of finite duration, to assume either its first or second display state, after the addressing pulse has terminated, that state will persist for at least several times, for example at least four times, the minimum duration of the addressing pulse required to change the state of the display element. It is shown in U.S. Pat. No. 7,170,670 that some particle-based electrophoretic displays capable of gray scale are stable not only in their extreme black and white states but also in their intermediate gray states, and the same is true of some other types of electro-optic displays. This type of display is properly called “multi-stable” rather than bistable, although for convenience the term “bistable” may be used herein to cover both bistable and multi-stable displays.
+The term “impulse” is used herein in its conventional meaning of the integral of voltage with respect to time. However, some bistable electro-optic media act as charge transducers, and with such media an alternative definition of impulse, namely the integral of current over time (which is equal to the total charge applied) may be used. The appropriate definition of impulse should be used, depending on whether the medium acts as a voltage-time impulse transducer or a charge impulse transducer.
+Much of the discussion below will focus on methods for driving one or more pixels of an electro-optic display through a transition from an initial gray level to a final gray level (which may or may not be different from the initial gray level). The term “waveform” will be used to denote the entire voltage against time curve used to effect the transition from one specific initial gray level to a specific final gray level. Typically such a waveform will comprise a plurality of waveform elements; where these elements are essentially rectangular (i.e., where a given element comprises application of a constant voltage for a period of time); the elements may be called “pulses” or “drive pulses”. The term “drive scheme” denotes a set of waveforms sufficient to effect all possible transitions between gray levels for a specific display. A display may make use of more than one drive scheme; for example, the aforementioned U.S. Pat. No. 7,012,600 teaches that a drive scheme may need to be modified depending upon parameters such as the temperature of the display or the time for which it has been in operation during its lifetime, and thus a display may be provided with a plurality of different drive schemes to be used at differing temperature etc. A set of drive schemes used in this manner may be referred to as “a set of related drive schemes.” It is also possible, as described in several of the aforementioned MEDEOD applications, to use more than one drive scheme simultaneously in different areas of the same display, and a set of drive schemes used in this manner may be referred to as “a set of simultaneous drive schemes.”
+Several types of electro-optic displays are known. One type of electro-optic display is a rotating bichromal member type as described, for example, in U.S. Pat. Nos. 5,808,783; 5,777,782; 5,760,761; 6,054,071 6,055,091; 6,097,531; 6,128,124; 6,137,467; and 6,147,791 (although this type of display is often referred to as a “rotating bichromal ball” display, the term “rotating bichromal member” is preferred as more accurate since in some of the patents mentioned above the rotating members are not spherical). Such a display uses a large number of small bodies (typically spherical or cylindrical) which have two or more sections with differing optical characteristics, and an internal dipole. These bodies are suspended within liquid-filled vacuoles within a matrix, the vacuoles being filled with liquid so that the bodies are free to rotate. The appearance of the display is changed by applying an electric field thereto, thus rotating the bodies to various positions and varying which of the sections of the bodies is seen through a viewing surface. This type of electro-optic medium is typically bistable.
+Another type of electro-optic display uses an electrochromic medium, for example an electrochromic medium in the form of a nanochromic film comprising an electrode formed at least in part from a semi-conducting metal oxide and a plurality of dye molecules capable of reversible color change attached to the electrode; see, for example O'Regan, B., et al., Nature 1991, 353, 737; and Wood, D., Information Display, 18(3), 24 (March 2002). See also Bach, U., et al., Adv. Mater., 2002, 14(11), 845. Nanochromic films of this type are also described, for example, in U.S. Pat. Nos. 6,301,038; 6,870,657; and 6,950,220. This type of medium is also typically bistable.
+Another type of electro-optic display is an electro-wetting display developed by Philips and described in Hayes, R. A., et al., “Video-Speed Electronic Paper Based on Electrowetting”, Nature, 425, 383-385 (2003). It is shown in U.S. Pat. No. 7,420,549 that such electro-wetting displays can be made bistable.
+One type of electro-optic display, which has been the subject of intense research and development for a number of years, is the particle-based electrophoretic display, in which a plurality of charged particles move through a fluid under the influence of an electric field. Electrophoretic displays can have attributes of good brightness and contrast, wide viewing angles, state bistability, and low power consumption when compared with liquid crystal displays. Nevertheless, problems with the long-term image quality of these displays have prevented their widespread usage. For example, particles that make up electrophoretic displays tend to settle, resulting in inadequate service-life for these displays.
+As noted above, electrophoretic media require the presence of a fluid. In most prior art electrophoretic media, this fluid is a liquid, but electrophoretic media can be produced using gaseous fluids; see, for example, Kitamura, T., et al., “Electrical toner movement for electronic paper-like display”, IDW Japan, 2001, Paper HCS1-1, and Yamaguchi, Y., et al., “Toner display using insulative particles charged triboelectrically”, IDW Japan, 2001, Paper AMD4-4). See also U.S. Pat. Nos. 7,321,459 and 7,236,291. Such gas-based electrophoretic media appear to be susceptible to the same types of problems due to particle settling as liquid-based electrophoretic media, when the media are used in an orientation which permits such settling, for example in a sign where the medium is disposed in a vertical plane. Indeed, particle settling appears to be a more serious problem in gas-based electrophoretic media than in liquid-based ones, since the lower viscosity of gaseous suspending fluids as compared with liquid ones allows more rapid settling of the electrophoretic particles.
+Numerous patents and applications assigned to or in the names of the Massachusetts Institute of Technology (MIT) and E Ink Corporation describe various technologies used in encapsulated electrophoretic and other electro-optic media. Such encapsulated media comprise numerous small capsules, each of which itself comprises an internal phase containing electrophoretically-mobile particles in a fluid medium, and a capsule wall surrounding the internal phase. Typically, the capsules are themselves held within a polymeric binder to form a coherent layer positioned between two electrodes. The technologies described in these patents and applications include:
+(a) Electrophoretic particles, fluids and fluid additives; see for example U.S. Pat. Nos. 7,002,728 and 7,679,814;
+(b) Capsules, binders and encapsulation processes; see for example U.S. Pat. Nos. 6,922,276 and 7,411,719;
+(c) Microcell structures, wall materials, and methods of forming microcells; see for example U.S. Pat. Nos. 7,072,095 and 9,279,906;
+(d) Methods for filling and sealing microcells; see for example U.S. Pat. Nos. 7,144,942 and 7,715,088;
+(e) Films and sub-assemblies containing electro-optic materials; see for example U.S. Pat. Nos. 6,982,178 and 7,839,564;
+(f) Backplanes, adhesive layers and other auxiliary layers and methods used in displays; see for example U.S. Pat. Nos. 7,116,318 and 7,535,624;
+(g) Color formation and color adjustment; see for example U.S. Pat. Nos. 7,075,502 and 7,839,564.
+(h) Applications of displays; see for example U.S. Pat. Nos. 7,312,784; 8,009,348;
+(i) Non-electrophoretic displays, as described in U.S. Pat. No. 6,241,921 and U.S. Patent Application Publication No. 2015/0277160; and applications of encapsulation and microcell technology other than displays; see for example U.S. Patent Application Publications Nos. 2015/0005720 and 2016/0012710; and
+(j) Methods for driving displays; see for example U.S. Pat. Nos. 5,930,026; 6,445,489; 6,504,524; 6,512,354; 6,531,997; 6,753,999; 6,825,970; 6,900,851; 6,995,550; 7,012,600; 7,023,420; 7,034,783; 7,061,166; 7,061,662; 7,116,466; 7,119,772; 7,177,066; 7,193,625; 7,202,847; 7,242,514; 7,259,744; 7,304,787; 7,312,794; 7,327,511; 7,408,699; 7,453,445; 7,492,339; 7,528,822; 7,545,358; 7,583,251; 7,602,374; 7,612,760; 7,679,599; 7,679,813; 7,683,606; 7,688,297; 7,729,039; 7,733,311; 7,733,335; 7,787,169; 7,859,742; 7,952,557; 7,956,841; 7,982,479; 7,999,787; 8,077,141; 8,125,501; 8,139,050; 8,174,490; 8,243,013; 8,274,472; 8,289,250; 8,300,006; 8,305,341; 8,314,784; 8,373,649; 8,384,658; 8,456,414; 8,462,102; 8,537,105; 8,558,783; 8,558,785; 8,558,786; 8,558,855; 8,576,164; 8,576,259; 8,593,396; 8,605,032; 8,643,595; 8,665,206; 8,681,191; 8,730,153; 8,810,525; 8,928,562; 8,928,641; 8,976,444; 9,013,394; 9,019,197; 9,019,198; 9,019,318; 9,082,352; 9,171,508; 9,218,773; 9,224,338; 9,224,342; 9,224,344; 9,230,492; 9,251,736; 9,262,973; 9,269,311; 9,299,294; 9,373,289; 9,390,066; 9,390,661; and 9,412,314; and U.S. Patent Applications Publication Nos. 2003/0102858; 2004/0246562; 2005/0253777; 2007/0070032; 2007/0076289; 2007/0091418; 2007/0103427; 2007/0176912; 2007/0296452; 2008/0024429; 2008/0024482; 2008/0136774; 2008/0169821; 2008/0218471; 2008/0291129; 2008/0303780; 2009/0174651; 2009/0195568; 2009/0322721; 2010/0194733; 2010/0194789; 2010/0220121; 2010/0265561; 2010/0283804; 2011/0063314; 2011/0175875; 2011/0193840; 2011/0193841; 2011/0199671; 2011/0221740; 2012/0001957; 2012/0098740; 2013/0063333; 2013/0194250; 2013/0249782; 2013/0321278; 2014/0009817; 2014/0085355; 2014/0204012; 2014/0218277; 2014/0240210; 2014/0240373; 2014/0253425; 2014/0292830; 2014/0293398; 2014/0333685; 2014/0340734; 2015/0070744; 2015/0097877; 2015/0109283; 2015/0213749; 2015/0213765; 2015/0221257; 2015/0262255; 2016/0071465; 2016/0078820; 2016/0093253; 2016/0140910; and 2016/0180777.
+Many of the aforementioned patents and applications recognize that the walls surrounding the discrete microcapsules in an encapsulated electrophoretic medium could be replaced by a continuous phase, thus producing a so-called polymer-dispersed electrophoretic display, in which the electrophoretic medium comprises a plurality of discrete droplets of an electrophoretic fluid and a continuous phase of a polymeric material, and that the discrete droplets of electrophoretic fluid within such a polymer-dispersed electrophoretic display may be regarded as capsules or microcapsules even though no discrete capsule membrane is associated with each individual droplet; see for example, the aforementioned 2002/0131147. Accordingly, for purposes of the present application, such polymer-dispersed electrophoretic media are regarded as sub-species of encapsulated electrophoretic media.
+A related type of electrophoretic display is a so-called “microcell electrophoretic display.” In a microcell electrophoretic display, the charged particles and the suspending fluid are not encapsulated within microcapsules but instead are retained within a plurality of cavities formed within a carrier medium, e.g., a polymeric film. See, for example, International Application Publication No. WO 02/01281, and published U.S. Application No. 2002/0075556, both assigned to Sipix Imaging, Inc.
+Many of the aforementioned E Ink and MIT patents and applications also contemplate microcell electrophoretic displays and polymer-dispersed electrophoretic displays. The term “encapsulated electrophoretic displays” can refer to all such display types, which may also be described collectively as “microcavity electrophoretic displays” to generalize across the morphology of the walls.
+Another type of electro-optic display is an electro-wetting display developed by Philips and described in Hayes, R. A., et al., “Video-Speed Electronic Paper Based on Electrowetting,” Nature, 425, 383-385 (2003). It is shown in copending application Ser. No. 10/711,802, filed Oct. 6, 2004, that such electro-wetting displays can be made bistable.
+Other types of electro-optic materials may also be used. Of particular interest, bistable ferroelectric liquid crystal displays (FLCs) are known in the art and have exhibited remnant voltage behavior.
+Although electrophoretic media may be opaque (since, for example, in many electrophoretic media, the particles substantially block transmission of visible light through the display) and operate in a reflective mode, some electrophoretic displays can be made to operate in a so-called “shutter mode” in which one display state is substantially opaque and one is light-transmissive. See, for example, the patents U.S. Pat. Nos. 6,130,774 and 6,172,798, and 5,872,552; 6,144,361; 6,271,823; 6,225,971; and 6,184,856. Dielectrophoretic displays, which are similar to electrophoretic displays but rely upon variations in electric field strength, can operate in a similar mode; see U.S. Pat. No. 4,418,346. Other types of electro-optic displays may also be capable of operating in shutter mode.
+A high-resolution display may include individual pixels which are addressable without interference from adjacent pixels. One way to obtain such pixels is to provide an array of non-linear elements, such as transistors or diodes, with at least one non-linear element associated with each pixel, to produce an “active matrix” display. An addressing or pixel electrode, which addresses one pixel, is connected to an appropriate voltage source through the associated non-linear element. When the non-linear element is a transistor, the pixel electrode may be connected to the drain of the transistor, and this arrangement will be assumed in the following description, although it is essentially arbitrary and the pixel electrode could be connected to the source of the transistor. In high-resolution arrays, the pixels may be arranged in a two-dimensional array of rows and columns, such that any specific pixel is uniquely defined by the intersection of one specified row and one specified column. The sources of all the transistors in each column may be connected to a single column electrode, while the gates of all the transistors in each row may be connected to a single row electrode; again the assignment of sources to rows and gates to columns may be reversed if desired.
+The display may be written in a row-by-row manner. The row electrodes are connected to a row driver, which may apply to a selected row electrode a voltage such as to ensure that all the transistors in the selected row are conductive, while applying to all other rows a voltage such as to ensure that all the transistors in these non-selected rows remain non-conductive. The column electrodes are connected to column drivers, which place upon the various column electrodes voltages selected to drive the pixels in a selected row to their desired optical states. (The aforementioned voltages are relative to a common front electrode which may be provided on the opposed side of the electro-optic medium from the non-linear array and extends across the whole display. As in known in the art, voltage is relative and a measure of a charge differential between two points. One voltage value is relative to another voltage value. For example, zero voltage (“0V”) refers to having no voltage differential relative to another voltage.) After a pre-selected interval known as the “line address time,” a selected row is deselected, another row is selected, and the voltages on the column drivers are changed so that the next line of the display is written.
+However, in use, certain waveforms may produce a remnant voltage to pixels of an electro-optic display, and as evident from the discussion above, this remnant voltage produces several unwanted optical effects and is in general undesirable.
+As presented herein, a “shift” in the optical state associated with an addressing pulse refers to a situation in which a first application of a particular addressing pulse to an electro-optic display results in a first optical state (e.g., a first gray tone), and a subsequent application of the same addressing pulse to the electro-optic display results in a second optical state (e.g., a second gray tone). Remnant voltages may give rise to shifts in the optical state because the voltage applied to a pixel of the electro-optic display during application of an addressing pulse includes the sum of the remnant voltage and the voltage of the addressing pulse.
+A “drift” in the optical state of a display over time refers to a situation in which the optical state of an electro-optic display changes while the display is at rest (e.g., during a period in which an addressing pulse is not applied to the display). Remnant voltages may give rise to drifts in the optical state because the optical state of a pixel may depend on the pixel's remnant voltage, and a pixel's remnant voltage may decay over time.
+As discussed above, “ghosting” refers to a situation in which, after the electro-optic display has been rewritten, traces of the previous image(s) are still visible. Remnant voltages may give rise to “edge ghosting,” a type of ghosting in which an outline (edge) of a portion of a previous image remains visible.
+An Exemplary EPD
+FIG.
+1
+shows a schematic of a
+pixel
+100
+of an electro-optic display in accordance with the subject matter submitted herein.
+Pixel
+100
+may include an
+imaging film
+110
+. In some embodiments,
+imaging film
+110
+may be bistable. In some embodiments,
+imaging film
+110
+may include, without limitation, an encapsulated electrophoretic imaging film, which may include, for example, charged pigment particles.
+Imaging film
+110
+may be disposed between a
+front electrode
+102
+and a
+rear electrode
+104
+. The
+front electrode
+102
+may be formed between the imaging film and the front of the display. In some embodiments,
+front electrode
+102
+may be transparent. In some embodiments,
+front electrode
+102
+may be formed of any suitable transparent material, including, without limitation, indium tin oxide (ITO). Rear electrode
+104
+may be formed opposite a
+front electrode
+102
+. In some embodiments, a parasitic capacitance (not shown) may be formed between
+front electrode
+102
+and
+rear electrode
+104
+.
+Pixel
+100
+may be one of a plurality of pixels. The plurality of pixels may be arranged in a two-dimensional array of rows and columns to form a matrix, such that any specific pixel is uniquely defined by the intersection of one specified row and one specified column. In some embodiments, the matrix of pixels may be an “active matrix,” in which each pixel is associated with at least one
+non-linear circuit element
+120
+. The
+non-linear circuit element
+120
+may be coupled between back-
+plate electrode
+104
+and an addressing
+electrode
+108
+. In some embodiments,
+non-linear element
+120
+may include a diode and/or a transistor, including, without limitation, a MOSFET. The drain (or source) of the MOSFET may be coupled to back-
+plate electrode
+104
+, the source (or drain) of the MOSFET may be coupled to addressing
+electrode
+108
+, and the gate of the MOSFET may be coupled to a
+driver electrode
+106
+configured to control the activation and deactivation of the MOSFET. (For simplicity, the terminal of the MOSFET coupled to back-
+plate electrode
+104
+will be referred to as the MOSFET's drain, and the terminal of the MOSFET coupled to addressing
+electrode
+108
+will be referred to as the MOSFET's source. However, one of ordinary skill in the art will recognize that, in some embodiments, the source and drain of the MOSFET may be interchanged.)
+In some embodiments of the active matrix, the addressing
+electrodes
+108
+of all the pixels in each column may be connected to a same column electrode, and the
+driver electrodes
+106
+of all the pixels in each row may be connected to a same row electrode. The row electrodes may be connected to a row driver, which may select one or more rows of pixels by applying to the selected row electrodes a voltage sufficient to activate the
+non-linear elements
+120
+of all the
+pixels
+100
+in the selected row(s). The column electrodes may be connected to column drivers, which may place upon the addressing
+electrode
+106
+of a selected (activated) pixel a voltage suitable for driving the pixel into a desired optical state. The voltage applied to an addressing
+electrode
+108
+may be relative to the voltage applied to the pixel's front-plate electrode
+102
+(e.g., a voltage of approximately zero volts). In some embodiments, the front-
+plate electrodes
+102
+of all the pixels in the active matrix may be coupled to a common electrode.
+In some embodiments, the
+pixels
+100
+of the active matrix may be written in a row-by-row manner. For example, a row of pixels may be selected by the row driver, and the voltages corresponding to the desired optical states for the row of pixels may be applied to the pixels by the column drivers. After a pre-selected interval known as the “line address time,” the selected row may be deselected, another row may be selected, and the voltages on the column drivers may be changed so that another line of the display is written.
+FIG.
+2
+shows a circuit model of the electro-
+optic imaging layer
+110
+disposed between the
+front electrode
+102
+and the
+rear electrode
+104
+in accordance with the subject matter presented herein.
+Resistor
+202
+and
+capacitor
+204
+may represent the resistance and capacitance of the electro-
+optic imaging layer
+110
+, the
+front electrode
+102
+and the
+rear electrode
+104
+, including any adhesive layers.
+Resistor
+212
+and
+capacitor
+214
+may represent the resistance and capacitance of a lamination adhesive layer.
+Capacitor
+216
+may represent a capacitance that may form between the
+front electrode
+102
+and the
+back electrode
+104
+, for example, interfacial contact areas between layers, such as the interface between the imaging layer and the lamination adhesive layer and/or between the lamination adhesive layer and the backplane electrode. A voltage Vi across a pixel's
+imaging film
+110
+may include the pixel's remnant voltage.
+Direct Update or DU
+In some usage applications, a display may make use of a “direct update” drive scheme (“DUDS” or “DU”). The DU may have two or more than two gray levels, typically fewer than a gray scale drive scheme (“GSDS), which can effect transitions between all possible gray levels, but the most important characteristic of a DU scheme is that transitions are handled by a simple unidirectional drive from the initial gray level to the final gray level, as opposed to the “indirect” transitions often used in a GSDS, where in at least some transitions the pixel is driven from an initial gray level to one extreme optical state, then in the reverse direction to a final gray level; in some cases, the transition may be effected by driving from the initial gray level to one extreme optical state, thence to the opposed extreme optical state, and only then to the final extreme optical state—see, for example, the drive scheme illustrated in FIGS. 11A and 11B of the aforementioned U.S. Pat. No. 7,012,600. Thus, present electrophoretic displays may have an update time in grayscale mode of about two to three times the length of a saturation pulse (where “the length of a saturation pulse” is defined as the time period, at a specific voltage, that suffices to drive a pixel of a display from one extreme optical state to the other), or approximately 700-900 milliseconds, whereas a DU has a maximum update time equal to the length of the saturation pulse, or about 200-300 milliseconds.
+It should be appreciated that the Direct Update (DU) waveform mode or driving scheme described above is used herein to explain the general working principles of the subject matter disclosed herein. It is not meant to serve as a limitation to the current subject matter. As these working principles can be easily applied to other waveform modes or schemes.
+The DU waveform mode is a driving scheme that usually considers updates to white and black with empty self-transitions. The DU mode would have a short update time to bring up black and white quickly, with minimal appearance of a “flashy” transition, where the display would appear to be blinking on and off and may be visually unattractive to some viewer's eyes. The DU mode may sometimes be used to bring up menus, progress bars, keyboards etc. on a display screen. Because both the white to white and black to black transitions are null (i.e., un-driven) in the DU mode, edge artifacts may arise in the black and white backgrounds.
+As described above, when an un-driven pixel lies adjacent a pixel which is being updated, a phenomenon known as “blooming” occurs, in which the driving of the driven pixel causes a change in optical state over an area slightly larger than that of the driven pixel, and this area intrudes into the area of adjacent pixels. Such blooming manifests itself as edge effects along the edges where the un-driven pixels lie adjacent driven pixels. Similar edge effects occur when using regional updates (where only a particular region of the display is updated, for example to show an image), except that with regional updates the edge effects occur at the boundary of the region being updated. Over time, such edge effects become visually distracting and must be cleared. Hitherto, such edge effects (and the effects of color drift in un-driven white pixels) have typically been removed by using a single Global Clearing or GC update at intervals. Unfortunately, use of such an occasional GC update may reintroduces the problem of a “flashy” update, and indeed the flashiness of the update may be heightened by the fact that the flashy update only occurs at long intervals.
+Map Generation
+In comparison, some of the alternative display pixel edge artifacts reduction methods may result in additional latency due to image processing designed to detect and remove edge artifacts after each image update. In addition, the use of the DC imbalance waveforms in these reduction methods would not be feasible since the small dwell time in between updates does not allow sufficient time to perform post drive discharging. And without post drive discharging, there is a potential risk to overall optical performance and module reliability.
+Instead, in accordance with the subject matter disclosed herein, pixel edge artifacts generated under a drive scheme or waveform modes may be stored in a memory (e.g., a binary map), for example, each display pixel may be represented by a designator MAP (i, j), and pixels that may develop edge artifacts may be flagged and their map information (i.e., the MAP (i.j) designator) may be saved in a binary map. Illustrated below is one approach that may be used to keep track of generated edge artifacts on the map and flag such pixels:
+MAP (i,j) = 0 forall i, j;
+For all DU update in sequential order
+For all pixels (i,j) in any order:
+If the pixel graytone transition is White
+White, AND
+all four cardinal neighbors have a next graytone of
+white, AND with at least one cardinal neighbor has a
+current graytone not white AND all neighbors of MAP(i,j)
+is 0, then MAP(i,j) = 1.
+Else, if the pixel graytone transition is Black
+Black, AND
+at least one cardinal neighbor has a current graytone not
+black AND a next graytone of black AND all neighbors of
+MAP(i,j) is 0, then MAP(i,j) = 2.
+End
+End
+End
+In this approach, when certain conditions are met, a display pixel designated MAP (i, j) may be flagged with a numerical value of 1, indicating that dark edge artifacts have formed on this pixel. Some of the conditions required may include (1). this display pixel is going through a white to white transition; (2). all four cardinal neighbors (i.e., the four closest neighboring pixels) have a next graytone of white; AND (3). at least one cardinal neighbor has a current graytone that is not white; and (4). none of the neighboring pixels (i.e., the four cardinal neighbors and also the diagonal neighbors) are currently flagged for edge artifacts.
+Similarly, when certain conditions are met, a display pixel MAP (i, j) may be flagged with a numerical value of 2, indicating that white edges have formed on this pixel. Some of the conditions required may include (1). this pixel is going through a black to black transition; (2). at least one cardinal neighbor has a current graytone that is not black and its next graytone is black; and (3). none of the neighboring pixels (i.e., the four cardinal neighbors and also the diagonal neighbors) are currently flagged for edge artifacts.
+In use, one advantage of this approach is that the above mentioned image processing (i.e., map generation and pixel flagging) can occur concurrently with the display image updating cycles, thereby avoiding the creation of extra latencies to the updating cycles, due at least in part to the reason that the generated map is only required at the completion of the update cycle.
+Once an update mode has completed (e.g., the display ceases from using a particular update mode), pixel information accumulated by the generated map may be later used for clearing the edge artifacts (e.g., using an out waveform mode). For example, pixels flagged for edge artifacts may be cleared with a low flash waveform with specialized waveforms.
+In some embodiments, full clearing white to white and black to black waveforms in conjunction with special edge clearing white to white and black to black waveforms may be used to clear the edge artifacts. For example, balanced pulse pairs described in U.S. Patent Application No. 2013/0194250, which is incorporated in its entirety herein, describes
+For all pixels (i,j) in any order
+If the pixel graytone transition is not White
+White and not
+Black
+Black, invoke the normal DU_OUT transition
+Else, if MAP(i,j) is 1 and pixel graytone transition is
+White
+White, apply a special full white to white waveform
+Else, if the pixel graytone transition is White
+White, AND at
+least one cardinal neighbor has MAP(i,j) is 1, apply the special edge
+erasing white to white waveform.
+Else, if MAP(i,j)==2 and pixel graytone transition is
+Black
+Black, apply a special full black to black waveform.
+Else, if the pixel graytone transition is Black
+Black, AND at
+least one cardinal neighbor has MAP(i,j) is 2, apply the special edge
+erasing black to black waveform.
+Otherwise invoke the Black
+Black/White
+White transition of the
+DU_OUT waveform table.
+End
+End
+In this approach, a DU OUT transition scheme (e.g., a modified DU scheme with the edge artifact reduction algorithm included) may be applied to pixels that is not going through a white to white or black to black transition, for example, these pixels may receive the normal transition updates as if they were under a normal DU drive scheme. Else, for a pixel with dark edge artifacts (i.e., MAP (i, j)=1) and going through a white to white transition, a special full white to white waveform may be applied. In some embodiments, this white to white waveform may be a waveform similar to what is illustrated in
+FIG.
+3
+c
+, which may be substantially DC balanced, meaning, the sum of the voltage bias apply as a function of magnitude and time is substantially zero overall; otherwise, if a pixel is going through a white to white transition, and at least one cardinal neighbor has dark edge artifact (i.e., MAP (i, j)=1), a special edge erasing white to white waveform is applied (e.g.,
+FIG.
+3
+a
+); still more, if a pixel had white edge artifact (i.e., MAP (i, j)=2) and is going through a black to black transition, a special full black to black waveform, as illustrated in
+FIG.
+4
+b
+, may be applied; still more, if a pixel is going through a black to black transition, AND at least one cardinal neighbor is flagged for white edge artifact (i.e., MAP (i, j)=2), apply a special edge erasing black to black waveform, as illustrated in
+FIG.
+4
+a
+; otherwise, apply the black to black or white to white transition waveforms to all other pixels using waveforms from the DU-OUT waveform table.
+Using the above mentioned method, full clearing white to white and black to black waveforms are used in conjunction with special edge clearing white to white and black to black waveforms to clear the edge artifacts. In some embodiments, the special edge clearing white to white waveform can take the form of a pulse pair as described in US Patent Publication No. 2013/0194250 to Amundson et al., which is incorporated herein in its entirety, or a DC imbalance pulse drive to white as given in illustrated in
+FIG.
+3
+b
+, in which case post drive discharge described in may be used to discharge remnant voltages and reduce device stresses. Similarly, a DC imbalanced pulse, as illustrated in
+FIG.
+4
+a
+, may be used to drive a pixel to black, in which case, again, a post drive discharge may be performed. As illustrated in
+FIG.
+4
+, a such DC imbalanced pulse have only a drive to the positive 15 volts for a period of time. In this configuration, excellent edge clearing performance can be achieved at the cost of small transition appearance imperfections (e.g., flashes) due to the use of the special full clearing waveform.
+In another embodiment, transition appearance imperfections (e.g., flashes) may be reduced using an alternative implementation described below.
+For all pixels (i,j) in any order
+If the pixel graytone transition is not White
+White and not
+Black
+Black, invoke the normal DU_OUT transition
+Else, if MAP(i,j) is 1 and pixel graytone transition is
+White
+White, apply a DC imbalance drive pulse to white.
+Else, if MAP(i,j)==2 and pixel graytone transition is
+Black
+Black, apply a DC imbalance drive to black.
+Otherwise invoke the Black
+Black/White
+White transition of
+the DU_OUT waveform table.
+End
+End
+In this approach, instead of using specialized edge clearing waveforms as described in the first method above, DC imbalanced waveforms may be used to clear the edge artifacts. In some instances, post drive discharges may be used to reduce hardware stress due to the imbalanced waveforms. In use, when a display pixel is not going through either a white to white or black to black transition, a normal DU-OUT transition is applied to the pixel. Else, if a display pixel is identified of having dark edge artifacts (i.e., MAP (i, j)=1) and is going through a white to white transition, a DC imbalanced drive pulse is used to drive the pixel to white (e.g., a pulse similar to that illustrated in
+FIG.
+3
+b
+); else, if a display pixel is identified of having white edge artifacts (i.e., MAP (i, j)=2) and is going through a black to black transition, a DC imbalanced drive pulse (e.g., a pulse similar to that illustrated in
+FIG.
+4
+a
+) is applied to drive the pixel to black; otherwise, invoke the black to black or white to white transitions of the DU-OUT waveform table to the display pixels.
+In yet another embodiment, instead of storing edge artifact information in a designated memory location, one may bring forward the edge artifact information in an image buffer associated with the display's controller unit (e.g., using a next image buffer associated with the controller unit).
+For all DU update in sequential order
+For all pixels (i,j) in any order:
+If the pixel graytone transition is White
+White, AND all
+four cardinal neighbors have a next graytone of white, AND
+with at least one cardinal neighbor has a current graytone not
+white then set next graytone to special white to white image
+state.
+Else, if the pixel graytone transition is Black
+Black,
+AND at least one cardinal neighbor has a current graytone not
+black AND a next graytone of black then set next graytone to
+special black to black image state.
+End
+End
+End
+In this approach, for a pixel going through a white to white transition and all of its four cardinal neighbors having a next graytone of white, if at least one of the cardinal neighbor's current graytone is not white, then set the pixel's next graytone to a special white to white image state in the next image buffer; else, if a pixel's graytone transition is black to black, and at least one cardinal neighbor has a current graytone that is not black and a next graytone that is black, then the pixel's next graytone is set to a special black to black image state in the next image buffer. In use, during an update cycle the special white to white and special black to black image states can be the same as the white to white and black to black image states for both application of the waveform transition and for image processing. For the application of waveform transition, this means that:
+special white state
+white state (i.e., white state to white state) is equivalent
+to white state
+white state (i.e., white state to white state) of the waveform
+look-up table
+special white state
+any gray states (i.e., white state to any gray state) is
+equivalent to white state
+any gray states (i.e., white state to any gray state)
+of the waveform look-up stable, etc.
+special black state
+black state (i.e., black state to black state) is equivalent
+to black state
+black state (i.e., black state to black state) of the waveform
+look-up table
+special black state
+any gray states (i.e., black state to any gray state) is
+equivalent to black state
+any gray states (i.e., black state to any gray state)
+of the waveform look-up stable, etc.
+During the out mode, the special white state to white state received the DC imbalance pulse to white (e.g.,
+FIG.
+3
+b
+illustrates an exemplary such pulse) and the special black state to black state received the DC imbalance pulse to black (e.g.,
+FIG.
+4
+a
+illustrates an exemplary such pulse). The imaging algorithm processing occurs in the background during the DU mode updating, meaning the DU updating time can be used to process the images.
+FIG.
+5
+a
+and
+FIG.
+5
+b
+illustrate displays without and with edge artifacts reduction applied. In practice, where edge artifacts reduction is not applied, white edges on a black background is clearly visible, as shown in
+FIG.
+5
+a
+. In contrast,
+FIG.
+5
+b
+shows that the white edges are cleared using one of the proposed methods presented herein.
+It will be apparent to those skilled in the art that numerous changes and modifications can be made to the specific embodiments of the invention described above without departing from the scope of the invention. Accordingly, the whole of the foregoing description is to be interpreted in an illustrative and not in a limitative sense.
+Claims (
+18
+)
+The invention claimed is:
+1. A method for reducing edge ghosting in an active matrix electrophoretic display including pixels that undergo a white to white transition, the method comprising:
+updating the active matrix electrophoretic display with a first image, wherein a first pixel has a white state in the first image;
+updating the active matrix electrophoretic display with a second image, wherein the first pixel has a white state in the second image;
+determining a graytone state in the first image for each of four cardinal pixel neighbors directly adjacent to the first pixel;
+flagging the first pixel when at least one of the four cardinal pixel neighbors has a graytone that is not white in the first image;
+adding the flagged first pixel to a binary map indicating the locations of pixels that are likely to have edge ghosting;
+storing the binary map in a memory; and
+after updating the active matrix electrophoretic display with the second image, applying a special white to white edge clearing waveform to the first pixel.
+2. The method of
+claim 1
+, wherein the special white to white edge clearing waveform comprises five frames of alternating positive and negative voltage followed by three frames of negative voltage.
+3. The method of
+claim 2
+, wherein the alternating voltage is +/−15V and the negative voltage is −15V.
+4. The method of
+claim 1
+, wherein the waveform is substantially DC balanced.
+5. The method of
+claim 1
+, wherein the waveform is DC imbalanced.
+6. The method of
+claim 5
+, further comprising performing a post drive discharge.
+7. The method of
+claim 1
+, further comprising applying a full clearing white to white waveform to the first pixel after the special white to white edge clearing waveform has been applied.
+8. The method of
+claim 7
+, wherein the full clearing white to white waveform comprises ten frames of positive voltage followed by ten frames of negative voltage.
+9. The method of
+claim 8
+, wherein the positive voltage is +15V and the negative voltage is −15V.
+10. The method of
+claim 1
+, further comprising:
+updating the active matrix electrophoretic display with a third image, wherein a second pixel different from the first pixel has a white state in the third image;
+updating the active matrix electrophoretic display with a fourth image, wherein the second pixel has a white state in the fourth image;
+determining a graytone state in the third image for each of four cardinal pixel neighbors directly adjacent to the second pixel;
+flagging the second pixel when at least one of the four cardinal pixel neighbors has a graytone that is not white in the third image;
+updating the binary map to add the flagged second pixel;
+storing the updated binary map in the memory; and
+after updating the active matrix electrophoretic display with the fourth image, applying the special white to white edge clearing waveform to the second pixel.
+11. A method for reducing edge ghosting in an active matrix electrophoretic display including pixels that undergo a black to black transition, the method comprising:
+updating the active matrix electrophoretic display with a first image, wherein a first pixel has a black state in the first image;
+updating the active matrix electrophoretic display with a second image, wherein the first pixel has a black state in the second image;
+determining a graytone state in the first image for each of four cardinal pixel neighbors directly adjacent to the first pixel;
+flagging the first pixel when at least one of the four cardinal pixel neighbors has a graytone that is not black in the first image;
+adding the flagged first pixel to a binary map indicating the locations of pixels that are likely to have edge ghosting;
+storing the binary map in a memory; and
+after updating the active matrix electrophoretic display with the second image, applying a special black to black edge clearing waveform to the first pixel.
+12. The method of
+claim 11
+, wherein the special black to black edge clearing waveform comprises ten frames of positive voltage.
+13. The method of
+claim 12
+, wherein the positive voltage is +15V.
+14. The method of
+claim 13
+, further comprising performing a post drive discharge.
+15. The method of
+claim 11
+, further comprising applying a full clearing black to black waveform to the first pixel after the special black to black edge clearing waveform has been applied.
+16. The method of
+claim 15
+, wherein the full clearing black to black waveform comprises two frames of negative voltage followed by seven frames of positive voltage, with five rest frames between the two frames of negative voltage and the seven frames of positive voltage.
+17. The method of
+claim 16
+, wherein the positive voltage is +15V, the negative voltage is −15V, and the rest frames are about 0V.
+18. The method of
+claim 11
+, further comprising:
+updating the active matrix electrophoretic display with a third image, wherein a second pixel different from the first pixel has a black state in the third image;
+updating the active matrix electrophoretic display with a fourth image, wherein the second pixel has a black state in the fourth image;
+determining a graytone state in the third image for each of four cardinal pixel neighbors directly adjacent to the second pixel;
+flagging the second pixel when at least one of the four cardinal pixel neighbors has a graytone that is not black in the third image;
+updating the binary map to add the flagged second pixel;
+storing the updated binary map in the memory; and
+after updating the active matrix electrophoretic display with the fourth image, applying the special black to black edge clearing waveform to the second pixel.
+US17/873,301
+2017-09-12
+2022-07-26
+Methods for driving electro-optic displays to minimize edge ghosting
+Active
+US11568827B2
+(
+en
+)
+Priority Applications (1)
+Application Number
+Priority Date
+Filing Date
+Title
+US17/873,301
+US11568827B2
+(
+en
+)
+2017-09-12
+2022-07-26
+Methods for driving electro-optic displays to minimize edge ghosting
+Applications Claiming Priority (3)
+Application Number
+Priority Date
+Filing Date
+Title
+US201762557285P
+2017-09-12
+2017-09-12
+US16/128,996
+US11423852B2
+(
+en
+)
+2017-09-12
+2018-09-12
+Methods for driving electro-optic displays
+US17/873,301
+US11568827B2
+(
+en
+)
+2017-09-12
+2022-07-26
+Methods for driving electro-optic displays to minimize edge ghosting
+Related Parent Applications (1)
+Application Number
+Title
+Priority Date
+Filing Date
+US16/128,996
+Continuation
+US11423852B2
+(
+en
+)
+2017-09-12
+2018-09-12
+Methods for driving electro-optic displays
+Publications (2)
+Publication Number
+Publication Date
+US20220375418A1
+US20220375418A1
+(
+en
+)
+2022-11-24
+US11568827B2
+true
+US11568827B2
+(
+en
+)
+2023-01-31
+Family
+ID=65723057
+Family Applications (2)
+Application Number
+Title
+Priority Date
+Filing Date
+US16/128,996
+Active
+US11423852B2
+(
+en
+)
+2017-09-12
+2018-09-12
+Methods for driving electro-optic displays
+US17/873,301
+Active
+US11568827B2
+(
+en
+)
+2017-09-12
+2022-07-26
+Methods for driving electro-optic displays to minimize edge ghosting
+Family Applications Before (1)
+Application Number
+Title
+Priority Date
+Filing Date
+US16/128,996
+Active
+US11423852B2
+(
+en
+)
+2017-09-12
+2018-09-12
+Methods for driving electro-optic displays
+Country Status (6)
+Country
+Link
+US
+(
+2
+)
+US11423852B2
+(
+en
+)
+EP
+(
+1
+)
+EP3682440B1
+(
+en
+)
+JP
+(
+1
+)
+JP7079845B2
+(
+en
+)
+CN
+(
+1
+)
+CN111133501A
+(
+en
+)
+TW
+(
+1
+)
+TWI711306B
+(
+en
+)
+WO
+(
+1
+)
+WO2019055486A1
+(
+en
+)
+Families Citing this family (9)
+* Cited by examiner, † Cited by third party
+Publication number
+Priority date
+Publication date
+Assignee
+Title
+CN110865488B
+(
+en
+)
+*
+2019-11-27
+2022-09-09
+京东方科技集团股份有限公司
+Backlight module, display panel and display device
+WO2021247450A1
+(
+en
+)
+2020-05-31
+2021-12-09
+E Ink Corporation
+Electro-optic displays, and methods for driving same
+EP4165623A4
+(
+en
+)
+*
+2020-06-11
+2024-07-10
+E Ink Corporation
+ELECTRO-OPTICAL DISPLAY DEVICES AND THEIR EXCITATION METHODS
+WO2022047357A1
+(
+en
+)
+*
+2020-08-31
+2022-03-03
+E Ink Corporation
+Electro-optic displays and driving methods
+US11450262B2
+(
+en
+)
+*
+2020-10-01
+2022-09-20
+E Ink Corporation
+Electro-optic displays, and methods for driving same
+WO2022072500A1
+(
+en
+)
+*
+2020-10-02
+2022-04-07
+E Ink Corporation
+Front plane laminates with outer surface electrical connections
+JP2024523251A
+(
+en
+)
+*
+2021-06-14
+2024-06-28
+イー インク コーポレイション
+Method and apparatus for driving an electro-optic display - Patents.com
+EP4457797A1
+(
+en
+)
+2021-12-30
+2024-11-06
+E Ink Corporation
+Methods for driving electro-optic displays
+US20250299643A1
+(
+en
+)
+*
+2024-03-19
+2025-09-25
+E Ink Corporation
+Methods and systems for managing remnant voltage during fast updates in electrophoretic displays
+Citations (182)
+* Cited by examiner, † Cited by third party
+Publication number
+Priority date
+Publication date
+Assignee
+Title
+US4418346A
+(
+en
+)
+1981-05-20
+1983-11-29
+Batchelder J Samuel
+Method and apparatus for providing a dielectrophoretic display of visual information
+US5760761A
+(
+en
+)
+1995-12-15
+1998-06-02
+Xerox Corporation
+Highlight color twisting ball display
+US5777782A
+(
+en
+)
+1996-12-24
+1998-07-07
+Xerox Corporation
+Auxiliary optics for a twisting ball display
+US5808783A
+(
+en
+)
+1996-06-27
+1998-09-15
+Xerox Corporation
+High reflectance gyricon display
+US5872552A
+(
+en
+)
+1994-12-28
+1999-02-16
+International Business Machines Corporation
+Electrophoretic display
+US5930026A
+(
+en
+)
+1996-10-25
+1999-07-27
+Massachusetts Institute Of Technology
+Nonemissive displays and piezoelectric power supplies therefor
+US6054071A
+(
+en
+)
+1998-01-28
+2000-04-25
+Xerox Corporation
+Poled electrets for gyricon-based electric-paper displays
+US6055091A
+(
+en
+)
+1996-06-27
+2000-04-25
+Xerox Corporation
+Twisting-cylinder display
+US6097531A
+(
+en
+)
+1998-11-25
+2000-08-01
+Xerox Corporation
+Method of making uniformly magnetized elements for a gyricon display
+US6128124A
+(
+en
+)
+1998-10-16
+2000-10-03
+Xerox Corporation
+Additive color electric paper without registration or alignment of individual elements
+US6130774A
+(
+en
+)
+1998-04-27
+2000-10-10
+E Ink Corporation
+Shutter mode microencapsulated electrophoretic display
+US6137467A
+(
+en
+)
+1995-01-03
+2000-10-24
+Xerox Corporation
+Optically sensitive electric paper
+US6144361A
+(
+en
+)
+1998-09-16
+2000-11-07
+International Business Machines Corporation
+Transmissive electrophoretic display with vertical electrodes
+US6147791A
+(
+en
+)
+1998-11-25
+2000-11-14
+Xerox Corporation
+Gyricon displays utilizing rotating elements and magnetic latching
+US6184856B1
+(
+en
+)
+1998-09-16
+2001-02-06
+International Business Machines Corporation
+Transmissive electrophoretic display with laterally adjacent color cells
+US6225971B1
+(
+en
+)
+1998-09-16
+2001-05-01
+International Business Machines Corporation
+Reflective electrophoretic display with laterally adjacent color cells using an absorbing panel
+US6241921B1
+(
+en
+)
+1998-05-15
+2001-06-05
+Massachusetts Institute Of Technology
+Heterogeneous display elements and methods for their fabrication
+US6271823B1
+(
+en
+)
+1998-09-16
+2001-08-07
+International Business Machines Corporation
+Reflective electrophoretic display with laterally adjacent color cells using a reflective panel
+US6301038B1
+(
+en
+)
+1997-02-06
+2001-10-09
+University College Dublin
+Electrochromic system
+US6445489B1
+(
+en
+)
+1998-03-18
+2002-09-03
+E Ink Corporation
+Electrophoretic displays and systems for addressing such displays
+US6504524B1
+(
+en
+)
+2000-03-08
+2003-01-07
+E Ink Corporation
+Addressing methods for displays having zero time-average field
+US6512354B2
+(
+en
+)
+1998-07-08
+2003-01-28
+E Ink Corporation
+Method and apparatus for sensing the state of an electrophoretic display
+US6531997B1
+(
+en
+)
+1999-04-30
+2003-03-11
+E Ink Corporation
+Methods for addressing electrophoretic displays
+US20030102858A1
+(
+en
+)
+1998-07-08
+2003-06-05
+E Ink Corporation
+Method and apparatus for determining properties of an electrophoretic display
+US6672921B1
+(
+en
+)
+2000-03-03
+2004-01-06
+Sipix Imaging, Inc.
+Manufacturing process for electrophoretic display
+US6753999B2
+(
+en
+)
+1998-03-18
+2004-06-22
+E Ink Corporation
+Electrophoretic displays in portable devices and systems for addressing such displays
+US6788449B2
+(
+en
+)
+2000-03-03
+2004-09-07
+Sipix Imaging, Inc.
+Electrophoretic display and novel process for its manufacture
+US6825970B2
+(
+en
+)
+2001-09-14
+2004-11-30
+E Ink Corporation
+Methods for addressing electro-optic materials
+US20040246562A1
+(
+en
+)
+2003-05-16
+2004-12-09
+Sipix Imaging, Inc.
+Passive matrix electrophoretic display driving scheme
+US6866760B2
+(
+en
+)
+1998-08-27
+2005-03-15
+E Ink Corporation
+Electrophoretic medium and process for the production thereof
+US6870657B1
+(
+en
+)
+1999-10-11
+2005-03-22
+University College Dublin
+Electrochromic device
+US6900851B2
+(
+en
+)
+2002-02-08
+2005-05-31
+E Ink Corporation
+Electro-optic displays and optical systems for addressing such displays
+US6922276B2
+(
+en
+)
+2002-12-23
+2005-07-26
+E Ink Corporation
+Flexible electro-optic displays
+US6950220B2
+(
+en
+)
+2002-03-18
+2005-09-27
+E Ink Corporation
+Electro-optic displays, and methods for driving same
+US20050253777A1
+(
+en
+)
+2004-05-12
+2005-11-17
+E Ink Corporation
+Tiled displays and methods for driving same
+US6982178B2
+(
+en
+)
+2002-06-10
+2006-01-03
+E Ink Corporation
+Components and methods for use in electro-optic displays
+US7002728B2
+(
+en
+)
+1997-08-28
+2006-02-21
+E Ink Corporation
+Electrophoretic particles, and processes for the production thereof
+US7012600B2
+(
+en
+)
+1999-04-30
+2006-03-14
+E Ink Corporation
+Methods for driving bistable electro-optic displays, and apparatus for use therein
+US7023420B2
+(
+en
+)
+2000-11-29
+2006-04-04
+E Ink Corporation
+Electronic display with photo-addressing means
+US7034783B2
+(
+en
+)
+2003-08-19
+2006-04-25
+E Ink Corporation
+Method for controlling electro-optic display
+US7061662B2
+(
+en
+)
+2003-10-07
+2006-06-13
+Sipix Imaging, Inc.
+Electrophoretic display with thermal control
+US7061166B2
+(
+en
+)
+2003-05-27
+2006-06-13
+Fuji Photo Film Co., Ltd.
+Laminated structure and method of manufacturing the same
+US7072095B2
+(
+en
+)
+2002-10-31
+2006-07-04
+Sipix Imaging, Inc.
+Electrophoretic display and novel process for its manufacture
+US7075502B1
+(
+en
+)
+1998-04-10
+2006-07-11
+E Ink Corporation
+Full color reflective display with multichromatic sub-pixels
+US7116466B2
+(
+en
+)
+2004-07-27
+2006-10-03
+E Ink Corporation
+Electro-optic displays
+US7116318B2
+(
+en
+)
+2002-04-24
+2006-10-03
+E Ink Corporation
+Backplanes for display applications, and components for use therein
+US7119772B2
+(
+en
+)
+1999-04-30
+2006-10-10
+E Ink Corporation
+Methods for driving bistable electro-optic displays, and apparatus for use therein
+US7144942B2
+(
+en
+)
+2001-06-04
+2006-12-05
+Sipix Imaging, Inc.
+Composition and process for the sealing of microcups in roll-to-roll display manufacturing
+US7170670B2
+(
+en
+)
+2001-04-02
+2007-01-30
+E Ink Corporation
+Electrophoretic medium and display with improved image stability
+US7177066B2
+(
+en
+)
+2003-10-24
+2007-02-13
+Sipix Imaging, Inc.
+Electrophoretic display driving scheme
+US7193625B2
+(
+en
+)
+1999-04-30
+2007-03-20
+E Ink Corporation
+Methods for driving electro-optic displays, and apparatus for use therein
+US7202847B2
+(
+en
+)
+2002-06-28
+2007-04-10
+E Ink Corporation
+Voltage modulated driver circuits for electro-optic displays
+US20070103427A1
+(
+en
+)
+2003-11-25
+2007-05-10
+Koninklijke Philips Electronice N.V.
+Display apparatus with a display device and a cyclic rail-stabilized method of driving the display device
+US7236291B2
+(
+en
+)
+2003-04-02
+2007-06-26
+Bridgestone Corporation
+Particle use for image display media, image display panel using the particles, and image display device
+US20070176912A1
+(
+en
+)
+2005-12-09
+2007-08-02
+Beames Michael H
+Portable memory devices with polymeric displays
+US7259744B2
+(
+en
+)
+1995-07-20
+2007-08-21
+E Ink Corporation
+Dielectrophoretic displays
+US7312784B2
+(
+en
+)
+2001-03-13
+2007-12-25
+E Ink Corporation
+Apparatus for displaying drawings
+US7321459B2
+(
+en
+)
+2002-03-06
+2008-01-22
+Bridgestone Corporation
+Image display device and method
+US20080024482A1
+(
+en
+)
+2002-06-13
+2008-01-31
+E Ink Corporation
+Methods for driving electro-optic displays
+US20080024429A1
+(
+en
+)
+2006-07-25
+2008-01-31
+E Ink Corporation
+Electrophoretic displays using gaseous fluids
+US7327511B2
+(
+en
+)
+2004-03-23
+2008-02-05
+E Ink Corporation
+Light modulators
+US20080136774A1
+(
+en
+)
+2004-07-27
+2008-06-12
+E Ink Corporation
+Methods for driving electrophoretic displays using dielectrophoretic forces
+US7408699B2
+(
+en
+)
+2005-09-28
+2008-08-05
+Sipix Imaging, Inc.
+Electrophoretic display and methods of addressing such display
+US7411719B2
+(
+en
+)
+1995-07-20
+2008-08-12
+E Ink Corporation
+Electrophoretic medium and process for the production thereof
+US7420549B2
+(
+en
+)
+2003-10-08
+2008-09-02
+E Ink Corporation
+Electro-wetting displays
+US7453445B2
+(
+en
+)
+2004-08-13
+2008-11-18
+E Ink Corproation
+Methods for driving electro-optic displays
+US20080303780A1
+(
+en
+)
+2007-06-07
+2008-12-11
+Sipix Imaging, Inc.
+Driving methods and circuit for bi-stable displays
+US20090022229A1
+(
+en
+)
+2007-07-17
+2009-01-22
+Chih-Ta Star Sung
+Efficient image transmission between TV chipset and display device
+US7492339B2
+(
+en
+)
+2004-03-26
+2009-02-17
+E Ink Corporation
+Methods for driving bistable electro-optic displays
+US7528822B2
+(
+en
+)
+2001-11-20
+2009-05-05
+E Ink Corporation
+Methods for driving electro-optic displays
+US7535624B2
+(
+en
+)
+2001-07-09
+2009-05-19
+E Ink Corporation
+Electro-optic display and materials for use therein
+US7583251B2
+(
+en
+)
+1995-07-20
+2009-09-01
+E Ink Corporation
+Dielectrophoretic displays
+US7602374B2
+(
+en
+)
+2003-09-19
+2009-10-13
+E Ink Corporation
+Methods for reducing edge effects in electro-optic displays
+US7612760B2
+(
+en
+)
+2005-02-17
+2009-11-03
+Seiko Epson Corporation
+Electrophoresis device, method of driving electrophoresis device, and electronic apparatus
+US7679814B2
+(
+en
+)
+2001-04-02
+2010-03-16
+E Ink Corporation
+Materials for use in electrophoretic displays
+US7679599B2
+(
+en
+)
+2005-03-04
+2010-03-16
+Seiko Epson Corporation
+Electrophoretic device, method of driving electrophoretic device, and electronic apparatus
+US7679813B2
+(
+en
+)
+2001-08-17
+2010-03-16
+Sipix Imaging, Inc.
+Electrophoretic display with dual-mode switching
+US7683606B2
+(
+en
+)
+2006-05-26
+2010-03-23
+Sipix Imaging, Inc.
+Flexible display testing and inspection
+US7715088B2
+(
+en
+)
+2000-03-03
+2010-05-11
+Sipix Imaging, Inc.
+Electrophoretic display
+JP2010113281A
+(
+en
+)
+2008-11-10
+2010-05-20
+Seiko Epson Corp
+Method of driving electrophoretic display device, electrophoretic display device, and electronic device
+US20100194733A1
+(
+en
+)
+2009-01-30
+2010-08-05
+Craig Lin
+Multiple voltage level driving for electrophoretic displays
+US20100194789A1
+(
+en
+)
+2009-01-30
+2010-08-05
+Craig Lin
+Partial image update for electrophoretic displays
+US7839564B2
+(
+en
+)
+2002-09-03
+2010-11-23
+E Ink Corporation
+Components and methods for use in electro-optic displays
+US7859742B1
+(
+en
+)
+2009-12-02
+2010-12-28
+Sipix Technology, Inc.
+Frequency conversion correction circuit for electrophoretic displays
+US20110063314A1
+(
+en
+)
+2009-09-15
+2011-03-17
+Wen-Pin Chiu
+Display controller system
+US7952557B2
+(
+en
+)
+2001-11-20
+2011-05-31
+E Ink Corporation
+Methods and apparatus for driving electro-optic displays
+US7956841B2
+(
+en
+)
+1995-07-20
+2011-06-07
+E Ink Corporation
+Stylus-based addressing structures for displays
+US7982479B2
+(
+en
+)
+2006-04-07
+2011-07-19
+Sipix Imaging, Inc.
+Inspection methods for defects in electrophoretic display and related devices
+US20110175875A1
+(
+en
+)
+2010-01-15
+2011-07-21
+Craig Lin
+Driving methods with variable frame time
+US7999787B2
+(
+en
+)
+1995-07-20
+2011-08-16
+E Ink Corporation
+Methods for driving electrophoretic displays using dielectrophoretic forces
+US7999832B2
+(
+en
+)
+2005-05-20
+2011-08-16
+Industrial Technology Research Institute
+Controlled gap states for liquid crystal displays
+US8009348B2
+(
+en
+)
+1999-05-03
+2011-08-30
+E Ink Corporation
+Machine-readable displays
+US20110221740A1
+(
+en
+)
+2010-03-12
+2011-09-15
+Sipix Technology Inc.
+Driving method of electrophoretic display
+US8077141B2
+(
+en
+)
+2002-12-16
+2011-12-13
+E Ink Corporation
+Backplanes for electro-optic displays
+US20120001957A1
+(
+en
+)
+2010-06-30
+2012-01-05
+Sipix Technology Inc.
+Electrophoretic display and driving method thereof
+US8125501B2
+(
+en
+)
+2001-11-20
+2012-02-28
+E Ink Corporation
+Voltage modulated driver circuits for electro-optic displays
+US8139050B2
+(
+en
+)
+1995-07-20
+2012-03-20
+E Ink Corporation
+Addressing schemes for electronic displays
+US20120098740A1
+(
+en
+)
+2010-10-20
+2012-04-26
+Sipix Technology Inc.
+Electro-phoretic display apparatus
+US8174490B2
+(
+en
+)
+2003-06-30
+2012-05-08
+E Ink Corporation
+Methods for driving electrophoretic displays
+US8243013B1
+(
+en
+)
+2007-05-03
+2012-08-14
+Sipix Imaging, Inc.
+Driving bistable displays
+US8274472B1
+(
+en
+)
+2007-03-12
+2012-09-25
+Sipix Imaging, Inc.
+Driving methods for bistable displays
+US8289250B2
+(
+en
+)
+2004-03-31
+2012-10-16
+E Ink Corporation
+Methods for driving electro-optic displays
+US8294822B2
+(
+en
+)
+2010-08-17
+2012-10-23
+Broadcom Corporation
+Method and system for key aware scaling
+US8300006B2
+(
+en
+)
+2003-10-03
+2012-10-30
+E Ink Corporation
+Electrophoretic display unit
+US8314784B2
+(
+en
+)
+2008-04-11
+2012-11-20
+E Ink Corporation
+Methods for driving electro-optic displays
+US8373649B2
+(
+en
+)
+2008-04-11
+2013-02-12
+Seiko Epson Corporation
+Time-overlapping partial-panel updating of a bistable electro-optic display
+US8384658B2
+(
+en
+)
+1995-07-20
+2013-02-26
+E Ink Corporation
+Electrostatically addressable electrophoretic display
+US20130063333A1
+(
+en
+)
+2002-10-16
+2013-03-14
+E Ink Corporation
+Electrophoretic displays
+US8456414B2
+(
+en
+)
+2008-08-01
+2013-06-04
+Sipix Imaging, Inc.
+Gamma adjustment with error diffusion for electrophoretic displays
+US8462102B2
+(
+en
+)
+2008-04-25
+2013-06-11
+Sipix Imaging, Inc.
+Driving methods for bistable displays
+US20130194250A1
+(
+en
+)
+*
+2012-02-01
+2013-08-01
+E Ink Corporation
+Methods for driving electro-optic displays
+US8514168B2
+(
+en
+)
+2003-10-07
+2013-08-20
+Sipix Imaging, Inc.
+Electrophoretic display with thermal control
+US8537105B2
+(
+en
+)
+2010-10-21
+2013-09-17
+Sipix Technology Inc.
+Electro-phoretic display apparatus
+US20130249782A1
+(
+en
+)
+2012-03-26
+2013-09-26
+Sipix Technology Inc.
+Electrophoretic display module and operating method thereof and electrophoretic display system using the same
+US8558783B2
+(
+en
+)
+2001-11-20
+2013-10-15
+E Ink Corporation
+Electro-optic displays with reduced remnant voltage
+US8559746B2
+(
+en
+)
+2008-09-04
+2013-10-15
+Silicon Image, Inc.
+System, method, and apparatus for smoothing of edges in images to remove irregularities
+US8558786B2
+(
+en
+)
+2010-01-20
+2013-10-15
+Sipix Imaging, Inc.
+Driving methods for electrophoretic displays
+US8558855B2
+(
+en
+)
+2008-10-24
+2013-10-15
+Sipix Imaging, Inc.
+Driving methods for electrophoretic displays
+US8576259B2
+(
+en
+)
+2009-04-22
+2013-11-05
+Sipix Imaging, Inc.
+Partial update driving methods for electrophoretic displays
+US8576164B2
+(
+en
+)
+2009-10-26
+2013-11-05
+Sipix Imaging, Inc.
+Spatially combined waveforms for electrophoretic displays
+US8593396B2
+(
+en
+)
+2001-11-20
+2013-11-26
+E Ink Corporation
+Methods and apparatus for driving electro-optic displays
+US8605032B2
+(
+en
+)
+2010-06-30
+2013-12-10
+Sipix Technology Inc.
+Electrophoretic display with changeable frame updating speed and driving method thereof
+US8643595B2
+(
+en
+)
+2004-10-25
+2014-02-04
+Sipix Imaging, Inc.
+Electrophoretic display driving approaches
+US8665206B2
+(
+en
+)
+2010-08-10
+2014-03-04
+Sipix Imaging, Inc.
+Driving method to neutralize grey level shift for electrophoretic displays
+US8681191B2
+(
+en
+)
+2010-07-08
+2014-03-25
+Sipix Imaging, Inc.
+Three dimensional driving scheme for electrophoretic display devices
+US20140085568A1
+(
+en
+)
+2012-09-21
+2014-03-27
+Boe Technology Group Co., Ltd.
+Display Device
+US8711088B2
+(
+en
+)
+2009-12-10
+2014-04-29
+Seiko Epson Corporation
+Method for driving electrophoretic display device, electrophoretic display device, and electronic device
+US20140204012A1
+(
+en
+)
+2013-01-24
+2014-07-24
+Sipix Technology Inc.
+Electrophoretic display and method for driving panel thereof
+US8810525B2
+(
+en
+)
+2009-10-05
+2014-08-19
+E Ink California, Llc
+Electronic information displays
+US20140240210A1
+(
+en
+)
+2013-02-25
+2014-08-28
+Sipix Technology, Inc.
+Electrophoretic display and method of driving an electrophoretic display
+US20140253425A1
+(
+en
+)
+2013-03-07
+2014-09-11
+E Ink Corporation
+Method and apparatus for driving electro-optic displays
+US20140292830A1
+(
+en
+)
+*
+2013-03-01
+2014-10-02
+E Ink Corporation
+Methods for driving electro-optic displays
+US20140293398A1
+(
+en
+)
+2013-03-29
+2014-10-02
+Sipix Imaging, Inc.
+Electrophoretic display device
+US8878770B2
+(
+en
+)
+2011-05-10
+2014-11-04
+Seiko Epson Corporation
+Control method of electro-optical device, controller of electro-optical device, electro-optical device, and electronic apparatus
+US20150005720A1
+(
+en
+)
+2006-07-18
+2015-01-01
+E Ink California, Llc
+Electrophoretic display
+US8928562B2
+(
+en
+)
+2003-11-25
+2015-01-06
+E Ink Corporation
+Electro-optic displays, and methods for driving same
+US8928641B2
+(
+en
+)
+2009-12-02
+2015-01-06
+Sipix Technology Inc.
+Multiplex electrophoretic display driver circuit
+US8976444B2
+(
+en
+)
+2011-09-02
+2015-03-10
+E Ink California, Llc
+Color display devices
+US9013394B2
+(
+en
+)
+2010-06-04
+2015-04-21
+E Ink California, Llc
+Driving method for electrophoretic displays
+US9019197B2
+(
+en
+)
+2011-09-12
+2015-04-28
+E Ink California, Llc
+Driving system for electrophoretic displays
+US9019198B2
+(
+en
+)
+2012-07-05
+2015-04-28
+Sipix Technology Inc.
+Driving method of passive display panel and display apparatus
+US9019318B2
+(
+en
+)
+2008-10-24
+2015-04-28
+E Ink California, Llc
+Driving methods for electrophoretic displays employing grey level waveforms
+US9082352B2
+(
+en
+)
+2010-10-20
+2015-07-14
+Sipix Technology Inc.
+Electro-phoretic display apparatus and driving method thereof
+US20150262255A1
+(
+en
+)
+2014-03-12
+2015-09-17
+Netseer, Inc.
+Search monetization of images embedded in text
+US9218773B2
+(
+en
+)
+2013-01-17
+2015-12-22
+Sipix Technology Inc.
+Method and driving apparatus for outputting driving signal to drive electro-phoretic display
+US9224338B2
+(
+en
+)
+2010-03-08
+2015-12-29
+E Ink California, Llc
+Driving methods for electrophoretic displays
+US9224344B2
+(
+en
+)
+2013-06-20
+2015-12-29
+Sipix Technology, Inc.
+Electrophoretic display with a compensation circuit for reducing a luminance difference and method thereof
+US9224342B2
+(
+en
+)
+2007-10-12
+2015-12-29
+E Ink California, Llc
+Approach to adjust driving waveforms for a display device
+US9230492B2
+(
+en
+)
+2003-03-31
+2016-01-05
+E Ink Corporation
+Methods for driving electro-optic displays
+US20160012710A1
+(
+en
+)
+2014-07-10
+2016-01-14
+Sipix Technology Inc.
+Smart medication device
+US9251736B2
+(
+en
+)
+2009-01-30
+2016-02-02
+E Ink California, Llc
+Multiple voltage level driving for electrophoretic displays
+US9262973B2
+(
+en
+)
+2013-03-13
+2016-02-16
+Sipix Technology, Inc.
+Electrophoretic display capable of reducing passive matrix coupling effect and method thereof
+US9279906B2
+(
+en
+)
+2012-08-31
+2016-03-08
+E Ink California, Llc
+Microstructure film
+US9299294B2
+(
+en
+)
+2010-11-11
+2016-03-29
+E Ink California, Llc
+Driving method for electrophoretic displays with different color states
+US20160133196A1
+(
+en
+)
+2013-07-31
+2016-05-12
+E Ink Corporation
+Methods for driving electro-optic displays
+US20160180777A1
+(
+en
+)
+2010-11-11
+2016-06-23
+E Ink California, Inc.
+Driving method for electrophoretic displays
+US9390066B2
+(
+en
+)
+2009-11-12
+2016-07-12
+Digital Harmonic Llc
+Precision measurement of waveforms using deconvolution and windowing
+US9390661B2
+(
+en
+)
+2009-09-15
+2016-07-12
+E Ink California, Llc
+Display controller system
+US20160225322A1
+(
+en
+)
+*
+2015-02-04
+2016-08-04
+E Ink Corporation
+Electro-optic displays displaying in dark mode and light mode, and related apparatus and methods
+US9460666B2
+(
+en
+)
+2009-05-11
+2016-10-04
+E Ink California, Llc
+Driving methods and waveforms for electrophoretic displays
+US20160314733A1
+(
+en
+)
+2015-04-27
+2016-10-27
+E Ink Corporation
+Methods and Apparatuses for Driving Display Systems
+US9501981B2
+(
+en
+)
+2013-05-17
+2016-11-22
+E Ink California, Llc
+Driving methods for color display devices
+US9514667B2
+(
+en
+)
+2011-09-12
+2016-12-06
+E Ink California, Llc
+Driving system for electrophoretic displays
+US9513743B2
+(
+en
+)
+2012-06-01
+2016-12-06
+E Ink Corporation
+Methods for driving electro-optic displays
+US9612502B2
+(
+en
+)
+2002-06-10
+2017-04-04
+E Ink Corporation
+Electro-optic display with edge seal
+US9620048B2
+(
+en
+)
+2013-07-30
+2017-04-11
+E Ink Corporation
+Methods for driving electro-optic displays
+US9672766B2
+(
+en
+)
+2003-03-31
+2017-06-06
+E Ink Corporation
+Methods for driving electro-optic displays
+US20170178573A1
+(
+en
+)
+2015-12-17
+2017-06-22
+Acer Incorporated
+Driving devices and driving methods
+US9691333B2
+(
+en
+)
+2013-02-07
+2017-06-27
+E Ink Holdings Inc.
+Electrophoretic display and method of operating an electrophoretic display
+JP2017120315A
+(
+en
+)
+2015-12-28
+2017-07-06
+ソニー株式会社
+Display device, driving method, and electronic apparatus
+US9721495B2
+(
+en
+)
+2013-02-27
+2017-08-01
+E Ink Corporation
+Methods for driving electro-optic displays
+JP2017156365A
+(
+en
+)
+2016-02-29
+2017-09-07
+キヤノン株式会社
+Liquid crystal display device
+US9792862B2
+(
+en
+)
+2013-01-17
+2017-10-17
+E Ink Holdings Inc.
+Method and driving apparatus for outputting driving signal to drive electro-phoretic display
+US9792861B2
+(
+en
+)
+2012-09-26
+2017-10-17
+E Ink Holdings Inc.
+Electro-phoretic display capable of improving gray level resolution and method for driving the same
+US9805668B2
+(
+en
+)
+2012-07-20
+2017-10-31
+Flexenable Limited
+Display systems
+US9928810B2
+(
+en
+)
+2015-01-30
+2018-03-27
+E Ink Corporation
+Font control for electro-optic displays and related apparatus and methods
+US10002556B2
+(
+en
+)
+2013-03-29
+2018-06-19
+Sony Corporation
+Display control to alleviate transition of pixel to an undesired level of gradation over time
+US10319313B2
+(
+en
+)
+2007-05-21
+2019-06-11
+E Ink Corporation
+Methods for driving video electro-optic displays
+US10339876B2
+(
+en
+)
+2013-10-07
+2019-07-02
+E Ink California, Llc
+Driving methods for color display device
+US10444553B2
+(
+en
+)
+2014-03-25
+2019-10-15
+E Ink California, Llc
+Magnetophoretic display assembly and driving scheme
+US10475396B2
+(
+en
+)
+2015-02-04
+2019-11-12
+E Ink Corporation
+Electro-optic displays with reduced remnant voltage, and related apparatus and methods
+US11030936B2
+(
+en
+)
+2012-02-01
+2021-06-08
+E Ink Corporation
+Methods and apparatus for operating an electro-optic display in white mode
+Family Cites Families (7)
+* Cited by examiner, † Cited by third party
+Publication number
+Priority date
+Publication date
+Assignee
+Title
+CN102789764B
+(
+en
+)
+*
+2001-11-20
+2015-05-27
+伊英克公司
+Methods for driving bistable electro-optic displays
+US9412314B2
+(
+en
+)
+2001-11-20
+2016-08-09
+E Ink Corporation
+Methods for driving electro-optic displays
+US20110199671A1
+(
+en
+)
+2002-06-13
+2011-08-18
+E Ink Corporation
+Methods for driving electrophoretic displays using dielectrophoretic forces
+KR100793087B1
+(
+en
+)
+*
+2006-01-04
+2008-01-10
+엘지전자 주식회사
+Plasma display device
+CN102013247B
+(
+en
+)
+*
+2009-09-08
+2012-10-31
+北大方正集团有限公司
+Refresh control method and system for electronic paper screen
+JP2013195482A
+(
+en
+)
+*
+2012-03-16
+2013-09-30
+Seiko Epson Corp
+Image processing circuit, electronic apparatus and image processing method
+US9129581B2
+(
+en
+)
+*
+2012-11-06
+2015-09-08
+Aspeed Technology Inc.
+Method and apparatus for displaying images
+2018
+2018-09-12
+WO
+PCT/US2018/050618
+patent/WO2019055486A1/en
+not_active
+Ceased
+2018-09-12
+JP
+JP2020514593A
+patent/JP7079845B2/en
+active
+Active
+2018-09-12
+EP
+EP18855740.9A
+patent/EP3682440B1/en
+active
+Active
+2018-09-12
+CN
+CN201880057665.2A
+patent/CN111133501A/en
+active
+Pending
+2018-09-12
+US
+US16/128,996
+patent/US11423852B2/en
+active
+Active
+2019
+2019-01-23
+TW
+TW108102573A
+patent/TWI711306B/en
+active
+2022
+2022-07-26
+US
+US17/873,301
+patent/US11568827B2/en
+active
+Active
+Patent Citations (193)
+* Cited by examiner, † Cited by third party
+Publication number
+Priority date
+Publication date
+Assignee
+Title
+US4418346A
+(
+en
+)
+1981-05-20
+1983-11-29
+Batchelder J Samuel
+Method and apparatus for providing a dielectrophoretic display of visual information
+US5872552A
+(
+en
+)
+1994-12-28
+1999-02-16
+International Business Machines Corporation
+Electrophoretic display
+US6137467A
+(
+en
+)
+1995-01-03
+2000-10-24
+Xerox Corporation
+Optically sensitive electric paper
+US7259744B2
+(
+en
+)
+1995-07-20
+2007-08-21
+E Ink Corporation
+Dielectrophoretic displays
+US7583251B2
+(
+en
+)
+1995-07-20
+2009-09-01
+E Ink Corporation
+Dielectrophoretic displays
+US8305341B2
+(
+en
+)
+1995-07-20
+2012-11-06
+E Ink Corporation
+Dielectrophoretic displays
+US8139050B2
+(
+en
+)
+1995-07-20
+2012-03-20
+E Ink Corporation
+Addressing schemes for electronic displays
+US7999787B2
+(
+en
+)
+1995-07-20
+2011-08-16
+E Ink Corporation
+Methods for driving electrophoretic displays using dielectrophoretic forces
+US7411719B2
+(
+en
+)
+1995-07-20
+2008-08-12
+E Ink Corporation
+Electrophoretic medium and process for the production thereof
+US7956841B2
+(
+en
+)
+1995-07-20
+2011-06-07
+E Ink Corporation
+Stylus-based addressing structures for displays
+US8384658B2
+(
+en
+)
+1995-07-20
+2013-02-26
+E Ink Corporation
+Electrostatically addressable electrophoretic display
+US5760761A
+(
+en
+)
+1995-12-15
+1998-06-02
+Xerox Corporation
+Highlight color twisting ball display
+US5808783A
+(
+en
+)
+1996-06-27
+1998-09-15
+Xerox Corporation
+High reflectance gyricon display
+US6055091A
+(
+en
+)
+1996-06-27
+2000-04-25
+Xerox Corporation
+Twisting-cylinder display
+US5930026A
+(
+en
+)
+1996-10-25
+1999-07-27
+Massachusetts Institute Of Technology
+Nonemissive displays and piezoelectric power supplies therefor
+US5777782A
+(
+en
+)
+1996-12-24
+1998-07-07
+Xerox Corporation
+Auxiliary optics for a twisting ball display
+US6301038B1
+(
+en
+)
+1997-02-06
+2001-10-09
+University College Dublin
+Electrochromic system
+US7002728B2
+(
+en
+)
+1997-08-28
+2006-02-21
+E Ink Corporation
+Electrophoretic particles, and processes for the production thereof
+US6054071A
+(
+en
+)
+1998-01-28
+2000-04-25
+Xerox Corporation
+Poled electrets for gyricon-based electric-paper displays
+US6753999B2
+(
+en
+)
+1998-03-18
+2004-06-22
+E Ink Corporation
+Electrophoretic displays in portable devices and systems for addressing such displays
+US6445489B1
+(
+en
+)
+1998-03-18
+2002-09-03
+E Ink Corporation
+Electrophoretic displays and systems for addressing such displays
+US7075502B1
+(
+en
+)
+1998-04-10
+2006-07-11
+E Ink Corporation
+Full color reflective display with multichromatic sub-pixels
+US6130774A
+(
+en
+)
+1998-04-27
+2000-10-10
+E Ink Corporation
+Shutter mode microencapsulated electrophoretic display
+US6241921B1
+(
+en
+)
+1998-05-15
+2001-06-05
+Massachusetts Institute Of Technology
+Heterogeneous display elements and methods for their fabrication
+US20030102858A1
+(
+en
+)
+1998-07-08
+2003-06-05
+E Ink Corporation
+Method and apparatus for determining properties of an electrophoretic display
+US6512354B2
+(
+en
+)
+1998-07-08
+2003-01-28
+E Ink Corporation
+Method and apparatus for sensing the state of an electrophoretic display
+US6995550B2
+(
+en
+)
+1998-07-08
+2006-02-07
+E Ink Corporation
+Method and apparatus for determining properties of an electrophoretic display
+US6866760B2
+(
+en
+)
+1998-08-27
+2005-03-15
+E Ink Corporation
+Electrophoretic medium and process for the production thereof
+US6271823B1
+(
+en
+)
+1998-09-16
+2001-08-07
+International Business Machines Corporation
+Reflective electrophoretic display with laterally adjacent color cells using a reflective panel
+US6225971B1
+(
+en
+)
+1998-09-16
+2001-05-01
+International Business Machines Corporation
+Reflective electrophoretic display with laterally adjacent color cells using an absorbing panel
+US6184856B1
+(
+en
+)
+1998-09-16
+2001-02-06
+International Business Machines Corporation
+Transmissive electrophoretic display with laterally adjacent color cells
+US6144361A
+(
+en
+)
+1998-09-16
+2000-11-07
+International Business Machines Corporation
+Transmissive electrophoretic display with vertical electrodes
+US6128124A
+(
+en
+)
+1998-10-16
+2000-10-03
+Xerox Corporation
+Additive color electric paper without registration or alignment of individual elements
+US6147791A
+(
+en
+)
+1998-11-25
+2000-11-14
+Xerox Corporation
+Gyricon displays utilizing rotating elements and magnetic latching
+US6097531A
+(
+en
+)
+1998-11-25
+2000-08-01
+Xerox Corporation
+Method of making uniformly magnetized elements for a gyricon display
+US20070091418A1
+(
+en
+)
+1999-04-30
+2007-04-26
+E Ink Corporation
+Methods for driving electro-optic displays, and apparatus for use therein
+US7119772B2
+(
+en
+)
+1999-04-30
+2006-10-10
+E Ink Corporation
+Methods for driving bistable electro-optic displays, and apparatus for use therein
+US7012600B2
+(
+en
+)
+1999-04-30
+2006-03-14
+E Ink Corporation
+Methods for driving bistable electro-optic displays, and apparatus for use therein
+US7193625B2
+(
+en
+)
+1999-04-30
+2007-03-20
+E Ink Corporation
+Methods for driving electro-optic displays, and apparatus for use therein
+US6531997B1
+(
+en
+)
+1999-04-30
+2003-03-11
+E Ink Corporation
+Methods for addressing electrophoretic displays
+US8009348B2
+(
+en
+)
+1999-05-03
+2011-08-30
+E Ink Corporation
+Machine-readable displays
+US6870657B1
+(
+en
+)
+1999-10-11
+2005-03-22
+University College Dublin
+Electrochromic device
+US6788449B2
+(
+en
+)
+2000-03-03
+2004-09-07
+Sipix Imaging, Inc.
+Electrophoretic display and novel process for its manufacture
+US7715088B2
+(
+en
+)
+2000-03-03
+2010-05-11
+Sipix Imaging, Inc.
+Electrophoretic display
+US6672921B1
+(
+en
+)
+2000-03-03
+2004-01-06
+Sipix Imaging, Inc.
+Manufacturing process for electrophoretic display
+US6504524B1
+(
+en
+)
+2000-03-08
+2003-01-07
+E Ink Corporation
+Addressing methods for displays having zero time-average field
+US7023420B2
+(
+en
+)
+2000-11-29
+2006-04-04
+E Ink Corporation
+Electronic display with photo-addressing means
+US7312784B2
+(
+en
+)
+2001-03-13
+2007-12-25
+E Ink Corporation
+Apparatus for displaying drawings
+US7679814B2
+(
+en
+)
+2001-04-02
+2010-03-16
+E Ink Corporation
+Materials for use in electrophoretic displays
+US7170670B2
+(
+en
+)
+2001-04-02
+2007-01-30
+E Ink Corporation
+Electrophoretic medium and display with improved image stability
+US7144942B2
+(
+en
+)
+2001-06-04
+2006-12-05
+Sipix Imaging, Inc.
+Composition and process for the sealing of microcups in roll-to-roll display manufacturing
+US7535624B2
+(
+en
+)
+2001-07-09
+2009-05-19
+E Ink Corporation
+Electro-optic display and materials for use therein
+US7679813B2
+(
+en
+)
+2001-08-17
+2010-03-16
+Sipix Imaging, Inc.
+Electrophoretic display with dual-mode switching
+US6825970B2
+(
+en
+)
+2001-09-14
+2004-11-30
+E Ink Corporation
+Methods for addressing electro-optic materials
+US8125501B2
+(
+en
+)
+2001-11-20
+2012-02-28
+E Ink Corporation
+Voltage modulated driver circuits for electro-optic displays
+US7528822B2
+(
+en
+)
+2001-11-20
+2009-05-05
+E Ink Corporation
+Methods for driving electro-optic displays
+US8593396B2
+(
+en
+)
+2001-11-20
+2013-11-26
+E Ink Corporation
+Methods and apparatus for driving electro-optic displays
+US7952557B2
+(
+en
+)
+2001-11-20
+2011-05-31
+E Ink Corporation
+Methods and apparatus for driving electro-optic displays
+US8558783B2
+(
+en
+)
+2001-11-20
+2013-10-15
+E Ink Corporation
+Electro-optic displays with reduced remnant voltage
+US6900851B2
+(
+en
+)
+2002-02-08
+2005-05-31
+E Ink Corporation
+Electro-optic displays and optical systems for addressing such displays
+US7321459B2
+(
+en
+)
+2002-03-06
+2008-01-22
+Bridgestone Corporation
+Image display device and method
+US20100265561A1
+(
+en
+)
+2002-03-18
+2010-10-21
+E Ink Corporation
+Electro-optic displays, and methods for driving same
+US6950220B2
+(
+en
+)
+2002-03-18
+2005-09-27
+E Ink Corporation
+Electro-optic displays, and methods for driving same
+US7116318B2
+(
+en
+)
+2002-04-24
+2006-10-03
+E Ink Corporation
+Backplanes for display applications, and components for use therein
+US9612502B2
+(
+en
+)
+2002-06-10
+2017-04-04
+E Ink Corporation
+Electro-optic display with edge seal
+US6982178B2
+(
+en
+)
+2002-06-10
+2006-01-03
+E Ink Corporation
+Components and methods for use in electro-optic displays
+US20080024482A1
+(
+en
+)
+2002-06-13
+2008-01-31
+E Ink Corporation
+Methods for driving electro-optic displays
+US7202847B2
+(
+en
+)
+2002-06-28
+2007-04-10
+E Ink Corporation
+Voltage modulated driver circuits for electro-optic displays
+US7839564B2
+(
+en
+)
+2002-09-03
+2010-11-23
+E Ink Corporation
+Components and methods for use in electro-optic displays
+US20130063333A1
+(
+en
+)
+2002-10-16
+2013-03-14
+E Ink Corporation
+Electrophoretic displays
+US7072095B2
+(
+en
+)
+2002-10-31
+2006-07-04
+Sipix Imaging, Inc.
+Electrophoretic display and novel process for its manufacture
+US8077141B2
+(
+en
+)
+2002-12-16
+2011-12-13
+E Ink Corporation
+Backplanes for electro-optic displays
+US6922276B2
+(
+en
+)
+2002-12-23
+2005-07-26
+E Ink Corporation
+Flexible electro-optic displays
+US9620067B2
+(
+en
+)
+2003-03-31
+2017-04-11
+E Ink Corporation
+Methods for driving electro-optic displays
+US9230492B2
+(
+en
+)
+2003-03-31
+2016-01-05
+E Ink Corporation
+Methods for driving electro-optic displays
+US9672766B2
+(
+en
+)
+2003-03-31
+2017-06-06
+E Ink Corporation
+Methods for driving electro-optic displays
+US7236291B2
+(
+en
+)
+2003-04-02
+2007-06-26
+Bridgestone Corporation
+Particle use for image display media, image display panel using the particles, and image display device
+US20040246562A1
+(
+en
+)
+2003-05-16
+2004-12-09
+Sipix Imaging, Inc.
+Passive matrix electrophoretic display driving scheme
+US7061166B2
+(
+en
+)
+2003-05-27
+2006-06-13
+Fuji Photo Film Co., Ltd.
+Laminated structure and method of manufacturing the same
+US8174490B2
+(
+en
+)
+2003-06-30
+2012-05-08
+E Ink Corporation
+Methods for driving electrophoretic displays
+US7034783B2
+(
+en
+)
+2003-08-19
+2006-04-25
+E Ink Corporation
+Method for controlling electro-optic display
+US7602374B2
+(
+en
+)
+2003-09-19
+2009-10-13
+E Ink Corporation
+Methods for reducing edge effects in electro-optic displays
+US8300006B2
+(
+en
+)
+2003-10-03
+2012-10-30
+E Ink Corporation
+Electrophoretic display unit
+US7061662B2
+(
+en
+)
+2003-10-07
+2006-06-13
+Sipix Imaging, Inc.
+Electrophoretic display with thermal control
+US8514168B2
+(
+en
+)
+2003-10-07
+2013-08-20
+Sipix Imaging, Inc.
+Electrophoretic display with thermal control
+US7242514B2
+(
+en
+)
+2003-10-07
+2007-07-10
+Sipix Imaging, Inc.
+Electrophoretic display with thermal control
+US7420549B2
+(
+en
+)
+2003-10-08
+2008-09-02
+E Ink Corporation
+Electro-wetting displays
+US7177066B2
+(
+en
+)
+2003-10-24
+2007-02-13
+Sipix Imaging, Inc.
+Electrophoretic display driving scheme
+US9542895B2
+(
+en
+)
+2003-11-25
+2017-01-10
+E Ink Corporation
+Electro-optic displays, and methods for driving same
+US20070103427A1
+(
+en
+)
+2003-11-25
+2007-05-10
+Koninklijke Philips Electronice N.V.
+Display apparatus with a display device and a cyclic rail-stabilized method of driving the display device
+US8928562B2
+(
+en
+)
+2003-11-25
+2015-01-06
+E Ink Corporation
+Electro-optic displays, and methods for driving same
+US7327511B2
+(
+en
+)
+2004-03-23
+2008-02-05
+E Ink Corporation
+Light modulators
+US7492339B2
+(
+en
+)
+2004-03-26
+2009-02-17
+E Ink Corporation
+Methods for driving bistable electro-optic displays
+US8289250B2
+(
+en
+)
+2004-03-31
+2012-10-16
+E Ink Corporation
+Methods for driving electro-optic displays
+US20050253777A1
+(
+en
+)
+2004-05-12
+2005-11-17
+E Ink Corporation
+Tiled displays and methods for driving same
+US20080136774A1
+(
+en
+)
+2004-07-27
+2008-06-12
+E Ink Corporation
+Methods for driving electrophoretic displays using dielectrophoretic forces
+US7116466B2
+(
+en
+)
+2004-07-27
+2006-10-03
+E Ink Corporation
+Electro-optic displays
+US7453445B2
+(
+en
+)
+2004-08-13
+2008-11-18
+E Ink Corproation
+Methods for driving electro-optic displays
+US8643595B2
+(
+en
+)
+2004-10-25
+2014-02-04
+Sipix Imaging, Inc.
+Electrophoretic display driving approaches
+US7612760B2
+(
+en
+)
+2005-02-17
+2009-11-03
+Seiko Epson Corporation
+Electrophoresis device, method of driving electrophoresis device, and electronic apparatus
+US7679599B2
+(
+en
+)
+2005-03-04
+2010-03-16
+Seiko Epson Corporation
+Electrophoretic device, method of driving electrophoretic device, and electronic apparatus
+US7999832B2
+(
+en
+)
+2005-05-20
+2011-08-16
+Industrial Technology Research Institute
+Controlled gap states for liquid crystal displays
+US7408699B2
+(
+en
+)
+2005-09-28
+2008-08-05
+Sipix Imaging, Inc.
+Electrophoretic display and methods of addressing such display
+US20070176912A1
+(
+en
+)
+2005-12-09
+2007-08-02
+Beames Michael H
+Portable memory devices with polymeric displays
+US7982479B2
+(
+en
+)
+2006-04-07
+2011-07-19
+Sipix Imaging, Inc.
+Inspection methods for defects in electrophoretic display and related devices
+US7683606B2
+(
+en
+)
+2006-05-26
+2010-03-23
+Sipix Imaging, Inc.
+Flexible display testing and inspection
+US20150005720A1
+(
+en
+)
+2006-07-18
+2015-01-01
+E Ink California, Llc
+Electrophoretic display
+US20080024429A1
+(
+en
+)
+2006-07-25
+2008-01-31
+E Ink Corporation
+Electrophoretic displays using gaseous fluids
+US8274472B1
+(
+en
+)
+2007-03-12
+2012-09-25
+Sipix Imaging, Inc.
+Driving methods for bistable displays
+US8243013B1
+(
+en
+)
+2007-05-03
+2012-08-14
+Sipix Imaging, Inc.
+Driving bistable displays
+US10319313B2
+(
+en
+)
+2007-05-21
+2019-06-11
+E Ink Corporation
+Methods for driving video electro-optic displays
+US20080303780A1
+(
+en
+)
+2007-06-07
+2008-12-11
+Sipix Imaging, Inc.
+Driving methods and circuit for bi-stable displays
+US20090022229A1
+(
+en
+)
+2007-07-17
+2009-01-22
+Chih-Ta Star Sung
+Efficient image transmission between TV chipset and display device
+US9224342B2
+(
+en
+)
+2007-10-12
+2015-12-29
+E Ink California, Llc
+Approach to adjust driving waveforms for a display device
+US8314784B2
+(
+en
+)
+2008-04-11
+2012-11-20
+E Ink Corporation
+Methods for driving electro-optic displays
+US8373649B2
+(
+en
+)
+2008-04-11
+2013-02-12
+Seiko Epson Corporation
+Time-overlapping partial-panel updating of a bistable electro-optic display
+US8462102B2
+(
+en
+)
+2008-04-25
+2013-06-11
+Sipix Imaging, Inc.
+Driving methods for bistable displays
+US8456414B2
+(
+en
+)
+2008-08-01
+2013-06-04
+Sipix Imaging, Inc.
+Gamma adjustment with error diffusion for electrophoretic displays
+US8559746B2
+(
+en
+)
+2008-09-04
+2013-10-15
+Silicon Image, Inc.
+System, method, and apparatus for smoothing of edges in images to remove irregularities
+US8558855B2
+(
+en
+)
+2008-10-24
+2013-10-15
+Sipix Imaging, Inc.
+Driving methods for electrophoretic displays
+US9019318B2
+(
+en
+)
+2008-10-24
+2015-04-28
+E Ink California, Llc
+Driving methods for electrophoretic displays employing grey level waveforms
+JP2010113281A
+(
+en
+)
+2008-11-10
+2010-05-20
+Seiko Epson Corp
+Method of driving electrophoretic display device, electrophoretic display device, and electronic device
+US9251736B2
+(
+en
+)
+2009-01-30
+2016-02-02
+E Ink California, Llc
+Multiple voltage level driving for electrophoretic displays
+US20100194789A1
+(
+en
+)
+2009-01-30
+2010-08-05
+Craig Lin
+Partial image update for electrophoretic displays
+US20100194733A1
+(
+en
+)
+2009-01-30
+2010-08-05
+Craig Lin
+Multiple voltage level driving for electrophoretic displays
+US8576259B2
+(
+en
+)
+2009-04-22
+2013-11-05
+Sipix Imaging, Inc.
+Partial update driving methods for electrophoretic displays
+US9460666B2
+(
+en
+)
+2009-05-11
+2016-10-04
+E Ink California, Llc
+Driving methods and waveforms for electrophoretic displays
+US9390661B2
+(
+en
+)
+2009-09-15
+2016-07-12
+E Ink California, Llc
+Display controller system
+US20110063314A1
+(
+en
+)
+2009-09-15
+2011-03-17
+Wen-Pin Chiu
+Display controller system
+US8810525B2
+(
+en
+)
+2009-10-05
+2014-08-19
+E Ink California, Llc
+Electronic information displays
+US8576164B2
+(
+en
+)
+2009-10-26
+2013-11-05
+Sipix Imaging, Inc.
+Spatially combined waveforms for electrophoretic displays
+US9390066B2
+(
+en
+)
+2009-11-12
+2016-07-12
+Digital Harmonic Llc
+Precision measurement of waveforms using deconvolution and windowing
+US7859742B1
+(
+en
+)
+2009-12-02
+2010-12-28
+Sipix Technology, Inc.
+Frequency conversion correction circuit for electrophoretic displays
+US8928641B2
+(
+en
+)
+2009-12-02
+2015-01-06
+Sipix Technology Inc.
+Multiplex electrophoretic display driver circuit
+US8711088B2
+(
+en
+)
+2009-12-10
+2014-04-29
+Seiko Epson Corporation
+Method for driving electrophoretic display device, electrophoretic display device, and electronic device
+US20110175875A1
+(
+en
+)
+2010-01-15
+2011-07-21
+Craig Lin
+Driving methods with variable frame time
+US8558786B2
+(
+en
+)
+2010-01-20
+2013-10-15
+Sipix Imaging, Inc.
+Driving methods for electrophoretic displays
+US9224338B2
+(
+en
+)
+2010-03-08
+2015-12-29
+E Ink California, Llc
+Driving methods for electrophoretic displays
+US20110221740A1
+(
+en
+)
+2010-03-12
+2011-09-15
+Sipix Technology Inc.
+Driving method of electrophoretic display
+US10229641B2
+(
+en
+)
+2010-03-12
+2019-03-12
+E Ink Holdings Inc.
+Driving method of electrophoretic display
+US9013394B2
+(
+en
+)
+2010-06-04
+2015-04-21
+E Ink California, Llc
+Driving method for electrophoretic displays
+US20120001957A1
+(
+en
+)
+2010-06-30
+2012-01-05
+Sipix Technology Inc.
+Electrophoretic display and driving method thereof
+US8605032B2
+(
+en
+)
+2010-06-30
+2013-12-10
+Sipix Technology Inc.
+Electrophoretic display with changeable frame updating speed and driving method thereof
+US8681191B2
+(
+en
+)
+2010-07-08
+2014-03-25
+Sipix Imaging, Inc.
+Three dimensional driving scheme for electrophoretic display devices
+US8665206B2
+(
+en
+)
+2010-08-10
+2014-03-04
+Sipix Imaging, Inc.
+Driving method to neutralize grey level shift for electrophoretic displays
+US8294822B2
+(
+en
+)
+2010-08-17
+2012-10-23
+Broadcom Corporation
+Method and system for key aware scaling
+US9082352B2
+(
+en
+)
+2010-10-20
+2015-07-14
+Sipix Technology Inc.
+Electro-phoretic display apparatus and driving method thereof
+US20120098740A1
+(
+en
+)
+2010-10-20
+2012-04-26
+Sipix Technology Inc.
+Electro-phoretic display apparatus
+US8537105B2
+(
+en
+)
+2010-10-21
+2013-09-17
+Sipix Technology Inc.
+Electro-phoretic display apparatus
+US9299294B2
+(
+en
+)
+2010-11-11
+2016-03-29
+E Ink California, Llc
+Driving method for electrophoretic displays with different color states
+US20160180777A1
+(
+en
+)
+2010-11-11
+2016-06-23
+E Ink California, Inc.
+Driving method for electrophoretic displays
+US8878770B2
+(
+en
+)
+2011-05-10
+2014-11-04
+Seiko Epson Corporation
+Control method of electro-optical device, controller of electro-optical device, electro-optical device, and electronic apparatus
+US8976444B2
+(
+en
+)
+2011-09-02
+2015-03-10
+E Ink California, Llc
+Color display devices
+US9514667B2
+(
+en
+)
+2011-09-12
+2016-12-06
+E Ink California, Llc
+Driving system for electrophoretic displays
+US9019197B2
+(
+en
+)
+2011-09-12
+2015-04-28
+E Ink California, Llc
+Driving system for electrophoretic displays
+US20130194250A1
+(
+en
+)
+*
+2012-02-01
+2013-08-01
+E Ink Corporation
+Methods for driving electro-optic displays
+US11030936B2
+(
+en
+)
+2012-02-01
+2021-06-08
+E Ink Corporation
+Methods and apparatus for operating an electro-optic display in white mode
+US10672350B2
+(
+en
+)
+2012-02-01
+2020-06-02
+E Ink Corporation
+Methods for driving electro-optic displays
+US20130249782A1
+(
+en
+)
+2012-03-26
+2013-09-26
+Sipix Technology Inc.
+Electrophoretic display module and operating method thereof and electrophoretic display system using the same
+US9513743B2
+(
+en
+)
+2012-06-01
+2016-12-06
+E Ink Corporation
+Methods for driving electro-optic displays
+US9019198B2
+(
+en
+)
+2012-07-05
+2015-04-28
+Sipix Technology Inc.
+Driving method of passive display panel and display apparatus
+US9805668B2
+(
+en
+)
+2012-07-20
+2017-10-31
+Flexenable Limited
+Display systems
+US9279906B2
+(
+en
+)
+2012-08-31
+2016-03-08
+E Ink California, Llc
+Microstructure film
+US20140085568A1
+(
+en
+)
+2012-09-21
+2014-03-27
+Boe Technology Group Co., Ltd.
+Display Device
+US9792861B2
+(
+en
+)
+2012-09-26
+2017-10-17
+E Ink Holdings Inc.
+Electro-phoretic display capable of improving gray level resolution and method for driving the same
+US9792862B2
+(
+en
+)
+2013-01-17
+2017-10-17
+E Ink Holdings Inc.
+Method and driving apparatus for outputting driving signal to drive electro-phoretic display
+US9218773B2
+(
+en
+)
+2013-01-17
+2015-12-22
+Sipix Technology Inc.
+Method and driving apparatus for outputting driving signal to drive electro-phoretic display
+US20140204012A1
+(
+en
+)
+2013-01-24
+2014-07-24
+Sipix Technology Inc.
+Electrophoretic display and method for driving panel thereof
+US9691333B2
+(
+en
+)
+2013-02-07
+2017-06-27
+E Ink Holdings Inc.
+Electrophoretic display and method of operating an electrophoretic display
+US20140240210A1
+(
+en
+)
+2013-02-25
+2014-08-28
+Sipix Technology, Inc.
+Electrophoretic display and method of driving an electrophoretic display
+US9721495B2
+(
+en
+)
+2013-02-27
+2017-08-01
+E Ink Corporation
+Methods for driving electro-optic displays
+US9495918B2
+(
+en
+)
+2013-03-01
+2016-11-15
+E Ink Corporation
+Methods for driving electro-optic displays
+US20140292830A1
+(
+en
+)
+*
+2013-03-01
+2014-10-02
+E Ink Corporation
+Methods for driving electro-optic displays
+US20140253425A1
+(
+en
+)
+2013-03-07
+2014-09-11
+E Ink Corporation
+Method and apparatus for driving electro-optic displays
+US9262973B2
+(
+en
+)
+2013-03-13
+2016-02-16
+Sipix Technology, Inc.
+Electrophoretic display capable of reducing passive matrix coupling effect and method thereof
+US10002556B2
+(
+en
+)
+2013-03-29
+2018-06-19
+Sony Corporation
+Display control to alleviate transition of pixel to an undesired level of gradation over time
+US20140293398A1
+(
+en
+)
+2013-03-29
+2014-10-02
+Sipix Imaging, Inc.
+Electrophoretic display device
+US9501981B2
+(
+en
+)
+2013-05-17
+2016-11-22
+E Ink California, Llc
+Driving methods for color display devices
+US9224344B2
+(
+en
+)
+2013-06-20
+2015-12-29
+Sipix Technology, Inc.
+Electrophoretic display with a compensation circuit for reducing a luminance difference and method thereof
+US9620048B2
+(
+en
+)
+2013-07-30
+2017-04-11
+E Ink Corporation
+Methods for driving electro-optic displays
+US20160133196A1
+(
+en
+)
+2013-07-31
+2016-05-12
+E Ink Corporation
+Methods for driving electro-optic displays
+US10339876B2
+(
+en
+)
+2013-10-07
+2019-07-02
+E Ink California, Llc
+Driving methods for color display device
+US20150262255A1
+(
+en
+)
+2014-03-12
+2015-09-17
+Netseer, Inc.
+Search monetization of images embedded in text
+US10444553B2
+(
+en
+)
+2014-03-25
+2019-10-15
+E Ink California, Llc
+Magnetophoretic display assembly and driving scheme
+US20160012710A1
+(
+en
+)
+2014-07-10
+2016-01-14
+Sipix Technology Inc.
+Smart medication device
+US9928810B2
+(
+en
+)
+2015-01-30
+2018-03-27
+E Ink Corporation
+Font control for electro-optic displays and related apparatus and methods
+US10163406B2
+(
+en
+)
+2015-02-04
+2018-12-25
+E Ink Corporation
+Electro-optic displays displaying in dark mode and light mode, and related apparatus and methods
+US10475396B2
+(
+en
+)
+2015-02-04
+2019-11-12
+E Ink Corporation
+Electro-optic displays with reduced remnant voltage, and related apparatus and methods
+US20160225322A1
+(
+en
+)
+*
+2015-02-04
+2016-08-04
+E Ink Corporation
+Electro-optic displays displaying in dark mode and light mode, and related apparatus and methods
+US20160314733A1
+(
+en
+)
+2015-04-27
+2016-10-27
+E Ink Corporation
+Methods and Apparatuses for Driving Display Systems
+US20170178573A1
+(
+en
+)
+2015-12-17
+2017-06-22
+Acer Incorporated
+Driving devices and driving methods
+JP2017120315A
+(
+en
+)
+2015-12-28
+2017-07-06
+ソニー株式会社
+Display device, driving method, and electronic apparatus
+JP2017156365A
+(
+en
+)
+2016-02-29
+2017-09-07
+キヤノン株式会社
+Liquid crystal display device
+Non-Patent Citations (8)
+* Cited by examiner, † Cited by third party
+Title
+Bach, Udo. et al., "
+Nanomaterials-Based Electrochromics for Paper-Quality Displays
+", Adv. Mater, vol. 14, No. 11, pp. 345-348 (Jun. 5, 2002).
+European Patent Office, "
+Extended European Search Report
+", EP Appl. No. 18855740.9, dated Mar. 25, 2021.
+Hayes, R.A. et al., "
+Video-Speed Electronic Paper Based on Electrowetting
+", Nature, vol. 425, No. 25, pp. 383-385 (Sep. 2003).
+Kitamura, T. et al., "
+Electrical toner movement for electronic paper-like display
+", Asia Display/IDW '01, pp. 1517-1520, Paper HCS1-1 (2001).
+Korean Intellectual Property Office, PCT/US2018/050618, International Search Report and Written Opinion, dated Dec. 27, 2018.
+O'Regan, B. et al., "
+A Low Cost, High-efficiency Solar Cell Based on Dye-sensitized colloidal TiO2 Films
+", Nature, vol. 353, pp. 737-740 (Oct. 24, 1991).
+Wood, D., "
+An Electrochromic Renaissance?
+" Information Display, 18(3), 24 (Mar. 2002).
+Yamaguchi, Y. et al., "
+Toner display using insulative particles charged triboelectrically
+", Asia Display/IDW '01, pp. 1729-1730, Paper AMD4-4 (2001).
+Also Published As
+Publication number
+Publication date
+EP3682440C0
+(
+en
+)
+2024-11-06
+TWI711306B
+(
+en
+)
+2020-11-21
+EP3682440A4
+(
+en
+)
+2021-04-28
+EP3682440A1
+(
+en
+)
+2020-07-22
+TW202011727A
+(
+en
+)
+2020-03-16
+JP7079845B2
+(
+en
+)
+2022-06-02
+US11423852B2
+(
+en
+)
+2022-08-23
+WO2019055486A1
+(
+en
+)
+2019-03-21
+US20220375418A1
+(
+en
+)
+2022-11-24
+CN111133501A
+(
+en
+)
+2020-05-08
+JP2020533638A
+(
+en
+)
+2020-11-19
+EP3682440B1
+(
+en
+)
+2024-11-06
+US20190122617A1
+(
+en
+)
+2019-04-25
+Similar Documents
+Publication
+Publication Date
+Title
+US20220375418A1
+(
+en
+)
+2022-11-24
+Methods for driving electro-optic displays to minimize edge ghosting
+US11935496B2
+(
+en
+)
+2024-03-19
+Electro-optic displays, and methods for driving same
+US11520202B2
+(
+en
+)
+2022-12-06
+Electro-optic displays, and methods for driving same
+KR20170110657A
+(
+en
+)
+2017-10-11
+Electro-optic displays displaying in dark mode and light mode, and related apparatus and methods
+US12609067B2
+(
+en
+)
+2026-04-21
+Electro-optic displays, and methods for driving same
+KR102435841B1
+(
+en
+)
+2022-08-23
+Electro-optical displays and their driving methods
+US11289036B2
+(
+en
+)
+2022-03-29
+Methods for driving electro-optic displays
+CA3157990C
+(
+en
+)
+2025-07-08
+Methods for driving electro-optic displays
+HK40027133A
+(
+en
+)
+2021-01-15
+Electro-optic displays, and methods for driving same
+HK40027133B
+(
+en
+)
+2023-04-06
+Electro-optic displays, and methods for driving same
+HK40018519A
+(
+en
+)
+2020-09-30
+Methods for driving electro-optic displays
+Legal Events
+Date
+Code
+Title
+Description
+2022-07-26
+FEPP
+Fee payment procedure
+Free format text
+:
+ENTITY STATUS SET TO UNDISCOUNTED (ORIGINAL EVENT CODE: BIG.); ENTITY STATUS OF PATENT OWNER: LARGE ENTITY
+2022-08-12
+AS
+Assignment
+Owner name
+:
+E INK CORPORATION, MASSACHUSETTS
+Free format text
+:
+ASSIGNMENT OF ASSIGNORS INTEREST;ASSIGNORS:SIM, TECK PING;BEN-DOV, YUVAL;AU, JOANNA F.;AND OTHERS;SIGNING DATES FROM 20171019 TO 20171120;REEL/FRAME:060797/0408
+2022-11-28
+STPP
+Information on status: patent application and granting procedure in general
+Free format text
+:
+NOTICE OF ALLOWANCE MAILED -- APPLICATION RECEIVED IN OFFICE OF PUBLICATIONS
+2022-12-20
+STPP
+Information on status: patent application and granting procedure in general
+Free format text
+:
+PUBLICATIONS -- ISSUE FEE PAYMENT RECEIVED
+2022-12-27
+STPP
+Information on status: patent application and granting procedure in general
+Free format text
+:
+PUBLICATIONS -- ISSUE FEE PAYMENT VERIFIED
+2023-01-11
+STCF
+Information on status: patent grant
+Free format text
+:
+PATENTED CASE

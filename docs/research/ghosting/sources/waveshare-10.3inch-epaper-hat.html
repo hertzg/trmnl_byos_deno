@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html class="client-nojs" lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<title>10.3inch e-Paper HAT - Waveshare Wiki</title>
+<script>document.documentElement.className="client-js";RLCONF={"wgBreakFrames":!1,"wgSeparatorTransformTable":["",""],"wgDigitTransformTable":["",""],"wgDefaultDateFormat":"dmy","wgMonthNames":["","January","February","March","April","May","June","July","August","September","October","November","December"],"wgRequestId":"f649ccc081decabd1c6c3183","wgCSPNonce":!1,"wgCanonicalNamespace":"","wgCanonicalSpecialPageName":!1,"wgNamespaceNumber":0,"wgPageName":"10.3inch_e-Paper_HAT","wgTitle":"10.3inch e-Paper HAT","wgCurRevisionId":100972,"wgRevisionId":100972,"wgArticleId":7173,"wgIsArticle":!0,"wgIsRedirect":!1,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":["SPI interface","USB interface","I80 interface"],"wgPageContentLanguage":"en","wgPageContentModel":"wikitext","wgRelevantPageName":"10.3inch_e-Paper_HAT","wgRelevantArticleId":7173,"wgIsProbablyEditable":!1,"wgRelevantPageIsProbablyEditable":!1,"wgRestrictionEdit":[],"wgRestrictionMove":[]};RLSTATE=
+{"ext.gadget.tabber":"ready","site.styles":"ready","noscript":"ready","user.styles":"ready","user":"ready","user.options":"loading","mediawiki.toc.styles":"ready","skins.tweeki.styles":"ready","skins.tweeki.bootstraptheme.styles":"ready","skins.tweeki.externallinks.styles":"ready","skins.tweeki.awesome.styles":"ready"};RLPAGEMODULES=["site","mediawiki.page.startup","mediawiki.page.ready","mediawiki.toc","ext.FancyBoxThumbs","ext.HighlightjsIntegration","skins.tweeki.messages","skins.tweeki.scripts"];</script>
+<script>(RLQ=window.RLQ||[]).push(function(){mw.loader.implement("user.options@1hzgi",function($,jQuery,require,module){/*@nomin*/mw.user.tokens.set({"patrolToken":"+\\","watchToken":"+\\","csrfToken":"+\\"});
+});});</script>
+<link rel="stylesheet" href="/w/Uy8Yw0y/aAdkk0o.php?lang=en&amp;modules=mediawiki.toc.styles%7Cskins.tweeki.awesome.styles%7Cskins.tweeki.bootstraptheme.styles%7Cskins.tweeki.externallinks.styles%7Cskins.tweeki.styles&amp;only=styles&amp;skin=tweeki"/>
+<script async="" src="/w/Uy8Yw0y/aAdkk0o.php?lang=en&amp;modules=startup&amp;only=scripts&amp;raw=1&amp;skin=tweeki"></script>
+<meta name="ResourceLoaderDynamicStyles" content=""/>
+<link rel="stylesheet" href="/w/Uy8Yw0y/aAdkk0o.php?lang=en&amp;modules=ext.gadget.tabber&amp;only=styles&amp;skin=tweeki"/>
+<link rel="stylesheet" href="/w/Uy8Yw0y/aAdkk0o.php?lang=en&amp;modules=site.styles&amp;only=styles&amp;skin=tweeki"/>
+<meta name="generator" content="MediaWiki 1.35.5"/>
+<meta property="og:image" content="https://www.waveshare.com/w/upload/thumb/7/7f/10.3inch-e-Paper-1.jpg/1200px-10.3inch-e-Paper-1.jpg"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="shortcut icon" href="/w/favicon.ico"/>
+<link rel="search" type="application/opensearchdescription+xml" href="/w/opensearch_desc.php" title="Waveshare Wiki (en)"/>
+<link rel="EditURI" type="application/rsd+xml" href="https://www.waveshare.com/w/api.php?action=rsd"/>
+<link rel="alternate" type="application/atom+xml" title="Waveshare Wiki Atom feed" href="/w/index.php?title=Special:RecentChanges&amp;feed=atom"/>
+<!--[if lt IE 9]><script src="/w/resources/lib/html5shiv/html5shiv.js"></script><![endif]-->
+</head>
+<body class="mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject page-10_3inch_e-Paper_HAT rootpage-10_3inch_e-Paper_HAT skin-tweeki action-view tweeki-animateLayout tweeki-non-advanced tweeki-user-anon"><a href="https://www.waveshare.com/cdn-cgi/content?id=hhrxDCtanuAViK3uNyExMhn8QgUSW62V7eErLgxMVr0-1788092659.5858388-1.2.1.1-Njg2AU.2m4KUP4_R8dtEd3cMfNvaHKQwrFL051p0a.Wz3hLBQbYjN86swhrBA_ni" aria-hidden="true" rel="nofollow noopener" style="display: none !important; visibility: hidden !important"></a>			<!-- navbar -->
+			<div id="mw-navigation" class="navbar navbar-default navbar-fixed-top navbar-expand-lg fixed-top navbar-light bg-light" role="navigation">
+				<h2>Navigation menu</h2>
+				<div id="mw-head" class="navbar-inner">
+					<div class="container">
+
+						<div class="navbar-header">
+							<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+								<span class="sr-only">Toggle navigation</span>
+								<span class="icon-bar"></span>
+								<span class="icon-bar"></span>
+								<span class="icon-bar"></span>
+							</button>
+
+							<a href="/wiki/Main_Page" class="navbar-brand"><img src="https://www.waveshare.com/w/upload/a/a7/Ws-watermark-en.svg" alt="Waveshare Wiki" /></a>
+						</div>
+
+						<div id="navbar" class="navbar-collapse collapse">
+													<ul class="nav navbar-nav">
+							<li class="nav"><a href="#" id="n-raspberry-pi" class="dropdown-toggle" data-toggle="dropdown">Raspberry Pi <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523rpi-boards"><a href="/wiki/Main_Page#RPi-Boards" tabindex="-1">Boards/Kits</a></li><li id="n-main_page.2523rpi-displays"><a href="/wiki/Main_Page#RPi-Displays" tabindex="-1">Displays</a></li><li id="n-main_page.2523rpi-cameras"><a href="/wiki/Main_Page#RPi-Cameras" tabindex="-1">Cameras</a></li><li id="n-main_page.2523rpi-expansions"><a href="/wiki/Main_Page#RPi-Expansions" tabindex="-1">Expansions</a></li><li id="n-main_page.2523rpi-laptops"><a href="/wiki/Main_Page#RPi-Laptops" tabindex="-1">All-in-one</a></li><li id="n-main_page.2523rpi-robots"><a href="/wiki/Main_Page#RPi-Robots" tabindex="-1">Robots</a></li><li id="n-main_page.2523rpi-games"><a href="/wiki/Main_Page#RPi-Games" tabindex="-1">Portable Gaming</a></li><li id="n-main_page.2523rpi-acces"><a href="/wiki/Main_Page#RPi-Acces" tabindex="-1">Accessories</a></li><li id="n-main_page.2523android-linux-boards"><a href="/wiki/Main_Page#Android-Linux-Boards" tabindex="-1">Other Android/Linux Boards</a></li></ul></li><li class="nav"><a href="#" id="n-ai" class="dropdown-toggle" data-toggle="dropdown">AI <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523jetson-ai-boards"><a href="/wiki/Main_Page#Jetson-AI-Boards" tabindex="-1">Boards/Kits</a></li><li id="n-main_page.2523jetson-ai-displays"><a href="/wiki/Main_Page#Jetson-AI-Displays" tabindex="-1">Displays</a></li><li id="n-main_page.2523jetson-ai-cameras"><a href="/wiki/Main_Page#Jetson-AI-Cameras" tabindex="-1">Cameras</a></li><li id="n-main_page.2523jetson-ai-hat"><a href="/wiki/Main_Page#Jetson-AI-HAT" tabindex="-1">Expansions</a></li><li id="n-main_page.2523jetson-ai-robots"><a href="/wiki/Main_Page#Jetson-AI-Robots" tabindex="-1">Robots</a></li></ul></li><li class="nav"><a href="#" id="n-displays" class="dropdown-toggle" data-toggle="dropdown">Displays <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523display-lcd-oleds"><a href="/wiki/Main_Page#Display-LCD-OLEDs" tabindex="-1">LCD/OLED</a></li><li id="n-main_page.2523display-e-paper"><a href="/wiki/Main_Page#Display-e-Paper" tabindex="-1">e-Paper</a></li></ul></li><li class="nav"><a href="#" id="n-iot" class="dropdown-toggle" data-toggle="dropdown">IoT <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523long-range-wireless-comm"><a href="/wiki/Main_Page#Long-range-wireless-comm" tabindex="-1">Long Range Wireless</a></li><li id="n-main_page.2523short-range-wireless-comm"><a href="/wiki/Main_Page#Short-range-wireless-comm" tabindex="-1">Short Range Wireless</a></li><li id="n-main_page.2523wired-communication"><a href="/wiki/Main_Page#Wired-communication" tabindex="-1">Wired Comm / Converter</a></li><li id="n-main_page.2523misc-cameras-av"><a href="/wiki/Main_Page#Misc-cameras-av" tabindex="-1">Cameras / Audio / Video</a></li><li id="n-main_page.2523misc-sensor-modules"><a href="/wiki/Main_Page#Misc-sensor-modules" tabindex="-1">Sensors</a></li><li id="n-main_page.2523misc-servos-motors"><a href="/wiki/Main_Page#Misc-servos-motors" tabindex="-1">Motors / Servos</a></li><li id="n-main_page.2523misc-other-modules"><a href="/wiki/Main_Page#Misc-other-modules" tabindex="-1">others</a></li></ul></li><li class="nav"><a href="#" id="n-robotics" class="dropdown-toggle" data-toggle="dropdown">Robotics <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523robotics-cars"><a href="/wiki/Main_Page#Robotics-cars" tabindex="-1">Mobile Robots</a></li><li id="n-main_page.2523dog-like-robots"><a href="/wiki/Main_Page#Dog-like-Robots" tabindex="-1">Dog-like Robots</a></li><li id="n-main_page.2523robotics-drivers-sensors"><a href="/wiki/Main_Page#Robotics-drivers-sensors" tabindex="-1">Drivers / Sensors</a></li><li id="n-main_page.2523robotics-robot-arms"><a href="/wiki/Main_Page#Robotics-robot-arms" tabindex="-1">Robot Arm / Control</a></li></ul></li><li class="nav"><a href="#" id="n-mcu.252Ffpga" class="dropdown-toggle" data-toggle="dropdown">MCU/FPGA <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523arduino-main-boards"><a href="/wiki/Main_Page#Arduino-main-boards" tabindex="-1">Arduino</a></li><li id="n-main_page.2523micro.253Abit"><a href="/wiki/Main_Page#micro:bit" tabindex="-1">micro:bit</a></li><li id="n-main_page.2523mcu.2farm" class="LPC"><a href="/wiki/Main_Page#MCU.2FARM" tabindex="-1">STM32</a></li><li id="n-main_page.2523fpga"><a href="/wiki/Main_Page#FPGA" tabindex="-1">FPGA</a></li></ul></li><li class="nav"><a href="https://service.waveshare.com" id="n-https.253A.252F.252Fservice.waveshare.com" rel="nofollow" target="_blank">Support</a></li>							</ul>
+						
+													<ul class="nav navbar-nav navbar-right">
+							</ul>
+				<form class="navbar-form navbar-right" action="/w/index.php" id="searchform">
+					<div class="form-group"><input type="search" name="search" placeholder="Product name search" title="Search Waveshare Wiki [f]" accesskey="f" id="searchInput" class="search-query form-control"/><input type="submit" name="go" value="Go" title="Go to a page with this exact name if it exists" id="mw-searchButton" class="searchButton btn hidden"/>
+					</div>
+				</form><ul class="nav navbar-nav navbar-right">							</ul>
+						</div>
+						
+					</div>
+				</div>
+			</div>
+			<!-- /navbar -->
+					<div id="mw-page-base"></div>
+			<div id="mw-head-base"></div>
+			<a id="top"></a>
+
+			<!-- content -->
+			<div id="contentwrapper" class="user-loggedout not-editable container with-navbar with-navbar-fixed">
+
+				
+				<div class="row">
+					<div class="col-md-offset-2 col-md-10" role="main">
+								<div class="mw-body" id="content">
+			<div id="mw-js-message" style="display:none;"></div>
+									<h1 id="firstHeading" class="firstHeading page-header" lang="en"><span dir="auto">10.3inch e-Paper HAT</span></h1>
+									<!-- bodyContent -->
+			<div id="bodyContent">
+								<div id="siteSub">From Waveshare Wiki</div>
+								<div id="contentSub"></div>
+												<div id="jump-to-nav" class="mw-jump">
+					Jump to:					<a href="#mw-navigation">navigation</a>, 					<a href="#p-search">search</a>
+				</div>
+				<div id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><div class="mw-parser-output"><div class="wiki-pages jet-green-color">
+<table id="infotable" class="a-r at-c roundy bgd-green bl-white" style="margin-left: 5px; margin-bottom: 5px; width: 30%;">
+
+<tbody><tr>
+<td>
+<table class="at-c roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>10.3inch e-Paper</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><a href="https://www.waveshare.com/10.3inch-e-paper.htm" target="_blank" rel="nofollow noreferrer noopener"><img alt="10.3inch-e-Paper-1.jpg" src="/w/upload/thumb/7/7f/10.3inch-e-Paper-1.jpg/300px-10.3inch-e-Paper-1.jpg" decoding="async" loading="lazy" width="300" height="225" srcset="/w/upload/thumb/7/7f/10.3inch-e-Paper-1.jpg/450px-10.3inch-e-Paper-1.jpg 1.5x, /w/upload/thumb/7/7f/10.3inch-e-Paper-1.jpg/600px-10.3inch-e-Paper-1.jpg 2x" /></a><br />
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>10.3inch e-Paper HAT</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><a href="https://www.waveshare.com/10.3inch-e-paper-hat.htm" target="_blank" rel="nofollow noreferrer noopener"><img alt="10.3inch-e-Paper-HAT-1.jpg" src="/w/upload/thumb/a/a6/10.3inch-e-Paper-HAT-1.jpg/300px-10.3inch-e-Paper-HAT-1.jpg" decoding="async" loading="lazy" width="300" height="225" srcset="/w/upload/thumb/a/a6/10.3inch-e-Paper-HAT-1.jpg/450px-10.3inch-e-Paper-HAT-1.jpg 1.5x, /w/upload/thumb/a/a6/10.3inch-e-Paper-HAT-1.jpg/600px-10.3inch-e-Paper-HAT-1.jpg 2x" /></a><br />
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>10.3inch e-Paper HAT (G)</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><a href="https://www.waveshare.com/10.3inch-e-paper-hat-g.htm?sku=26936" target="_blank" rel="nofollow noreferrer noopener"><img alt="10.3-E-Paper Display (G).jpg" src="/w/upload/thumb/d/dc/10.3-E-Paper_Display_%28G%29.jpg/300px-10.3-E-Paper_Display_%28G%29.jpg" decoding="async" loading="lazy" width="300" height="225" srcset="/w/upload/d/dc/10.3-E-Paper_Display_%28G%29.jpg 1.5x" /></a><br />
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>10.3inch e-Paper (G)</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><a href="https://www.waveshare.com/10.3inch-e-paper-hat-g.htm?sku=26935" target="_blank" rel="nofollow noreferrer noopener"><img alt="10.3inch e-Paper (G).jpg" src="/w/upload/thumb/4/4f/10.3inch_e-Paper_%28G%29.jpg/300px-10.3inch_e-Paper_%28G%29.jpg" decoding="async" loading="lazy" width="300" height="300" srcset="/w/upload/thumb/4/4f/10.3inch_e-Paper_%28G%29.jpg/450px-10.3inch_e-Paper_%28G%29.jpg 1.5x, /w/upload/4/4f/10.3inch_e-Paper_%28G%29.jpg 2x" /></a><br /><br /><small>10.3inch e-Paper Display, 1872 × 1404, Black / White, 16 Grey Scales</small>
+</td></tr></tbody></table>
+</td></tr>
+<tr style="display:none;">
+<td>
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>{{{name5}}}</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><br />
+</td></tr></tbody></table>
+</td></tr>
+<tr style="display:none;">
+<td>
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>{{{name6}}}</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><br />
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="roundy" style="display:none;">
+<tbody><tr>
+<td style="width:2%;">
+</td>
+<td style="width:3%;">
+</td>
+<th colspan="2" width="90%" class="at-c roundytop bgl-white">Primary Attribute
+</th>
+<td style="width:3%;">
+</td>
+<td style="width:2%;">
+</td></tr>
+<tr>
+<td colspan="6" width="90px" class="at-c roundytl roundytr bgwhite b-green" style="border-width: 0 0 1px 0;"><b>Category:</b> <a href="/wiki/Category:OLEDs_/_LCDs" title="Category:OLEDs / LCDs">OLEDs / LCDs</a>, <a href="/wiki/Category:LCD" title="Category:LCD">LCD</a>, <a href="/w/index.php?title=Category:Display&amp;action=edit&amp;redlink=1" class="new" title="Category:Display (page does not exist)">e-Paper</a>
+</td></tr>
+<tr style="display:none;">
+<th colspan="3" width="90px" class="at-r bgwhite b-green" style="border-width: 0 0 1px 0;">{{{userDefinedInfo}}}:
+</th>
+<td colspan="3" class="at-l b-green bgwhite" style="border-width: 0 0 1px 0;">{{{userdefinedvalue}}}
+</td></tr>
+<tr style="display:none;">
+<td colspan="6" width="90px" class="at-c roundybl roundybr bgwhite"><b>Brand:</b> Waveshare
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="a-r roundy" style="display:none;">
+<tbody><tr>
+<td style="width:2%;">
+</td>
+<td style="width:3%;">
+</td>
+<th colspan="2" width="90%" class="at-c roundytop bgl-white">Website
+</th>
+<td style="width:3%;">
+</td>
+<td style="width:2%;">
+</td></tr>
+<tr>
+<td colspan="6" width="90px" class="at-c roundytl roundytr bgwhite b-green" style="border-width: 0 0 1px 0;"><b>International:</b> <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/10.3inch-e-paper.htm">10.3inch e-Paper</a>, <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/10.3inch-e-paper-hat.htm">10.3inch e-Paper HAT</a>
+</td></tr>
+<tr>
+<td colspan="6" width="90px" class="at-c roundybl roundybr bgwhite"><b>Chinese:</b> <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="http://www.waveshare.net">官方中文站点</a>
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="a-r roundy" style="background: transparent; border-collapse:collapse;width:100%;display:none;">
+<tbody><tr>
+<td style="width:2%;">
+</td>
+<td style="width:3%;">
+</td>
+<th colspan="2" width="90%" class="at-c roundytop bgl-white">Onboard Interfaces
+</th>
+<td style="width:3%;">
+</td>
+<td style="width:2%;">
+</td></tr>
+<tr>
+<td colspan="6" width="90px" class="at-l roundy bgwhite b-green" style="border-width: 0 0 1px 0;">
+<table class="roundy bgwhite fulltable" style="text-align:center;">
+
+<tbody><tr>
+<td class="roundy bl-gray bw-1" style="width:25%;;"><small><b><a href="/wiki/Category:SPI_interface" title="Category:SPI interface">SPI</a></b></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;;"><small><b><a href="/w/index.php?title=Category:I80_interface&amp;action=edit&amp;redlink=1" class="new" title="Category:I80 interface (page does not exist)">I80</a></b></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;;"><small><b><a href="/wiki/Category:USB_interface" title="Category:USB interface">USB</a></b></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td></tr>
+<tr>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td></tr>
+<tr>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td></tr>
+<tr>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td></tr>
+<tr>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="a-r roundy" style="background: transparent; border-collapse:collapse;width:100%;;display:none;">
+<tbody><tr>
+<td style="width:2%;">
+</td>
+<td style="width:3%;">
+</td>
+<th colspan="2" width="90%" class="at-c roundytop bgl-white">Related Products
+</th>
+<td style="width:3%;">
+</td>
+<td style="width:2%;">
+</td></tr>
+<tr>
+<td colspan="6" width="90px" class="at-l roundy bgwhite b-green" style="border-width: 0 0 1px 0;">
+<ul><li><a href="/wiki/4.3inch_e-Paper_UART_Module" title="4.3inch e-Paper UART Module">4.3inch e-Paper UART Module</a></li>
+<li><a href="/wiki/13.3inch_e-Paper_HAT" title="13.3inch e-Paper HAT">13.3inch e-Paper HAT</a></li>
+<li><a href="/wiki/13.3inch_HDMI_e-Paper" title="13.3inch HDMI e-Paper">13.3inch HDMI e-Paper</a></li>
+<li><a href="/wiki/12.48inch_e-Paper_Module" title="12.48inch e-Paper Module">12.48inch e-Paper Module</a></li>
+<li><a href="/wiki/12.48inch_e-Paper_Module_(B)" title="12.48inch e-Paper Module (B)">12.48inch e-Paper Module (B)</a></li>
+<li><a href="/wiki/10.3inch_HDMI_e-Paper" title="10.3inch HDMI e-Paper">10.3inch HDMI e-Paper</a></li>
+<li><a href="/wiki/10.3inch_e-Paper_HAT_(D)" title="10.3inch e-Paper HAT (D)">10.3inch e-Paper HAT (D)</a></li>
+<li><a class="mw-selflink selflink">10.3inch e-Paper HAT</a></li>
+<li><a href="/wiki/9.7inch_HDMI_e-Paper" title="9.7inch HDMI e-Paper">9.7inch HDMI e-Paper</a></li>
+<li><a href="/wiki/9.7inch_e-Paper_HAT" title="9.7inch e-Paper HAT">9.7inch e-Paper HAT</a></li>
+<li><a href="/wiki/7.8inch_e-Paper_HAT" title="7.8inch e-Paper HAT">7.8inch e-Paper HAT</a></li>
+<li><a href="/wiki/7.8inch_HDMI_e-Paper" title="7.8inch HDMI e-Paper">7.8inch HDMI e-Paper</a></li>
+<li><a href="/wiki/7.5inch_HD_e-Paper_HAT" title="7.5inch HD e-Paper HAT">7.5inch HD e-Paper HAT</a></li>
+<li><a href="/wiki/7.5inch_HD_e-Paper_HAT_(B)" title="7.5inch HD e-Paper HAT (B)">7.5inch HD e-Paper HAT (B)</a></li>
+<li><a href="/wiki/7.5inch_e-Paper_HAT" title="7.5inch e-Paper HAT">7.5inch e-Paper HAT</a></li>
+<li><a href="/wiki/7.5inch_e-Paper_HAT_(B)" title="7.5inch e-Paper HAT (B)">7.5inch e-Paper HAT (B)</a></li>
+<li><a href="/wiki/7.5inch_e-Paper_HAT_(C)" title="7.5inch e-Paper HAT (C)">7.5inch e-Paper HAT (C)</a></li>
+<li><a href="/wiki/7.5inch_e-Paper_(G)" class="mw-redirect" title="7.5inch e-Paper (G)">7.5inch e-Paper (G)</a></li>
+<li><a href="/wiki/7.5inch_NFC-Powered_e-Paper" title="7.5inch NFC-Powered e-Paper">7.5inch NFC-Powered e-Paper</a></li>
+<li><a href="/wiki/7.5inch_NFC-Powered_HD_e-Paper" title="7.5inch NFC-Powered HD e-Paper">7.5inch NFC-Powered HD e-Paper</a></li>
+<li><a href="/wiki/6inch_e-Paper_HAT" title="6inch e-Paper HAT">6inch e-Paper HAT</a></li>
+<li><a href="/wiki/6inch_HD_e-Paper_HAT" title="6inch HD e-Paper HAT">6inch HD e-Paper HAT</a></li>
+<li><a href="/wiki/5.83inch_e-Paper_HAT" title="5.83inch e-Paper HAT">5.83inch e-Paper HAT</a></li>
+<li><a href="/wiki/5.83inch_e-Paper_HAT_(B)" title="5.83inch e-Paper HAT (B)">5.83inch e-Paper HAT (B)</a></li>
+<li><a href="/wiki/5.83inch_e-Paper_HAT_(C)" title="5.83inch e-Paper HAT (C)">5.83inch e-Paper HAT (C)</a></li>
+<li><a href="/wiki/5.65inch_e-Paper_Module_(F)" title="5.65inch e-Paper Module (F)">5.65inch e-Paper Module (F)</a></li>
+<li><a href="/wiki/4.2inch_e-Paper_Cloud_Module" title="4.2inch e-Paper Cloud Module">4.2inch e-Paper Cloud Module</a></li>
+<li><a href="/wiki/4.2inch_e-Paper_Module" title="4.2inch e-Paper Module">4.2inch e-Paper Module</a></li>
+<li><a href="/wiki/4.2inch_e-Paper_Module_(B)" title="4.2inch e-Paper Module (B)">4.2inch e-Paper Module (B)</a></li>
+<li><a href="/wiki/4.2inch_e-Paper_Module_(C)" title="4.2inch e-Paper Module (C)">4.2inch e-Paper Module (C)</a></li>
+<li><a href="/wiki/4.2inch_NFC-Powered_e-Paper" title="4.2inch NFC-Powered e-Paper">4.2inch NFC-Powered e-Paper</a></li>
+<li><a href="/wiki/4.01inch_e-Paper_Module_(F)" class="mw-redirect" title="4.01inch e-Paper Module (F)">4.01inch e-Paper (F)</a></li>
+<li><a href="/wiki/4.01inch_e-Paper_HAT_(F)" title="4.01inch e-Paper HAT (F)">4.01inch e-Paper HAT (F)</a></li>
+<li><a href="/wiki/3.7inch_e-Paper_HAT" title="3.7inch e-Paper HAT">3.7inch e-Paper</a></li>
+<li><a href="/wiki/3.7inch_e-Paper_HAT" title="3.7inch e-Paper HAT">3.7inch e-Paper HAT</a></li>
+<li><a href="/wiki/2.9inch_e-Paper_Module" title="2.9inch e-Paper Module">2.9inch e-Paper Module</a></li>
+<li><a href="/wiki/2.9inch_e-Paper_Module_(B)" title="2.9inch e-Paper Module (B)">2.9inch e-Paper Module (B)</a></li>
+<li><a href="/wiki/2.9inch_e-Paper_Module_(C)" title="2.9inch e-Paper Module (C)">2.9inch e-Paper Module (C)</a></li>
+<li><a href="/wiki/2.9inch_e-Paper_HAT_(D)" title="2.9inch e-Paper HAT (D)">2.9inch e-Paper HAT (D)</a></li>
+<li><a href="/wiki/2.9inch_Touch_e-Paper_HAT" title="2.9inch Touch e-Paper HAT">2.9inch Touch e-Paper HAT</a></li>
+<li><a href="/wiki/2.9inch_NFC-Powered_e-Paper" title="2.9inch NFC-Powered e-Paper">2.9inch NFC-Powered e-Paper</a></li>
+<li><a href="/wiki/2.7inch_NFC-Powered_e-Paper_Module" title="2.7inch NFC-Powered e-Paper Module">2.7inch NFC-Powered e-Paper Module</a></li>
+<li><a href="/wiki/2.7inch_e-Paper_HAT" title="2.7inch e-Paper HAT">2.7inch e-Paper HAT</a></li>
+<li><a href="/wiki/2.7inch_e-Paper_HAT_(B)" title="2.7inch e-Paper HAT (B)">2.7inch e-Paper HAT (B)</a></li>
+<li><a href="/wiki/2.66inch_e-Paper_Module" title="2.66inch e-Paper Module"> 2.66.inch e-Paper</a></li>
+<li><a href="/wiki/2.66inch_e-Paper_Module" title="2.66inch e-Paper Module">2.66inch e-Paper Module</a></li>
+<li><a href="/wiki/2.66inch_e-Paper_Module_(B)" title="2.66inch e-Paper Module (B)"> 2.66inch e-Paper (B)</a></li>
+<li><a href="/wiki/2.66inch_e-Paper_Module_(B)" title="2.66inch e-Paper Module (B)">2.66inch e-Paper Module (B)</a></li>
+<li><a href="/wiki/2.13inch_e-Paper_Cloud_Module" title="2.13inch e-Paper Cloud Module">2.13inch e-Paper Cloud Module</a></li>
+<li><a href="/wiki/2.13inch_e-Paper_HAT" title="2.13inch e-Paper HAT">2.13inch e-Paper HAT</a></li>
+<li><a href="/wiki/2.13inch_e-Paper_HAT_(B)" title="2.13inch e-Paper HAT (B)">2.13inch e-Paper HAT (B)</a></li>
+<li><a href="/wiki/2.13inch_e-Paper_HAT_(C)" title="2.13inch e-Paper HAT (C)">2.13inch e-Paper HAT (C)</a></li>
+<li><a href="/wiki/2.13inch_e-Paper_HAT_(D)" title="2.13inch e-Paper HAT (D)">2.13inch e-Paper HAT (D)</a></li>
+<li><a href="/wiki/2.13inch_Touch_e-Paper_HAT" title="2.13inch Touch e-Paper HAT">2.13inch Touch e-Paper HAT</a></li>
+<li><a href="/wiki/2.13inch_NFC-Powered_e-Paper" title="2.13inch NFC-Powered e-Paper">2.13inch NFC-Powered e-Paper</a></li>
+<li><a href="/wiki/1.54inch_NFC-Powered_e-Paper_(BB)" title="1.54inch NFC-Powered e-Paper (BB)">1.54inch NFC-Powered e-Paper (BB)</a></li>
+<li><a href="/wiki/1.54inch_NFC-Powered_e-Paper_(BW)" class="mw-redirect" title="1.54inch NFC-Powered e-Paper (BW)">1.54inch NFC-Powered e-Paper (BW)</a></li>
+<li><a href="/wiki/1.54inch_e-Paper_Module" title="1.54inch e-Paper Module">1.54inch e-Paper Module</a></li>
+<li><a href="/wiki/1.54inch_e-Paper_Module_(B)" title="1.54inch e-Paper Module (B)">1.54inch e-Paper Module (B)</a></li>
+<li><a href="/wiki/1.54inch_e-Paper_Module_(C)" title="1.54inch e-Paper Module (C)">1.54inch e-Paper Module (C)</a></li>
+<li><a href="/w/index.php?title=1.02inch_e-paper_Module&amp;action=edit&amp;redlink=1" class="new" title="1.02inch e-paper Module (page does not exist)">1.02inch e-paper Module</a></li>
+<li><a href="/wiki/E-Paper_Driver_HAT" title="E-Paper Driver HAT">e-Paper Driver HAT</a></li>
+<li><a href="/wiki/EINK-DISP-103" title="EINK-DISP-103">EINK-DISP-103</a></li>
+<li><a href="/wiki/E-Paper_Shield" title="E-Paper Shield">E-Paper Shield</a></li>
+<li><a href="/wiki/E-Paper_ESP8266_Driver_Board" title="E-Paper ESP8266 Driver Board">e-Paper ESP8266 Driver Board</a></li>
+<li><a href="/wiki/E-Paper_ESP32_Driver_Board" title="E-Paper ESP32 Driver Board">E-Paper ESP32 Driver Board</a></li></ul>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+<div id="toc" class="toc" role="navigation" aria-labelledby="mw-toc-heading"><input type="checkbox" role="button" id="toctogglecheckbox" class="toctogglecheckbox" style="display:none" /><div class="toctitle" lang="en" dir="ltr"><h2 id="mw-toc-heading">Contents</h2><span class="toctogglespan"><label class="toctogglelabel" for="toctogglecheckbox"></label></span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#Overview"><span class="tocnumber">1</span> <span class="toctext">Overview</span></a>
+<ul>
+<li class="toclevel-2 tocsection-2"><a href="#Introduction"><span class="tocnumber">1.1</span> <span class="toctext">Introduction</span></a></li>
+<li class="toclevel-2 tocsection-3"><a href="#Features"><span class="tocnumber">1.2</span> <span class="toctext">Features</span></a></li>
+<li class="toclevel-2 tocsection-4"><a href="#Specifications"><span class="tocnumber">1.3</span> <span class="toctext">Specifications</span></a></li>
+<li class="toclevel-2 tocsection-5"><a href="#Working_principle"><span class="tocnumber">1.4</span> <span class="toctext">Working principle</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-6"><a href="#How_to_use"><span class="tocnumber">2</span> <span class="toctext">How to use</span></a>
+<ul>
+<li class="toclevel-2 tocsection-7"><a href="#Working_with_Windows_PC_.28USB.29"><span class="tocnumber">2.1</span> <span class="toctext">Working with Windows PC (USB)</span></a></li>
+<li class="toclevel-2 tocsection-8"><a href="#Working_with_Raspberry_Pi_.28SPI.29"><span class="tocnumber">2.2</span> <span class="toctext">Working with Raspberry Pi (SPI)</span></a></li>
+<li class="toclevel-2 tocsection-9"><a href="#Working_with_STM32_.28SPI_or_I80.29"><span class="tocnumber">2.3</span> <span class="toctext">Working with STM32 (SPI or I80)</span></a>
+<ul>
+<li class="toclevel-3 tocsection-10"><a href="#SPI"><span class="tocnumber">2.3.1</span> <span class="toctext">SPI</span></a></li>
+<li class="toclevel-3 tocsection-11"><a href="#I80"><span class="tocnumber">2.3.2</span> <span class="toctext">I80</span></a></li>
+<li class="toclevel-3 tocsection-12"><a href="#Display_pictures"><span class="tocnumber">2.3.3</span> <span class="toctext">Display pictures</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-13"><a href="#Precaution"><span class="tocnumber">3</span> <span class="toctext">Precaution</span></a>
+<ul>
+<li class="toclevel-2 tocsection-14"><a href="#Hardware_connection"><span class="tocnumber">3.1</span> <span class="toctext">Hardware connection</span></a></li>
+<li class="toclevel-2 tocsection-15"><a href="#DIP_switch"><span class="tocnumber">3.2</span> <span class="toctext">DIP switch</span></a></li>
+<li class="toclevel-2 tocsection-16"><a href="#SPI_or_I80_driver"><span class="tocnumber">3.3</span> <span class="toctext">SPI or I80 driver</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#Codes_Description"><span class="tocnumber">4</span> <span class="toctext">Codes Description</span></a>
+<ul>
+<li class="toclevel-2"><a href="#New_Features"><span class="tocnumber">4.1</span> <span class="toctext">New Features</span></a></li>
+<li class="toclevel-2"><a href="#Examples_Description"><span class="tocnumber">4.2</span> <span class="toctext">Examples Description</span></a>
+<ul>
+<li class="toclevel-3"><a href="#Display_16_bars_in_grayscale_order"><span class="tocnumber">4.2.1</span> <span class="toctext">Display 16 bars in grayscale order</span></a></li>
+<li class="toclevel-3"><a href="#Draw_dots.2C_lines.2C_circles.2C_rectangles_and_write_characters"><span class="tocnumber">4.2.2</span> <span class="toctext">Draw dots, lines, circles, rectangles and write characters</span></a></li>
+<li class="toclevel-3"><a href="#Display_BMP_image"><span class="tocnumber">4.2.3</span> <span class="toctext">Display BMP image</span></a></li>
+<li class="toclevel-3"><a href="#Refresh_in_A2_mode"><span class="tocnumber">4.2.4</span> <span class="toctext">Refresh in A2 mode</span></a></li>
+<li class="toclevel-3"><a href="#Display_GIF_image"><span class="tocnumber">4.2.5</span> <span class="toctext">Display GIF image</span></a></li>
+<li class="toclevel-3"><a href="#FPS_Testing"><span class="tocnumber">4.2.6</span> <span class="toctext">FPS Testing</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2"><a href="#Related_Description"><span class="tocnumber">4.3</span> <span class="toctext">Related Description</span></a>
+<ul>
+<li class="toclevel-3"><a href="#Mode"><span class="tocnumber">4.3.1</span> <span class="toctext">Mode</span></a></li>
+<li class="toclevel-3"><a href="#bpp"><span class="tocnumber">4.3.2</span> <span class="toctext">bpp</span></a></li>
+<li class="toclevel-3"><a href="#4-byte_alignment_description"><span class="tocnumber">4.3.3</span> <span class="toctext">4-byte alignment description</span></a></li>
+<li class="toclevel-3"><a href="#SPI_transmission_speed_description"><span class="tocnumber">4.3.4</span> <span class="toctext">SPI transmission speed description</span></a></li>
+<li class="toclevel-3"><a href="#Enhance_driving_capability"><span class="tocnumber">4.3.5</span> <span class="toctext">Enhance driving capability</span></a></li>
+<li class="toclevel-3"><a href="#Use_the_correct_VCOM_value"><span class="tocnumber">4.3.6</span> <span class="toctext">Use the correct VCOM value</span></a></li>
+<li class="toclevel-3 tocsection-17"><a href="#Development_Notes"><span class="tocnumber">4.3.7</span> <span class="toctext">Development Notes</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-18"><a href="#Resources"><span class="tocnumber">5</span> <span class="toctext">Resources</span></a>
+<ul>
+<li class="toclevel-2 tocsection-19"><a href="#Documentation"><span class="tocnumber">5.1</span> <span class="toctext">Documentation</span></a></li>
+<li class="toclevel-2 tocsection-20"><a href="#Demo_code"><span class="tocnumber">5.2</span> <span class="toctext">Demo code</span></a></li>
+<li class="toclevel-2 tocsection-21"><a href="#Third_Parties_Examples"><span class="tocnumber">5.3</span> <span class="toctext">Third Parties Examples</span></a></li>
+<li class="toclevel-2 tocsection-22"><a href="#Datasheet"><span class="tocnumber">5.4</span> <span class="toctext">Datasheet</span></a></li>
+<li class="toclevel-2 tocsection-23"><a href="#Other_documents"><span class="tocnumber">5.5</span> <span class="toctext">Other documents</span></a></li>
+<li class="toclevel-2 tocsection-24"><a href="#Software"><span class="tocnumber">5.6</span> <span class="toctext">Software</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1"><a href="#FAQ"><span class="tocnumber">6</span> <span class="toctext">FAQ</span></a>
+<ul>
+<li class="toclevel-2"><a href="#Questions_About_Software_.26_Hardware"><span class="tocnumber">6.1</span> <span class="toctext">Questions About Software &amp; Hardware</span></a></li>
+<li class="toclevel-2"><a href="#Questions_About_Screen"><span class="tocnumber">6.2</span> <span class="toctext">Questions About Screen</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-25"><a href="#Support"><span class="tocnumber">7</span> <span class="toctext">Support</span></a></li>
+</ul>
+</div>
+
+<h1><span class="mw-headline" id="Overview">Overview</span></h1>
+<ul><li><font color="#FF0000"><b> Note: As the screen of the 10.3-inch e-Paper is large, the glass panel and FPC are fragile. Hence, please be careful when using it for development. It is recommended to reinforce the FPC with scotch tape when developing. Please connect all the cables before powering the device, the device cannot support a hot plug.</b></font><br /></li>
+<li>There are two versions: raw panel and HAT. Driver board (IT8951) is required for the raw panel, if you are the first time buying this product, we recommend you choose the HAT version which comes with the driver board.</li></ul>
+<h2><span class="mw-headline" id="Introduction">Introduction</span></h2>
+<ul><li>10.3inch EPD (Electronic Paper Display) HAT for Raspberry Pi, 1872 x 1404 resolution, with embedded controller IT8951, USB/SPI/I80/I2C interface, supports partial refresh.</li>
+<li>It has the advantages of low power consumption, wide viewing angle, and clear display under direct sunlight, and is often used in display applications such as ebook reader, e-ink display and industrial instruments.</li></ul>
+<table>
+
+<tbody><tr>
+<td><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="http://www.waveshare.com/7.8inch-e-paper-hat.htm?amazon">More</a>
+</td></tr></tbody></table>
+<h2><span class="mw-headline" id="Features">Features</span></h2>
+<ul><li>No backlight, keeps displaying the latest content for a long time even when power is down.</li>
+<li>Low power consumption, basically power is only required for refreshing.</li>
+<li>Standard Raspberry Pi 40PIN GPIO extension header, supports Raspberry Pi series boards.</li>
+<li>USB/SPI/I80/I2C interface, for connecting with host boards like Raspberry Pi/Nucleo, etc.</li>
+<li>Comes with online development resources and manual (examples for Raspberry Pi/STM32).</li></ul>
+<h2><span class="mw-headline" id="Specifications">Specifications</span></h2>
+<ul><li>Operating voltage: 5V</li>
+<li>Interface: USB/SPI/I80</li>
+<li>Outline dimension: 216.70 × 174.40 × 0.78mm</li>
+<li>Display size: 209.66 × 157.25mm</li>
+<li>Dot pitch: 0.112 × 0.112mm</li>
+<li>Resolution: 1872 × 1404</li>
+<li>Display color: black, white</li>
+<li>Grayscale: 2-16 (1-4 bit)</li>
+<li>Full refresh time: &lt;1s</li>
+<li>Total refresh power: 1.2W(typ.)</li>
+<li>Total standby power: 0.1W(typ.)</li>
+<li>Viewing angle: &gt;170°</li>
+<li>Operation Temperature: 0 ~ 50 ℃</li>
+<li>Storage Temperature: -25 ~ 70 ℃</li></ul>
+<p>【Note】:<br />
+Refresh Time: The refresh time is based on experimental test data, and actual refresh time may vary. Actual performance should be considered. During the global refresh process, there may be flickering, which is a normal phenomenon.<br />
+Refresh Power Consumption: Power consumption data is based on experimental test data. Actual power consumption may vary due to the presence of driver boards and different usage scenarios. Actual performance should be considered.<br />
+Refreshing in low-temperature environments may result in color deviation. It is recommended to stabilize at 25℃ for 6 hours before refreshing.
+</p>
+<h2><span class="mw-headline" id="Working_principle">Working principle</span></h2>
+<p>The electronic paper in this product adopts the "microcapsule electrophoresis display" technology. The principle is that the charged nanoparticles suspended in the liquid are migrated by the electric field. The e-paper screen displays patterns by reflecting ambient light and does not require a backlight. Under ambient light, the e-paper display screen is clearly visible, with a viewing angle of almost 180°. Therefore, the e-paper display is perfect for reading.(<b>Note that the e-Paper cannot support updating directly under sunlight.</b>)
+</p>
+<h1><span class="mw-headline" id="How_to_use">How to use</span></h1>
+<h2><span id="Working_with_Windows_PC_(USB)"></span><span class="mw-headline" id="Working_with_Windows_PC_.28USB.29">Working with Windows PC (USB)</span></h2>
+<ul><li>Step 1: Connect the display to IT8951 driver board as below:</li></ul>
+<p><a href="/wiki/File:10.3inch_e-Paper_3.jpg" class="image"><img alt="10.3inch e-Paper 3.jpg" src="/w/upload/thumb/c/c6/10.3inch_e-Paper_3.jpg/500px-10.3inch_e-Paper_3.jpg" decoding="async" loading="lazy" width="500" height="375" srcset="/w/upload/thumb/c/c6/10.3inch_e-Paper_3.jpg/750px-10.3inch_e-Paper_3.jpg 1.5x, /w/upload/thumb/c/c6/10.3inch_e-Paper_3.jpg/1000px-10.3inch_e-Paper_3.jpg 2x" /></a>
+</p>
+<ul><li>Step 2: Connect the USB interface of the IT8951 driver board to the PC.</li>
+<li>Step 3: Download and open <a href="#Software">E-LINK-TCON-DEMO</a> software.</li>
+<li>Step 4: Click Connect below:</li></ul>
+<p><a href="/wiki/File:10.3inch-e-Paper-HAT-D-Manual-02.jpg" class="image"><img alt="10.3inch-e-Paper-HAT-D-Manual-02.jpg" src="/w/upload/thumb/c/c8/10.3inch-e-Paper-HAT-D-Manual-02.jpg/500px-10.3inch-e-Paper-HAT-D-Manual-02.jpg" decoding="async" loading="lazy" width="500" height="339" srcset="/w/upload/thumb/c/c8/10.3inch-e-Paper-HAT-D-Manual-02.jpg/750px-10.3inch-e-Paper-HAT-D-Manual-02.jpg 1.5x, /w/upload/c/c8/10.3inch-e-Paper-HAT-D-Manual-02.jpg 2x" /></a>
+</p>
+<ul><li>Step 5.1: Check option "EnMirror", as shown below:</li></ul>
+<p><a href="/wiki/File:10.3inch-e-Paper-HAT-D-Manual21.jpg" class="image"><img alt="10.3inch-e-Paper-HAT-D-Manual21.jpg" src="/w/upload/thumb/a/ae/10.3inch-e-Paper-HAT-D-Manual21.jpg/500px-10.3inch-e-Paper-HAT-D-Manual21.jpg" decoding="async" loading="lazy" width="500" height="357" srcset="/w/upload/thumb/a/ae/10.3inch-e-Paper-HAT-D-Manual21.jpg/750px-10.3inch-e-Paper-HAT-D-Manual21.jpg 1.5x, /w/upload/a/ae/10.3inch-e-Paper-HAT-D-Manual21.jpg 2x" /></a>
+</p>
+<ul><li>Step 5.2: Check option "AutoSet", then click "Open File" to open one picture for display. The browse diagram will be opened, and you should click "OK".</li></ul>
+<p><a href="/wiki/File:10.3inch-e-Paper-HAT-D-Manual-03.jpg" class="image"><img alt="10.3inch-e-Paper-HAT-D-Manual-03.jpg" src="/w/upload/thumb/3/3e/10.3inch-e-Paper-HAT-D-Manual-03.jpg/500px-10.3inch-e-Paper-HAT-D-Manual-03.jpg" decoding="async" loading="lazy" width="500" height="140" srcset="/w/upload/thumb/3/3e/10.3inch-e-Paper-HAT-D-Manual-03.jpg/750px-10.3inch-e-Paper-HAT-D-Manual-03.jpg 1.5x, /w/upload/thumb/3/3e/10.3inch-e-Paper-HAT-D-Manual-03.jpg/1000px-10.3inch-e-Paper-HAT-D-Manual-03.jpg 2x" /></a>
+</p>
+<ul><li>Step 6: Click "display" to refresh the picture.</li></ul>
+<p><a href="/wiki/File:10.3inch-e-Paper-HAT-D-Manual-04.jpg" class="image"><img alt="10.3inch-e-Paper-HAT-D-Manual-04.jpg" src="/w/upload/thumb/3/3d/10.3inch-e-Paper-HAT-D-Manual-04.jpg/500px-10.3inch-e-Paper-HAT-D-Manual-04.jpg" decoding="async" loading="lazy" width="500" height="341" srcset="/w/upload/thumb/3/3d/10.3inch-e-Paper-HAT-D-Manual-04.jpg/750px-10.3inch-e-Paper-HAT-D-Manual-04.jpg 1.5x, /w/upload/3/3d/10.3inch-e-Paper-HAT-D-Manual-04.jpg 2x" /></a><br />
+<font color="#FF0000">
+Note: If you want to use the USB interface to develop the e-Paper on Windows, you need to contact the Waveshare team and sign the NDA before you can get the E-LINK-TCON-DEMO source code.<br /></font>
+<font color="#FF0000">Note: Currently not available for individual users.</font>
+</p>
+<h2><span id="Working_with_Raspberry_Pi_(SPI)"></span><span class="mw-headline" id="Working_with_Raspberry_Pi_.28SPI.29">Working with Raspberry Pi (SPI)</span></h2>
+<ul><li>Step 1: Insert IT8951 driver board to GPIO of Raspberry Pi, connect e-Paper to the driver board. Communicate with Raspberry PI using SPI interface.</li></ul>
+<p><a href="/wiki/File:10.3inch_e-Paper_4.jpg" class="image"><img alt="10.3inch e-Paper 4.jpg" src="/w/upload/5/59/10.3inch_e-Paper_4.jpg" decoding="async" loading="lazy" width="1440" height="1080" /></a><br />
+You can also connect by wires. 
+</p>
+<table border="1" width="700px">
+<caption>Connect to Raspberry Pi via SPI
+</caption>
+<tbody><tr align="center" style="background:green;color:white;">
+<td><b>IT8951 Driver HAT</b></td>
+<td><b>Raspberry Pi (BCM)</b></td>
+<td><b>Description</b>
+</td></tr>
+<tr align="center">
+<td>5V</td>
+<td>5V</td>
+<td>5V power input
+</td></tr>
+<tr align="center">
+<td>GND</td>
+<td>GND</td>
+<td>Ground
+</td></tr>
+<tr align="center">
+<td>MISO</td>
+<td>P9</td>
+<td>MISO Pin of SPI
+</td></tr>
+<tr align="center">
+<td>MOSI</td>
+<td>P10</td>
+<td>MOSI Pin of SPI
+</td></tr>
+<tr align="center">
+<td>SCK</td>
+<td>P11</td>
+<td>SCK Pin of SPI
+</td></tr>
+<tr align="center">
+<td>CS</td>
+<td>P8</td>
+<td>Chip selection of SPI (Low active)
+</td></tr>
+<tr align="center">
+<td>RST</td>
+<td>P17</td>
+<td>Reset pin (Low active)
+</td></tr>
+<tr align="center">
+<td>HRDY</td>
+<td>P24</td>
+<td>Busy status pin (Low when busy)
+</td></tr></tbody></table>
+<ul><li>Step 2: Make sure you have switched the dip switch to SPI mode.</li></ul>
+<p><a href="/wiki/File:10.3inch_e-Paper_5.jpg" class="image"><img alt="10.3inch e-Paper 5.jpg" src="/w/upload/7/7a/10.3inch_e-Paper_5.jpg" decoding="async" loading="lazy" width="324" height="146" /></a>
+</p>
+<ul><li>Step 3: Install the C function library, open the Raspberry Pi terminal, and execute the following codes:</li></ul>
+<p>1. Install BCM2835 libraries (Recommended for Pi4 (faster)).
+</p>
+<pre>wget http://www.airspayce.com/mikem/bcm2835/bcm2835-1.60.tar.gz
+tar zxvf bcm2835-1.60.tar.gz
+cd bcm2835-1.60
+./configure
+make
+sudo make check
+sudo make install
+#For more details, you can refer to http://www.airspayce.com/mikem/bcm2835/
+</pre>
+<p>2. Install lg library (Recommended for Pi5, BCM library currently does not support Pi5):
+</p>
+<pre>#Open the Raspberry Pi terminal and run the following commands:
+wget https://github.com/joan2937/lg/archive/master.zip
+unzip master.zip
+cd lg-master
+make
+sudo make install
+# For more details, you can refer to: https://github.com/gpiozero/lg
+</pre>
+<p>3. Install gpiod library (optional):
+</p>
+<pre>#Open the Raspberry Pi terminal and run the following commands:
+sudo apt-get update
+sudo apt install gpiod libgpiod-dev
+</pre>
+<ul><li>Step 4: Enable SPI interface.</li></ul>
+<p>The Raspberry Pi adopts SPI driver IT8951 for driving the e-Paper, hence, you need to open the SPI first:<br />
+Open the terminal command line and input:
+</p>
+<pre>sudo raspi-config
+</pre>
+<p>Choose Interfacing Options -&gt; P4 -&gt; SPI -&gt; Yes.<br />
+<a href="/wiki/File:7.8inch_e-Paper_HAT_RPI01.png" class="image"><img alt="7.8inch e-Paper HAT RPI01.png" src="/w/upload/b/bc/7.8inch_e-Paper_HAT_RPI01.png" decoding="async" loading="lazy" width="400" height="239" /></a><br />
+If you use lg or gpiod library, you need to execute the following commands:
+</p>
+<pre># Input the commands:
+sudo nano /boot/config.txt
+# Command out dtparam=spi=on and add
+dtoverlay=spi0-0cs
+</pre>
+<p><a href="/wiki/File:E-Paper_lg.jpg" class="image"><img alt="E-Paper lg.jpg" src="/w/upload/7/79/E-Paper_lg.jpg" decoding="async" loading="lazy" width="644" height="182" /></a><br />
+Input " sudo reboot " to reboot the Raspberry Pi to activate the configuration.
+</p>
+<ul><li>Step 5: Download demo codes and compile them.</li></ul>
+<p>Method 1: Download from our website. (Recommended)
+</p>
+<pre>sudo apt-get install p7zip-full
+sudo wget  https://files.waveshare.com/upload/8/80/IT8951_20200319_Release.7z
+7z x IT8951_20200319_Release.7z -O./IT8951
+cd IT8951/
+sudo make clean
+sudo make -j4
+# The BCM library is used by default, if you want to use other libraries, please change them in the Makefile or use the following commands:
+make -j4 LIB=LGPIO     # for using lg library
+make -j4 LIB=GPIOD     # for using gpiod library
+</pre>
+<p>Method 2: Download from GitHub:
+</p>
+<pre>git clone https://github.com/waveshare/IT8951-ePaper.git
+cd IT8951-ePaper/Raspberry
+sudo make clean
+sudo make -j4
+# The BCM library is used by default, if you want to use other libraries, please change them in the Makefile or use the following commands:
+make -j4 LIB=LGPIO     # for using lg library
+make -j4 LIB=GPIOD     # for using gpiod library
+</pre>
+<ul><li>Check the VCOM value on the FPC.</li></ul>
+<dl><dd><a href="/wiki/File:6inch-HD-e-Paper-HAT-Manual-06.png" class="image"><img alt="6inch-HD-e-Paper-HAT-Manual-06.png" src="/w/upload/f/f6/6inch-HD-e-Paper-HAT-Manual-06.png" decoding="async" loading="lazy" width="500" height="254" /></a></dd></dl>
+<p>Add the VCOM value as a parameter and take the display mode as a input parameter, and this model is mode 1.
+</p>
+<pre>sudo ./epd -1.50 1
+</pre>
+<ul><li>Demo execution phenomenon:</li></ul>
+<p>1) First, the e-paper will refresh the 16 gray bars partially in sequence.
+</p><p>2) Then demonstrate the demo of drawing lines, circles, rectangles, characters, and numbers.
+</p><p>3) Then respectively demonstrate the demo of displaying BMP pictures in 1bp, 2bp, and 4bp modes.
+</p><p>4) Next, demonstrate the effect of fast refresh in A2 mode.
+</p><p>5) Then display a gif animation.
+</p><p>6) Then demonstrate a Demo that counts the frame rate.
+</p><p>7) Finally, the e-paper is whitened in Init mode for long-term storage.
+</p>
+<h2><span id="Working_with_STM32_(SPI_or_I80)"></span><span class="mw-headline" id="Working_with_STM32_.28SPI_or_I80.29">Working with STM32 (SPI or I80)</span></h2>
+<p><b>Driver interface selection</b>
+</p>
+<ul><li>Drive by SPI mode (recommended), the advantage is that it occupies fewer pins, the drive mode is simple, and the communication speed can meet the needs of most scenarios.</li>
+<li>Adopt 180 mode drive (I80 interface is only considered when the SPI interface communication speed does not meet the application requirements), the advantage is that the drive mode is relatively simple, and the communication speed is very fast, but it occupies a lot of pins.</li>
+<li>Adopt an I2C driver (not recommended, the communication speed is very slow).</li></ul>
+<p><b> Driver board selection</b><br />
+Since IT8951 needs to occupy a relatively large RAM space, the general STM32 single-chip microcomputer can not directly satisfy it, and additional chips such as SDRAM are required for RAM expansion. For the test here, we use <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/open429i-c-standard.htm">Open429I</a> as the test board, and its onboard IS42S16400J (64-MBIT) SDRAM can fully meet the requirements of driving 10.3inch e- paper HAT.
+</p>
+<h3><span class="mw-headline" id="SPI">SPI</span></h3>
+<p>1) Follow the table below for hardware connection:
+</p>
+<table border="1">
+
+<tbody><tr align="center" style="background:green;color:white;">
+<td><b>IT8951 Driver HAT</b></td>
+<td><b>STM32</b></td>
+<td><b>Description</b>
+</td></tr>
+<tr>
+<td>5V</td>
+<td>5V</td>
+<td>5V power input
+</td></tr>
+<tr>
+<td>GND</td>
+<td>GND</td>
+<td>Ground
+</td></tr>
+<tr>
+<td>MISO</td>
+<td>PE13</td>
+<td>MISO Pin of SPI
+</td></tr>
+<tr>
+<td>MOSI</td>
+<td>PE14</td>
+<td>MOSI Pin of SPI
+</td></tr>
+<tr>
+<td>SCK</td>
+<td>PE12</td>
+<td>SCK Pin of SPI
+</td></tr>
+<tr>
+<td>CS</td>
+<td>PE11</td>
+<td>Chip selection of SPI (Low active)
+</td></tr>
+<tr>
+<td>RST</td>
+<td>PC5</td>
+<td>Reset pin (Low active)
+</td></tr>
+<tr>
+<td>HRDY</td>
+<td>PA7</td>
+<td>Busy status pin (Low when busy)
+</td></tr></tbody></table>
+<div class="thumb tright"><div class="thumbinner" style="width:302px;"><a href="/wiki/File:10.3inch_e-Paper_5.jpg" class="image"><img alt="10.3inch e-Paper 5.jpg" src="/w/upload/thumb/7/7a/10.3inch_e-Paper_5.jpg/300px-10.3inch_e-Paper_5.jpg" decoding="async" loading="lazy" width="300" height="135" class="thumbimage" srcset="/w/upload/7/7a/10.3inch_e-Paper_5.jpg 1.5x" /></a>  <div class="thumbcaption"><div class="magnify"><a href="/wiki/File:10.3inch_e-Paper_5.jpg" class="internal" title="Enlarge"></a></div></div></div></div>
+<p>2) Set the DIP switch to SPI mode.<br />
+</p><p>3) Use the DEMO to refresh the picture.<br />
+You can download the <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/d/da/Open429I-C-6-IT8951-Demo.7z">Demo code</a>.
+</p><p>Open the project with Keil: Open429I-C-6-IT8951-Demo\Project\6-IT8951\MDK-ARM\Project.uvproj
+</p><p>Compile it, then open IT8951.h, and check if IT8951_Interface_SPI is defined. Compile it again and download it to your board. After a few seconds, you should be able to see the e-paper start displaying images in a loop.
+</p><p><a href="/wiki/File:9.7inch-e-Paper-HAT-Manual-15.jpg" class="image"><img alt="9.7inch-e-Paper-HAT-Manual-15.jpg" src="/w/upload/8/80/9.7inch-e-Paper-HAT-Manual-15.jpg" decoding="async" loading="lazy" width="632" height="289" /></a>
+</p><p>4) The information will be printed as below (115200, 8N1):
+</p><p><a href="/wiki/File:10.3inch-e-Paper-HAT-D-Manual-09.jpg" class="image"><img alt="10.3inch-e-Paper-HAT-D-Manual-09.jpg" src="/w/upload/b/b4/10.3inch-e-Paper-HAT-D-Manual-09.jpg" decoding="async" loading="lazy" width="200" height="185" /></a>
+</p>
+<h3><span class="mw-headline" id="I80">I80</span></h3>
+<p>1） Hardware connection:
+</p>
+<table border="1" width="500px">
+<caption>Connect to STM32F429IGT6 (I80)
+</caption>
+<tbody><tr style="background:#2E8B57; color:white" align="center">
+<td>IT8951</td>
+<td>STM32</td>
+<td>Description
+</td></tr>
+<tr>
+<td>Vcc</td>
+<td>5V</td>
+<td>5V Power input
+</td></tr>
+<tr>
+<td>GND</td>
+<td>GND</td>
+<td>Ground
+</td></tr>
+<tr>
+<td>DBUS0~DBUS15</td>
+<td>PB0~PB15</td>
+<td>Data pins
+</td></tr>
+<tr>
+<td>HWE</td>
+<td>PC1</td>
+<td>Write enable (Low active)
+</td></tr>
+<tr>
+<td>D/C</td>
+<td>PC7</td>
+<td>Data/Command (Low for command)
+</td></tr>
+<tr>
+<td>CSEL</td>
+<td>PC6</td>
+<td>Chip select (Low active)
+</td></tr>
+<tr>
+<td>HRD</td>
+<td>PC3</td>
+<td>Read enable (Low for active)
+</td></tr>
+<tr>
+<td>RST</td>
+<td>PC0</td>
+<td>Reset (Low for reset)
+</td></tr>
+<tr>
+<td>BUSY</td>
+<td>PA7</td>
+<td>Busy state output (Low for busy)
+</td></tr></tbody></table>
+<div class="thumb tright"><div class="thumbinner" style="width:169px;"><a href="/wiki/File:10.3inch_e-Paper_6.png" class="image"><img alt="10.3inch e-Paper 6.png" src="/w/upload/1/11/10.3inch_e-Paper_6.png" decoding="async" loading="lazy" width="167" height="156" class="thumbimage" /></a>  <div class="thumbcaption"><div class="magnify"><a href="/wiki/File:10.3inch_e-Paper_6.png" class="internal" title="Enlarge"></a></div></div></div></div>
+<p>2) Set the DIP switch to I80 mode.
+</p><p>3) Use the DEMO to refresh the picture.
+</p><p>You can download the <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/d/da/Open429I-C-6-IT8951-Demo.7z">Demo code</a>.
+</p><p>Open the project with Keil: Open429I-C-6-IT8951-Demo\Project\6-IT8951\MDK-ARM\Project.uvproj
+</p><p>Compile it, then open IT8951.h, and check if IT8951_Interface_I80 is defined. Compile it again and download it to your board. 
+</p><p><a href="/wiki/File:9.7inch-e-Paper-HAT-Manual-18.jpg" class="image"><img alt="9.7inch-e-Paper-HAT-Manual-18.jpg" src="/w/upload/d/d8/9.7inch-e-Paper-HAT-Manual-18.jpg" decoding="async" loading="lazy" width="593" height="157" /></a>
+</p><p>4) Information is printed to the serial port as below (115200, 8N1):
+</p><p><a href="/wiki/File:10.3inch-e-Paper-HAT-D-Manual-10.jpg" class="image"><img alt="10.3inch-e-Paper-HAT-D-Manual-10.jpg" src="/w/upload/f/ff/10.3inch-e-Paper-HAT-D-Manual-10.jpg" decoding="async" loading="lazy" width="200" height="185" /></a>
+</p>
+<h3><span class="mw-headline" id="Display_pictures">Display pictures</span></h3>
+<p>For porting the demo easily, we display pictures with a data matrix instead of the file system.
+</p><p>We should first convert the BMP picture to a data matrix (arrays), and use it in the demo code.
+</p><p>1) Prepare a BMP image, here an image with a resolution of 800 x 600 is used as an example.
+</p><p>2) Open <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/b/b3/BmpCvt.zip">BMP convert software</a>, Click File-&gt;Open..-&gt; to open the picture as below:
+</p><p><a href="/wiki/File:10.3inch-e-Paper-HAT-D-Manual-11.jpg" class="image"><img alt="10.3inch-e-Paper-HAT-D-Manual-11.jpg" src="/w/upload/thumb/b/bd/10.3inch-e-Paper-HAT-D-Manual-11.jpg/600px-10.3inch-e-Paper-HAT-D-Manual-11.jpg" decoding="async" loading="lazy" width="600" height="548" srcset="/w/upload/thumb/b/bd/10.3inch-e-Paper-HAT-D-Manual-11.jpg/900px-10.3inch-e-Paper-HAT-D-Manual-11.jpg 1.5x, /w/upload/b/bd/10.3inch-e-Paper-HAT-D-Manual-11.jpg 2x" /></a>
+</p><p>3) Click Image -&gt; Convert to -&gt; Gray256(8 BPP).
+</p><p><a href="/wiki/File:10.3inch-e-Paper-HAT-D-Manual-12.jpg" class="image"><img alt="10.3inch-e-Paper-HAT-D-Manual-12.jpg" src="/w/upload/thumb/c/c1/10.3inch-e-Paper-HAT-D-Manual-12.jpg/600px-10.3inch-e-Paper-HAT-D-Manual-12.jpg" decoding="async" loading="lazy" width="600" height="546" srcset="/w/upload/thumb/c/c1/10.3inch-e-Paper-HAT-D-Manual-12.jpg/900px-10.3inch-e-Paper-HAT-D-Manual-12.jpg 1.5x, /w/upload/c/c1/10.3inch-e-Paper-HAT-D-Manual-12.jpg 2x" /></a>
+</p><p>4) Click File -&gt; Save As... -&gt; Choose "C" bitmap file (*.c) -&gt; input file name and click Save.
+</p><p>5) Choose 8 bits per pixel, and click OK. A C file will be saved to your PC.
+</p><p><a href="/wiki/File:9.7inch-e-Paper-HAT-Manual-21.jpg" class="image"><img alt="9.7inch-e-Paper-HAT-Manual-21.jpg" src="/w/upload/b/b0/9.7inch-e-Paper-HAT-Manual-21.jpg" decoding="async" loading="lazy" width="299" height="226" /></a>
+</p><p>6) Add the C file to the Keil project, and delect unusable information.
+</p>
+<pre class="code2highlight lang-c">*********************************************************************
+*                SEGGER Microcontroller GmbH &amp; Co. KG                *
+*        Solutions for real time microcontroller applications        *
+*                           www.segger.com                           *
+**********************************************************************
+*                                                                    *
+* C-file generated by                                                *
+*                                                                    *
+*        Bitmap Converter for emWin V5.22.                           *
+*        Compiled Jul  4 2013, 12:18:24                              *
+*        (c) 1998 - 2013 Segger Microcontroller GmbH &amp;&amp; Co. KG       *
+*                                                                    *
+**********************************************************************
+*                                                                    *
+* Source file: zoo_800_600                                           *
+* Dimensions:  800 * 600                                             *
+* NumColors:   256                                                   *
+*                                                                    *
+**********************************************************************
+*/
+ 
+#include &lt;stdlib.h&gt;
+ 
+#include &quot;GUI.h&quot;
+ 
+#ifndef GUI_CONST_STORAGE
+  #define GUI_CONST_STORAGE const
+#endif
+ 
+extern GUI_CONST_STORAGE GUI_BITMAP bmzoo_800_600;
+ 
+/*********************************************************************
+*
+*       Palette
+*
+*  Description
+*    The following are the entries of the palette table.
+*    The entries are stored as a 32-bit value of which 24 bits are
+*    actually used according to the following bit mask: 0xBBGGRR
+*
+*    The lower   8 bits represent the Red component.
+*    The middle  8 bits represent the Green component.
+*    The highest 8 bits represent the Blue component.
+*/
+static GUI_CONST_STORAGE GUI_COLOR _Colorszoo_800_600[] = {
+  0x000000, 0x010101, 0x020202, 0x030303,
+  0x040404, 0x050505, 0x060606, 0x070707,
+  0x080808, 0x090909, 0x0A0A0A, 0x0B0B0B,
+  0x0C0C0C, 0x0D0D0D, 0x0E0E0E, 0x0F0F0F,
+  0x101010, 0x111111, 0x121212, 0x131313,
+  0x141414, 0x151515, 0x161616, 0x171717,
+  0x181818, 0x191919, 0x1A1A1A, 0x1B1B1B,
+  0x1C1C1C, 0x1D1D1D, 0x1E1E1E, 0x1F1F1F,
+  0x202020, 0x212121, 0x222222, 0x232323,
+  0x242424, 0x252525, 0x262626, 0x272727,
+  0x282828, 0x292929, 0x2A2A2A, 0x2B2B2B,
+  0x2C2C2C, 0x2D2D2D, 0x2E2E2E, 0x2F2F2F,
+  0x303030, 0x313131, 0x323232, 0x333333,
+  0x343434, 0x353535, 0x363636, 0x373737,
+  0x383838, 0x393939, 0x3A3A3A, 0x3B3B3B,
+  0x3C3C3C, 0x3D3D3D, 0x3E3E3E, 0x3F3F3F,
+  0x404040, 0x414141, 0x424242, 0x434343,
+  0x444444, 0x454545, 0x464646, 0x474747,
+  0x484848, 0x494949, 0x4A4A4A, 0x4B4B4B,
+  0x4C4C4C, 0x4D4D4D, 0x4E4E4E, 0x4F4F4F,
+  0x505050, 0x515151, 0x525252, 0x535353,
+  0x545454, 0x555555, 0x565656, 0x575757,
+  0x585858, 0x595959, 0x5A5A5A, 0x5B5B5B,
+  0x5C5C5C, 0x5D5D5D, 0x5E5E5E, 0x5F5F5F,
+  0x606060, 0x616161, 0x626262, 0x636363,
+  0x646464, 0x656565, 0x666666, 0x676767,
+  0x686868, 0x696969, 0x6A6A6A, 0x6B6B6B,
+  0x6C6C6C, 0x6D6D6D, 0x6E6E6E, 0x6F6F6F,
+  0x707070, 0x717171, 0x727272, 0x737373,
+  0x747474, 0x757575, 0x767676, 0x777777,
+  0x787878, 0x797979, 0x7A7A7A, 0x7B7B7B,
+  0x7C7C7C, 0x7D7D7D, 0x7E7E7E, 0x7F7F7F,
+  0x808080, 0x818181, 0x828282, 0x838383,
+  0x848484, 0x858585, 0x868686, 0x878787,
+  0x888888, 0x898989, 0x8A8A8A, 0x8B8B8B,
+  0x8C8C8C, 0x8D8D8D, 0x8E8E8E, 0x8F8F8F,
+  0x909090, 0x919191, 0x929292, 0x939393,
+  0x949494, 0x959595, 0x969696, 0x979797,
+  0x989898, 0x999999, 0x9A9A9A, 0x9B9B9B,
+  0x9C9C9C, 0x9D9D9D, 0x9E9E9E, 0x9F9F9F,
+  0xA0A0A0, 0xA1A1A1, 0xA2A2A2, 0xA3A3A3,
+  0xA4A4A4, 0xA5A5A5, 0xA6A6A6, 0xA7A7A7,
+  0xA8A8A8, 0xA9A9A9, 0xAAAAAA, 0xABABAB,
+  0xACACAC, 0xADADAD, 0xAEAEAE, 0xAFAFAF,
+  0xB0B0B0, 0xB1B1B1, 0xB2B2B2, 0xB3B3B3,
+  0xB4B4B4, 0xB5B5B5, 0xB6B6B6, 0xB7B7B7,
+  0xB8B8B8, 0xB9B9B9, 0xBABABA, 0xBBBBBB,
+  0xBCBCBC, 0xBDBDBD, 0xBEBEBE, 0xBFBFBF,
+  0xC0C0C0, 0xC1C1C1, 0xC2C2C2, 0xC3C3C3,
+  0xC4C4C4, 0xC5C5C5, 0xC6C6C6, 0xC7C7C7,
+  0xC8C8C8, 0xC9C9C9, 0xCACACA, 0xCBCBCB,
+  0xCCCCCC, 0xCDCDCD, 0xCECECE, 0xCFCFCF,
+  0xD0D0D0, 0xD1D1D1, 0xD2D2D2, 0xD3D3D3,
+  0xD4D4D4, 0xD5D5D5, 0xD6D6D6, 0xD7D7D7,
+  0xD8D8D8, 0xD9D9D9, 0xDADADA, 0xDBDBDB,
+  0xDCDCDC, 0xDDDDDD, 0xDEDEDE, 0xDFDFDF,
+  0xE0E0E0, 0xE1E1E1, 0xE2E2E2, 0xE3E3E3,
+  0xE4E4E4, 0xE5E5E5, 0xE6E6E6, 0xE7E7E7,
+  0xE8E8E8, 0xE9E9E9, 0xEAEAEA, 0xEBEBEB,
+  0xECECEC, 0xEDEDED, 0xEEEEEE, 0xEFEFEF,
+  0xF0F0F0, 0xF1F1F1, 0xF2F2F2, 0xF3F3F3,
+  0xF4F4F4, 0xF5F5F5, 0xF6F6F6, 0xF7F7F7,
+  0xF8F8F8, 0xF9F9F9, 0xFAFAFA, 0xFBFBFB,
+  0xFCFCFC, 0xFDFDFD, 0xFEFEFE, 0xFFFFFF
+};
+ 
+static GUI_CONST_STORAGE GUI_LOGPALETTE _Palzoo_800_600 = {
+  256,  // Number of entries
+  0,    // No transparency
+  &amp;_Colorszoo_800_600[0]
+};
+ 
+GUI_CONST_STORAGE GUI_BITMAP bmzoo_800_600 = {
+  800, // xSize
+  600, // ySize
+  800, // BytesPerLine
+  8, // BitsPerPixel
+  _aczoo_800_600,  // Pointer to picture data (indices)
+  &amp;_Palzoo_800_600   // Pointer to palette
+};</pre>
+<p>7) Modify the codes:
+</p>
+<pre class="code2highlight lang-c">static GUI_CONST_STORAGE unsigned char _aczoo_800_600[] = {</pre>
+<p>to this one. (You can change the name of the array to everyone you like)
+</p>
+<pre class="code2highlight lang-c">const unsigned char zoo_800_600[] = {</pre>
+<p>8) Modify related codes in IT8951.C as below:
+</p>
+<pre class="code2highlight lang-c">extern const unsigned char zoo_800_600[];
+void IT8951DisplayExample3()
+{
+	IT8951LdImgInfo stLdImgInfo;
+	IT8951AreaImgInfo stAreaImgInfo;
+	TWord width = gstI80DevInfo.usPanelW;
+	TWord high = gstI80DevInfo.usPanelH;
+	TDWord i;
+ 
+	for (i = 0;i &lt; width*high;i++)
+	{
+		gpFrameBuf[i] = zoo_800_600[i];
+	}
+ 
+	IT8951WaitForDisplayReady();
+ 
+	//Setting Load image information
+	stLdImgInfo.ulStartFBAddr    = (TDWord)gpFrameBuf;
+	stLdImgInfo.usEndianType     = IT8951_LDIMG_L_ENDIAN;
+	stLdImgInfo.usPixelFormat    = IT8951_8BPP; 
+	stLdImgInfo.usRotate         = IT8951_ROTATE_0;
+	stLdImgInfo.ulImgBufBaseAddr = gulImgBufAddr;
+	//Set Load Area
+	stAreaImgInfo.usX      = 0;
+	stAreaImgInfo.usY      = 0;
+	stAreaImgInfo.usWidth  = width;
+	stAreaImgInfo.usHeight = high;
+ 
+	IT8951HostAreaPackedPixelWrite(&amp;stLdImgInfo, &amp;stAreaImgInfo);//Display function 2
+	IT8951DisplayArea(0,0, gstI80DevInfo.usPanelW, gstI80DevInfo.usPanelH, 2);
+}</pre>
+<p><font color="red">【Note】Guides provided here are all about how to use the 10.3inch e-Paper HAT (D). If you have any questions about how to modify and develop your codes, please refer to resources of IT8951 <a href="#Resources">#Resources</a>.</font>
+</p>
+<h1><span class="mw-headline" id="Precaution">Precaution</span></h1>
+<h2><span class="mw-headline" id="Hardware_connection">Hardware connection</span></h2>
+<p>For different e-paper screen models, due to the product upgrades and improvements, there may be some differences in hardware connection compared with the picture. So the specific FPC line pin label shall prevail:
+</p>
+<ul><li>Check example 1:</li></ul>
+<p><a href="/wiki/File:20191213143317.png" class="image"><img alt="20191213143317.png" src="/w/upload/thumb/c/c6/20191213143317.png/500px-20191213143317.png" decoding="async" loading="lazy" width="500" height="544" srcset="/w/upload/thumb/c/c6/20191213143317.png/750px-20191213143317.png 1.5x, /w/upload/thumb/c/c6/20191213143317.png/1000px-20191213143317.png 2x" /></a>
+</p>
+<ul><li>Check example 2:</li></ul>
+<p><a href="/wiki/File:20191213141630.png" class="image"><img alt="20191213141630.png" src="/w/upload/thumb/3/3e/20191213141630.png/500px-20191213141630.png" decoding="async" loading="lazy" width="500" height="447" srcset="/w/upload/thumb/3/3e/20191213141630.png/750px-20191213141630.png 1.5x, /w/upload/3/3e/20191213141630.png 2x" /></a>
+</p>
+<h2><span class="mw-headline" id="DIP_switch">DIP switch</span></h2>
+<ul><li>We currently don't recommend using the I2C interface for the driver, it is recommended to use a USB, I80, or SPI interface.</li>
+<li>Whether you are using a USB interface driver, I80 interface driver, or SPI interface driver, you need to turn the DIP switch(marked in the red frame in the picture below) to the ON position on the right, as shown in the picture below:</li></ul>
+<p><a href="/wiki/File:20191213160132.png" class="image"><img alt="20191213160132.png" src="/w/upload/thumb/8/81/20191213160132.png/500px-20191213160132.png" decoding="async" loading="lazy" width="500" height="394" srcset="/w/upload/8/81/20191213160132.png 1.5x" /></a>
+</p>
+<ul><li>If you use USB to connect the driver board to the PC and the E-LINK-TCON-DEMO cannot recognize IT8951, please check whether the two DIP switches (marked in the red frame) are connected. Only the two DIP switches marked are both on, and the driver board can be recognized by the PC.</li></ul>
+<h2><span class="mw-headline" id="SPI_or_I80_driver">SPI or I80 driver</span></h2>
+<ul><li>If you use a USB driver, you don't need to pay attention to the DIP switch in the green frame as shown in the picture below.</li>
+<li>If you want to use the SPI driver or the I80 driver, you need to pay attention to the dial switch in the green frame as shown in the picture below. If it is dialed to the I80 side, it means using the I80 driver, if it is dialed to the SPI side, it means using the SPI driver:</li></ul>
+<p><a href="/wiki/File:20191213161905.png" class="image"><img alt="20191213161905.png" src="/w/upload/thumb/c/c7/20191213161905.png/500px-20191213161905.png" decoding="async" loading="lazy" width="500" height="601" srcset="/w/upload/c/c7/20191213161905.png 1.5x" /></a>
+</p><p><br />
+</p>
+<h1><span class="mw-headline" id="Codes_Description">Codes Description</span></h1>
+<h2><span class="mw-headline" id="New_Features">New Features</span></h2>
+<p>1. Update 16 grayscale images in 4bpp mode to reduce the data size while transmitting via SPI, avoiding the waste of RAM and transmission time caused by the previous version using 8bpp to refresh the 16-level grayscale image.<br />
+2. Double SPI transmitting speed. Note that this feature can only be valid in Raspberry Pi 3, it is invalid in Pi 4 because of the improvement of CPU frequency.<br />
+3. The time interval for refreshing the picture is reduced to 1/4 of the original The last version of Demo codes cost 10s to update a picture on 10.3inch e-Paper (D) in GC16 Mode, with the new version, it is reduced to 3s.<br />
+4. Fix the bug that the memory leaks problem occurs after opening a BMP file.<br />
+5. Add 1bpp, 2bpp, 3bpp, and 4bpp modes support.<br />
+6. Add A2 Mode (only work for 1bpp mode).<br />
+7. Add GUI functions (Draw point, line, circle, rectangle, and string display). Supports changing gray.<br />
+8. Add 1bpp, 2bpp, 4bpp, and 8bpp refresh support for BMP pictures, if you choose 1bpp, it also supports A2 mode refresh.<br />
+9. Add a demo for displaying GIF pictures, which can write multiple pictures into the IT8951 cache, and directly swipe the data of different addresses in the cache into the ink screen for display, eliminating the data transmission process between RPi and IT8951, refresh frame rate up to 7fps.<br />
+10. Add a frame rate test demo, which is convenient for testing and refreshing areas of different sizes, 1bpp, 2bpp, 4bpp, 8bpp, and A2 mode, GC16 mode, and refreshed frame rate.<br />
+11. Enhance the driver, to fix the bug of blurred display in the partial area.<br />
+12. Support 4-byte alignment for 6inch ePaper HAT and 6inch HD ePaper HAT in 1bpp mode.<br />
+13. Add VCOM setting and clear ePaper function (running Demo codes directly) to protect ePaper from damage.<br />
+14. Improving the structure of driver codes for higher code readability.<br />
+</p>
+<h2><span class="mw-headline" id="Examples_Description">Examples Description</span></h2>
+<h3><span class="mw-headline" id="Display_16_bars_in_grayscale_order">Display 16 bars in grayscale order</span></h3>
+<ul><li>Function：Display <i>ColorPalette</i> Example</li>
+<li>This function is used to display 16 bars in different grayscale. It uses 4bpp in GC16 mode.</li></ul>
+<h3><span id="Draw_dots,_lines,_circles,_rectangles_and_write_characters"></span><span class="mw-headline" id="Draw_dots.2C_lines.2C_circles.2C_rectangles_and_write_characters">Draw dots, lines, circles, rectangles and write characters</span></h3>
+<ul><li>Function: Display <i>CharacterPattern</i> Example</li>
+<li>This function is used to draw points, lines, circles, and rectangles as well as write characters. It supports 1bpp, 2bpp, 4bpp and 8bpp mode. If you use 1bpp, it can also support the A2 mode.</li></ul>
+<h3><span class="mw-headline" id="Display_BMP_image">Display BMP image</span></h3>
+<ul><li>Function：Display <i>BMP</i> Example</li>
+<li>This function is used to display a BMP image. It supports 1bpp, 2bpp, 4bpp and 8bpp mode. If you use 1bpp, it can also support the A2 mode.</li></ul>
+<h3><span class="mw-headline" id="Refresh_in_A2_mode">Refresh in A2 mode</span></h3>
+<ul><li>Function：Dynamic <i>Refresh</i> Example</li>
+<li>This function is used to refresh in A2 Mode. In this demo, the refresh area will be refreshed several times, and the area of the refresh area will gradually become larger. After refreshing several times, an afterimage will appear. The afterimage will be cleared using INIT mode. Through this demo, you can intuitively feel the refresh speed of the A2 mode.</li></ul>
+<h3><span class="mw-headline" id="Display_GIF_image">Display GIF image</span></h3>
+<ul><li>Function：Dynamic <i>GIF</i> Example</li>
+<li>This Demo demonstrates how to refresh a GIF image. In this demo, a GIF image is divided into 7 bmp images in advance, and the 7bmp images are written to the cache of a continuous address of IT8951 first. During display, the image data will be read from the cache of the corresponding address of IT8951 in turn and refreshed on the e-paper screen. Because there is no process of data transmission between RPi and IT8951, the refresh speed will be very fast. This Demo also demonstrates the limit speed of the IT8951 refreshing the ink screen (about 7fps).</li></ul>
+<h3><span class="mw-headline" id="FPS_Testing">FPS Testing</span></h3>
+<ul><li>Function：Check <i>FrameRate</i> Example</li>
+<li>This function is used to test the refresh frame rate when refreshing areas of different sizes, 1bpp, 2bpp, 4bpp, 8bpp, as well as A2 mode, GC16 mode. In this demo, the time to refresh 10 frames of images will be automatically counted, and frames per second (fps) is automatically calculated.</li></ul>
+<h2><span class="mw-headline" id="Related_Description">Related Description</span></h2>
+<h3><span class="mw-headline" id="Mode">Mode</span></h3>
+<p>IT8951 has flashed different firmware for different resolution screens. Different firmware has different refresh modes. See the <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/c/c4/E-paper-mode-declaration.pdf">Mode Description</a> for details. The modes used in the demo are INIT mode, GC16 mode, and A2 mode.<br />
+Below is a brief description of the relevant modes:<br />
+</p>
+<table class="wikitable">
+
+<tbody><tr>
+<th>Mode</th>
+<th>Description</th>
+<th>6inch/6inch HD</th>
+<th>7.8inch/9.7inch/10.3inch
+</th></tr>
+<tr>
+<td>INIT</td>
+<td>This mode is used for clearing the display. If you use A2 mode for refreshing, we recommend you use the INIT mode to clear display after refreshing several times.</td>
+<td>Mode0</td>
+<td>Mode0
+</td></tr>
+<tr>
+<td>GC16</td>
+<td>This mode is used for refreshing ePaper with 16 grayscale. GC16 mode can provide best dispaly effect.</td>
+<td>Mode2</td>
+<td>Mode2
+</td></tr>
+<tr>
+<td>A2</td>
+<td>A2 mode can only support 2 grayscale, however, the refresh speed is the fastest.</td>
+<td>Mode4</td>
+<td>Mode6
+</td></tr></tbody></table>
+<pre class="code2highlight lang-c">//basic mode definition
+UBYTE INIT_Mode = 0;
+UBYTE GC16_Mode = 2;
+//A2_Mode's value is not fixed, is decided by the firmware's LUT 
+UBYTE A2_Mode = 6;</pre>
+<pre class="code2highlight lang-c">if( strcmp(LUT_Version, &quot;M641&quot;) == 0 ){
+    //6inch e-Paper HAT(800,600), 6inch HD e-Paper HAT(1448,1072), 6inch HD touch e-Paper HAT(1448,1072)
+    A2_Mode = 4;
+    Four_Byte_Align = true;
+}else if( strcmp(LUT_Version, &quot;M841&quot;) == 0 ){
+    //9.7inch e-Paper HAT(1200,825)
+    A2_Mode = 6;
+}else if( strcmp(LUT_Version, &quot;M841_TFA2812&quot;) == 0 ){
+    //7.8inch e-Paper HAT(1872,1404)
+    A2_Mode = 6;
+}else if( strcmp(LUT_Version, &quot;M841_TFA5210&quot;) == 0 ){
+    //10.3inch e-Paper HAT(1872,1404)
+    A2_Mode = 6;
+}else{
+    //default set to 6 as A2 Mode
+    A2_Mode = 6;
+}</pre>
+<h3><span class="mw-headline" id="bpp">bpp</span></h3>
+<p>bpp(Bits Per Pixel), stands for the bits costed by every pixel. The current versions of ePaper support 1bpp, 2bpp, 4bpp, and 8bpp modes.
+</p>
+<ul><li><b>1bpp</b>
+<ul><li>Evey pixel use 1 bit.</li>
+<li>It supports 2 (2^1=2) gray, it is used for A2 mode.</li>
+<li>Evey byte contains 8 pixels.</li>
+<li>Save in RAM in big-endian format:<br /></li></ul></li></ul>
+<p><a href="/wiki/File:20191219165020.png" class="image"><img alt="20191219165020.png" src="/w/upload/8/85/20191219165020.png" decoding="async" loading="lazy" width="929" height="318" /></a>
+</p>
+<ul><li><ul><li>In IT8951, the little-endian format is used by default, and it is necessary to convert the big-endian format to the little-endian format.</li></ul></li></ul>
+<p><br />
+</p>
+<ul><li><b>2bpp</b>
+<ul><li>Every pixel uses 2 bits.</li>
+<li>Support 4(2^2=4) grays.</li>
+<li>Every byte contains 4 pixels.</li>
+<li>Save in RAM in big-endian format:<br /></li></ul></li></ul>
+<p><a href="/wiki/File:20191219164855.png" class="image"><img alt="20191219164855.png" src="/w/upload/1/1e/20191219164855.png" decoding="async" loading="lazy" width="898" height="297" /></a>
+</p>
+<ul><li><ul><li>In IT8951, the little-endian format is used by default, and it is necessary to convert the big-endian format to the little-endian format.</li></ul></li></ul>
+<ul><li><b>4bpp</b>
+<ul><li>Every pixel uses 4 bits.</li>
+<li>Support 16(2^4=16) grays.</li>
+<li>Every byte contains 2 pixels.</li>
+<li>Save in RAM in big-endian format:<br /></li></ul></li></ul>
+<p><a href="/wiki/File:20191219164916.png" class="image"><img alt="20191219164916.png" src="/w/upload/2/2e/20191219164916.png" decoding="async" loading="lazy" width="632" height="354" /></a> 
+</p>
+<ul><li><ul><li>In IT8951, the little-endian format is used by default, and it is necessary to convert the big-endian format to the little-endian format.</li>
+<li><b>It is recommended to use 4bpp for a refreshing, which can display 16 levels of grayscale, and compared to 8bpp, the amount of transmitted data is reduced by half, the transmission speed is twice as fast, and there is no difference in display effect.</b></li></ul></li></ul>
+<ul><li><b>8bpp</b>
+<ul><li>Every pixel uses 8 bits.</li>
+<li>Support 256(2^8=256) grays, however, IT8951 only uses the high four bits, only supports 16 grays.</li>
+<li>Every byte contains 1 pixel.</li>
+<li>Save in RAM in big-endian format:<br /></li></ul></li></ul>
+<p><a href="/wiki/File:20191219164949.png" class="image"><img alt="20191219164949.png" src="/w/upload/a/ad/20191219164949.png" decoding="async" loading="lazy" width="569" height="263" /></a>  
+</p>
+<ul><li><ul><li>In IT8951, the little-endian format is used by default, and it is necessary to convert the big-endian format to the little-endian format.</li>
+<li>To get the corresponding grayscale image from the original image. The specific operation in the program is: whether drawing points, drawing lines, or getting the image, each pixel point obtained is 1 byte (8 bits), if you want to get the corresponding grayscale, you only need to get the corresponding high bit of the byte. For example, if you want to get 2bpp pixel points, you only need to get the high 2 bits from the pixels of 8bpp (8 bits). The specific operation is shown in the following program, in which each byte in RAM is also converted from big-endian to little-endian.</li></ul></li></ul>
+<pre class="code2highlight lang-c">UDOUBLE Addr = X * (Paint.BitsPerPixel) / 8 + Y * Paint.WidthByte;
+switch( Paint.BitsPerPixel ){
+    case 8:{
+        Paint.Image[Addr] = Color &amp; 0xF0;
+        break;
+    }
+    case 4:{
+        Paint.Image[Addr] &amp;= ~( (0xF0) &gt;&gt; (7 - (X*4+3)%8 ) );
+        Paint.Image[Addr] |= (Color &amp; 0xF0) &gt;&gt; (7 - (X*4+3)%8 );
+        break;
+    }
+    case 2:{
+        Paint.Image[Addr] &amp;= ~( (0xC0) &gt;&gt; (7 - (X*2+1)%8 ) );
+        Paint.Image[Addr] |= (Color &amp; 0xC0) &gt;&gt; (7 - (X*2+1)%8 );
+        break;
+    }
+    case 1:{
+        Paint.Image[Addr] &amp;= ~( (0x80) &gt;&gt; (7 - X%8) );
+        Paint.Image[Addr] |= (Color &amp; 0x80) &gt;&gt; (7 - X%8);
+        break;
+    }
+}</pre>
+<h3><span class="mw-headline" id="4-byte_alignment_description">4-byte alignment description</span></h3>
+<p>In the actual test, we found that for those 3 products: 6inch e-Paper HAT, 6inch HD e-Paper HAT, and 6inch HD touch e-Paper HAT, when refreshing in 1bpp mode, we need to make the starting point of the refresh area X and the refresh width W to perform 4-byte (32bit) alignment, otherwise, the image in the refresh area will display abnormally. The specific operation is shown in the following demo:
+</p>
+<pre class="code2highlight lang-c">if( strcmp(LUT_Version, &quot;M641&quot;) == 0 ){
+    //6inch e-Paper HAT(800,600), 6inch HD e-Paper HAT(1448,1072), 6inch HD touch e-Paper HAT(1448,1072)
+    A2_Mode = 4;
+    Four_Byte_Align = true;
+}else if( strcmp(LUT_Version, &quot;M841&quot;) == 0 ){
+...
+}
+if(Four_Byte_Align == true){
+    In_4bp_Refresh_Area_Width = Panel_Width - (Panel_Width&#160;% 32);
+}else{
+    In_4bp_Refresh_Area_Width = Panel_Width;
+}
+X_Start = Min_X &lt; 32&#160;? 0&#160;: Min_X - (Min_X&#160;% 32);
+Debug(&quot;X_Start:%d\r\n&quot;,X_Start);
+X_End = ( Max_X + (32 - (Max_X&#160;% 32)) ) &gt; Touch_Pannel_Area_Width&#160;? ( Max_X - (Max_X&#160;% 32) )  : ( Max_X + (32 - (Max_X&#160;% 32)) );
+Debug(&quot;X_End:%d\r\n&quot;,X_End);
+Y_Start = Min_Y;
+Debug(&quot;Y_Start:%d\r\n&quot;,Y_Start);
+Y_End = Max_Y;
+Debug(&quot;Y_Start:%d\r\n&quot;,Y_End);
+Width = X_End - X_Start;
+if(Width&lt;=0){
+    Width = 32;
+}
+Debug(&quot;Width:%d\r\n&quot;,Width);
+Height = Y_End-Y_Start;
+if(Height&lt;=0){
+    Height = 32;
+}
+Debug(&quot;Height:%d\r\n&quot;,Height);</pre>
+<h3><span class="mw-headline" id="SPI_transmission_speed_description">SPI transmission speed description</span></h3>
+<p>Due to the difference in CPU frequency between Raspberry Pi 3 and Raspberry Pi 4:
+</p>
+<ul><li>Raspberry Pi 3 can still transmit normally when the frequency is divided by 16, but the frequency by 16 is the fastest speed for Pi3.</li>
+<li>When the frequency of the Raspberry Pi 4B uses a divide by 16, the SPI rate is too high and transmission errors will occur. Therefore, the SPI of the Raspberry Pi 4B can only use a divide by 32 at the fastest.</li>
+<li>In the BCM2835 library manual, for different Raspberry Pi versions and different clock divisions, the corresponding frequency description is shown in the following figure:</li></ul>
+<p><a href="/wiki/File:20191219173204.png" class="image"><img alt="20191219173204.png" src="/w/upload/thumb/a/a1/20191219173204.png/600px-20191219173204.png" decoding="async" loading="lazy" width="600" height="345" srcset="/w/upload/thumb/a/a1/20191219173204.png/900px-20191219173204.png 1.5x, /w/upload/a/a1/20191219173204.png 2x" /></a>
+</p>
+<ul><li>If you need to obtain the most suitable SPI transmission speed, you need to select a different SPI clock divider according to your Raspberry Pi version, as shown in the following program and its notes:</li></ul>
+<pre class="code2highlight lang-c">bcm2835_spi_begin();//Start spi interface, set spi pin for the reuse function
+bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);//High first transmission
+bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);//spi mode 0
+ 
+//bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_16);//For RPi 3/3B/3B+
+bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_32);//For RPi 4B
+ 
+/* SPI clock reference link：*/
+/*http://www.airspayce.com/mikem/bcm2835/group__constants.html#gaf2e0ca069b8caef24602a02e8a00884e*/</pre>
+<h3><span class="mw-headline" id="Enhance_driving_capability">Enhance driving capability</span></h3>
+<p>In some cases, due to the long FPC cable and other reasons, the ink screen display will be partially blurred. In this case, you can try to increase the driving capability to effectively solve the problem of the screen display blur.
+</p><p>You can check the demo below:
+</p>
+<pre class="code2highlight lang-c">#if(Enhance)
+    Debug(&quot;Attention! Enhanced driving ability, only used when the screen is blurred\r\n&quot;);
+    Enhance_Driving_Capability();
+#endif
+/******************************************************************************
+function:  Enhanced driving capability
+parameter:  Enhanced driving capability for IT8951, in case the blurred display effect
+******************************************************************************/
+void Enhance_Driving_Capability(void)
+{
+    UWORD RegValue = EPD_IT8951_ReadReg(0x0038);
+    Debug(&quot;The reg value before writing is %x\r\n&quot;, RegValue);
+    EPD_IT8951_WriteReg(0x0038, 0x0602);
+    RegValue = EPD_IT8951_ReadReg(0x0038);
+    Debug(&quot;The reg value after writing is %x\r\n&quot;, RegValue);
+}</pre>
+<p>If you use the E-LINK-TCON-DEMO software on a PC (Windows) to refresh the ink screen through the USB interface, you can modify the register value in the following ways to enhance the drive capability:
+</p>
+<ul><li>Step1: Read the data of register address 0 x 18000038.</li></ul>
+<p><a href="/wiki/File:13.3inch_epaper_01.png" class="image"><img alt="13.3inch epaper 01.png" src="/w/upload/thumb/a/a8/13.3inch_epaper_01.png/600px-13.3inch_epaper_01.png" decoding="async" loading="lazy" width="600" height="427" srcset="/w/upload/a/a8/13.3inch_epaper_01.png 1.5x" /></a>
+</p><p>If the read data of register address 0 x 18000038 is 0 x 02, it means that the drive capability has not been enhanced yet.
+</p>
+<ul><li>Step2: Modify the data of register address 0 x 18000038.</li></ul>
+<p><a href="/wiki/File:13.3inch_epaper_02.png" class="image"><img alt="13.3inch epaper 02.png" src="/w/upload/thumb/8/85/13.3inch_epaper_02.png/600px-13.3inch_epaper_02.png" decoding="async" loading="lazy" width="600" height="429" srcset="/w/upload/8/85/13.3inch_epaper_02.png 1.5x" /></a>
+</p><p>Modify the data of register address 0 x 18000038 to 602 to enhance the driving capability.
+</p>
+<ul><li>Step3: Check the data of register address 0 x 18000038.</li></ul>
+<p><a href="/wiki/File:13.3inch_epaper_03.png" class="image"><img alt="13.3inch epaper 03.png" src="/w/upload/thumb/b/b1/13.3inch_epaper_03.png/600px-13.3inch_epaper_03.png" decoding="async" loading="lazy" width="600" height="427" srcset="/w/upload/b/b1/13.3inch_epaper_03.png 1.5x" /></a>
+</p><p>Check whether the data of the registered address 0 x 18000038 is modified successfully. If the data of this address is 0 x 602, it means that the drive capacity has been enhanced and the screen can be refreshed in this state to avoid the blurred display in some cases, such as when the FPC line is too long and the production batch is different.
+</p>
+<h3><span class="mw-headline" id="Use_the_correct_VCOM_value">Use the correct VCOM value</span></h3>
+<p>The VCOM values of each piece of ink screen are different to some extent and the VCOM value of each model of the e-paper is marked on the FPC cable. Make sure that you have used the correct VCOM value when you running the demo. Otherwise, the e-paper will deteriorate by working for a long time under the wrong VCOM value.
+</p><p><br />
+</p>
+<h3><span class="mw-headline" id="Development_Notes">Development Notes</span></h3>
+<p>The above content only introduces how to use 10.3inch e-Paper HAT. For details on how to modify and perform secondary development, users need to consult the relevant code by themselves. <br />
+Please refer to IT8951-related Resources.
+</p>
+<h1><span class="mw-headline" id="Resources">Resources</span></h1>
+<h2><span class="mw-headline" id="Documentation">Documentation</span></h2>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/2/27/E-Paper-IT8951-Driver-HAT-B-Schematic.pdf.pdf">Schematic of IT8951 Driver Board</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/e/e1/7.8-10.3inch-e-Paper-Adapter-Schematic.pdf">Schematic of 10.3inch e-Paper Adapter board</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/E-Paper_Floyd-Steinberg">E-Paper Floyd-Steinberg</a></li></ul>
+<h2><span class="mw-headline" id="Demo_code">Demo code</span></h2>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://github.com/waveshare/IT8951-ePaper">Demo code for Raspberry Pi(Github)</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/8/80/IT8951_20200319_Release.7z">Demo Codes for the Pi (New)</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/d/da/Open429I-IT8951-Demo.7z">Demo code for STM32 (Open429I)</a></li></ul>
+<h2><span class="mw-headline" id="Third_Parties_Examples">Third Parties Examples</span></h2>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://github.com/aceisace/Inkycal">Inkycal Project</a></li></ul>
+<dl><dd>This is the Inkycal project for reference.</dd></dl>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.tindie.com/products/aceinnolab/inkycal-build-v3/">e-Paper Dashboard</a></li></ul>
+<h2><span class="mw-headline" id="Datasheet">Datasheet</span></h2>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/1/1a/10.3inch_e-Paper_Specification.pdf">10.3inch e-Paper Specification</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/1/18/IT8951_D_V0.2.4.3_20170728.pdf">IT8951 Specifications</a></li></ul>
+<h2><span class="mw-headline" id="Other_documents">Other documents</span></h2>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/b/b0/IT8951_I80%2BProgrammingGuide_16bits_20170904_v2.7_common_CXDX.zip">IT8951 I80/SPi/I2C Programming Guide</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/c/c9/IT8951_USB_ProgrammingGuide_v.0.4_20161114.pdf">IT851 USB Programming Guide</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/c/c4/E-paper-mode-declaration.pdf">Mode description</a></li></ul>
+<h2><span class="mw-headline" id="Software">Software</span></h2>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/2/2d/E-LINK-TCON-DEMO.zip">E-LINK-TCON-DEMO</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/b/b3/BmpCvt.zip">Image bitmap conversion</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/upload/c/c6/Zimo221.7z">Character bitmap conversion</a></li></ul>
+<h1><span class="mw-headline" id="FAQ">FAQ</span></h1>
+<h2><span id="Questions_About_Software_&amp;_Hardware"></span><span class="mw-headline" id="Questions_About_Software_.26_Hardware">Questions About Software &amp; Hardware</span></h2>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion1">
+								Question: Why can't I refresh the picture with E-LINK-TCON-DEMO? How can I check if the wiring is correct?
+
+							</a>
+						</h4>
+					</div>
+					<div id="accordion1" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<p>The most likely reason for not being able to print the picture is that the wires are not connected correctly. Please check the wiring. Due to the different batches of products, the wiring method may not be exactly the same as the picture. Please refer to the cable and 1 and 40 on the silk screen. Connect as shown in the red line mark in the figure below:<br />
+<a href="/wiki/File:Faqe-link.png" class="image"><img alt="Faqe-link.png" src="/w/upload/a/a0/Faqe-link.png" decoding="async" loading="lazy" width="502" height="265" /></a><br />
+</p>
+</div>
+<div style="display:none;">{{{3}}}</div>
+<div style="display:none;">{{{4}}}</div>
+<p><font color="red" style="display:none;">{{{5}}}</font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion2">
+								Question: Connect the PC, open the host computer, click connect, and it will prompt Open IT8951 Device Fail. What is the problem?
+
+							</a>
+						</h4>
+					</div>
+					<div id="accordion2" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<p>1. Replace the Micro USB cable with good quality. There are many USB cables on the market that have too much voltage drop, which will cause the USB interface to fail to enumerate normally. <br />
+2. Try changing the USB interface. It is recommended to use the USB interface on the back of the PC. Relatively speaking, the power supply current will be larger.<br />
+3. Turn the DIP switch to the end. During shipping, the DIP switches may be loosened, and the floating configuration pins cannot put the IT8951 into USB mode.<br />
+</p>
+</div>
+<div style="display:none;">{{{3}}}</div>
+<div style="display:none;">{{{4}}}</div>
+<p><font color="red" style="display:none;">{{{5}}}</font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion3">
+								Question: Click connect, and the host computer prompts that it is normal. But point refresh doesn't respond?
+
+							</a>
+						</h4>
+					</div>
+					<div id="accordion3" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<p>Click connect. The following information will be displayed normally (different models will display different information):<br />
+<a href="/wiki/File:Connect.png" class="image"><img alt="Connect.png" src="/w/upload/5/5f/Connect.png" decoding="async" loading="lazy" width="652" height="467" /></a><br />
+If you fail to refresh, check whether the hard link is normal, use the USB port on the back of the PC (most of the USB ports on the front of the PC have weak power supply capability), and replace the e-paper to test.<br />
+Note: Do not plug and unplug the e-paper with power on, otherwise the driver board and e-paper may be damaged.
+</p>
+</div>
+<div style="display:none;">{{{3}}}</div>
+<div style="display:none;">{{{4}}}</div>
+<p><font color="red" style="display:none;">{{{5}}}</font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion4">
+								Question: Can two e-Paper screens be connected to a single controller simultaneously?
+
+							</a>
+						</h4>
+					</div>
+					<div id="accordion4" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<p>Yes, but the CS, RST, and HRDY pins of the second screen need to be connected to different pins on the controller for individual control.
+</p>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;">{{{5}}}</font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<h2><span class="mw-headline" id="Questions_About_Screen">Questions About Screen</span></h2>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion5">
+								Question: What is the usage environment of the e-ink screen?          
+
+							</a>
+						</h4>
+					</div>
+					<div id="accordion5" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>【Operating condition】Temperature range: 0~50°C; Humidity range: 35%~65%RH</li>
+<li>【Storage condition】Temperature range: below 30°C; Humidity range: below 55%RH; Maximum storage time: 6 months</li>
+<li>【Transportation condition】Temperature range: -25~70°C; Maximum shipping time: 10 days</li>
+<li>【After unpacking】Temperature range: 20°C±5°C; Humidity range: 50±5%RH; Maximum storage time: Assembled within 72 hours</li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;">{{{5}}}</font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion6">
+								Question: e-paper screen refresh precautions    
+
+							</a>
+						</h4>
+					</div>
+					<div id="accordion6" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>Refresh mode:
+<ul><li>Full refresh: The e-paper screen will flicker several times during refreshing (the flicking times depend on the refresh time), and the flicker is to remove the ghosting to achieve the best display effect.</li>
+<li>Partial refresh: The e-paper screen has no flickering effect during refreshing. Users who use partial flashing should pay attention to performing a full flashing operation to remove the ghosting after refreshing several times, otherwise, the ghosting problem will become more and more serious, or even damage the screen. (At present, only some black and white e-paper screens support partial refreshing, please refer to the product page for details).</li></ul></li>
+<li>Refresh frequency:
+<ul><li>During use, it is recommended that customers set the refresh interval of the e-ink screen to at least 180 seconds. (Except for products that support the partial refreshing function)</li>
+<li>During the standby process (that is, after the refresh operation), it is recommended that the customer set the e-paper screen to sleep mode, or power off (the power supply part of the e-paper screen can be disconnected with an analog switch) to reduce power consumption and prolong the life of the e-paper screen. <b>(If some e-paper screens are powered on for a long time, the screen will be damaged beyond repair.)</b></li>
+<li>During the use of the e-paper screen, it is recommended that customers update the display screen at least every 24 hours. (If the screen keeps the same picture for a long time, there will be a burn-in situation that is difficult to repair).</li></ul></li>
+<li>Application scenarios:
+<ul><li>The e-paper screen is recommended for indoor use. If it is used outdoors, it is necessary to prevent the e-paper screen from being exposed to direct sunlight, and at the same time, it is necessary to take ultraviolet protection measures, because charged particles will dry out under strong light for a long time, resulting in loss of activity and failure to refresh. This situation is irreversible. When designing electronic ink screen products, customers should pay attention to determine whether the use environment meets the requirements of electronic ink screens.</li></ul></li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;">{{{5}}}</font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion7">
+								Question: What is the refresh rate/lifetime of the e-ink screen?        
+
+							</a>
+						</h4>
+					</div>
+					<div id="accordion7" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<p>Ideally, with normal use, it can be refreshed 1,000,000 times (1 million times).
+</p>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;">{{{5}}}</font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion8">
+								Question: After a period of use, the screen refresh (full refresh) has a serious afterimage problem that cannot be repaired?    
+
+							</a>
+						</h4>
+					</div>
+					<div id="accordion8" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<p>Power on the development board for a long time, after each refresh operation, it is recommended to set the screen to sleep mode or directly power off, otherwise, the screen may burn out when the screen is in a high voltage state for a long time.
+</p>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;">{{{5}}}</font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion9">
+								Question: After the e-paper screen enters deep sleep mode, can it be refreshed again?       
+
+							</a>
+						</h4>
+					</div>
+					<div id="accordion9" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<p>Yes, but you need to re-initialize the electronic paper with software.
+</p>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;">{{{5}}}</font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion10">
+								Question: Is bare screen shipped with a surface coating?       
+
+							</a>
+						</h4>
+					</div>
+					<div id="accordion10" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<p>Yes.
+</p>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;">{{{5}}}</font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion11">
+								Question: SPI connector type?
+
+							</a>
+						</h4>
+					</div>
+					<div id="accordion11" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<p>The connector is PH 2.0mm SMT Header Horizontal Right Angle Side.
+</p>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;">{{{5}}}</font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<h1><span class="mw-headline" id="Support">Support</span></h1>
+<p><br />
+<br />
+</p>
+<div style="background:linear-gradient(to bottom right,#91C942,#7DB036); border-radius:15px; width:100%;min-width:750px;">
+<div style="display:flex;flex-direction: row;align-items: flex-start;">
+<div style="flex:l; font-size:15px; width:70%; margin-top:20px; margin-bottom:20px; margin-right:40px;padding-left:40px;">
+<p style="font-size:20px; font-weight:bold;">
+Technical Support
+</p>
+<p>
+If you need technical support or have any feedback/review, please click the <b>Submit Now</b> button to submit a ticket, Our support team will check and reply to you within 1 to 2 working days. Please be patient as we make every effort to help you to resolve the issue. 
+<br /> 
+Working Time: 9 AM - 6 PM GMT+8 (Monday to Friday)
+</p>
+</div>
+<div style="margin-top:94px;">
+<div id="service" style="display:flex; flex:r; background-color:#393939; color:white; text-align:center; font-size:20px; border-radius:20px;">
+<p><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://service.waveshare.com/">Submit Now</a>
+</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 
+NewPP limit report
+Cached time: 20260830122420
+Cache expiry: 0
+Dynamic content: true
+Complications: []
+CPU time usage: 0.314 seconds
+Real time usage: 0.454 seconds
+Preprocessor visited node count: 1138/1000000
+Post‐expand include size: 27760/2097152 bytes
+Template argument size: 15591/2097152 bytes
+Highest expansion depth: 8/40
+Expensive parser function count: 0/100
+Unstrip recursion depth: 0/20
+Unstrip post‐expand size: 23558/5000000 bytes
+-->
+<!--
+Transclusion expansion time report (%,ms,calls,template)
+100.00%  170.746      1 -total
+ 41.25%   70.429      1 Template:IT8951_Epaper_FAQ
+ 33.62%   57.410     11 Template:FAQ
+ 30.46%   52.006      1 Template:Infobox_item
+  9.22%   15.739      1 Template:Amazon
+  9.18%   15.671      1 Template:Product_List
+  8.86%   15.120      1 Template:EPaper_Codes_Descriptions-IT8951
+  7.69%   13.127      1 Template:Servicebox1
+  6.30%   10.758      4 Template:Amazon_nolink
+-->
+</div></div>								<div class="printfooter">
+				Retrieved from "<a dir="ltr" href="https://www.waveshare.com/w/index.php?title=10.3inch_e-Paper_HAT&amp;oldid=100972">https://www.waveshare.com/w/index.php?title=10.3inch_e-Paper_HAT&amp;oldid=100972</a>"				</div>
+												<div id="catlinks" class="catlinks" data-mw="interface"><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/Special:Categories" title="Special:Categories">Category</a>: <ul><li><a href="/w/index.php?title=Category:I80_interface&amp;action=edit&amp;redlink=1" class="new" title="Category:I80 interface (page does not exist)">I80 interface</a></li></ul></div><div id="mw-hidden-catlinks" class="mw-hidden-catlinks mw-hidden-cats-hidden">Hidden categories: <ul><li><a href="/wiki/Category:SPI_interface" title="Category:SPI interface">SPI interface</a></li><li><a href="/wiki/Category:USB_interface" title="Category:USB interface">USB interface</a></li></ul></div></div>												<div class="visualClear"></div>
+							</div>
+			<!-- /bodyContent -->
+		</div>
+						</div>
+				</div>
+			</div>
+			<!-- /content -->
+
+			<!-- sidebar-left -->
+			<div class="sidebar-wrapper sidebar-left-wrapper">
+				<div class="sidebar-container container">
+					<div class="row">
+						<div id="sidebar-left" class="col-md-2 col-md-offset-0">
+							<div id="tweekiTOC"></div>						</div>
+					</div>
+				</div>
+			</div>
+			<!-- /sidebar-left -->
+					<!-- footer -->
+			<div id="footer" role="contentinfo" class="footer container footer-sticky bg-light">
+			<ul id="footer-custom"><li class="dropup"><a href="/w/index.php?title=Special:UserLogin&amp;returnto=10.3inch+e-Paper+HAT" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Login / Create Account</a></li></ul><div style="clear:both"></div>			</div>
+			<!-- /footer -->
+		
+<script>
+var fbtFancyBoxOptions = {};
+</script>
+
+<script>(RLQ=window.RLQ||[]).push(function(){mw.config.set({"wgPageParseReport":{"limitreport":{"cputime":"0.314","walltime":"0.454","ppvisitednodes":{"value":1138,"limit":1000000},"postexpandincludesize":{"value":27760,"limit":2097152},"templateargumentsize":{"value":15591,"limit":2097152},"expansiondepth":{"value":8,"limit":40},"expensivefunctioncount":{"value":0,"limit":100},"unstrip-depth":{"value":0,"limit":20},"unstrip-size":{"value":23558,"limit":5000000},"timingprofile":["100.00%  170.746      1 -total"," 41.25%   70.429      1 Template:IT8951_Epaper_FAQ"," 33.62%   57.410     11 Template:FAQ"," 30.46%   52.006      1 Template:Infobox_item","  9.22%   15.739      1 Template:Amazon","  9.18%   15.671      1 Template:Product_List","  8.86%   15.120      1 Template:EPaper_Codes_Descriptions-IT8951","  7.69%   13.127      1 Template:Servicebox1","  6.30%   10.758      4 Template:Amazon_nolink"]},"cachereport":{"timestamp":"20260830122420","ttl":0,"transientcontent":true}}});mw.config.set({"wgBackendResponseTime":929});});</script>	<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a333c5926cbfd13a',t:'MTc4ODA5MjY1OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
