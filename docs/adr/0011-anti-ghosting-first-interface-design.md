@@ -1,109 +1,37 @@
-# 0011 — Anti-ghosting-first interface design
+# ADR 0011 - E-ink ghosting is not a content constraint
 
-**Status:** Accepted
+Design Plugin views and DesignSystem components for legibility. Dark area, solid fills and
+persistent chrome carry no ghosting cost worth designing around.
 
-## Context
+No manufacturer source supports a content rule. E Ink rates GC16, the full 16-level update that
+drives every pixel through black and white, as its _lowest_-ghosting mode, and its "soft rails"
+account has transitions ending at the extremes needing _less_ impulse precision than ones ending in
+mid-grey. Pervasive Displays documents the inverse of the folk rule: the pixels that degrade are the
+ones a partial update leaves alone, not the ones being driven. Every documented mitigation is a
+drive action or a power action, and this firmware already does all of them. It full-updates on every
+poll, forces `CLEAR_SLOW` through `temperature_profile: "a"`, and powers the panel down after each
+update.
 
-The physical **Device** (TRMNL X) visibly ghosts: static elements held in place across a long
-display window leave a faint residual image that shows through the next screen — most painfully when
-the chrome-heavy **Transport** board hands off to a clean **Gallery** photo. The residue lands
-exactly where value-stable dark pixels sat: the top-left head, the bottom status bar, the full-width
-separator line.
+One real asymmetry exists and it is a driver bug, not a design input. FastEPD's grey tables are
+hand-authored and not DC-balanced, so each update leaves a residue of uncompensated charge:
 
-Ghosting on e-ink is incomplete particle realignment — residual charge (E Ink's "remnant voltage")
-that accumulates while a state is held and decays slowly afterward. Severity scales with **darkness
-× area × dwell-time**. This project deliberately maximises the worst factor: the Device is
-_inconspicuous decor that changes as rarely as possible_ (battery + unobtrusiveness, see
-[vision.md](../vision.md)), so a screen that lands and isn't needed again can dwell for hours. That
-is the burn-in regime a single wipe cannot fully clear.
+    // src/display.cpp, u8_graytable_big (payload > 100 KB, so Gallery photos)
+    level  0 (black): 21 black pushes,  0 white  ->  +21 net per update
+    level 15 (white): 18 black pushes, 18 white  ->    0 net per update
 
-The instinct is to reach for a firmware/server knob. There is none left — verified against the exact
-firmware on the Device (`usetrmnl/trmnl-firmware` v1.8.5, the `BOARD_X_CLASS` / FastEPD build, env
-`TRMNL_X_dev_no_qa`):
+Do not turn that into "less black". It is not monotonic on the 9-pass table our dashboards actually
+use, where mid-grey level 10 costs the same +3 as pure black. It accumulates over years, has no
+dwell or area term, does not depend on how often content changes, and no plugin can render around
+it. The fix is a corrected matrix upstream in FastEPD.
 
-- The Server already sends `temperature_profile: "a"` (`src/conductor/conductor.ts`).
-- It **is** read and applied: parsed `"a"→1` (`lib/trmnl/src/parse_response_api_display.cpp`),
-  persisted and refreshed from each response (`src/display.cpp:1697-1700`), and consumed at
-  `src/display.cpp:1738` —
-  `iClearMode = ((iUpdateCount & 7)==0 || (iTempProfile > 0)) ? CLEAR_SLOW : CLEAR_FAST`, then
-  `fullUpdate(iClearMode)`. This line lives in the `#else` of `#ifdef BB_EPAPER`; the X _undefines_
-  `BB_EPAPER` (because `-D BOARD_X_CLASS`, `platformio.ini`), so it is the live branch — while the
-  obvious-looking refresh logic in the `#ifdef BB_EPAPER` block (the `dpList[iTempProfile]`
-  panel-type selection, the `maximum_compatibility` handling) is dead code on this hardware. That
-  dead branch is why the knob _looks_ unused on a top-to-bottom read.
-- `iUpdateCount` is `RTC_DATA_ATTR` (survives deep sleep), so the `& 7` term only fires every 8th
-  refresh — it does not mask `temperature_profile`.
-- Net: with `"a"`, the X runs `CLEAR_SLOW` (FastEPD: 10 passes black/white/black/white) on **every**
-  update, and has **no partial-update path at all** (it is commented out, `src/display.cpp:1731`).
-  Every update is already a full grayscale wipe.
+Refresh at least daily. That is the only rule panel vendors actually state, and any normal cadence
+meets it. For a long idle window, vendors say park on white.
 
-The firmware is therefore maxed and the Device still ghosts. The conclusion is forced: **content is
-the only remaining lever.**
+Evidence, sources and the firmware read-through are in
+[docs/research/ghosting/](../research/ghosting/).
 
-## Decision
+Ruled out:
 
-Avoiding ghosting is the **paramount constraint** when designing any **Plugin** view or
-**DesignSystem** component for this project — ranked above visual richness, decoration, and
-secondary information. The emphasis is _no ghosting at all_, not _less_ ghosting.
-
-Operating rules:
-
-- **Value-per-ghost is the design criterion.** Any element that is value-stable dark and held long
-  must justify itself by information value. Zero- or low-value persistent dark content is cut. The
-  enemy is solid-dark **area** held long, not blackness per se — small black-on-white text and the
-  departure rows (which change as trains roll) are fine.
-- **No large solid-dark persistent surfaces, by construction.** The DesignSystem must not be able to
-  emit one. The `0.4rem solid #000` StatusBar separator (`templates/ds/chrome/chrome.css`) is
-  removed so it cannot creep back.
-- **Chrome is minimal and preferably conditional/transient, never
-  persistent-for-persistence's-sake.** A datum that only matters sometimes (low battery) surfaces
-  only when it matters — ideally as a whole-screen state the panel full-wipes cleanly, not as corner
-  chrome that dwells for weeks.
-- **Reserve gray/dither for photographic content only.** The Renderer already Floyd-Steinberg
-  dithers every screenshot; photos (Gallery) need tone. Chrome never spends gray — it adds dark dots
-  for no informational gain.
-
-First application — **Transport** becomes chrome-free: departure rows on white, nothing persistent
-except the rows themselves. The head title, the status bar (titles, date, instance, battery), and
-the footnote are dropped.
-
-### Open question — dwell vs. drive (added 2026-07)
-
-The evidence above confounds two mechanisms: the ghosted Transport chrome was value-stable dark
-pixels that were both **held for hours** and **re-driven to the same state on every ≥5-minute
-refresh** (the X `fullUpdate`s every poll; there is no partial path). Standard E Ink remnant-voltage
-accounts attribute accumulation to drive pulses — an idle panel is not driven — which would mean the
-re-drives, not the dwell, did the damage; long-static "image sticking" concerns in vendor app notes
-start at day-scale, not hour-scale. The **Sleep** screen (black, drawn once, held ~8 h overnight
-with zero intermediate refreshes — see CONTEXT.md "Sleep Window") is a clean experiment the original
-observation never provided: residue on the first morning image means dwell alone ghosts and the
-sleep screen goes white-on-black; no residue means this ADR's constraint applies specifically to
-**re-driven** persistent dark content, and a once-drawn dark screen is fine.
-
-### Considered and rejected
-
-- **Turn up the firmware/server knob** — nothing to turn up; `temperature_profile: "a"` is the
-  maximum and already on (verified above).
-- **Dither chrome to mid-gray** — the X always does a full grayscale wipe regardless, so gray buys
-  no clearing benefit and only adds dark area; the "mid-gray ghosts less than black" claim is also
-  unverified in the literature.
-- **Render non-photo screens as 1-bit to ride the low-ghost DU waveform** — the DU "low ghosting"
-  rating applies to _partial_ B/W updates, which the X never performs; it always `fullUpdate`s.
-- **Transition flush frames** (blank the screen on mode switch) — flicker is the firmware's job; if
-  the firmware won't, that complexity does not belong in this codebase.
-
-## Consequences
-
-- Transport drops all chrome (`templates/example/transport/root.tsx`, `.../bvg/Board.tsx`). Battery
-  is removed from the Device for now; the intended future shape is a full-screen "charge me" state,
-  not a persistent corner glyph. `BatteryIndicator` stays in the DesignSystem, unrendered, for that
-  later work.
-- The DesignSystem StatusBar loses its heavy solid-dark border. `StatusBar` / `BatteryIndicator`
-  remain available but are no longer the default furniture of a view.
-- This is a posture, not a one-off fix: new Plugins and DS components are evaluated against
-  value-per-ghost before they ship. It extends ADR-0008 (which lifted the framework's e-ink physics
-  rules — no shadows/gradients/opacity) with a project-specific, stronger stance on persistent dark
-  content driven by this Device's long-dwell usage.
-- `src/conductor/conductor.ts`'s comment describing `temperature_profile: "a"` as a "4-pass" wipe is
-  inaccurate against FastEPD (`CLEAR_SLOW` = 10 passes); worth correcting when that file is next
-  touched.
+- Sending `temperature_profile: "b"`. On this hardware the test is `iTempProfile > 0`, so "b" and
+  "a" are identical.
+- Reserving gray for photographic content. Dither is a legibility choice, not a ghosting mitigation.

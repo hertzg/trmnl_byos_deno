@@ -69,7 +69,7 @@ export const PATTERNS: readonly PatternSpec[] = [
     name: "ghosting",
     title: "ghosting stress",
     desc:
-      "hard black/white regions with shifted gray silhouettes — makes partial-refresh residue visible",
+      "hard black/white regions with shifted gray silhouettes — makes residue from a previous frame visible",
   },
   {
     name: "text-density",
