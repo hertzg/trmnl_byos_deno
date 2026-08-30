@@ -24,12 +24,15 @@ export type Inbox = {
     receivedAt: Temporal.Instant;
     expiresAt: Temporal.Instant;
   }): Notice;
-  /** Live notices in arrival order, oldest first. */
+  /**
+   * Live notices in arrival order, oldest first. Drops — and prunes — every
+   * entry whose `expiresAt` has been reached; the boundary is exclusive.
+   */
   live(at: Temporal.Instant): Notice[];
 };
 
 export function createInbox(): Inbox {
-  const notices: Notice[] = [];
+  let notices: Notice[] = [];
 
   return {
     add(input) {
@@ -44,7 +47,8 @@ export function createInbox(): Inbox {
       return notice;
     },
 
-    live(_at) {
+    live(at) {
+      notices = notices.filter((notice) => Temporal.Instant.compare(notice.expiresAt, at) > 0);
       return [...notices];
     },
   };
