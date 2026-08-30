@@ -178,3 +178,34 @@ Deno.test("Notice drops to small type at four notices and up", () => {
   assertStringIncludes(html, 'class="thread scale-many"');
   assertStringIncludes(html, ".scale-many { font-size: 3.3vw }");
 });
+
+Deno.test("Notice renders a photo inside the bubble with the text below as a caption", () => {
+  const html = render({
+    notices: [{
+      id: "n-abc123",
+      text: "Look what the cat did",
+      imageDataUrl: "data:image/jpeg;base64,AAAA",
+      timeLabel: "08:12",
+    }],
+    earlierCount: 0,
+  });
+
+  assertStringIncludes(html, '<img class="photo" src="data:image/jpeg;base64,AAAA"');
+  assertStringIncludes(html, "width: 46vw");
+  assertStringIncludes(html, "aspect-ratio: 4 / 3");
+  assertLess(html.indexOf("<img"), html.indexOf("Look what the cat did"));
+});
+
+Deno.test("Notice renders no img when the notice has no photo", () => {
+  const html = render({
+    notices: [{
+      id: "n-abc123",
+      text: "Bread is in the oven",
+      imageDataUrl: null,
+      timeLabel: "08:12",
+    }],
+    earlierCount: 0,
+  });
+
+  assertEquals(html.includes("<img"), false);
+});

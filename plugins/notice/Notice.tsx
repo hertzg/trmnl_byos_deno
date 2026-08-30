@@ -59,6 +59,17 @@ html, body {
   border-radius: 0.5em 0.5em 0.5em 0;
 }
 
+/* The one place gray is spent: photographic content, which needs tone
+   (ADR-0011). Sized off the panel, not the type scale, so a photo reads at
+   any notice count. */
+.photo {
+  display: block;
+  width: 46vw;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  margin-bottom: 0.2em;
+}
+
 .earlier {
   align-self: center;
   margin-bottom: 0.2em;
@@ -94,7 +105,10 @@ export default function Notice({ notices, earlierCount }: NoticeState) {
           {earlierCount > 0 && <div class="earlier">{earlierCount} earlier</div>}
           {notices.map((notice) => (
             <div class="msg" key={notice.id}>
-              <div class="bubble">{notice.text}</div>
+              <div class="bubble">
+                {notice.imageDataUrl !== null && <img class="photo" src={notice.imageDataUrl} />}
+                <div>{notice.text}</div>
+              </div>
               <div class="time">{notice.timeLabel}</div>
             </div>
           ))}
