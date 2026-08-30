@@ -150,8 +150,7 @@ export async function compose<SleepState, NoticeState extends { notices: readonl
   // back. Nothing here needs to know sleep windows exist.
   const noticeResult = await runNotice();
   if (noticeResult.state.notices.length > 0) {
-    const widened: Result<FrameData | GalleryState | SleepState | NoticeState> = noticeResult;
-    return widened;
+    return noticeResult;
   }
 
   // Check if we're currently in a sleep window.

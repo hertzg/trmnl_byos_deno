@@ -632,8 +632,16 @@ Deno.test("compose: notice branch returns the leaf's Result object untouched", a
   // The Notice leaf owns its own validity — the earliest expiry among the live
   // notices — so this branch delegates rather than reconstructs. Reference
   // identity on the whole Result covers state, validity, hints and view at once.
+  //
+  // The window is configured on purpose: at 10:00 the next window start is 13
+  // hours away, so a clamp to it would leave the validity *value* at 15
+  // minutes while replacing the Result object. Reference identity catches
+  // that; a `.validity` comparison would not. With no windows configured the
+  // clamp is unreachable and this assertion has nothing to catch.
   const t = makeZonedTime(10, 0);
-  const windows: SleepWindow[] = [];
+  const windows: SleepWindow[] = [
+    { from: Temporal.PlainTime.from("23:00"), until: Temporal.PlainTime.from("07:00") },
+  ];
 
   const noticeResult = makeNoticeResult(mins(15), [{ id: "notice-ghi789" }]);
 
