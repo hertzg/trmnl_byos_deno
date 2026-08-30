@@ -110,3 +110,32 @@ Deno.test("Notice keeps the given order — oldest at the top, newest at the bot
 
   assertLess(html.indexOf("Sent first"), html.indexOf("Sent second"));
 });
+
+Deno.test("Notice rolls older notices up into one centred line above the thread", () => {
+  const html = render({
+    notices: [{
+      id: "n-abc123",
+      text: "Bread is in the oven",
+      imageDataUrl: null,
+      timeLabel: "08:12",
+    }],
+    earlierCount: 3,
+  });
+
+  assertStringIncludes(html, "3 earlier");
+  assertLess(html.indexOf("3 earlier"), html.indexOf("Bread is in the oven"));
+});
+
+Deno.test("Notice renders no roll-up line when earlierCount is 0", () => {
+  const html = render({
+    notices: [{
+      id: "n-abc123",
+      text: "Bread is in the oven",
+      imageDataUrl: null,
+      timeLabel: "08:12",
+    }],
+    earlierCount: 0,
+  });
+
+  assertEquals(html.includes('class="earlier"'), false);
+});

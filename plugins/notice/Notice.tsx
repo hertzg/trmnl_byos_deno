@@ -52,6 +52,14 @@ html, body {
   border-radius: 0.5em 0.5em 0.5em 0;
 }
 
+.earlier {
+  align-self: center;
+  margin-bottom: 0.2em;
+  font-family: ui-monospace, monospace;
+  font-size: 0.34em;
+  color: #555;
+}
+
 .time {
   margin: 0.1em 0 0 0.5em;
   font-family: ui-monospace, monospace;
@@ -60,7 +68,7 @@ html, body {
 }
 `;
 
-export default function Notice({ notices }: NoticeState) {
+export default function Notice({ notices, earlierCount }: NoticeState) {
   return (
     <html>
       <head>
@@ -70,6 +78,7 @@ export default function Notice({ notices }: NoticeState) {
       </head>
       <body>
         <div class="thread">
+          {earlierCount > 0 && <div class="earlier">{earlierCount} earlier</div>}
           {notices.map((notice) => (
             <div class="msg" key={notice.id}>
               <div class="bubble">{notice.text}</div>
