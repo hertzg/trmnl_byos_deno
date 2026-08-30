@@ -1,7 +1,7 @@
 {
   "name": "@hztrmnl/notice",
   "exports": {
-    ".": "./main.ts"
+    "./inbox": "./inbox.ts"
   },
   "compilerOptions": {
     "jsx": "precompile",
