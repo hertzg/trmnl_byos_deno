@@ -47,9 +47,17 @@ html, body {
 .scale-few { font-size: 4.6vw }
 .scale-many { font-size: 3.3vw }
 
+/* Caps the bubble's width against a definite width (the thread's content
+   box) while letting the bubble itself hug its text. */
+.msg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 78%;
+}
+
 .bubble {
   box-sizing: border-box;
-  max-width: 78%;
   padding: 0.34em 0.5em;
   /* Outlined, never filled: a filled bubble is a large solid-dark surface
      held for the life of the notice (ADR-0011). */

@@ -209,3 +209,18 @@ Deno.test("Notice renders no img when the notice has no photo", () => {
 
   assertEquals(html.includes("<img"), false);
 });
+
+Deno.test("Notice escapes the notice text — it arrives from an HTTP POST", () => {
+  const html = render({
+    notices: [{
+      id: "n-abc123",
+      text: "<script>alert(1)</script> & co",
+      imageDataUrl: null,
+      timeLabel: "08:12",
+    }],
+    earlierCount: 0,
+  });
+
+  assertEquals(html.includes("<script>"), false);
+  assertStringIncludes(html, "&lt;script&gt;alert(1)&lt;/script&gt; &amp; co");
+});
