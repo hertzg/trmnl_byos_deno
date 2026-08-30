@@ -324,6 +324,37 @@ function makeSleepResult(
   };
 }
 
+/**
+ * Fabricate a Result<NoticeState> for testing.
+ *
+ * Only `state.notices.length` and `validity` matter to compose; the bubble
+ * contents are opaque to it.
+ */
+interface NoticeState {
+  notices: readonly { id: string }[];
+  earlierCount: number;
+}
+function makeNoticeResult(
+  validity: Temporal.Duration,
+  notices: readonly { id: string }[],
+): Result<NoticeState> {
+  const state: NoticeState = { notices, earlierCount: 0 };
+  return {
+    state,
+    validity,
+    view: (_s: NoticeState) => null, // sentinel
+  };
+}
+
+/**
+ * The notice thunk for every test that is not about notices: an empty thread.
+ * The leaf reports its nominal 1-hour validity when nothing is live, which
+ * compose must ignore entirely.
+ */
+function noNotices(): Result<NoticeState> {
+  return makeNoticeResult(Temporal.Duration.from({ hours: 1 }), []);
+}
+
 // ---------------------------------------------------------------------------
 // IN-WINDOW: returns sleep result, no transport/gallery execution
 // ---------------------------------------------------------------------------
@@ -341,7 +372,7 @@ Deno.test("compose: in-window → returns sleep result, transport spy NOT called
   const sleepResult = makeSleepResult(mins(60));
   const runSleep = spy(() => sleepResult);
 
-  const result = await compose(t, windows, runTransport, runGallery, runSleep);
+  const result = await compose(t, windows, runTransport, runGallery, runSleep, noNotices);
 
   // State and view must be the sleep result's (identity check).
   assertStrictEquals(result.state, sleepResult.state);
@@ -369,7 +400,7 @@ Deno.test("compose: in-window at 23:30, window 23:00–07:00 → validity 7h30m"
   const runGallery = () => makeGalleryResult(mins(10));
   const runSleep = () => makeSleepResult(mins(60));
 
-  const result = await compose(t, windows, runTransport, runGallery, runSleep);
+  const result = await compose(t, windows, runTransport, runGallery, runSleep, noNotices);
 
   // Window ends at 07:00 next day. From 23:30 to 07:00 = 7 hours 30 minutes.
   assertEquals(result.validity.total({ unit: "minutes" }), 7.5 * 60);
@@ -389,7 +420,7 @@ Deno.test("compose: in-window at 06:58, window 23:00–07:00 → validity 2 minu
   const runGallery = () => makeGalleryResult(mins(10));
   const runSleep = () => makeSleepResult(mins(60));
 
-  const result = await compose(t, windows, runTransport, runGallery, runSleep);
+  const result = await compose(t, windows, runTransport, runGallery, runSleep, noNotices);
 
   // Window ends at 07:00. From 06:58 to 07:00 = 2 minutes.
   // This is below VALIDITY_FLOOR (5 min), proving that in-window results
@@ -411,7 +442,7 @@ Deno.test("compose: awake (no window match) → transport emptyReason 'none' ret
   const runGallery = spy(() => makeGalleryResult(mins(10)));
   const runSleep = spy(() => makeSleepResult(mins(60)));
 
-  const result = await compose(t, windows, runTransport, runGallery, runSleep);
+  const result = await compose(t, windows, runTransport, runGallery, runSleep, noNotices);
 
   // State and view must be Transport's.
   assertStrictEquals(result.state, transportResult.state);
@@ -434,7 +465,7 @@ Deno.test("compose: awake (no window match) → transport emptyReason 'noSchedul
   const runGallery = spy(() => galleryResult);
   const runSleep = spy(() => makeSleepResult(mins(60)));
 
-  const result = await compose(t, windows, runTransport, runGallery, runSleep);
+  const result = await compose(t, windows, runTransport, runGallery, runSleep, noNotices);
 
   // State and view must be Gallery's.
   assertStrictEquals(result.state, galleryResult.state);
@@ -466,7 +497,7 @@ Deno.test("compose: awake at 20:00, window 23:00–07:00 → gallery 30min, tran
   const runGallery = () => galleryResult;
   const runSleep = spy(() => makeSleepResult(mins(60)));
 
-  const result = await compose(t, windows, runTransport, runGallery, runSleep);
+  const result = await compose(t, windows, runTransport, runGallery, runSleep, noNotices);
 
   // min(30, 90) = 30 (gallery+transport clamp, per composeResult),
   // then min(30, 180) = 30 (sleep window clamp),
@@ -491,7 +522,7 @@ Deno.test("compose: awake at 22:00, window 23:00–07:00 → transport 90min, ga
   const runGallery = spy(() => makeGalleryResult(mins(10)));
   const runSleep = spy(() => makeSleepResult(mins(60)));
 
-  const result = await compose(t, windows, runTransport, runGallery, runSleep);
+  const result = await compose(t, windows, runTransport, runGallery, runSleep, noNotices);
 
   // Transport 90 min, floor(90) = 90.
   // Then clamp to min(90, 60) = 60, floor(60) = 60.
@@ -514,7 +545,7 @@ Deno.test("compose: awake validity below floor → clamped to floor, sleep does 
   const runGallery = spy(() => makeGalleryResult(mins(1)));
   const runSleep = spy(() => makeSleepResult(mins(60)));
 
-  const result = await compose(t, windows, runTransport, runGallery, runSleep);
+  const result = await compose(t, windows, runTransport, runGallery, runSleep, noNotices);
 
   // Transport 2 min, floor(2) = 5.
   // min(5, 780) = 5.
@@ -537,11 +568,42 @@ Deno.test("compose: awake with no windows → behaves exactly like old composeRe
   const runGallery = () => galleryResult;
   const runSleep = spy(() => makeSleepResult(mins(60)));
 
-  const result = await compose(t, windows, runTransport, runGallery, runSleep);
+  const result = await compose(t, windows, runTransport, runGallery, runSleep, noNotices);
 
   // min(3, 60) = 3, floor(3) = 5.
   // No window clamp (windows empty).
   assertEquals(result.validity.total({ unit: "minutes" }), 5);
   assertStrictEquals(result.state, galleryResult.state);
   assertSpyCalls(runSleep, 0);
+});
+
+// ---------------------------------------------------------------------------
+// NOTICE: a live notice beats everything, including an active sleep window
+// ---------------------------------------------------------------------------
+
+Deno.test("compose: live notice during a sleep window → returns the notice result, sleep spy NOT called", async () => {
+  // t = 23:30, window = 23:00–07:00, so we are inside the window and would
+  // normally get the Sleep screen. A live notice outranks it.
+  const t = makeZonedTime(23, 30);
+  const windows: SleepWindow[] = [
+    { from: Temporal.PlainTime.from("23:00"), until: Temporal.PlainTime.from("07:00") },
+  ];
+
+  const noticeResult = makeNoticeResult(mins(15), [{ id: "notice-abc123" }]);
+  const runNotice = spy(() => noticeResult);
+  const runTransport = spy(() => makeTransportResult("none", mins(20)));
+  const runGallery = spy(() => makeGalleryResult(mins(10)));
+  const runSleep = spy(() => makeSleepResult(mins(60)));
+
+  const result = await compose(t, windows, runTransport, runGallery, runSleep, runNotice);
+
+  // State and view must be the notice result's (identity check).
+  assertStrictEquals(result.state, noticeResult.state);
+  assertStrictEquals(result.view, noticeResult.view);
+
+  // No other leaf runs.
+  assertSpyCalls(runNotice, 1);
+  assertSpyCalls(runSleep, 0);
+  assertSpyCalls(runTransport, 0);
+  assertSpyCalls(runGallery, 0);
 });
