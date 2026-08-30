@@ -23,11 +23,18 @@
     }
   ],
 
-  // Exclude the self-published image (ghcr.io/hertzg/trmnl_byos_deno) from updates
   "packageRules": [
+    // Exclude the self-published image (ghcr.io/hertzg/trmnl_byos_deno) from updates
     {
       "matchDatasources": ["docker"],
       "matchPackageNames": ["ghcr.io/hertzg/trmnl_byos_deno"],
+      "enabled": false
+    },
+    // Nothing under docs/ is a build input, so nothing under it is our dependency.
+    // docs/research archives verbatim web pages whose CDN <script> tags are other
+    // people's site assets, and bumping one would break the SHA256SUMS beside it.
+    {
+      "matchFileNames": ["docs/**"],
       "enabled": false
     }
   ]
