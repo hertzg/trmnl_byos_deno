@@ -108,6 +108,28 @@ Deno.test("getDisplay yields an empty object when the body is not json", async (
   assertEquals(await getDisplay(DEVICE, STATE, false), {});
 });
 
+Deno.test("getDisplay yields an empty object when the body is literal null", async () => {
+  using _fetch = stubFetch({ "http://localhost:3000/api/display": json(null) });
+  using _log = captureLines();
+
+  assertEquals(await getDisplay(DEVICE, STATE, false), {});
+});
+
+Deno.test("getImage reports a path it cannot write as operator error", async () => {
+  using _fetch = stubFetch({
+    "http://localhost:3000/image/w.png": png(new Uint8Array([1, 2, 3])),
+  });
+  using _log = captureLines();
+
+  const error = await getImage(DEVICE, "http://localhost:3000/image/w.png", {
+    preview: false,
+    out: "/nope/does/not/exist/out.png",
+    debug: false,
+  }).catch((e) => e);
+  assertInstanceOf(error, RequestFailed);
+  assertStringIncludes(error.message, "cannot write /nope/does/not/exist/out.png");
+});
+
 Deno.test("getImage asks /api/display for the url when none is given", async () => {
   using fetched = stubFetch({
     "http://localhost:3000/api/display": json({ image_url: "http://localhost:3000/image/w.png" }),

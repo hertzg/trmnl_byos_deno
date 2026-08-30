@@ -20,6 +20,13 @@ const boardType = new EnumType(Object.keys(BOARDS) as BoardName[]);
 const wakeType = new EnumType(WAKE_REASONS);
 const levelType = new EnumType(LOG_LEVELS);
 
+// Shown when a subcommand was invoked with nothing to do. Prints its help and
+// exits non-zero, so a script can tell "I did nothing" from "I sent it".
+function usage(command: { showHelp: () => void }): never {
+  command.showHelp();
+  Deno.exit(1);
+}
+
 // Shared by `display` and `log`, which both report the device's condition.
 const telemetryOptions = {
   wake: "Update-Source header: why the device woke",
@@ -109,8 +116,10 @@ try {
     .action(function (options, url) {
       // Downloading has to be asked for: --preview to look at it, --out to
       // keep it. With neither there is nothing to do with the bytes, so say
-      // so rather than quietly leaving a file in the temp dir.
-      if (!options.preview && options.out === undefined) return this.showHelp();
+      // so rather than quietly leaving a file in the temp dir. Exits non-zero
+      // because nothing was sent — a caller chaining on `&&` should not
+      // read this as success.
+      if (!options.preview && options.out === undefined) return usage(this);
       return getImage(identity(options), url, {
         preview: options.preview,
         out: options.out,
@@ -134,7 +143,7 @@ try {
     })
     .option("--rssi <dbm:integer>", telemetryOptions.rssi, { default: -55 })
     .action(function (options, message) {
-      if (message === undefined) return this.showHelp();
+      if (message === undefined) return usage(this);
       return postLog(
         identity(options),
         {

@@ -81,7 +81,7 @@ export type DeviceOptions = {
 export function identity(options: DeviceOptions): Identity {
   const board = BOARDS[options.board];
   return {
-    base: options.base.replace(/\/$/, ""),
+    base: options.base.replace(/\/+$/, ""),
     id: options.id,
     token: options.token,
     fw: options.fw,

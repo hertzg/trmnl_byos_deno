@@ -36,7 +36,10 @@ export async function getDisplay(
     logExchange({ method: "GET", url, headers, res, responseBody: text });
   } else printResult(res, text);
   try {
-    return JSON.parse(text);
+    const parsed = JSON.parse(text);
+    // `null` and arrays parse without throwing but are not what the caller
+    // was promised, so they get the same empty answer as unparseable text.
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? parsed : {};
   } catch {
     return {};
   }
@@ -85,16 +88,20 @@ export async function getImage(
 
   const path = opts.out ??
     await Deno.makeTempFile({ prefix: "trmnl-", suffix: ".png" });
-  await Deno.writeFile(path, bytes);
+  try {
+    await Deno.writeFile(path, bytes);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new RequestFailed(`cannot write ${path}\n  ${detail}`);
+  }
   console.log(`${bytes.length} bytes`);
   console.log(path);
 
   if (!opts.preview) return;
-  try {
-    await previewFile(path);
-  } finally {
-    if (opts.out === undefined) await Deno.remove(path);
-  }
+  const waited = await previewFile(path);
+  // Only reclaim the temp file once the window is closed. Where the viewer
+  // does not block, the path stays — it was printed above.
+  if (opts.out === undefined && waited) await Deno.remove(path);
 }
 
 export async function postLog(

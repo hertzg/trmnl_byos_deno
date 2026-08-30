@@ -7,10 +7,16 @@
 // would hang us forever. Only that path truly blocks — xdg-open hands off to a
 // launcher and returns immediately, so on Linux `--preview` opens the image but
 // does not wait for you to close it.
-function openViewer(path: string): {
+type Viewer = {
   command: Deno.Command;
   focus: (pid: number) => Promise<void>;
-} {
+  // Whether waiting on the spawned process actually waits for the window.
+  // qlmanage exits when its panel closes; xdg-open hands the file to a
+  // launcher and returns immediately, so the window outlives the process.
+  blocks: boolean;
+};
+
+function openViewer(path: string): Viewer {
   if (Deno.build.os === "darwin") {
     return {
       command: new Deno.Command("qlmanage", {
@@ -19,19 +25,24 @@ function openViewer(path: string): {
         stderr: "null",
       }),
       focus: focusQuickLook,
+      blocks: true,
     };
   }
   return {
     command: new Deno.Command("xdg-open", { args: [path] }),
     focus: () => Promise.resolve(),
+    blocks: false,
   };
 }
 
-// Blocks until the viewer window is closed, on the platforms whose viewer
-// supports that (see openViewer). The signal listeners cover the other half —
-// if the terminal goes away the viewer goes with it, instead of being orphaned
-// on the desktop.
-export async function previewFile(path: string): Promise<void> {
+// Opens the image, and where the platform's viewer allows it, waits for the
+// window to close. The signal listeners cover the other half — if the terminal
+// goes away the viewer goes with it, instead of being orphaned on the desktop.
+//
+// Returns whether it actually waited. The caller needs to know: a viewer that
+// returned immediately is still about to read the file, so deleting it would
+// pull the image out from under the window that is opening.
+export async function previewFile(path: string): Promise<boolean> {
   const viewer = openViewer(path);
   const child = viewer.command.spawn();
   await viewer.focus(child.pid);
@@ -50,6 +61,7 @@ export async function previewFile(path: string): Promise<void> {
   } finally {
     for (const signal of signals) Deno.removeSignalListener(signal, stop);
   }
+  return viewer.blocks;
 }
 
 // Quick Look puts its panel up behind whatever is already frontmost, so the

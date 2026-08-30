@@ -29,3 +29,8 @@ Deno.test("identity trims a trailing slash so request urls never double up", () 
   const device = identity({ ...OPTIONS, base: "http://localhost:3000/", board: "x" });
   assertEquals(device.base, "http://localhost:3000");
 });
+
+Deno.test("identity trims every trailing slash, not just the last", () => {
+  const device = identity({ ...OPTIONS, base: "http://localhost:3000///", board: "x" });
+  assertEquals(device.base, "http://localhost:3000");
+});

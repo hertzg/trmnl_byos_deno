@@ -1,10 +1,8 @@
 {
-  "name": "@hztrmnl/device-sim",
   // A developer tool, not part of the server: it plays the Device, making the
   // same HTTP requests the real firmware makes. Run it with `deno task device`.
-  "exports": {
-    ".": "./main.ts"
-  },
+  // Deliberately unnamed and unexported — main.ts parses argv and can exit, so
+  // this is a task target, not something another member should import.
   "imports": {
     "@cliffy/command": "jsr:@cliffy/command@^1.2.1",
     "@std/assert": "jsr:@std/assert@^1.0.0",
