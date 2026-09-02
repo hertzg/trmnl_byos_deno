@@ -46,7 +46,7 @@
     "jsr:@std/testing@1": "1.0.20",
     "jsr:@std/text@^1.0.19": "1.0.19",
     "jsr:@std/xml@0.2": "0.2.0",
-    "jsr:@zip-js/zip-js@^2.7.52": "2.8.61",
+    "jsr:@zip-js/zip-js@^2.7.52": "2.9.0",
     "npm:hafas-client@^6.3.6": "6.3.6"
   },
   "jsr": {
@@ -211,8 +211,8 @@
     "@std/xml@0.2.0": {
       "integrity": "e0b54ae29592bc1fc688109f78ef5c18680bf820ba8aa0a3990a115e709e58d2"
     },
-    "@zip-js/zip-js@2.8.61": {
-      "integrity": "8da37318aeefa76faa915058722ab8d1ee51e068edc8be69ea0810e01d724955"
+    "@zip-js/zip-js@2.9.0": {
+      "integrity": "67e3f997e7791c1822a4a57c1af7b2faa65334f01f22184d188768003414036c"
     }
   },
   "npm": {
@@ -488,8 +488,8 @@
     "process-nextick-args@2.0.1": {
       "integrity": "sha512-3ouUOpQhtgrbOa17J7+uxOTpITYWaGP7/AhoR3+A+/1e9skrzelGi/dXzEYyvbxubEF6Wn2ypscTKiKJFFn1ag=="
     },
-    "qs@6.15.3": {
-      "integrity": "sha512-O9gl3zCl5h5blw1KGUzQKhA5oUXSl8rwUIM5o0S3nCXMliSvy5Dzx7/DJcI+SwgICv+IneSZwhBh1oSyEHA71A==",
+    "qs@6.16.0": {
+      "integrity": "sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==",
       "dependencies": [
         "es-define-property",
         "side-channel"
